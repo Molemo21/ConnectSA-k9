@@ -18,15 +18,8 @@ export default async function ProviderOnboardingPage() {
   const user = await getCurrentUser()
 
   if (!user) {
+    // Failsafe, should be handled by middleware
     redirect("/login")
-  }
-
-  if (user.role !== "PROVIDER") {
-    redirect("/dashboard")
-  }
-
-  if (!user.emailVerified) {
-    redirect("/verify-email")
   }
 
   // Get provider data
