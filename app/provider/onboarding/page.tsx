@@ -3,6 +3,17 @@ import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { ProviderOnboardingForm } from "@/components/provider/onboarding-form"
 
+function isProfileComplete(provider: any) {
+  return (
+    provider.businessName &&
+    provider.description &&
+    provider.experience > 0 &&
+    provider.hourlyRate > 0 &&
+    provider.location &&
+    provider.services && provider.services.length > 0
+  )
+}
+
 export default async function ProviderOnboardingPage() {
   const user = await getCurrentUser()
 
@@ -39,6 +50,12 @@ export default async function ProviderOnboardingPage() {
     redirect("/provider/dashboard")
   }
 
+  // If profile is complete and status is PENDING, redirect to pending page
+  if (provider.status === "PENDING" && isProfileComplete(provider)) {
+    redirect("/provider/pending")
+  }
+
+  // Otherwise, show onboarding form (allow editing while PENDING)
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">

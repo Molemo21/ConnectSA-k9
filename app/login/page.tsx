@@ -43,8 +43,8 @@ export default function LoginPage() {
         })
 
         // Redirect based on user role and verification status
+        console.log("Redirecting to:", data.redirectUrl);
         router.push(data.redirectUrl || "/dashboard")
-        router.refresh()
       } else {
         toast({
           title: "Login failed",

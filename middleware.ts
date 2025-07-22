@@ -1,50 +1,24 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { verifyToken } from "./lib/auth"
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getUserFromRequest } from './lib/auth';
 
-const publicRoutes = ["/", "/login", "/signup", "/forgot-password", "/reset-password"]
-const authRoutes = ["/login", "/signup"]
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const token = request.cookies.get("auth-token")?.value
+  // Protect admin routes
+  if (pathname.startsWith('/admin')) {
+    const user = await getUserFromRequest(request);
 
-  // Check if it's a public route
-  if (publicRoutes.includes(pathname)) {
-    return NextResponse.next()
+    if (!user || user.role !== 'ADMIN') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
   }
 
-  // If no token and trying to access protected route
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", request.url))
-  }
-
-  // Verify token
-  const user = verifyToken(token)
-  if (!user) {
-    // Invalid token, redirect to login
-    const response = NextResponse.redirect(new URL("/login", request.url))
-    response.cookies.delete("auth-token")
-    return response
-  }
-
-  // If authenticated and trying to access auth routes, redirect to dashboard
-  if (authRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  // Role-based access control
-  if (pathname.startsWith("/admin") && user.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  if (pathname.startsWith("/provider") && user.role !== "PROVIDER") {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  return NextResponse.next()
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
-}
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};

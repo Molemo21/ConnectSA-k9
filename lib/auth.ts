@@ -1,10 +1,9 @@
-import jwt from "jsonwebtoken"
+import * as jose from 'jose';
 import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 import { prisma } from "./prisma"
 import type { UserRole } from "@prisma/client"
 
-const JWT_SECRET = process.env.JWT_SECRET!
 const JWT_EXPIRES_IN = "7d"
 
 export interface AuthUser {
@@ -23,15 +22,30 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return bcrypt.compare(password, hashedPassword)
 }
 
-export function generateToken(payload: AuthUser): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+export async function generateToken(payload: AuthUser): Promise<string> {
+  const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+  if (!secret) {
+    throw new Error('JWT_SECRET is not defined in the environment.');
+  }
+  return await new jose.SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(JWT_EXPIRES_IN)
+    .sign(secret);
 }
 
-export function verifyToken(token: string): AuthUser | null {
+export async function verifyToken(token: string): Promise<AuthUser | null> {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthUser
-  } catch {
-    return null
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    if (!secret) {
+      console.error('JWT_SECRET is not defined in the environment.');
+      return null;
+    }
+    const { payload } = await jose.jwtVerify(token, secret);
+    return payload as AuthUser;
+  } catch (error) {
+    console.error('Token verification failed:', error);
+    return null;
   }
 }
 
@@ -42,7 +56,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
     if (!token) return null
 
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
     if (!decoded) return null
 
     // Verify user still exists and is active
@@ -63,11 +77,31 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   }
 }
 
-export async function setAuthCookie(user: AuthUser) {
-  const token = generateToken(user)
-  const cookieStore = await cookies()
+export async function getUserFromRequest(request: Request): Promise<AuthUser | null> {
+  const cookieHeader = request.headers.get("cookie")
+  if (!cookieHeader) return null
 
-  cookieStore.set("auth-token", token, {
+  const token = cookieHeader
+    .split(";")
+    .find(c => c.trim().startsWith("auth-token="))
+    ?.split("=")[1]
+
+  if (!token) return null
+
+  const decoded = await verifyToken(token);
+  if (!decoded) return null;
+
+  // This function is used in middleware, which runs in the Edge runtime where
+  // Prisma is not available. We'll only verify the token here.
+  // The full user object will be fetched from the DB in server components/API routes.
+  return decoded;
+}
+
+export async function setAuthCookie(user: AuthUser) {
+  const token = await generateToken(user);
+  const cookieStore = await cookies();
+
+  cookieStore.set('auth-token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

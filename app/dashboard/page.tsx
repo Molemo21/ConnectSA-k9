@@ -13,8 +13,13 @@ export default async function ClientDashboard() {
     redirect("/login")
   }
 
-  if (user.role !== "CLIENT") {
-    redirect("/")
+  // Redirect non-clients to their correct dashboards
+  if (user.role === "PROVIDER") {
+    redirect("/provider/onboarding") // This will handle logic for pending/approved
+  } else if (user.role === "ADMIN") {
+    redirect("/admin")
+  } else if (user.role !== "CLIENT") {
+    redirect("/") // Fallback for any other roles
   }
 
   if (!user.emailVerified) {

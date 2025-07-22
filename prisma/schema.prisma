@@ -51,6 +51,11 @@ model User {
   // Client-specific fields
   clientBookings Booking[] @relation("ClientBookings")
 
+  // Email verification tokens
+  verificationTokens VerificationToken[]
+
+  providerReviews ProviderReview[] @relation("AdminProviderReviews")
+
   @@map("users")
 }
 
@@ -76,6 +81,7 @@ model Provider {
   services        ProviderService[]
   bookings        Booking[]
   reviews         Review[]
+  providerReviews ProviderReview[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -169,4 +175,25 @@ model Review {
   createdAt  DateTime @default(now())
 
   @@map("reviews")
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expires   DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ProviderReview {
+  id          String   @id @default(cuid())
+  providerId  String
+  adminId     String
+  comment     String
+  status      ProviderStatus
+  createdAt   DateTime @default(now())
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  admin       User     @relation("AdminProviderReviews", fields: [adminId], references: [id], onDelete: Cascade)
 }

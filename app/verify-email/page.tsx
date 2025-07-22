@@ -1,35 +1,60 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Mail, CheckCircle, RefreshCw } from "lucide-react"
+import { Mail, CheckCircle, XCircle, Loader2 } from "lucide-react"
 
 export default function VerifyEmailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [isResending, setIsResending] = useState(false)
   const [user, setUser] = useState<{ email: string; name: string } | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [verifyResult, setVerifyResult] = useState<null | { success: boolean; message: string }>(null)
+  const token = searchParams.get("token")
 
+  // Handle token verification if token is present
   useEffect(() => {
-    // Get current user info
-    const fetchUser = async () => {
-      try {
-        const response = await fetch("/api/auth/me")
-        if (response.ok) {
-          const data = await response.json()
-          setUser(data.user)
-        }
-      } catch (error) {
-        console.error("Failed to fetch user:", error)
-      }
+    if (token) {
+      setVerifying(true)
+      fetch(`/api/auth/verify-email?token=${token}`)
+        .then(async (res) => {
+          const data = await res.json()
+          if (res.ok) {
+            setVerifyResult({ success: true, message: data.message || "Email verified successfully!" })
+          } else {
+            setVerifyResult({ success: false, message: data.error || "Verification failed." })
+          }
+        })
+        .catch(() => {
+          setVerifyResult({ success: false, message: "Verification failed. Please try again." })
+        })
+        .finally(() => setVerifying(false))
     }
+  }, [token])
 
-    fetchUser()
-  }, [])
+  // Fetch user info for the 'check your email' state
+  useEffect(() => {
+    if (!token) {
+      const fetchUser = async () => {
+        try {
+          const response = await fetch("/api/auth/me")
+          if (response.ok) {
+            const data = await response.json()
+            setUser(data.user)
+          }
+        } catch (error) {
+          console.error("Failed to fetch user:", error)
+        }
+      }
+      fetchUser()
+    }
+  }, [token])
 
   const handleResendEmail = async () => {
     setIsResending(true)
@@ -61,34 +86,58 @@ export default function VerifyEmailPage() {
     }
   }
 
-  const handleCheckVerification = async () => {
-    try {
-      const response = await fetch("/api/auth/check-verification")
-      if (response.ok) {
-        const data = await response.json()
-        if (data.verified) {
-          toast({
-            title: "Email verified!",
-            description: "Your email has been successfully verified.",
-          })
-          router.push(data.redirectUrl || "/dashboard")
-        } else {
-          toast({
-            title: "Not verified yet",
-            description: "Please check your email and click the verification link.",
-            variant: "destructive",
-          })
-        }
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to check verification status.",
-        variant: "destructive",
-      })
-    }
+  // Render token verification result if token is present
+  if (token) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center space-x-2 mb-6">
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-xl">S</span>
+              </div>
+              <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
+            </Link>
+          </div>
+          <Card className="shadow-xl border-0">
+            <CardHeader className="text-center pb-6">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${verifying ? "bg-blue-100" : verifyResult?.success ? "bg-green-100" : "bg-red-100"}`}>
+                {verifying ? (
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                ) : verifyResult?.success ? (
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                ) : (
+                  <XCircle className="w-8 h-8 text-red-600" />
+                )}
+              </div>
+              <CardTitle className="text-2xl">
+                {verifying
+                  ? "Verifying Email..."
+                  : verifyResult?.success
+                  ? "Email Verified!"
+                  : "Verification Failed"}
+              </CardTitle>
+              <CardDescription className="text-base">
+                {verifying
+                  ? "Please wait while we verify your email."
+                  : verifyResult?.message}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!verifying && verifyResult?.success && (
+                <Button className="w-full" size="lg" onClick={() => router.push("/login")}>Go to Login</Button>
+              )}
+              {!verifying && !verifyResult?.success && (
+                <Button className="w-full" size="lg" onClick={() => router.push("/signup")}>Try Again</Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
+  // Default: show 'check your email' state
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -126,19 +175,10 @@ export default function VerifyEmailPage() {
             </div>
 
             <div className="space-y-3">
-              <Button onClick={handleCheckVerification} className="w-full" size="lg">
-                I've Verified My Email
-              </Button>
-
-              <Button
-                onClick={handleResendEmail}
-                variant="outline"
-                className="w-full bg-transparent"
-                disabled={isResending}
-              >
+              <Button onClick={handleResendEmail} variant="outline" className="w-full bg-transparent" disabled={isResending}>
                 {isResending ? (
                   <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Sending...
                   </>
                 ) : (
