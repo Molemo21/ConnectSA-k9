@@ -46,7 +46,7 @@ export default function HomePage() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-lg">S</span>
             </div>
-            <span className="text-xl font-bold text-gray-900">ServiceHub SA</span>
+            <span className="text-xl font-bold text-gray-900">ProLiink Connect</span>
           </div>
           <nav className="hidden md:flex items-center space-x-6">
             <Link href="#services" className="text-gray-600 hover:text-primary transition-colors">
@@ -133,7 +133,7 @@ export default function HomePage() {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose ServiceHub SA?</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose ProLiink Connect?</h2>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => {
@@ -182,7 +182,7 @@ export default function HomePage() {
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-lg">S</span>
                 </div>
-                <span className="text-xl font-bold">ServiceHub SA</span>
+                <span className="text-xl font-bold">ProLiink Connect</span>
               </div>
               <p className="text-gray-400">
                 South Africa's trusted marketplace for home services and professional providers.
@@ -250,7 +250,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 ServiceHub SA. All rights reserved.</p>
+            <p>&copy; 2024 ProLiink Connect. All rights reserved.</p>
           </div>
         </div>
       </footer>

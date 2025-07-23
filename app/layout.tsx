@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ServiceHub SA - Your Trusted Services Marketplace",
+  title: "ProLiink Connect - Your Trusted Services Marketplace",
   description:
     "Connect with verified service providers across South Africa. Book trusted professionals for cleaning, plumbing, electrical work, and more.",
     generator: 'v0.dev'
