@@ -43,6 +43,10 @@ export default function SignupPage() {
       const data = await response.json()
 
       if (response.ok) {
+        // Log out any previous user
+        await fetch("/api/auth/logout", { method: "POST" });
+        // Store the signup email for verification page
+        localStorage.setItem("pendingVerificationEmail", formData.email);
         toast({
           title: "Account created successfully!",
           description: "Please check your email to verify your account.",

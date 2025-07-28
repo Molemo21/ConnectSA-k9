@@ -23,6 +23,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = onboardingSchema.parse(body)
 
+    // Check if all required fields are filled
+    const isComplete = (
+      validatedData.businessName &&
+      validatedData.description &&
+      validatedData.experience > 0 &&
+      validatedData.hourlyRate > 0 &&
+      validatedData.location &&
+      validatedData.selectedServices && validatedData.selectedServices.length > 0
+    )
+
+    // Get current provider status
+    const provider = await prisma.provider.findUnique({ where: { userId: user.id } })
+    let newStatus = provider?.status;
+    if (provider?.status === "REJECTED") {
+      newStatus = isComplete ? "PENDING" : "INCOMPLETE";
+    } else if (isComplete) {
+      newStatus = "PENDING";
+    } else {
+      newStatus = "INCOMPLETE";
+    }
+
     // Update provider profile
     await prisma.provider.update({
       where: { userId: user.id },
@@ -32,7 +53,7 @@ export async function POST(request: NextRequest) {
         experience: validatedData.experience,
         hourlyRate: validatedData.hourlyRate,
         location: validatedData.location,
-        status: "PENDING", // Set to pending for admin review
+        status: newStatus,
       },
     })
 

@@ -50,12 +50,26 @@ export default async function ProviderOnboardingPage() {
     redirect("/provider/dashboard")
   }
 
-  // If profile is complete and status is PENDING, redirect to pending page
-  if (provider.status === "PENDING" && isProfileComplete(provider)) {
+  // If status is PENDING, show read-only summary (pending page)
+  if (provider.status === "PENDING") {
     redirect("/provider/pending")
   }
 
-  // Otherwise, show onboarding form (allow editing while PENDING)
+  // If status is REJECTED, fetch feedback from latest ProviderReview
+  let feedback = undefined;
+  if (provider.status === "REJECTED") {
+    // Fetch latest ProviderReview for feedback (pseudo, you may need to adjust for your ORM)
+    const reviews = await prisma.providerReview.findMany({
+      where: { providerId: provider.id, status: "REJECTED" },
+      orderBy: { createdAt: "desc" },
+      take: 1,
+    });
+    feedback = reviews[0]?.comment;
+  }
+
+  // If status is REJECTED, allow editing and show feedback (handled in form)
+  // If status is INCOMPLETE, allow editing
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -67,7 +81,7 @@ export default async function ProviderOnboardingPage() {
             </p>
           </div>
 
-          <ProviderOnboardingForm user={user} provider={provider} />
+          <ProviderOnboardingForm user={user} provider={provider} readOnly={false} feedback={feedback} />
         </div>
       </div>
     </div>

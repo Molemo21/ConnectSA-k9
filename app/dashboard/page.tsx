@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Search, Calendar, Clock, Star, MapPin, Plus, Home, Wrench, Paintbrush, Zap, Car, Scissors } from "lucide-react"
 import { DashboardHeader } from "@/components/dashboard/header"
+import { prisma } from "@/lib/prisma"
 
 export default async function ClientDashboard() {
   const user = await getCurrentUser()
@@ -15,7 +16,22 @@ export default async function ClientDashboard() {
 
   // Redirect non-clients to their correct dashboards
   if (user.role === "PROVIDER") {
-    redirect("/provider/onboarding") // This will handle logic for pending/approved
+    // Fetch provider status
+    const provider = await prisma.provider.findUnique({ where: { userId: user.id } })
+    if (!provider) {
+      redirect("/provider/onboarding")
+    }
+    if (provider.status === "INCOMPLETE") {
+      redirect("/provider/onboarding")
+    } else if (provider.status === "PENDING") {
+      redirect("/provider/pending")
+    } else if (provider.status === "REJECTED") {
+      redirect("/provider/onboarding")
+    } else if (provider.status === "APPROVED") {
+      // Stay on dashboard
+    } else {
+      redirect("/provider/onboarding")
+    }
   } else if (user.role === "ADMIN") {
     redirect("/admin")
   } else if (user.role !== "CLIENT") {

@@ -24,9 +24,11 @@ interface ProviderOnboardingFormProps {
       }
     }>
   }
+  readOnly?: boolean
+  feedback?: string
 }
 
-export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFormProps) {
+export function ProviderOnboardingForm({ user, provider, readOnly = false, feedback }: ProviderOnboardingFormProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
@@ -53,18 +55,21 @@ export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFor
   ]
 
   const handleNext = () => {
+    if (readOnly) return;
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1)
     }
   }
 
   const handlePrevious = () => {
+    if (readOnly) return;
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
     }
   }
 
   const handleSubmit = async () => {
+    if (readOnly) return;
     setIsLoading(true)
     try {
       const response = await fetch("/api/provider/onboarding", {
@@ -132,6 +137,7 @@ export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFor
                   placeholder="e.g., John's Cleaning Services"
                   value={formData.businessName}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                  disabled={readOnly}
                 />
               </div>
 
@@ -144,6 +150,7 @@ export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFor
                   placeholder="e.g., 5"
                   value={formData.experience || ""}
                   onChange={(e) => setFormData({ ...formData, experience: Number.parseInt(e.target.value) || 0 })}
+                  disabled={readOnly}
                 />
               </div>
 
@@ -157,6 +164,7 @@ export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFor
                     className="pl-10"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    disabled={readOnly}
                   />
                 </div>
               </div>
@@ -169,6 +177,7 @@ export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFor
                   rows={4}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  disabled={readOnly}
                 />
               </div>
             </div>
@@ -224,6 +233,7 @@ export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFor
                   className="pl-10"
                   value={formData.hourlyRate || ""}
                   onChange={(e) => setFormData({ ...formData, hourlyRate: Number.parseFloat(e.target.value) || 0 })}
+                  disabled={readOnly}
                 />
               </div>
               <p className="text-sm text-gray-600 mt-1">
@@ -388,14 +398,16 @@ export function ProviderOnboardingForm({ user, provider }: ProviderOnboardingFor
 
       {/* Navigation */}
       <div className="flex justify-between">
-        <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1}>
+        <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1 || readOnly}>
           Previous
         </Button>
 
         {currentStep < totalSteps ? (
-          <Button onClick={handleNext}>Next</Button>
+          <Button onClick={handleNext} disabled={readOnly}>
+            Next
+          </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={isLoading}>
+          <Button onClick={handleSubmit} disabled={isLoading || readOnly}>
             {isLoading ? "Submitting..." : "Submit for Review"}
           </Button>
         )}

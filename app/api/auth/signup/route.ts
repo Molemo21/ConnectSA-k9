@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { hashPassword } from "@/lib/auth"
 import { z } from "zod"
 import crypto from "crypto"
+import { sendEmail } from '@/lib/utils'
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -23,6 +24,42 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingUser) {
+      if (!existingUser.emailVerified) {
+        // Rate limit: allow max 3 tokens per hour
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+        const recentTokens = await prisma.verificationToken.count({
+          where: {
+            userId: existingUser.id,
+            createdAt: { gte: oneHourAgo },
+          },
+        })
+        if (recentTokens >= 3) {
+          return NextResponse.json({ error: "Too many verification requests. Please try again later." }, { status: 429 })
+        }
+        // Delete any existing tokens for this user
+        await prisma.verificationToken.deleteMany({ where: { userId: existingUser.id } })
+        // Generate a new token
+        const token = crypto.randomBytes(32).toString("hex")
+        const expires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour from now
+        await prisma.verificationToken.create({
+          data: {
+            userId: existingUser.id,
+            token,
+            expires,
+          },
+        })
+        // Mock sending email: log the verification link
+        const baseUrl = request.nextUrl.origin || "http://localhost:3000"
+        const verificationLink = `${baseUrl}/verify-email?token=${token}`
+        await sendEmail({
+          to: validatedData.email,
+          subject: 'Verify your email for ConnectSA',
+          html: `<p>Welcome to ConnectSA!</p><p>Please verify your email by clicking the link below:</p><p><a href="${verificationLink}">${verificationLink}</a></p>`
+        })
+        return NextResponse.json({
+          message: "Email already registered but not verified. We've sent you a new verification email.",
+        }, { status: 200 })
+      }
       return NextResponse.json({ error: "User with this email already exists" }, { status: 400 })
     }
 
@@ -69,9 +106,12 @@ export async function POST(request: NextRequest) {
 
     // Mock sending email: log the verification link
     const baseUrl = request.nextUrl.origin || "http://localhost:3000"
-    console.log(
-      `Verify your email: ${baseUrl}/verify-email?token=${token}`
-    )
+    const verificationLink = `${baseUrl}/verify-email?token=${token}`
+    await sendEmail({
+      to: user.email,
+      subject: 'Verify your email for ConnectSA',
+      html: `<p>Welcome to ConnectSA!</p><p>Please verify your email by clicking the link below:</p><p><a href="${verificationLink}">${verificationLink}</a></p>`
+    })
 
     return NextResponse.json({
       message: "Account created successfully",

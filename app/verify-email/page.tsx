@@ -17,6 +17,9 @@ export default function VerifyEmailPage() {
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<null | { success: boolean; message: string }>(null)
   const token = searchParams.get("token")
+  const [emailInput, setEmailInput] = useState("")
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   // Handle token verification if token is present
   useEffect(() => {
@@ -56,22 +59,46 @@ export default function VerifyEmailPage() {
     }
   }, [token])
 
+  // Fetch pending email from localStorage if no token
+  useEffect(() => {
+    if (!token) {
+      const email = localStorage.getItem("pendingVerificationEmail");
+      if (email) setPendingEmail(email);
+    }
+  }, [token]);
+
+  // Clear pending email after successful verification
+  useEffect(() => {
+    if (token && verifyResult?.success) {
+      localStorage.removeItem("pendingVerificationEmail");
+    }
+  }, [token, verifyResult]);
+
   const handleResendEmail = async () => {
     setIsResending(true)
     try {
+      let email = user?.email || emailInput
+      if (!email) {
+        setShowEmailPrompt(true)
+        setIsResending(false)
+        return
+      }
       const response = await fetch("/api/auth/resend-verification", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       })
-
+      const data = await response.json()
       if (response.ok) {
         toast({
           title: "Email sent!",
-          description: "We've sent a new verification email to your inbox.",
+          description: data.message || "We've sent a new verification email to your inbox.",
         })
+        setShowEmailPrompt(false)
       } else {
         toast({
           title: "Error",
-          description: "Failed to resend verification email. Please try again.",
+          description: data.error || "Failed to resend verification email. Please try again.",
           variant: "destructive",
         })
       }
@@ -158,7 +185,7 @@ export default function VerifyEmailPage() {
             <CardTitle className="text-2xl">Check Your Email</CardTitle>
             <CardDescription className="text-base">
               We've sent a verification link to{" "}
-              <span className="font-medium text-gray-900">{user?.email || "your email"}</span>
+              <span className="font-medium text-gray-900">{pendingEmail || user?.email || "your email"}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -185,6 +212,20 @@ export default function VerifyEmailPage() {
                   "Resend Verification Email"
                 )}
               </Button>
+              {showEmailPrompt && (
+                <div className="pt-2">
+                  <input
+                    type="email"
+                    className="border rounded px-3 py-2 w-full"
+                    placeholder="Enter your email"
+                    value={emailInput}
+                    onChange={e => setEmailInput(e.target.value)}
+                  />
+                  <Button className="mt-2 w-full" onClick={handleResendEmail} disabled={isResending || !emailInput}>
+                    Send Verification
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="text-center pt-4">
