@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,12 @@ import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff, Mail, Lock } from "lucide-react"
 
 export default function LoginPage() {
+  // Force dark mode
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+    return () => document.documentElement.classList.remove("dark");
+  }, []);
+
   const router = useRouter()
   const { toast } = useToast()
 
@@ -64,20 +70,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-black">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2 mb-6">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">S</span>
+              <span className="text-white font-bold text-xl">P</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
+            <span className="text-2xl font-bold text-white">ProLiink Connect</span>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your account to continue</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+          <p className="text-gray-400">Sign in to your account to continue</p>
         </div>
 
-        <Card className="shadow-xl border-0">
+        <Card className="shadow-xl border-0 bg-gray-800">
           <CardHeader className="space-y-1 pb-6">
             <CardTitle className="text-2xl text-center">Sign In</CardTitle>
             <CardDescription className="text-center">Enter your credentials to access your account</CardDescription>
