@@ -49,7 +49,7 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
   }
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: string } } | null> {
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get("auth-token")?.value
@@ -68,6 +68,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
         name: true,
         role: true,
         emailVerified: true,
+        provider: { select: { id: true } }, // include provider id
       },
     })
 
@@ -121,9 +122,10 @@ export function getUserDashboardPath(role: UserRole, isEmailVerified: boolean, p
     case "CLIENT":
       return "/dashboard"
     case "PROVIDER":
-      if (providerStatus === "PENDING") return "/provider/onboarding"
+      if (providerStatus === "INCOMPLETE" || providerStatus === "REJECTED") return "/provider/onboarding"
+      if (providerStatus === "PENDING") return "/provider/pending"
       if (providerStatus === "APPROVED") return "/provider/dashboard"
-      return "/provider/pending"
+      return "/provider/onboarding"
     case "ADMIN":
       return "/admin"
     default:

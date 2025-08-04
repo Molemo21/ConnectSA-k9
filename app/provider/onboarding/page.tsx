@@ -41,23 +41,21 @@ export default async function ProviderOnboardingPage() {
     },
   })
 
-  if (!provider) {
-    redirect("/dashboard")
-  }
-
-  // If already approved, redirect to provider dashboard
-  if (provider.status === "APPROVED") {
-    redirect("/provider/dashboard")
-  }
-
-  // If status is PENDING, show read-only summary (pending page)
-  if (provider.status === "PENDING") {
+  if (!provider || provider.status === "INCOMPLETE") {
+    // Allow onboarding form
+  } else if (provider.status === "REJECTED") {
+    // Allow onboarding form with feedback
+  } else if (provider.status === "PENDING") {
     redirect("/provider/pending")
+  } else if (provider.status === "APPROVED") {
+    redirect("/provider/dashboard")
+  } else {
+    redirect("/dashboard")
   }
 
   // If status is REJECTED, fetch feedback from latest ProviderReview
   let feedback = undefined;
-  if (provider.status === "REJECTED") {
+  if (provider && provider.status === "REJECTED") {
     // Fetch latest ProviderReview for feedback (pseudo, you may need to adjust for your ORM)
     const reviews = await prisma.providerReview.findMany({
       where: { providerId: provider.id, status: "REJECTED" },

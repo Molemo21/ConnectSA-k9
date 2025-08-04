@@ -2,170 +2,176 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Users, Shield, Clock, Star, Wrench, Zap, SprayCan, Paintbrush, Flower, Scissors, Sparkles } from "lucide-react"
+import { CheckCircle, Users, Shield, Clock, Star, Wrench, Zap, SprayCan, Paintbrush, Flower, Scissors, Sparkles, ArrowRight, Play, MapPin, Phone } from "lucide-react"
+import { BrandHeaderServer } from "@/components/ui/brand-header-server"
 
 export default function HomePage() {
   const services = [
-    { name: "House Cleaning", category: "Cleaning", price: "From R150/hr" },
-    { name: "Plumbing", category: "Maintenance", price: "From R200/hr" },
-    { name: "Electrical Work", category: "Maintenance", price: "From R250/hr" },
-    { name: "Garden Services", category: "Outdoor", price: "From R120/hr" },
-    { name: "Painting", category: "Home Improvement", price: "From R180/hr" },
-    { name: "Moving Services", category: "Logistics", price: "From R300/hr" },
+    { name: "House Cleaning", category: "Cleaning", price: "From R150/hr", icon: SprayCan, color: "from-blue-500 to-blue-600" },
+    { name: "Plumbing", category: "Maintenance", price: "From R200/hr", icon: Wrench, color: "from-orange-500 to-orange-600" },
+    { name: "Electrical Work", category: "Maintenance", price: "From R250/hr", icon: Zap, color: "from-yellow-500 to-yellow-600" },
+    { name: "Garden Services", category: "Outdoor", price: "From R120/hr", icon: Flower, color: "from-green-500 to-green-600" },
+    { name: "Painting", category: "Home Improvement", price: "From R180/hr", icon: Paintbrush, color: "from-purple-500 to-purple-600" },
+    { name: "Moving Services", category: "Logistics", price: "From R300/hr", icon: Sparkles, color: "from-pink-500 to-pink-600" },
   ]
 
   const features = [
     {
       icon: Shield,
       title: "Verified Professionals",
-      description: "All service providers are background-checked and verified",
+      description: "All service providers are background-checked and verified for your safety",
+      color: "text-green-600",
+      bgColor: "bg-green-100",
     },
     {
       icon: Clock,
       title: "Quick Booking",
       description: "Book services in minutes and get instant confirmation",
+      color: "text-blue-600",
+      bgColor: "bg-blue-100",
     },
     {
       icon: Users,
       title: "Trusted by Thousands",
       description: "Join over 10,000 satisfied customers across South Africa",
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
     },
     {
       icon: Star,
       title: "Quality Guaranteed",
       description: "All services come with our satisfaction guarantee",
+      color: "text-yellow-600",
+      bgColor: "bg-yellow-100",
     },
   ]
 
+  const stats = [
+    { number: "10,000+", label: "Happy Customers" },
+    { number: "500+", label: "Verified Providers" },
+    { number: "50,000+", label: "Services Completed" },
+    { number: "4.8★", label: "Average Rating" },
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="border-b border-gray-700 bg-gray-800/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
-            <span className="text-xl font-bold text-white">ProLiink Connect</span>
-          </div>
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link href="#services" className="text-gray-300 hover:text-primary transition-colors">
-              Services
-            </Link>
-            <Link href="#how-it-works" className="text-gray-300 hover:text-primary transition-colors">
-              How it Works
-            </Link>
-            <Link href="#providers" className="text-gray-300 hover:text-primary transition-colors">
-              Become a Provider
-            </Link>
-          </nav>
-          <div className="flex items-center space-x-3">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Sign In</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Get Started</Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <BrandHeaderServer />
 
       {/* Hero Section */}
-      <section className="relative text-white py-20 overflow-hidden">
-        {/* Background Map */}
-        <div className="absolute inset-0 z-0">
-          <iframe 
-            src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d5585.4541884300825!2d28.785907410921308!3d-31.58744534348173!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sza!4v1753262755649!5m2!1sen!2sza" 
-            width="100%" 
-            height="100%" 
-            style={{border: 0}} 
-            allowFullScreen 
-            loading="lazy" 
-            referrerPolicy="no-referrer-when-downgrade"
-            className="w-full h-full object-cover"
-          />
-          {/* Dimming overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-900/90 via-black/80 to-gray-900/90"></div>
-        </div>
+      <section className="relative py-20 lg:py-32 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50"></div>
+        <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.1)_1px,transparent_0)] bg-[length:20px_20px]"></div>
         
         {/* Content */}
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 drop-shadow-lg">
-            Find Trusted Service
-            <br />
-            <span className="text-blue-200">Providers Near You</span>
-          </h1>
-          <p className="text-xl mb-8 text-blue-100 max-w-2xl mx-auto drop-shadow-md">
-            Connect with verified professionals for cleaning, maintenance, repairs, and more. Quality service guaranteed
-            across South Africa.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary" asChild>
-              <Link href="/book-service">Book a Service</Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="bg-transparent text-white border-white hover:bg-white hover:text-primary backdrop-blur-sm"
-              asChild
-            >
-              <Link href="/signup?role=provider">Become a Provider</Link>
-            </Button>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <Badge className="mb-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Trusted by 10,000+ customers
+            </Badge>
+            
+            <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+              Find Trusted Service
+              <br />
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Providers Near You
+              </span>
+            </h1>
+            
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+              Connect with verified professionals for cleaning, maintenance, repairs, and more. 
+              Quality service guaranteed across South Africa.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+              <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg">
+                <Link href="/book-service">
+                  Book a Service
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="px-8 py-4 text-lg">
+                <Link href="/provider/onboarding">
+                  Become a Provider
+                </Link>
+              </Button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-2xl font-bold text-gray-900 mb-1">{stat.number}</div>
+                  <div className="text-sm text-gray-600">{stat.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Popular Services Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-10 text-gray-900">Popular Services</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {/* Services Section */}
+      <section id="services" className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              Popular Services
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              From cleaning to repairs, we've got you covered with trusted professionals
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {services.map((service, index) => {
+              const Icon = service.icon
+              return (
+                <Card key={index} className="group hover:shadow-xl transition-all duration-300 border-0 bg-white">
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className={`w-12 h-12 bg-gradient-to-br ${service.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-lg mb-1">{service.name}</h3>
+                        <p className="text-gray-600 mb-2">{service.category}</p>
+                        <p className="text-blue-600 font-medium">{service.price}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              How It Works
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Get started in just a few simple steps
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             {[
-              {
-                name: "Cleaning",
-                icon: <Sparkles className="w-10 h-10 text-blue-500" />, 
-                desc: "Sparkling clean homes in hours",
-              },
-              {
-                name: "Plumbing",
-                icon: <Wrench className="w-10 h-10 text-green-500" />, 
-                desc: "Fast, reliable pipe repairs",
-              },
-              {
-                name: "Electrical",
-                icon: <Zap className="w-10 h-10 text-yellow-500" />, 
-                desc: "Safe and expert electricians",
-              },
-              {
-                name: "Gardening",
-                icon: <Flower className="w-10 h-10 text-emerald-500" />, 
-                desc: "Beautiful gardens, made easy",
-              },
-              {
-                name: "Painting",
-                icon: <Paintbrush className="w-10 h-10 text-pink-500" />, 
-                desc: "Fresh paint, new look",
-              },
-              {
-                name: "Hair",
-                icon: <Scissors className="w-10 h-10 text-purple-500" />, 
-                desc: "Salon-quality at home",
-              },
-              {
-                name: "Spa",
-                icon: <Sparkles className="w-10 h-10 text-sky-400" />, 
-                desc: "Relax and rejuvenate",
-              },
-            ].map((service) => (
-              <div
-                key={service.name}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-lg hover:scale-[1.03] transition-all duration-200 p-7 flex flex-col items-center text-center cursor-pointer"
-              >
-                <div className="mb-4 flex items-center justify-center w-16 h-16 rounded-full bg-gray-100">
-                  {service.icon}
+              { step: "1", title: "Book a Service", description: "Choose from our wide range of services and book instantly" },
+              { step: "2", title: "Get Matched", description: "We'll connect you with verified professionals in your area" },
+              { step: "3", title: "Enjoy Quality", description: "Sit back and relax while we handle the rest" },
+            ].map((item, index) => (
+              <div key={index} className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-white font-bold text-xl">{item.step}</span>
                 </div>
-                <h3 className="font-bold text-lg text-gray-900 mb-1">{service.name}</h3>
-                <p className="text-gray-500 text-sm">{service.desc}</p>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">{item.title}</h3>
+                <p className="text-gray-600">{item.description}</p>
               </div>
             ))}
           </div>
@@ -173,22 +179,30 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="py-16">
+      <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose ServiceHub SA?</h2>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              Why Choose ProLiink Connect
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              We make finding trusted service providers simple and secure
+            </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => {
               const Icon = feature.icon
               return (
-                <div key={index} className="text-center">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
-                </div>
+                <Card key={index} className="text-center hover:shadow-lg transition-shadow duration-300 border-0 bg-white">
+                  <CardContent className="p-6">
+                    <div className={`w-12 h-12 ${feature.bgColor} rounded-xl flex items-center justify-center mx-auto mb-4`}>
+                      <Icon className={`w-6 h-6 ${feature.color}`} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                    <p className="text-gray-600 text-sm">{feature.description}</p>
+                  </CardContent>
+                </Card>
               )
             })}
           </div>
@@ -196,21 +210,25 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-primary text-white">
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-xl mb-8 text-green-100">Join thousands of satisfied customers and providers</p>
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
+            Ready to Get Started?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+            Join thousands of satisfied customers who trust ProLiink Connect for their service needs
+          </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary" asChild>
-              <Link href="/signup">Find Services</Link>
+            <Button asChild size="lg" variant="secondary" className="px-8 py-4 text-lg">
+              <Link href="/book-service">
+                Book Your First Service
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Link>
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="bg-transparent text-white border-white hover:bg-white hover:text-primary"
-              asChild
-            >
-              <Link href="/signup?role=provider">Offer Services</Link>
+            <Button asChild size="lg" variant="outline" className="px-8 py-4 text-lg border-white text-white hover:bg-white hover:text-blue-600">
+              <Link href="/provider/onboarding">
+                Become a Provider
+              </Link>
             </Button>
           </div>
         </div>
@@ -221,79 +239,54 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">S</span>
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold">P</span>
                 </div>
-                <span className="text-xl font-bold">ServiceHub SA</span>
+                <span className="text-xl font-bold">ProLiink Connect</span>
               </div>
-              <p className="text-gray-400">
-                South Africa's trusted marketplace for home services and professional providers.
+              <p className="text-gray-400 mb-4">
+                Connecting trusted service providers with customers across South Africa.
               </p>
             </div>
+            
             <div>
-              <h4 className="font-semibold mb-4">For Customers</h4>
+              <h3 className="font-semibold mb-4">Services</h3>
               <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/signup" className="hover:text-white transition-colors">
-                    Book Services
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-white transition-colors">
-                    How it Works
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-white transition-colors">
-                    Safety
-                  </Link>
-                </li>
+                <li><Link href="#" className="hover:text-white transition-colors">House Cleaning</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Plumbing</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Electrical</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Painting</Link></li>
               </ul>
             </div>
+            
             <div>
-              <h4 className="font-semibold mb-4">For Providers</h4>
+              <h3 className="font-semibold mb-4">Company</h3>
               <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/signup?role=provider" className="hover:text-white transition-colors">
-                    Join as Provider
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-white transition-colors">
-                    Provider Guidelines
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-white transition-colors">
-                    Earnings
-                  </Link>
-                </li>
+                <li><Link href="#" className="hover:text-white transition-colors">About Us</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">How It Works</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Become a Provider</Link></li>
+                <li><Link href="#" className="hover:text-white transition-colors">Contact</Link></li>
               </ul>
             </div>
+            
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="#" className="hover:text-white transition-colors">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-white transition-colors">
-                    Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-white transition-colors">
-                    Terms & Privacy
-                  </Link>
-                </li>
-              </ul>
+              <h3 className="font-semibold mb-4">Contact</h3>
+              <div className="space-y-2 text-gray-400">
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4" />
+                  <span>+27 123 456 789</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>South Africa</span>
+                </div>
+              </div>
             </div>
           </div>
+          
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 ServiceHub SA. All rights reserved.</p>
+            <p>&copy; 2024 ProLiink Connect. All rights reserved.</p>
           </div>
         </div>
       </footer>

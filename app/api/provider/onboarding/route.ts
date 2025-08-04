@@ -34,9 +34,24 @@ export async function POST(request: NextRequest) {
     )
 
     // Get current provider status
-    const provider = await prisma.provider.findUnique({ where: { userId: user.id } })
-    let newStatus = provider?.status;
-    if (provider?.status === "REJECTED") {
+    let provider = await prisma.provider.findUnique({ where: { userId: user.id } })
+    if (!provider) {
+      // Create a new provider record for this user
+      provider = await prisma.provider.create({
+        data: {
+          userId: user.id,
+          businessName: validatedData.businessName,
+          description: validatedData.description,
+          experience: validatedData.experience,
+          hourlyRate: validatedData.hourlyRate,
+          location: validatedData.location,
+          status: "INCOMPLETE", // or "PENDING" if all required fields are filled
+        },
+      });
+    }
+
+    let newStatus = provider.status;
+    if (provider.status === "REJECTED") {
       newStatus = isComplete ? "PENDING" : "INCOMPLETE";
     } else if (isComplete) {
       newStatus = "PENDING";
@@ -44,21 +59,33 @@ export async function POST(request: NextRequest) {
       newStatus = "INCOMPLETE";
     }
 
-    // Update provider profile
-    await prisma.provider.update({
-      where: { userId: user.id },
-      data: {
-        businessName: validatedData.businessName,
-        description: validatedData.description,
-        experience: validatedData.experience,
-        hourlyRate: validatedData.hourlyRate,
-        location: validatedData.location,
-        status: newStatus,
-      },
-    })
+    // Atomic update: provider profile and services
+    await prisma.$transaction(async (tx) => {
+      // Update provider profile
+      await tx.provider.update({
+        where: { userId: user.id },
+        data: {
+          businessName: validatedData.businessName,
+          description: validatedData.description,
+          experience: validatedData.experience,
+          hourlyRate: validatedData.hourlyRate,
+          location: validatedData.location,
+          status: newStatus,
+        },
+      });
 
-    // TODO: Handle service associations and document uploads
-    // This would involve creating ProviderService records and handling file uploads
+      // Remove all existing ProviderService records for this provider
+      await tx.providerService.deleteMany({ where: { providerId: provider.id } });
+
+      // Add new ProviderService records for selected services
+      const newServices = validatedData.selectedServices.map((serviceId: string) => ({
+        providerId: provider.id,
+        serviceId,
+      }));
+      if (newServices.length > 0) {
+        await tx.providerService.createMany({ data: newServices });
+      }
+    });
 
     return NextResponse.json({ message: "Profile submitted successfully" })
   } catch (error) {

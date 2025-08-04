@@ -1,343 +1,445 @@
 "use client"
 
-import { useEffect } from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Wrench, Zap, SprayCan, Paintbrush, Flower, Scissors, Sparkles, Calendar, Clock, MapPin, CheckCircle } from "lucide-react"
-import dynamic from "next/dynamic"
-const BookingSummary = dynamic(() => import("./summary"), { ssr: false })
-
-const CATEGORIES = [
-  {
-    name: "Plumbing",
-    icon: Wrench,
-    services: ["Leak Fix", "Unclog Drain", "Pipe Installation", "Geyser Repair"]
-  },
-  {
-    name: "Electrical",
-    icon: Zap,
-    services: ["Power Outage", "Install Light Fixture", "Wiring Issue", "Appliance Repair"]
-  },
-  {
-    name: "Cleaning",
-    icon: SprayCan,
-    services: ["Home Cleaning", "Carpet Cleaning", "Window Cleaning"]
-  },
-  {
-    name: "Painting",
-    icon: Paintbrush,
-    services: ["Wall Painting", "Ceiling Painting", "Fence Painting"]
-  },
-  {
-    name: "Gardening",
-    icon: Flower,
-    services: ["Lawn Mowing", "Tree Trimming", "Garden Cleanup"]
-  },
-  {
-    name: "Hair",
-    icon: Scissors,
-    services: ["Men's Cut", "Women's Cut", "Kids Cut", "Styling"]
-  },
-  {
-    name: "Spa",
-    icon: Sparkles,
-    services: ["Massage", "Facial", "Manicure", "Pedicure"]
-  },
-];
-
-const TIME_SLOTS = [
-  "08:00 - 10:00",
-  "10:00 - 12:00",
-  "12:00 - 14:00",
-  "14:00 - 16:00",
-  "16:00 - 18:00",
-]
-
-const STEPS = [
-  { title: "Choose Service" },
-  { title: "Photos (Optional)" },
-  { title: "Select Date & Time" },
-  { title: "Enter Address" },
-  { title: "Summary" },
-]
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2 } from "lucide-react"
+import { BrandHeader } from "@/components/ui/brand-header"
 
 export default function BookServicePage() {
-  // Force dark mode on mount
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [services, setServices] = useState<any[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    serviceId: "",
+    date: "",
+    time: "",
+    address: "",
+    notes: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState<any>(null);
+  const [showReview, setShowReview] = useState(false);
+
+  // Check for sessionStorage booking data after login
   useEffect(() => {
-    document.documentElement.classList.add("dark")
-    return () => document.documentElement.classList.remove("dark")
-  }, [])
+    if (typeof window !== "undefined" && searchParams?.get("intent") === "booking") {
+      const stored = sessionStorage.getItem("bookingDetails");
+      if (stored) {
+        setForm(JSON.parse(stored));
+        setShowReview(true);
+        sessionStorage.removeItem("bookingDetails");
+      }
+    }
+  }, [searchParams]);
 
-  const [step, setStep] = useState(0)
-  const [category, setCategory] = useState("")
-  const [service, setService] = useState("")
-  const [description, setDescription] = useState("")
-  const [photos, setPhotos] = useState<File[]>([])
-  const [date, setDate] = useState("")
-  const [time, setTime] = useState("")
-  const [address, setAddress] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  useEffect(() => {
+    async function fetchServices() {
+      setLoadingServices(true);
+      setServicesError(null);
+      try {
+        const res = await fetch("/api/services");
+        if (!res.ok) throw new Error("Failed to fetch services");
+        const data = await res.json();
+        setServices(data);
+      } catch (err) {
+        setServicesError("Could not load services. Please try again later.");
+      } finally {
+        setLoadingServices(false);
+      }
+    }
+    fetchServices();
+  }, []);
 
-  const handleNext = () => {
-    if (step < 4) setStep(step + 1)
-  }
-  const handleBack = () => {
-    if (step > 0) setStep(step - 1)
-  }
-  const handleBook = async () => {
-    setIsLoading(true);
-    sessionStorage.setItem("bookingDetails", JSON.stringify({ service, date, time, address }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Check auth status before booking
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitError(null);
+    setConfirmation(null);
     try {
+      // Check if logged in
       const res = await fetch("/api/auth/me");
-      if (res.ok) {
-        router.push("/dashboard");
-        return;
-      } else {
+      if (!res.ok) {
+        // Not logged in: save form data and redirect to login
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("bookingDetails", JSON.stringify(form));
+        }
         router.push("/login?intent=booking");
         return;
       }
-    } catch {
-      router.push("/login?intent=booking");
-      return;
+      // If logged in, show review step before final submission
+      setShowReview(true);
+    } catch (err: any) {
+      setSubmitError("Could not check authentication. Please try again.");
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
-  }
+  };
+
+  // Final booking submission after review
+  const handleFinalSubmit = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    setConfirmation(null);
+    try {
+      const res = await fetch("/api/book-service", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setConfirmation(data);
+        setShowReview(false);
+      } else {
+        const error = await res.json();
+        setSubmitError(error.error || "Failed to create booking");
+      }
+    } catch (err: any) {
+      setSubmitError("Failed to create booking. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const selectedService = services.find(s => s.id === form.serviceId);
 
   return (
-    <section className="w-full min-h-screen bg-gray-900 py-12 dark">
-      <div className="w-full flex justify-end max-w-6xl mx-auto px-4 mb-2">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <BrandHeader showAuth={false} />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Book a Service</h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Tell us what you need and we'll connect you with trusted professionals in your area
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Main Form */}
+            <div className="lg:col-span-2">
+              <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-2xl">Service Details</CardTitle>
+                  <CardDescription>
+                    Fill in the details below to book your service
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {confirmation ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Booking Confirmed!</h3>
+                      <p className="text-gray-600 mb-6">
+                        Your booking has been created successfully. We'll notify you once a provider accepts your request.
+                      </p>
+                      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                        <h4 className="font-semibold text-gray-900 mb-2">Booking Details</h4>
+                        <div className="space-y-2 text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span>Service:</span>
+                            <span className="font-medium">{selectedService?.name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Date:</span>
+                            <span className="font-medium">{form.date}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Time:</span>
+                            <span className="font-medium">{form.time}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Address:</span>
+                            <span className="font-medium">{form.address}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 justify-center">
+                        <Button asChild variant="outline">
+                          <a href="/dashboard">View Dashboard</a>
+                        </Button>
+                        <Button asChild>
+                          <a href="/book-service">Book Another Service</a>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : showReview ? (
+                    <div className="space-y-6">
+                      <div className="bg-blue-50 rounded-lg p-4">
+                        <h3 className="font-semibold text-blue-900 mb-2">Review Your Booking</h3>
+                        <p className="text-blue-700 text-sm">
+                          Please review your booking details before confirming.
+                        </p>
+                      </div>
+                      
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Selected Service</Label>
+                            <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                              <span className="font-medium">{selectedService?.name}</span>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Date & Time</Label>
+                            <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center space-x-2">
+                                <Calendar className="w-4 h-4 text-gray-500" />
+                                <span>{form.date}</span>
+                              </div>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <Clock className="w-4 h-4 text-gray-500" />
+                                <span>{form.time}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Service Address</Label>
+                            <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-start space-x-2">
+                                <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
+                                <span>{form.address}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {form.notes && (
+                            <div>
+                              <Label className="text-sm font-medium text-gray-700">Additional Notes</Label>
+                              <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-start space-x-2">
+                                  <FileText className="w-4 h-4 text-gray-500 mt-0.5" />
+                                  <span>{form.notes}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-4 pt-4">
         <Button
           type="button"
           variant="outline"
-          className="px-6"
-          onClick={() => window.location.href = '/'}
-        >
-          Homepage
+                          onClick={() => setShowReview(false)}
+                          className="flex-1"
+                        >
+                          Edit Details
+                        </Button>
+                        <Button
+                          onClick={handleFinalSubmit}
+                          disabled={submitting}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                        >
+                          {submitting ? (
+                            <div className="flex items-center space-x-2">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Creating Booking...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <span>Confirm Booking</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </div>
+                          )}
         </Button>
       </div>
-      <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center gap-10">
-        {/* Left: Hero + Booking Flow */}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3 text-white">Book Trusted Local Service Providers</h1>
-          <p className="text-lg text-gray-300 mb-8">From home cleaning to repairs — get help at your doorstep.</p>
-
-          {/* Stepper */}
-          <div className="mb-8">
-  <div className="flex items-center justify-between max-w-2xl mx-auto">
-    {STEPS.map((s, i) => (
-      <div key={s.title} className="flex items-center w-full">
-        <div className="flex flex-col items-center z-10 w-full">
-          <div className={`w-9 h-9 flex items-center justify-center rounded-full border-2 transition-all duration-300
-            ${i < step ? "bg-blue-600 border-blue-600" : i === step ? "bg-gray-900 border-blue-600" : "bg-gray-800 border-gray-700"}`}
-          >
-            {i < step ? (
-              <CheckCircle className="w-5 h-5 text-white" />
-            ) : (
-              <span className={`font-bold text-lg ${i === step ? "text-blue-400" : "text-gray-500"}`}>{i + 1}</span>
-            )}
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      {/* Service Selection */}
+                      <div className="space-y-2">
+                        <Label htmlFor="serviceId" className="text-sm font-medium">Select Service *</Label>
+                        {loadingServices ? (
+                          <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Loading services...</span>
           </div>
-          <span className={`text-xs mt-2 font-semibold text-center block w-24 truncate ${i === step ? "text-blue-400" : "text-gray-400"}`}>{s.title}</span>
+                        ) : servicesError ? (
+                          <div className="p-3 bg-red-50 rounded-lg text-red-700">
+                            {servicesError}
         </div>
-        {i < STEPS.length - 1 && (
-          <div className={`flex-1 h-1 mx-1 rounded-full transition-all duration-300
-            ${i < step ? "bg-blue-600" : "bg-gray-700"}`}></div>
+                        ) : (
+                          <Select
+                            value={form.serviceId}
+                            onValueChange={(value) => setForm({ ...form, serviceId: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {services.map((service) => (
+                                <SelectItem key={service.id} value={service.id}>
+                                  {service.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
         )}
       </div>
-    ))}
+
+                      {/* Date and Time */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="date" className="text-sm font-medium">Date *</Label>
+                          <Input
+                            id="date"
+                            name="date"
+                            type="date"
+                            value={form.date}
+                            onChange={handleChange}
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="time" className="text-sm font-medium">Time *</Label>
+                          <Input
+                            id="time"
+                            name="time"
+                            type="time"
+                            value={form.time}
+                            onChange={handleChange}
+                            required
+                          />
   </div>
 </div>
 
-          {/* Step Forms */}
-          <Card className="w-full max-w-2xl mx-auto p-6 rounded-xl shadow-lg bg-gray-800 border border-gray-700">
-            <form>
-              {/* Step 1: Service */}
-              {step === 0 && (
-  <div className="space-y-6 animate-fade-in">
-    <label className="block font-medium text-gray-200 mb-2">Select a category</label>
-    <div className="relative mb-4">
-      <select
-        className="w-full px-4 py-3 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 bg-gray-900 text-white appearance-none pr-10"
-        value={category}
-        onChange={e => {
-          setCategory(e.target.value);
-          setService("");
-        }}
-        required
-      >
-        <option value="" disabled>Select...</option>
-        {CATEGORIES.map(({ name }) => (
-          <option
-            key={name}
-            value={name}
-            disabled={!["Hair", "Spa"].includes(name)}
-            style={!["Hair", "Spa"].includes(name) ? {} : { color: '#888' }}
-          >
-            {name}
-          </option>
-        ))}
-      </select>
-      <Wrench className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-    </div>
-    {category && (
-      <>
-        <label className="block font-medium text-gray-200 mb-2">Select a service</label>
-        <div className="relative mb-4">
-          <select
-            className="w-full px-4 py-3 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 bg-gray-900 text-white appearance-none pr-10"
-            value={service}
-            onChange={e => setService(e.target.value)}
-            required
-          >
-            <option value="" disabled>Select...</option>
-            {CATEGORIES.find(c => c.name === category)?.services.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-        <label className="block font-medium text-gray-200 mb-2">Specify (describe the problem)</label>
-        <textarea
-          className="w-full px-4 py-3 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 bg-gray-900 text-white"
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          placeholder="Describe the problem in detail..."
+                      {/* Address */}
+                      <div className="space-y-2">
+                        <Label htmlFor="address" className="text-sm font-medium">Service Address *</Label>
+                        <Input
+                          id="address"
+                          name="address"
+                          type="text"
+                          placeholder="Enter the address where you need the service"
+                          value={form.address}
+                          onChange={handleChange}
           required
         />
-      </>
-    )}
   </div>
-)}
-              {/* Step 2: Date & Time */}
-              {step === 1 && (
-  <div className="space-y-6 animate-fade-in">
-    <label className="block font-medium text-gray-200 mb-2">Upload photos (optional)</label>
-    <input
-      type="file"
-      accept="image/*"
-      multiple
-      className="w-full px-4 py-2 rounded-lg border border-gray-700 bg-gray-900 text-white"
-      onChange={e => {
-        const files = e.target.files ? Array.from(e.target.files) : [];
-        setPhotos(files);
-      }}
-    />
-    {photos.length > 0 && (
-      <div className="flex flex-wrap gap-3 mt-2">
-        {photos.map((file, idx) => (
-          <img
-            key={idx}
-            src={URL.createObjectURL(file)}
-            alt={file.name}
-            className="w-24 h-24 object-cover rounded border border-gray-700"
-          />
-        ))}
+
+                      {/* Notes */}
+                      <div className="space-y-2">
+                        <Label htmlFor="notes" className="text-sm font-medium">Additional Notes</Label>
+                        <Textarea
+                          id="notes"
+                          name="notes"
+                          placeholder="Any specific requirements or details about the service..."
+                          value={form.notes}
+                          onChange={handleChange}
+                          rows={4}
+                        />
       </div>
-    )}
+
+                      {submitError && (
+                        <div className="p-3 bg-red-50 rounded-lg text-red-700">
+                          {submitError}
   </div>
 )}
 
-{step === 2 && (
-  <div className="space-y-6 animate-fade-in">
-    <label className="block font-medium text-gray-200 mb-2">Choose a date</label>
-    <div className="relative mb-4">
-      <input
-        type="date"
-        className="w-full px-4 py-3 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 bg-gray-900 text-white pr-10"
-        value={date}
-        onChange={e => setDate(e.target.value)}
-        required
-        min={new Date().toISOString().split("T")[0]}
-      />
-      <Calendar className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                      <Button
+                        type="submit"
+                        disabled={submitting || !form.serviceId || !form.date || !form.time || !form.address}
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      >
+                        {submitting ? (
+                          <div className="flex items-center space-x-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Checking...</span>
     </div>
-    <label className="block font-medium text-gray-200 mb-2">Pick a time</label>
-    <div className="relative">
-      <select
-        className="w-full px-4 py-3 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 bg-gray-900 text-white appearance-none pr-10"
-        value={time}
-        onChange={e => setTime(e.target.value)}
-        required
-      >
-        <option value="" disabled>Select...</option>
-        {TIME_SLOTS.map(slot => (
-          <option key={slot} value={slot}>{slot}</option>
-        ))}
-      </select>
-      <Clock className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-    </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <span>Continue to Booking</span>
+                            <ArrowRight className="w-4 h-4" />
   </div>
 )}
-              {/* Step 3: Address */}
-              {step === 3 && (
-                <div className="space-y-6 animate-fade-in">
-                  <label className="block font-medium text-gray-200 mb-2">Enter your address</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 bg-gray-900 text-white pr-10"
-                      value={address}
-                      onChange={e => setAddress(e.target.value)}
-                      placeholder="e.g. 123 Main St, Suburb"
-                      required
-                    />
-                    <MapPin className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                      </Button>
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* How it works */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">How it Works</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { step: "1", title: "Book Service", desc: "Fill out the form with your requirements" },
+                      { step: "2", title: "Get Matched", desc: "We'll connect you with verified providers" },
+                      { step: "3", title: "Confirm Booking", desc: "Provider accepts and confirms your booking" },
+                      { step: "4", title: "Enjoy Service", desc: "Sit back and relax while we handle the rest" },
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-start space-x-3">
+                        <div className="w-6 h-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-xs font-bold">{item.step}</span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">{item.title}</h4>
+                          <p className="text-sm text-gray-600">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              )}
-              {/* Step 4: Confirm */}
-              {step === 4 && (
-  <BookingSummary
-    booking={{ category, service, description, photos, date, time, address }}
-    onBook={handleBook}
-  />
-)}
+                </CardContent>
+              </Card>
 
-              {/* Step Buttons */}
-              <div className="flex justify-between mt-8 gap-3">
-                <Button type="button" variant="outline" onClick={handleBack} disabled={step === 0 || isLoading} className="px-6">
-                  Back
-                </Button>
-                {step < 4 ? (
-  <Button
-    type="button"
-    className="px-6 bg-blue-600 hover:bg-blue-700 text-white"
-    onClick={handleNext}
-    disabled={isLoading ||
-      (step === 0 && (!category || !service || !description)) ||
-      (step === 2 && (!date || !time)) ||
-      (step === 3 && !address)
-    }
-  >
-    Next
-  </Button>
-) : null}
+              {/* Benefits */}
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">Why Choose Us?</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      "Verified professionals",
+                      "Secure payment processing",
+                      "Satisfaction guaranteed",
+                      "24/7 customer support",
+                    ].map((benefit, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span className="text-sm text-gray-700">{benefit}</span>
+                </div>
+                    ))}
               </div>
-            </form>
+                </CardContent>
           </Card>
         </div>
-        {/* Right: Illustration */}
-        <div className="flex-1 flex items-center justify-center min-w-0 mt-12 md:mt-0">
-          {/* Placeholder SVG illustration */}
-          <div className="w-full max-w-md">
-            <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-              <rect x="10" y="60" width="300" height="200" rx="30" fill="#1e293b" />
-              <rect x="60" y="120" width="200" height="80" rx="20" fill="#334155" />
-              <circle cx="160" cy="160" r="40" fill="#3b82f6" />
-              <rect x="145" y="140" width="30" height="40" rx="8" fill="#fff" />
-              <rect x="135" y="185" width="50" height="10" rx="5" fill="#fff" />
-            </svg>
-            <div className="text-center mt-4 text-gray-500 text-sm">Your trusted local pros</div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   )
 }
-
-// Optional: Add fade-in animation
-// Add to globals.css:
-// .animate-fade-in { animation: fadeIn 0.4s; }
-// @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }

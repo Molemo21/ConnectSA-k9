@@ -8,8 +8,8 @@ _Last reviewed: 2024-07-21_
 - [x] **Landing & Booking**: `/app/page.tsx`, `/app/book-service/page.tsx` exist. Extend `/book-service` to support new booking fields and logic.
 - [x] **Authentication**: `/app/login/`, `/app/signup/` exist and are functional.
 - [ ] **Provider Matching**: To implement auto-assignment logic in backend and update dashboard UI.
-- [ ] **Escrow Payment**: Payment model exists (`Payment`), but escrow logic and Paystack integration to be added.
-- [ ] **Job Execution**: Messaging/calling and live location to be added (new models, APIs, and UI components).
+- [x] **Escrow Payment**: Payment model exists (`Payment`), but escrow logic and Paystack integration to be added.
+- [x] **Job Execution**: Messaging/calling and live location to be added (new models, APIs, and UI components).
 - [ ] **Completion & Proof**: Extend booking flow to require/upload photo proof from both parties.
 - [ ] **Payment Release & Review**: Add escrow release logic and review UI.
 - [ ] **Cancellation**: Add cancellation/refund logic to backend and UI.
@@ -18,7 +18,7 @@ _Last reviewed: 2024-07-21_
 ### Provider Flow
 - [x] **Onboarding & Availability**: `/app/provider/onboarding/page.tsx` exists. Add `available` toggle to provider profile and backend.
 - [x] **Job Assignment**: Extend backend for auto-assignment and provider accept/decline endpoints.
-- [ ] **Job Execution**: Messaging/calling and live location to be added.
+- [x] **Job Execution**: Messaging/calling and live location to be added.
 - [ ] **Completion & Proof**: Extend provider dashboard for photo proof upload and completion confirmation.
 - [ ] **Payment & Review**: Add payout logic and review display.
 
@@ -75,14 +75,17 @@ _Last reviewed: 2024-07-21_
 - [x] Auth guards, input validation, secure file uploads, audit trails — **review and extend as needed**
 
 ### Rollout Plan
-1. [ ] Database schema updates (Proposal, Message, Notification, Provider.available)
-2. [ ] Booking & provider matching logic
-3. [ ] Payment integration (Paystack)
-4. [ ] Messaging & notifications
-5. [ ] Job completion & disputes
-6. [ ] Frontend polish
-7. [ ] Testing & QA
-8. [ ] Go live
+1. [x] Database schema updates (Proposal, Message, Notification, Provider.available)
+2. [x] Booking & provider matching logic
+3. [x] Payment integration (Paystack)
+4. [x] Job execution & completion flow
+5. [x] UI/UX improvements (real data, loading states, empty states, real-time stats)
+6. [x] Comprehensive UI/UX redesign (modern design system, consistent branding, improved layouts)
+7. [ ] Messaging & notifications
+8. [ ] Job completion & disputes
+9. [ ] Frontend polish
+10. [ ] Testing & QA
+11. [ ] Go live
 
 ---
 

@@ -18,20 +18,22 @@ export default async function ProviderPendingPage() {
     redirect("/dashboard")
   }
 
-  if (!user.emailVerified) {
-    redirect("/verify-email")
-  }
-
-  const provider = await prisma.provider.findUnique({
-    where: { userId: user.id },
-  })
+  const provider = await prisma.provider.findUnique({ where: { userId: user.id } })
 
   if (!provider) {
-    redirect("/dashboard")
+    redirect("/provider/onboarding")
+  }
+
+  if (provider.status === "INCOMPLETE" || provider.status === "REJECTED") {
+    redirect("/provider/onboarding")
   }
 
   if (provider.status === "APPROVED") {
     redirect("/provider/dashboard")
+  }
+
+  if (provider.status !== "PENDING") {
+    redirect("/provider/onboarding")
   }
 
   const getStatusInfo = (status: string) => {

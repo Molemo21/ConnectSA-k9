@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
-import { User, Briefcase, FileText, Upload, CheckCircle, AlertCircle, MapPin, DollarSign } from "lucide-react"
+import { User, Briefcase, FileText, Upload, CheckCircle, AlertCircle, MapPin, DollarSign, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import type { Provider } from "@prisma/client"
 
@@ -32,27 +32,42 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
   const router = useRouter()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
+  const safeProvider = provider || {};
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
-    businessName: provider.businessName || "",
-    description: provider.description || "",
-    experience: provider.experience || 0,
-    hourlyRate: provider.hourlyRate || 0,
-    location: provider.location || "",
-    selectedServices: provider.services.map((s) => s.service.id) || [],
+    businessName: safeProvider.businessName || "",
+    description: safeProvider.description || "",
+    experience: safeProvider.experience || 0,
+    hourlyRate: safeProvider.hourlyRate || 0,
+    location: safeProvider.location || "",
+    selectedServices: Array.isArray(safeProvider.services) ? safeProvider.services.map((s) => s.service.id) : [],
   })
+
+  // Dynamic fetching of services
+  const [availableServices, setAvailableServices] = useState<any[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchServices() {
+      setLoadingServices(true);
+      setServicesError(null);
+      try {
+        const res = await fetch("/api/services");
+        if (!res.ok) throw new Error("Failed to fetch services");
+        const data = await res.json();
+        setAvailableServices(data);
+      } catch (err) {
+        setServicesError("Could not load services. Please try again later.");
+      } finally {
+        setLoadingServices(false);
+      }
+    }
+    fetchServices();
+  }, []);
 
   const totalSteps = 4
   const progress = (currentStep / totalSteps) * 100
-
-  const availableServices = [
-    { id: "1", name: "House Cleaning", category: "Cleaning" },
-    { id: "2", name: "Plumbing", category: "Maintenance" },
-    { id: "3", name: "Electrical Work", category: "Maintenance" },
-    { id: "4", name: "Painting", category: "Home Improvement" },
-    { id: "5", name: "Garden Services", category: "Outdoor" },
-    { id: "6", name: "Moving Services", category: "Logistics" },
-  ]
 
   const handleNext = () => {
     if (readOnly) return;
@@ -95,7 +110,7 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
     } catch (error) {
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Failed to submit profile",
         variant: "destructive",
       })
     } finally {
@@ -104,81 +119,95 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
   }
 
   const toggleService = (serviceId: string) => {
-    setFormData((prev) => ({
+    if (readOnly) return;
+    setFormData(prev => ({
       ...prev,
       selectedServices: prev.selectedServices.includes(serviceId)
-        ? prev.selectedServices.filter((id) => id !== serviceId)
-        : [...prev.selectedServices, serviceId],
+        ? prev.selectedServices.filter(id => id !== serviceId)
+        : [...prev.selectedServices, serviceId]
     }))
   }
 
   const getStepIcon = (step: number) => {
-    if (step < currentStep) return <CheckCircle className="w-5 h-5 text-green-600" />
-    if (step === currentStep) return <div className="w-5 h-5 bg-primary rounded-full" />
-    return <div className="w-5 h-5 bg-gray-300 rounded-full" />
+    switch (step) {
+      case 1: return User
+      case 2: return Briefcase
+      case 3: return MapPin
+      case 4: return FileText
+      default: return User
+    }
   }
 
   const renderStepContent = () => {
+    const Icon = getStepIcon(currentStep)
+
     switch (currentStep) {
       case 1:
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <User className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
-              <p className="text-gray-600">Tell us about yourself and your business</p>
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Icon className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Business Information</h3>
+              <p className="text-gray-600">Tell us about your business and experience</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <Label htmlFor="businessName">Business Name (Optional)</Label>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="businessName" className="text-sm font-medium">Business Name *</Label>
                 <Input
                   id="businessName"
-                  placeholder="e.g., John's Cleaning Services"
                   value={formData.businessName}
                   onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                  placeholder="Enter your business name"
                   disabled={readOnly}
+                  required
                 />
               </div>
 
-              <div>
-                <Label htmlFor="experience">Years of Experience</Label>
-                <Input
-                  id="experience"
-                  type="number"
-                  min="0"
-                  placeholder="e.g., 5"
-                  value={formData.experience || ""}
-                  onChange={(e) => setFormData({ ...formData, experience: Number.parseInt(e.target.value) || 0 })}
-                  disabled={readOnly}
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label htmlFor="location">Service Area</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="location"
-                    placeholder="e.g., Cape Town, Johannesburg"
-                    className="pl-10"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    disabled={readOnly}
-                  />
-                </div>
-              </div>
-
-              <div className="md:col-span-2">
-                <Label htmlFor="description">About You</Label>
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">Business Description *</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your experience, specialties, and what makes you unique..."
-                  rows={4}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe your services, experience, and what makes you unique..."
+                  rows={4}
                   disabled={readOnly}
+                  required
                 />
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="experience" className="text-sm font-medium">Years of Experience *</Label>
+                  <Input
+                    id="experience"
+                    type="number"
+                    value={formData.experience}
+                    onChange={(e) => setFormData({ ...formData, experience: parseInt(e.target.value) || 0 })}
+                    placeholder="0"
+                    min="0"
+                    disabled={readOnly}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hourlyRate" className="text-sm font-medium">Hourly Rate (R) *</Label>
+                  <Input
+                    id="hourlyRate"
+                    type="number"
+                    value={formData.hourlyRate}
+                    onChange={(e) => setFormData({ ...formData, hourlyRate: parseFloat(e.target.value) || 0 })}
+                    placeholder="150"
+                    min="0"
+                    step="0.01"
+                    disabled={readOnly}
+                    required
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -188,58 +217,55 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <Briefcase className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900">Services & Pricing</h2>
-              <p className="text-gray-600">Select the services you offer and set your rates</p>
+              <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Icon className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Services Offered</h3>
+              <p className="text-gray-600">Select the services you provide</p>
             </div>
 
-            <div>
-              <Label className="text-base font-medium">Services You Offer</Label>
-              <p className="text-sm text-gray-600 mb-4">Select all services you can provide</p>
-              <div className="grid md:grid-cols-2 gap-3">
+            {loadingServices ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading services...</span>
+                </div>
+              </div>
+            ) : servicesError ? (
+              <div className="p-4 bg-red-50 rounded-lg text-red-700">
+                {servicesError}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
                 {availableServices.map((service) => (
                   <div
                     key={service.id}
-                    onClick={() => toggleService(service.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                       formData.selectedServices.includes(service.id)
-                        ? "border-primary bg-primary/5"
+                        ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
+                    onClick={() => toggleService(service.id)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        formData.selectedServices.includes(service.id)
+                          ? "border-blue-500 bg-blue-500"
+                          : "border-gray-300"
+                      }`}>
+                        {formData.selectedServices.includes(service.id) && (
+                          <CheckCircle className="w-3 h-3 text-white" />
+                        )}
+                      </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">{service.name}</h3>
+                        <h4 className="font-medium text-gray-900">{service.name}</h4>
                         <p className="text-sm text-gray-600">{service.category}</p>
                       </div>
-                      {formData.selectedServices.includes(service.id) && (
-                        <CheckCircle className="w-5 h-5 text-primary" />
-                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="hourlyRate">Base Hourly Rate (ZAR)</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  id="hourlyRate"
-                  type="number"
-                  min="0"
-                  placeholder="e.g., 150"
-                  className="pl-10"
-                  value={formData.hourlyRate || ""}
-                  onChange={(e) => setFormData({ ...formData, hourlyRate: Number.parseFloat(e.target.value) || 0 })}
-                  disabled={readOnly}
-                />
-              </div>
-              <p className="text-sm text-gray-600 mt-1">
-                This is your base rate. You can adjust pricing for specific services later.
-              </p>
-            </div>
+            )}
           </div>
         )
 
@@ -247,40 +273,27 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <FileText className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900">Document Verification</h2>
-              <p className="text-gray-600">Upload required documents for verification</p>
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Icon className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Service Area</h3>
+              <p className="text-gray-600">Where do you provide your services?</p>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <Label className="text-base font-medium">ID Document</Label>
-                <p className="text-sm text-gray-600 mb-3">Upload a clear photo of your South African ID</p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-500">PNG, JPG up to 5MB</p>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-base font-medium">Proof of Address</Label>
-                <p className="text-sm text-gray-600 mb-3">Recent utility bill or bank statement</p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-500">PNG, JPG, PDF up to 5MB</p>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-base font-medium">Certifications (Optional)</Label>
-                <p className="text-sm text-gray-600 mb-3">Any relevant certificates or qualifications</p>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-500">PNG, JPG, PDF up to 5MB each</p>
-                </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium">Service Location *</Label>
+                <Input
+                  id="location"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="e.g., Johannesburg, Pretoria, Cape Town"
+                  disabled={readOnly}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  Enter the city or area where you provide services
+                </p>
               </div>
             </div>
           </div>
@@ -290,67 +303,42 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900">Review & Submit</h2>
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Icon className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Review & Submit</h3>
               <p className="text-gray-600">Review your information before submitting</p>
             </div>
 
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Basic Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Business Name:</span>
-                    <span>{formData.businessName || "Not provided"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Experience:</span>
-                    <span>{formData.experience} years</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Service Area:</span>
-                    <span>{formData.location}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Hourly Rate:</span>
-                    <span>R{formData.hourlyRate}/hour</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Selected Services</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.selectedServices.map((serviceId) => {
-                      const service = availableServices.find((s) => s.id === serviceId)
-                      return service ? (
-                        <Badge key={serviceId} variant="secondary">
-                          {service.name}
-                        </Badge>
-                      ) : null
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-medium mb-1">What happens next?</p>
-                    <ul className="space-y-1 text-sm">
-                      <li>• Your profile will be reviewed by our team</li>
-                      <li>• We'll verify your documents and information</li>
-                      <li>• You'll receive an email notification once approved</li>
-                      <li>• Approval typically takes 1-3 business days</li>
-                    </ul>
+            <div className="bg-gray-50 rounded-lg p-6 space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Business Details</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Name:</span> {formData.businessName}</div>
+                    <div><span className="font-medium">Experience:</span> {formData.experience} years</div>
+                    <div><span className="font-medium">Rate:</span> R{formData.hourlyRate}/hour</div>
+                    <div><span className="font-medium">Location:</span> {formData.location}</div>
                   </div>
                 </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Services</h4>
+                  <div className="space-y-1">
+                    {formData.selectedServices.map((serviceId) => {
+                      const service = availableServices.find(s => s.id === serviceId)
+                      return (
+                        <Badge key={serviceId} variant="secondary" className="mr-1 mb-1">
+                          {service?.name}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-900 mb-2">Description</h4>
+                <p className="text-sm text-gray-600">{formData.description}</p>
               </div>
             </div>
           </div>
@@ -362,56 +350,79 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
   }
 
   return (
-    <div className="space-y-8">
-      {/* Progress Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Profile Completion</h3>
-            <span className="text-sm text-gray-600">
-              {currentStep} of {totalSteps}
-            </span>
-          </div>
-          <Progress value={progress} className="mb-4" />
+    <div className="max-w-4xl mx-auto">
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">Step {currentStep} of {totalSteps}</span>
+          <span className="text-sm text-gray-500">{Math.round(progress)}% Complete</span>
+        </div>
+        <Progress value={progress} className="h-2" />
+      </div>
 
-          {/* Step Indicators */}
-          <div className="flex items-center justify-between">
-            {[1, 2, 3, 4].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className="flex items-center space-x-2">
-                  {getStepIcon(step)}
-                  <span className={`text-sm ${step <= currentStep ? "text-gray-900" : "text-gray-500"}`}>
-                    Step {step}
-                  </span>
-                </div>
-                {step < 4 && <div className="w-8 h-px bg-gray-300 mx-4" />}
-              </div>
-            ))}
+      {/* Feedback Message */}
+      {feedback && (
+        <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-start space-x-3">
+            <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-orange-900 mb-1">Profile Review Feedback</h4>
+              <p className="text-sm text-orange-700">{feedback}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form Card */}
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <CardContent className="p-8">
+          {renderStepContent()}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8 pt-6 border-t">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 1 || readOnly}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Previous</span>
+            </Button>
+
+            <div className="flex space-x-3">
+              {currentStep < totalSteps ? (
+                <Button
+                  onClick={handleNext}
+                  disabled={readOnly}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isLoading || readOnly}
+                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Submitting...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <span>Submit Profile</span>
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* Step Content */}
-      <Card>
-        <CardContent className="p-8">{renderStepContent()}</CardContent>
-      </Card>
-
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={handlePrevious} disabled={currentStep === 1 || readOnly}>
-          Previous
-        </Button>
-
-        {currentStep < totalSteps ? (
-          <Button onClick={handleNext} disabled={readOnly}>
-            Next
-          </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={isLoading || readOnly}>
-            {isLoading ? "Submitting..." : "Submit for Review"}
-          </Button>
-        )}
-      </div>
     </div>
   )
 }
