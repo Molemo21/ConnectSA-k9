@@ -53,6 +53,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Review already exists for this booking" }, { status: 400 });
     }
 
+    // Check if booking has a provider
+    if (!booking.providerId) {
+      return NextResponse.json({ error: "Cannot review a booking without a provider" }, { status: 400 });
+    }
+
     const review = await prisma.review.create({
       data: {
         bookingId: bookingId,

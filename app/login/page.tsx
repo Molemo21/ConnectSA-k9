@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Clock, Users } from "lucide-react"
+import { showToast, handleApiError } from "@/lib/toast"
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Clock, Users, Loader2 } from "lucide-react"
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -38,10 +39,7 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        toast({
-          title: "Welcome back!",
-          description: "You've been successfully logged in.",
-        })
+        showToast.success("Welcome back! You've been successfully logged in.")
 
         // Intent-based redirect
         const intent = searchParams?.get("intent")
@@ -52,18 +50,11 @@ export default function LoginPage() {
           router.push(data.redirectUrl || "/dashboard")
         }
       } else {
-        toast({
-          title: "Login failed",
-          description: data.error || "Invalid email or password",
-          variant: "destructive",
-        })
+        await handleApiError(response, "Login failed. Please check your credentials and try again.")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      })
+      console.error("Login error:", error)
+      showToast.error("Network error. Please check your connection and try again.")
     } finally {
       setIsLoading(false)
     }
@@ -107,19 +98,14 @@ export default function LoginPage() {
           </div>
 
           <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="space-y-1 pb-6">
-              <CardTitle className="text-2xl text-center">Sign In</CardTitle>
-              <CardDescription className="text-center">Enter your credentials to access your account</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <CardContent className="p-8">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
+                  <Label htmlFor="email">Email Address</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
                       id="email"
-                      name="email"
                       type="email"
                       placeholder="Enter your email"
                       value={formData.email}
@@ -131,12 +117,11 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <Label htmlFor="password">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
                       id="password"
-                      name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       value={formData.password}
@@ -144,13 +129,19 @@ export default function LoginPage() {
                       className="pl-10 pr-10"
                       required
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-gray-400" />
+                      )}
+                    </Button>
                   </div>
                 </div>
 
@@ -160,29 +151,29 @@ export default function LoginPage() {
                   </Link>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                  disabled={isLoading}
-                >
+                <Button type="submit" disabled={isLoading} className="w-full">
                   {isLoading ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Signing in...</span>
-                    </div>
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Signing in...
+                    </>
                   ) : (
-                    <div className="flex items-center space-x-2">
-                      <span>Sign In</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
+                    <>
+                      Sign In
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
                   )}
                 </Button>
 
+                <Separator />
+
                 <div className="text-center">
-                  <span className="text-sm text-gray-600">Don't have an account? </span>
-                  <Link href="/signup" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                    Sign up
-                  </Link>
+                  <p className="text-sm text-gray-600">
+                    Don't have an account?{" "}
+                    <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+                      Sign up
+                    </Link>
+                  </p>
                 </div>
               </form>
             </CardContent>
@@ -196,40 +187,39 @@ export default function LoginPage() {
               Connect with Trusted Service Providers
             </h2>
             <p className="text-lg text-gray-600 mb-8">
-              Join thousands of satisfied customers who trust ProLiink Connect for their service needs. 
-              From cleaning to repairs, we've got you covered.
+              Join thousands of satisfied customers who trust us for their service needs.
             </p>
-            
             <div className="space-y-6">
-              {features.map((feature, index) => {
-                const Icon = feature.icon
-                return (
-                  <div key={index} className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center">
-                      <Icon className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{feature.title}</h3>
-                      <p className="text-gray-600">{feature.description}</p>
-                    </div>
+              {features.map((feature, index) => (
+                <div key={index} className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <feature.icon className="w-6 h-6 text-white" />
                   </div>
-                )
-              })}
-            </div>
-
-            <div className="mt-8 p-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl text-white">
-              <h3 className="text-xl font-semibold mb-2">Ready to get started?</h3>
-              <p className="text-blue-100 mb-4">Join our community of trusted service providers and customers.</p>
-              <Button asChild variant="secondary" className="w-full">
-                <Link href="/signup">
-                  Create Account
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Link>
-              </Button>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
+                    <p className="text-gray-600">{feature.description}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Loading login page...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

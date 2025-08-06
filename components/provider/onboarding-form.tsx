@@ -15,7 +15,7 @@ import type { Provider } from "@prisma/client"
 
 interface ProviderOnboardingFormProps {
   user: AuthUser
-  provider: Provider & {
+  provider?: Provider & {
     services: Array<{
       service: {
         id: string
@@ -32,7 +32,14 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
   const router = useRouter()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
-  const safeProvider = provider || {};
+  const safeProvider = provider || {
+    businessName: "",
+    description: "",
+    experience: 0,
+    hourlyRate: 0,
+    location: "",
+    services: []
+  };
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     businessName: safeProvider.businessName || "",
@@ -40,7 +47,7 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
     experience: safeProvider.experience || 0,
     hourlyRate: safeProvider.hourlyRate || 0,
     location: safeProvider.location || "",
-    selectedServices: Array.isArray(safeProvider.services) ? safeProvider.services.map((s) => s.service.id) : [],
+    selectedServices: Array.isArray(safeProvider.services) ? safeProvider.services.map((s: any) => s.service.id) : [],
   })
 
   // Dynamic fetching of services

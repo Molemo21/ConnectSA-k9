@@ -32,7 +32,7 @@ export default async function ProviderPendingPage() {
     redirect("/provider/dashboard")
   }
 
-  if (provider.status !== "PENDING") {
+  if (!["PENDING", "REJECTED", "SUSPENDED"].includes(provider.status)) {
     redirect("/provider/onboarding")
   }
 
@@ -105,7 +105,7 @@ export default async function ProviderPendingPage() {
                 </div>
               )}
 
-              {provider.status === "REJECTED" && (
+              {(provider.status as string) === "REJECTED" && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
@@ -143,7 +143,7 @@ export default async function ProviderPendingPage() {
               </div>
 
               <div className="space-y-3">
-                {provider.status === "REJECTED" ? (
+                {(provider.status as string) === "REJECTED" ? (
                   <Button asChild className="w-full" size="lg">
                     <Link href="/provider/onboarding">Update Profile</Link>
                   </Button>

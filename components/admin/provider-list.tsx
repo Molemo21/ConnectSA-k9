@@ -15,7 +15,7 @@ import { Provider, User } from '@prisma/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 
-type ProviderWithUser = Provider & { user: User };
+type ProviderWithUser = Omit<Provider, 'status'> & { status: string; user: User };
 
 export default function ProviderList() {
   const [providers, setProviders] = useState<ProviderWithUser[]>([]);

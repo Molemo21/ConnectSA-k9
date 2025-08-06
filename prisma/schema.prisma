@@ -24,9 +24,26 @@ enum ProviderStatus {
 enum BookingStatus {
   PENDING
   CONFIRMED
+  PAID
   IN_PROGRESS
   COMPLETED
   CANCELLED
+  DISPUTED
+}
+
+enum DisputeStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum DisputeReason {
+  service_not_provided
+  poor_quality
+  wrong_time
+  damage
+  other
 }
 
 model User {
@@ -61,6 +78,7 @@ model User {
 
   messages      Message[]   @relation("UserMessages") // NEW: relation to sent messages
   notifications Notification[] // NEW: relation to notifications
+  disputes      Dispute[]   @relation("UserDisputes")
 
   @@map("users")
 }
@@ -129,7 +147,7 @@ model ProviderService {
 model Booking {
   id          String        @id @default(cuid())
   clientId    String
-  providerId  String
+  providerId  String?
   serviceId   String
   
   scheduledDate DateTime
@@ -142,11 +160,12 @@ model Booking {
   status        BookingStatus @default(PENDING)
   
   client        User        @relation("ClientBookings", fields: [clientId], references: [id])
-  provider      Provider    @relation(fields: [providerId], references: [id])
+  provider      Provider?   @relation(fields: [providerId], references: [id])
   service       Service     @relation(fields: [serviceId], references: [id])
   
   payment       Payment?
   review        Review?
+  dispute       Dispute?
   proposals     Proposal[]
   messages      Message[]
   
@@ -250,4 +269,23 @@ model Notification {
   createdAt  DateTime @default(now())
 
   user       User     @relation(fields: [userId], references: [id])
+}
+
+model Dispute {
+  id          String        @id @default(cuid())
+  bookingId   String        @unique
+  reportedBy  String
+  reason      DisputeReason
+  description String
+  status      DisputeStatus @default(PENDING)
+  adminNotes  String?
+  resolution  String?
+  
+  booking     Booking       @relation(fields: [bookingId], references: [id])
+  reporter    User          @relation("UserDisputes", fields: [reportedBy], references: [id])
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("disputes")
 }

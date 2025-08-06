@@ -79,7 +79,7 @@ export default async function ProviderOnboardingPage() {
             </p>
           </div>
 
-          <ProviderOnboardingForm user={user} provider={provider} readOnly={false} feedback={feedback} />
+          <ProviderOnboardingForm user={user} provider={provider || undefined} readOnly={false} feedback={feedback} />
         </div>
       </div>
     </div>

@@ -1,14 +1,17 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { User, LogOut, Settings, Bell } from "lucide-react"
+import { UserMenu } from "@/components/ui/user-menu"
 
 interface BrandHeaderProps {
   showAuth?: boolean
   showUserMenu?: boolean
   className?: string
   user?: {
+    id: string
     name?: string | null
     email?: string | null
+    role?: string | null
+    avatar?: string | null
   } | null
 }
 
@@ -43,27 +46,7 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
         {/* Auth/User Menu */}
         <div className="flex items-center space-x-3">
           {showUserMenu && user ? (
-            <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="w-4 h-4" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </Button>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user.name?.charAt(0) || user.email?.charAt(0) || "U"}
-                  </span>
-                </div>
-                <span className="hidden sm:block text-sm font-medium text-gray-700">
-                  {user.name || user.email}
-                </span>
-              </div>
-              <form action="/api/auth/logout" method="POST">
-                <Button variant="ghost" size="sm" type="submit">
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </form>
-            </div>
+            <UserMenu user={user} />
           ) : showAuth ? (
             <div className="flex items-center space-x-3">
               <Button variant="ghost" asChild>

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = bookingSchema.parse(body);
 
-    // Find available provider for the service (simple: first available, not double-booked)
+    // Find available providers for the service
     const providers = await prisma.provider.findMany({
       where: {
         services: {
@@ -31,29 +31,43 @@ export async function POST(request: NextRequest) {
         status: "APPROVED",
       },
       include: {
-        bookings: true,
+        bookings: {
+          where: {
+            scheduledDate: {
+              gte: new Date(`${validated.date}T00:00:00`),
+              lt: new Date(`${validated.date}T23:59:59`),
+            },
+            status: {
+              notIn: ["CANCELLED"],
+            },
+          },
+        },
       },
     });
 
-    // Check for provider availability (not double-booked at the same date/time)
+    // Find the first available provider (not double-booked)
     let assignedProvider = null;
     for (const provider of providers) {
-      const hasConflict = provider.bookings.some(
-        (b) =>
-          b.scheduledDate.toISOString().slice(0, 10) === validated.date &&
-          b.status !== "CANCELLED"
-      );
-      if (!hasConflict) {
+      if (provider.bookings.length === 0) {
         assignedProvider = provider;
         break;
       }
     }
 
-    // Create booking
+    // If no provider is available, return an error
+    if (!assignedProvider) {
+      console.log(`No providers available for service ${validated.serviceId} on ${validated.date}`);
+      console.log(`Found ${providers.length} providers, but all are busy`);
+      return NextResponse.json({ 
+        error: "No providers are currently available for this service. Please try again later or contact support." 
+      }, { status: 400 });
+    }
+
+    // Create booking with assigned provider
     const booking = await prisma.booking.create({
       data: {
         clientId: user.id,
-        providerId: assignedProvider ? assignedProvider.id : null,
+        providerId: assignedProvider.id,
         serviceId: validated.serviceId,
         scheduledDate: new Date(`${validated.date}T${validated.time}`),
         duration: 2, // default duration, can be adjusted
@@ -61,9 +75,11 @@ export async function POST(request: NextRequest) {
         platformFee: 0,
         description: validated.notes || null,
         address: validated.address,
-        status: assignedProvider ? "PENDING" : "WAITING_FOR_PROVIDER",
+        status: "PENDING",
       },
     });
+
+    console.log(`Booking created successfully: ${booking.id} with provider ${assignedProvider.id}`);
 
     // TODO: Send notifications to provider and client (in-app/email)
 

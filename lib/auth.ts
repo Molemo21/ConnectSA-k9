@@ -12,6 +12,7 @@ export interface AuthUser {
   name: string
   role: UserRole
   emailVerified: boolean
+  avatar?: string
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -27,7 +28,7 @@ export async function generateToken(payload: AuthUser): Promise<string> {
   if (!secret) {
     throw new Error('JWT_SECRET is not defined in the environment.');
   }
-  return await new jose.SignJWT(payload)
+  return await new jose.SignJWT(payload as any)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRES_IN)
@@ -42,7 +43,7 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
       return null;
     }
     const { payload } = await jose.jwtVerify(token, secret);
-    return payload as AuthUser;
+    return payload as unknown as AuthUser;
   } catch (error) {
     console.error('Token verification failed:', error);
     return null;
@@ -68,11 +69,12 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
         name: true,
         role: true,
         emailVerified: true,
+        avatar: true,
         provider: { select: { id: true } }, // include provider id
       },
     })
 
-    return user
+    return user as AuthUser & { provider?: { id: string } } | null
   } catch {
     return null
   }

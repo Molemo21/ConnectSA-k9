@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { Mail, CheckCircle, XCircle, Loader2 } from "lucide-react"
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -127,36 +127,40 @@ export default function VerifyEmailPage() {
             </Link>
           </div>
           <Card className="shadow-xl border-0">
-            <CardHeader className="text-center pb-6">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${verifying ? "bg-blue-100" : verifyResult?.success ? "bg-green-100" : "bg-red-100"}`}>
-                {verifying ? (
-                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                ) : verifyResult?.success ? (
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                ) : (
-                  <XCircle className="w-8 h-8 text-red-600" />
-                )}
-              </div>
-              <CardTitle className="text-2xl">
-                {verifying
-                  ? "Verifying Email..."
-                  : verifyResult?.success
-                  ? "Email Verified!"
-                  : "Verification Failed"}
-              </CardTitle>
-              <CardDescription className="text-base">
-                {verifying
-                  ? "Please wait while we verify your email."
-                  : verifyResult?.message}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!verifying && verifyResult?.success && (
-                <Button className="w-full" size="lg" onClick={() => router.push("/login")}>Go to Login</Button>
-              )}
-              {!verifying && !verifyResult?.success && (
-                <Button className="w-full" size="lg" onClick={() => router.push("/signup")}>Try Again</Button>
-              )}
+            <CardContent className="p-8">
+              {verifying ? (
+                <div className="text-center">
+                  <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-600" />
+                  <h2 className="text-xl font-semibold mb-2">Verifying your email...</h2>
+                  <p className="text-gray-600">Please wait while we verify your email address.</p>
+                </div>
+              ) : verifyResult ? (
+                <div className="text-center">
+                  {verifyResult.success ? (
+                    <>
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="w-8 h-8 text-green-600" />
+                      </div>
+                      <h2 className="text-xl font-semibold text-green-900 mb-2">Email Verified!</h2>
+                      <p className="text-green-700 mb-6">{verifyResult.message}</p>
+                      <Button asChild className="w-full">
+                        <Link href="/dashboard">Go to Dashboard</Link>
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <XCircle className="w-8 h-8 text-red-600" />
+                      </div>
+                      <h2 className="text-xl font-semibold text-red-900 mb-2">Verification Failed</h2>
+                      <p className="text-red-700 mb-6">{verifyResult.message}</p>
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href="/login">Back to Login</Link>
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>
@@ -164,90 +168,87 @@ export default function VerifyEmailPage() {
     )
   }
 
-  // Default: show 'check your email' state
+  // Render email verification prompt
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">S</span>
+          <Link href="/" className="inline-flex items-center space-x-3 mb-6 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200">
+              <span className="text-white font-bold text-xl">P</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
+            <div className="text-left">
+              <span className="text-2xl font-bold text-gray-900">ProLiink Connect</span>
+              <div className="text-xs text-gray-500">Trusted Services</div>
+            </div>
           </Link>
         </div>
 
-        <Card className="shadow-xl border-0">
-          <CardHeader className="text-center pb-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-blue-600" />
-            </div>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription className="text-base">
-              We've sent a verification link to{" "}
-              <span className="font-medium text-gray-900">{pendingEmail || user?.email || "your email"}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-medium mb-1">Almost there, {user?.name?.split(" ")[0] || "there"}!</p>
-                  <p>
-                    Click the verification link in your email to activate your account and start using ServiceHub SA.
-                  </p>
-                </div>
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-8">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-blue-600" />
               </div>
-            </div>
-
-            <div className="space-y-3">
-              <Button onClick={handleResendEmail} variant="outline" className="w-full bg-transparent" disabled={isResending}>
-                {isResending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  "Resend Verification Email"
-                )}
-              </Button>
-              {showEmailPrompt && (
-                <div className="pt-2">
-                  <input
-                    type="email"
-                    className="border rounded px-3 py-2 w-full"
-                    placeholder="Enter your email"
-                    value={emailInput}
-                    onChange={e => setEmailInput(e.target.value)}
-                  />
-                  <Button className="mt-2 w-full" onClick={handleResendEmail} disabled={isResending || !emailInput}>
-                    Send Verification
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="text-center pt-4">
-              <p className="text-sm text-gray-600 mb-2">Didn't receive the email?</p>
-              <ul className="text-xs text-gray-500 space-y-1">
-                <li>• Check your spam or junk folder</li>
-                <li>• Make sure {user?.email || "your email"} is correct</li>
-                <li>• Wait a few minutes and try again</li>
-              </ul>
-            </div>
-
-            <div className="text-center pt-4 border-t">
-              <p className="text-sm text-gray-600">
-                Need help?{" "}
-                <Link href="/support" className="text-primary hover:underline">
-                  Contact support
-                </Link>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h1>
+              <p className="text-gray-600">
+                We've sent a verification link to{" "}
+                <span className="font-medium text-gray-900">
+                  {pendingEmail || user?.email || "your email"}
+                </span>
               </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">What's next?</h3>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Check your email inbox (and spam folder)</li>
+                  <li>• Click the verification link in the email</li>
+                  <li>• You'll be redirected back here to complete setup</li>
+                </ul>
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  onClick={handleResendEmail}
+                  disabled={isResending}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {isResending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Resend Verification Email"
+                  )}
+                </Button>
+
+                <Button asChild variant="ghost" className="w-full">
+                  <Link href="/login">Back to Login</Link>
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p>Loading verification page...</p>
+        </div>
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   )
 }

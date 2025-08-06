@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     const updated = await prisma.booking.update({
       where: { id: bookingId },
-      data: { status: "DECLINED" },
+      data: { status: "CANCELLED" },
     });
 
     // TODO: Notify client (in-app/email)

@@ -7,8 +7,19 @@ interface BrandHeaderServerProps {
   className?: string
 }
 
-export async function BrandHeaderServer({ showAuth = true, showUserMenu = false, className = "" }: BrandHeaderServerProps) {
-  const user = showUserMenu ? await getCurrentUser() : null
+export async function BrandHeaderServer({ 
+  showAuth = true, 
+  showUserMenu = false, 
+  className = "" 
+}: BrandHeaderServerProps) {
+  let user = null
+  
+  try {
+    user = await getCurrentUser()
+  } catch (error) {
+    // User not authenticated, continue with null user
+    console.log("User not authenticated")
+  }
 
   return (
     <BrandHeader 

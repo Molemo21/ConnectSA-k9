@@ -56,7 +56,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <BrandHeaderServer />
+      <BrandHeaderServer showUserMenu={true} />
 
       {/* Hero Section */}
       <section className="relative py-20 lg:py-32 overflow-hidden">
