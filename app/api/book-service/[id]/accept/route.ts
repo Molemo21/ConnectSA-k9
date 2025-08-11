@@ -27,14 +27,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Booking is not pending" }, { status: 400 });
     }
 
+    // Update proposal status
+    await prisma.proposal.updateMany({
+      where: { 
+        bookingId: bookingId,
+        providerId: user.provider.id 
+      },
+      data: { status: "ACCEPTED" }
+    });
+
     const updated = await prisma.booking.update({
       where: { id: bookingId },
       data: { status: "CONFIRMED" },
     });
 
-    // TODO: Notify client (in-app/email)
+    // TODO: Notify client (in-app/email) that provider accepted
+    // TODO: Send payment instructions to client
 
-    return NextResponse.json({ booking: updated });
+    return NextResponse.json({ 
+      success: true,
+      booking: updated,
+      message: "Job offer accepted! Client will be notified to proceed with payment."
+    });
   } catch (error) {
     console.error("Accept booking error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2, ArrowLeft } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
+import { ProviderDiscovery } from "@/components/provider-discovery/provider-discovery"
 
 function BookServiceContent() {
   const router = useRouter();
@@ -30,6 +31,8 @@ function BookServiceContent() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<any>(null);
   const [showReview, setShowReview] = useState(false);
+  const [showProviderDiscovery, setShowProviderDiscovery] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
   // Check for sessionStorage booking data after login
   useEffect(() => {
@@ -105,7 +108,20 @@ function BookServiceContent() {
     }
   };
 
-  // Final booking submission after review
+  // Show provider discovery after review
+  const handleShowProviderDiscovery = () => {
+    setShowProviderDiscovery(true);
+    setShowReview(false);
+  };
+
+  // Handle provider selection
+  const handleProviderSelected = (providerId: string) => {
+    setSelectedProviderId(providerId);
+    // Now proceed with the actual booking
+    handleFinalSubmit();
+  };
+
+  // Final booking submission after provider selection
   const handleFinalSubmit = async () => {
     setSubmitting(true);
     setSubmitError(null);
@@ -114,12 +130,16 @@ function BookServiceContent() {
       const res = await fetch("/api/book-service", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          providerId: selectedProviderId, // Include selected provider
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
         setConfirmation(data);
+        setShowProviderDiscovery(false);
         setShowReview(false);
       } else {
         const error = await res.json();
@@ -300,23 +320,36 @@ function BookServiceContent() {
                           Edit Details
                         </Button>
                         <Button
-                          onClick={handleFinalSubmit}
+                          onClick={handleShowProviderDiscovery}
                           disabled={submitting}
                           className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                         >
-                          {submitting ? (
-                            <div className="flex items-center space-x-2">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Creating Booking...</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <span>Confirm Booking</span>
-                              <ArrowRight className="w-4 h-4" />
-                            </div>
-                          )}
+                          <div className="flex items-center space-x-2">
+                            <span>Choose Provider</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
                         </Button>
                       </div>
+                    </div>
+                  ) : showProviderDiscovery ? (
+                    // Provider Discovery Step
+                    <div className="space-y-6">
+                      <div className="text-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Provider</h2>
+                        <p className="text-gray-600">
+                          Review available providers and select the one that best fits your needs
+                        </p>
+                      </div>
+                      
+                      <ProviderDiscovery
+                        serviceId={form.serviceId}
+                        date={form.date}
+                        time={form.time}
+                        address={form.address}
+                        notes={form.notes}
+                        onProviderSelected={handleProviderSelected}
+                        onBack={() => setShowProviderDiscovery(false)}
+                      />
                     </div>
                   ) : (
                     // Form Step

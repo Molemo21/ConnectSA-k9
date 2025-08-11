@@ -1,0 +1,22 @@
+# Your Database Connection URLs
+
+## Current Pooler URL (causing issues):
+DATABASE_URL="postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
+
+## Recommended Direct Connection URL:
+DATABASE_URL="postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.supabase.com:5432/postgres?sslmode=require"
+
+## Alternative Direct Connection URL (without SSL):
+DATABASE_URL="postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.supabase.com:5432/postgres"
+
+## Instructions:
+1. Open your .env file
+2. Replace the current DATABASE_URL with one of the direct connection URLs above
+3. Save the .env file
+4. Restart your development server: npm run dev
+5. Test the connection: node scripts/check-db.js
+
+## Why this fixes the issue:
+- Pooler connections (port 6543) can be unreliable for development
+- Direct connections (port 5432) are more stable
+- SSL mode ensures secure connection to Supabase 
