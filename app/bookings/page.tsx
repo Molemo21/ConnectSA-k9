@@ -33,7 +33,9 @@ export default function BookingsPage() {
     async function fetchBookings() {
       try {
         setLoading(true)
-        const response = await fetch('/api/bookings/my-bookings')
+        const response = await fetch('/api/bookings/my-bookings', {
+          credentials: 'include'
+        })
         if (response.ok) {
           const data = await response.json()
           setBookings(data.bookings)

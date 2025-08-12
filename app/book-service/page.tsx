@@ -54,6 +54,18 @@ function BookServiceContent() {
         const res = await fetch("/api/services");
         if (!res.ok) throw new Error("Failed to fetch services");
         const data = await res.json();
+        console.log('Loaded services:', data);
+        
+        // Validate service IDs
+        const invalidServices = data.filter((service: any) => {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          return !uuidRegex.test(service.id);
+        });
+        
+        if (invalidServices.length > 0) {
+          console.error('Found services with invalid UUIDs:', invalidServices);
+        }
+        
         setServices(data);
       } catch (err) {
         setServicesError("Could not load services. Please try again later.");
@@ -110,6 +122,22 @@ function BookServiceContent() {
 
   // Show provider discovery after review
   const handleShowProviderDiscovery = () => {
+    console.log('Starting provider discovery with form data:', {
+      serviceId: form.serviceId,
+      date: form.date,
+      time: form.time,
+      address: form.address,
+      notes: form.notes
+    });
+    
+    // Validate serviceId format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(form.serviceId)) {
+      console.error('Invalid serviceId format in form:', form.serviceId);
+      setSubmitError('Invalid service selection. Please try again.');
+      return;
+    }
+    
     setShowProviderDiscovery(true);
     setShowReview(false);
   };
@@ -117,40 +145,18 @@ function BookServiceContent() {
   // Handle provider selection
   const handleProviderSelected = (providerId: string) => {
     setSelectedProviderId(providerId);
-    // Now proceed with the actual booking
-    handleFinalSubmit();
+    // The booking is already created by send-offer, just show confirmation
+    setConfirmation({
+      success: true,
+      message: "Provider selected successfully! Your job offer has been sent.",
+      providerId: providerId
+    });
+    setShowProviderDiscovery(false);
+    setShowReview(false);
   };
 
-  // Final booking submission after provider selection
-  const handleFinalSubmit = async () => {
-    setSubmitting(true);
-    setSubmitError(null);
-    setConfirmation(null);
-    try {
-      const res = await fetch("/api/book-service", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          providerId: selectedProviderId, // Include selected provider
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setConfirmation(data);
-        setShowProviderDiscovery(false);
-        setShowReview(false);
-      } else {
-        const error = await res.json();
-        setSubmitError(error.error || "Failed to create booking");
-      }
-    } catch (err: any) {
-      setSubmitError("Failed to create booking. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Remove the old handleFinalSubmit function since it's no longer needed
+  // The booking is created by send-offer API, not by this function
 
   const selectedService = services.find(s => s.id === form.serviceId);
 
@@ -195,9 +201,9 @@ function BookServiceContent() {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Booking Confirmed!</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Job Offer Sent!</h2>
                 <p className="text-gray-600 mb-6">
-                  Your service has been booked successfully. We'll notify you when a provider is assigned.
+                  Your job offer has been sent to the selected provider. They will respond within 2 hours.
                 </p>
                 <div className="space-y-4">
                   <Button asChild className="w-full">
@@ -350,6 +356,17 @@ function BookServiceContent() {
                         onProviderSelected={handleProviderSelected}
                         onBack={() => setShowProviderDiscovery(false)}
                       />
+                      
+                      {/* Debug info */}
+                      {process.env.NODE_ENV === 'development' && (
+                        <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs">
+                          <p><strong>Debug Info:</strong></p>
+                          <p>Service ID: {form.serviceId}</p>
+                          <p>Date: {form.date}</p>
+                          <p>Time: {form.time}</p>
+                          <p>Address: {form.address}</p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     // Form Step

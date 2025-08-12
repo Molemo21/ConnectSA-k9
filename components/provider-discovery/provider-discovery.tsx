@@ -78,6 +78,28 @@ export function ProviderDiscovery({
       setLoading(true)
       setError(null)
       
+      // Validate required fields before making API call
+      if (!serviceId || !date || !time || !address) {
+        setError('Missing required booking information')
+        return
+      }
+
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(serviceId)) {
+        console.error('Invalid serviceId format:', serviceId);
+        setError(`Invalid service ID format: ${serviceId}`)
+        showToast.error('Invalid service selection. Please try again.')
+        return
+      }
+
+      console.log('Sending provider discovery request:', {
+        serviceId,
+        date,
+        time,
+        address
+      });
+
       const response = await fetch('/api/book-service/discover-providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -85,11 +107,22 @@ export function ProviderDiscovery({
       })
 
       if (!response.ok) {
-        await handleApiError(response, 'Failed to discover providers')
+        const errorData = await response.json()
+        const errorMessage = errorData.error || 'Failed to discover providers'
+        console.error('Provider discovery API error:', errorData);
+        setError(errorMessage)
+        showToast.error(errorMessage)
         return
       }
 
       const data = await response.json()
+      
+      if (!data.providers || data.providers.length === 0) {
+        setError('No providers available for this service at the requested time')
+        showToast.info('No providers available. Please try a different time or service.')
+        return
+      }
+
       setProviders(data.providers)
       setCurrentIndex(0)
       setDeclinedProviders([])
@@ -107,29 +140,77 @@ export function ProviderDiscovery({
   const handleAcceptProvider = async (providerId: string) => {
     setIsProcessing(true)
     try {
-      const response = await fetch('/api/book-service/send-offer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          providerId, 
-          serviceId, 
-          date, 
-          time, 
-          address, 
-          notes 
-        })
-      })
-
-      if (!response.ok) {
-        await handleApiError(response, 'Failed to send job offer')
+      // Validate that we have all required data
+      if (!serviceId || !date || !time || !address) {
+        showToast.error('Missing required booking information')
         return
       }
 
+      // Validate serviceId is a UUID (since we're using mapped IDs)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(serviceId)) {
+        console.error('Invalid serviceId format:', serviceId);
+        showToast.error('Invalid service selection. Please try again.')
+        return
+      }
+
+      const requestData = { 
+        providerId, 
+        serviceId, 
+        date, 
+        time, 
+        address, 
+        notes 
+      };
+
+      console.log('🚀 Sending job offer with data:', requestData);
+
+      const response = await fetch('/api/book-service/send-offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
+      })
+
+      console.log('📥 Send-offer response status:', response.status);
+
+      if (!response.ok) {
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          console.error('❌ Failed to parse error response:', parseError);
+          errorData = { error: `Failed to parse error response: ${response.status}` };
+        }
+        
+        console.error('❌ Send-offer API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        // Try to get more details about the error
+        let errorMessage = 'Failed to send job offer';
+        if (errorData && typeof errorData === 'object') {
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (Object.keys(errorData).length === 0) {
+            errorMessage = `API returned ${response.status} with no error details`;
+          }
+        }
+        
+        showToast.error(errorMessage);
+        return;
+      }
+
       const data = await response.json()
+      console.log('✅ Send-offer success:', data);
       showToast.success(data.message)
       onProviderSelected(providerId)
     } catch (error) {
-      console.error('Send offer error:', error)
+      console.error('❌ Send offer error:', error)
       showToast.error('Failed to send job offer. Please try again.')
     } finally {
       setIsProcessing(false)
@@ -142,9 +223,10 @@ export function ProviderDiscovery({
     // Move to next provider
     if (currentIndex < providers.length - 1) {
       setCurrentIndex(prev => prev + 1)
+      showToast.info('Provider declined. Moving to next available provider.')
     } else {
       // No more providers, show retry option
-      showToast.info('No more providers available. You can retry declined providers.')
+      showToast.info('No more providers available. You can retry declined providers or go back to modify your request.')
     }
   }
 
@@ -156,12 +238,16 @@ export function ProviderDiscovery({
   const goToNextProvider = () => {
     if (currentIndex < providers.length - 1) {
       setCurrentIndex(prev => prev + 1)
+    } else {
+      showToast.info('This is the last provider.')
     }
   }
 
   const goToPreviousProvider = () => {
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1)
+    } else {
+      showToast.info('This is the first provider.')
     }
   }
 
@@ -322,7 +408,30 @@ export function ProviderDiscovery({
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <CardContent className="p-4 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
-            <p className="text-gray-600">Processing your selection...</p>
+            <p className="text-gray-600">Sending job offer...</p>
+            <p className="text-sm text-gray-500 mt-1">Please wait while we process your request</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Provider Count and Progress */}
+      {providers.length > 0 && (
+        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>
+                Provider {currentIndex + 1} of {providers.length}
+              </span>
+              <span className="text-purple-600 font-medium">
+                {Math.round(((currentIndex + 1) / providers.length) * 100)}% Complete
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${((currentIndex + 1) / providers.length) * 100}%` }}
+              ></div>
+            </div>
           </CardContent>
         </Card>
       )}

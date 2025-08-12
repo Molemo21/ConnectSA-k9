@@ -18,13 +18,42 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    
+    // Log the incoming request for debugging
+    console.log('Discover providers request body:', JSON.stringify(body, null, 2));
+    
+    // Validate UUID format before Zod validation
+    if (body.serviceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.serviceId)) {
+      console.error('Invalid UUID format received:', body.serviceId);
+      return NextResponse.json({ 
+        error: `Invalid serviceId format: ${body.serviceId}. Expected UUID format.` 
+      }, { status: 400 });
+    }
+
     const validated = discoverProvidersSchema.parse(body);
+    
+    console.log('Validated request:', {
+      serviceId: validated.serviceId,
+      date: validated.date,
+      time: validated.time,
+      address: validated.address
+    });
+
+    // Map the serviceId back to the actual database ID if it's one of our mapped IDs
+    let actualServiceId = validated.serviceId;
+    if (validated.serviceId === '123e4567-e89b-12d3-a456-426614174000') {
+      actualServiceId = 'haircut-service';
+    } else if (validated.serviceId === '987fcdeb-51a2-43d1-9f12-345678901234') {
+      actualServiceId = 'garden-service';
+    }
+
+    console.log('Using service ID:', actualServiceId);
 
     // Find available providers for the service
     const providers = await prisma.provider.findMany({
       where: {
         services: {
-          some: { serviceId: validated.serviceId },
+          some: { serviceId: actualServiceId },
         },
         available: true,
         status: "APPROVED",
@@ -39,7 +68,7 @@ export async function POST(request: NextRequest) {
           }
         },
         services: {
-          where: { serviceId: validated.serviceId },
+          where: { serviceId: actualServiceId },
           include: {
             service: {
               select: {
@@ -96,7 +125,10 @@ export async function POST(request: NextRequest) {
         const timeDiff = Math.abs(bookingDate.getTime() - requestedDate.getTime());
         const within2Hours = timeDiff <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
         
-        return sameDay && within2Hours && !["CANCELLED", "COMPLETED"].includes(booking.status);
+        // Check for active bookings that would conflict
+        const isActiveBooking = !["CANCELLED", "COMPLETED"].includes(booking.status); // Removed "DISPUTED" as it's not in the database enum
+        
+        return sameDay && within2Hours && isActiveBooking;
       });
 
       return !hasConflict;
@@ -107,7 +139,7 @@ export async function POST(request: NextRequest) {
       const totalRating = provider.reviews.reduce((sum, review) => sum + review.rating, 0);
       const averageRating = provider.reviews.length > 0 ? totalRating / provider.reviews.length : 0;
       
-      return {
+      const providerData = {
         id: provider.id,
         businessName: provider.businessName,
         description: provider.description,
@@ -122,6 +154,15 @@ export async function POST(request: NextRequest) {
         recentReviews: provider.reviews.slice(0, 3), // Show only 3 recent reviews
         isAvailable: true,
       };
+
+      console.log('📊 Provider data prepared:', { 
+        id: providerData.id, 
+        businessName: providerData.businessName,
+        serviceName: providerData.service?.name,
+        hourlyRate: providerData.hourlyRate
+      });
+
+      return providerData;
     });
 
     // Sort by rating (highest first), then by completed jobs

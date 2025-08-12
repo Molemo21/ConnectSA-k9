@@ -76,17 +76,47 @@ export function DashboardContent() {
         }
 
         // Fetch bookings
-        const bookingsRes = await fetch('/api/bookings/my-bookings')
+        console.log('🔍 Fetching bookings from API...')
+        const bookingsRes = await fetch('/api/bookings/my-bookings', {
+          credentials: 'include' // Include cookies for authentication
+        })
+        console.log('📥 Bookings API response:', {
+          status: bookingsRes.status,
+          statusText: bookingsRes.statusText,
+          ok: bookingsRes.ok
+        })
+        
         if (bookingsRes.ok) {
           const bookingsData = await bookingsRes.json()
+          console.log('✅ Bookings data received:', {
+            count: bookingsData.bookings?.length || 0,
+            bookings: bookingsData.bookings
+          })
+          
+          // Additional debugging - log each booking
+          if (bookingsData.bookings) {
+            console.log('📋 Individual bookings:')
+            bookingsData.bookings.forEach((booking: any, index: number) => {
+              console.log(`  ${index + 1}. ID: ${booking.id}, Status: ${booking.status}, Service: ${booking.service?.name}, Date: ${booking.scheduledDate}`)
+            })
+          }
+          
           setBookings(bookingsData.bookings)
+        } else {
+          console.error('❌ Failed to fetch bookings:', bookingsRes.status, bookingsRes.statusText)
+          const errorText = await bookingsRes.text()
+          console.error('❌ Error response body:', errorText)
         }
 
         // Fetch services
-        const servicesRes = await fetch('/api/services')
+        const servicesRes = await fetch('/api/services', {
+          credentials: 'include' // Include cookies for authentication
+        })
         if (servicesRes.ok) {
           const servicesData = await servicesRes.json()
           setServices(servicesData)
+        } else {
+          console.error('Failed to fetch services:', servicesRes.status, servicesRes.statusText)
         }
 
       } catch (err) {
@@ -319,6 +349,15 @@ export function DashboardContent() {
                     </div>
                   ) : (
                     <div className="space-y-6">
+                      {/* Debug info - remove this later */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <p className="text-sm text-blue-800">
+                          <strong>Debug:</strong> Total bookings: {bookings.length} | 
+                          Showing: {Math.min(bookings.length, 5)} | 
+                          Statuses: {bookings.map(b => b.status).join(', ')}
+                        </p>
+                      </div>
+                      
                       {bookings.slice(0, 5).map((booking) => (
                         <EnhancedBookingCard
                           key={booking.id}
@@ -331,6 +370,19 @@ export function DashboardContent() {
                           }}
                         />
                       ))}
+                      
+                      {/* Show "View All" button if there are more than 5 bookings */}
+                      {bookings.length > 5 && (
+                        <div className="text-center pt-4">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => window.location.href = '/bookings'}
+                            className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                          >
+                            View All {bookings.length} Bookings
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

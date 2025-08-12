@@ -35,14 +35,18 @@ export default function AnalyticsPage() {
         setLoading(true)
         
         // Fetch bookings
-        const bookingsRes = await fetch('/api/bookings/my-bookings')
+        const bookingsRes = await fetch('/api/bookings/my-bookings', {
+          credentials: 'include'
+        })
         if (bookingsRes.ok) {
           const bookingsData = await bookingsRes.json()
           setBookings(bookingsData.bookings)
         }
 
         // Fetch services
-        const servicesRes = await fetch('/api/services')
+        const servicesRes = await fetch('/api/services', {
+          credentials: 'include'
+        })
         if (servicesRes.ok) {
           const servicesData = await servicesRes.json()
           setServices(servicesData)
