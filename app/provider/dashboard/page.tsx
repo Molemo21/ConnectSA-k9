@@ -1,38 +1,11 @@
 import { redirect } from "next/navigation"
-import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
 import { ProviderDashboardContent } from "@/components/provider/provider-dashboard-content"
+import { getProviderStatus } from "./provider-check"
 
 export default async function ProviderDashboardPage() {
-  const user = await getCurrentUser()
-
-  if (!user) {
-    redirect("/login")
+  const result = await getProviderStatus()
+  if (result.redirect) {
+    redirect(result.redirect)
   }
-
-  if (user.role !== "PROVIDER") {
-    redirect("/dashboard")
-  }
-
-  if (!user.emailVerified) {
-    redirect("/verify-email")
-  }
-
-  const provider = await prisma.provider.findUnique({
-    where: { userId: user.id },
-  })
-
-  if (!provider) {
-    redirect("/provider/onboarding")
-  }
-
-  if (provider.status === "INCOMPLETE" || provider.status === "REJECTED") {
-    redirect("/provider/onboarding")
-  }
-
-  if (provider.status === "PENDING") {
-    redirect("/provider/pending")
-  }
-
   return <ProviderDashboardContent />
-} 
+}

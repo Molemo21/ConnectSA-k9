@@ -12,7 +12,17 @@ export interface MiddlewareUser {
 // Middleware-safe token verification (no Prisma dependency)
 export async function verifyTokenMiddleware(token: string): Promise<MiddlewareUser | null> {
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret || jwtSecret.trim() === '') {
+      return null;
+    }
+    
+    // Validate token format
+    if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+      return null;
+    }
+    
+    const secret = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secret);
     
     if (!payload || typeof payload === 'string') {
@@ -31,6 +41,7 @@ export async function verifyTokenMiddleware(token: string): Promise<MiddlewareUs
       emailVerified: payload.emailVerified as boolean || false,
     };
   } catch (error) {
+    // Silent fail in middleware to avoid breaking the app
     return null;
   }
 }
@@ -39,7 +50,7 @@ export async function verifyTokenMiddleware(token: string): Promise<MiddlewareUs
 export async function getUserFromRequestMiddleware(request: NextRequest): Promise<MiddlewareUser | null> {
   try {
     // Try to get token from cookies
-    const token = request.cookies.get('accessToken')?.value;
+    const token = request.cookies.get('auth-token')?.value;
     
     if (!token) {
       return null;

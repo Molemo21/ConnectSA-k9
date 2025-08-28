@@ -1,0 +1,5 @@
+{
+    "codium.codeCompletion.enable": false,
+    "ionic-preview.host": "192.168.5.126:3000",
+    "ionic-preview.port": 3000
+}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { generateAccessToken, verifyToken } from "@/lib/auth"
+import { generateToken, verifyToken } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
 
     try {
       // Generate a test token
-      const token = await generateAccessToken(testUser)
+      const token = await generateToken(testUser)
       console.log("Test token generated successfully")
 
       // Verify the token
-      const decoded = await verifyToken(token, 'access')
+      const decoded = await verifyToken(token)
       console.log("Test token verified successfully:", decoded)
 
       return NextResponse.json({

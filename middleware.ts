@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getUserFromRequest } from './lib/auth';
+import { getUserFromRequestMiddleware } from './lib/auth-middleware';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Protect admin routes
   if (pathname.startsWith('/admin')) {
-    const user = await getUserFromRequest(request);
+    const user = await getUserFromRequestMiddleware(request);
 
     if (!user || user.role !== 'ADMIN') {
       const url = request.nextUrl.clone();

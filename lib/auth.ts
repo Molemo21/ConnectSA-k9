@@ -24,10 +24,11 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 }
 
 export async function generateToken(payload: AuthUser): Promise<string> {
-  const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-  if (!secret) {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret.trim() === '') {
     throw new Error('JWT_SECRET is not defined in the environment.');
   }
+  const secret = new TextEncoder().encode(jwtSecret);
   return await new jose.SignJWT(payload as any)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -37,15 +38,45 @@ export async function generateToken(payload: AuthUser): Promise<string> {
 
 export async function verifyToken(token: string): Promise<AuthUser | null> {
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    if (!secret) {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret || jwtSecret.trim() === '') {
       console.error('JWT_SECRET is not defined in the environment.');
       return null;
     }
+    
+    // Validate token format
+    if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+      console.error('Invalid token format');
+      return null;
+    }
+    
+    const secret = new TextEncoder().encode(jwtSecret);
     const { payload } = await jose.jwtVerify(token, secret);
-    return payload as unknown as AuthUser;
+    
+    // Validate payload structure
+    if (!payload || typeof payload !== 'object') {
+      console.error('Invalid token payload');
+      return null;
+    }
+    
+    // Ensure required fields exist
+    const authUser = payload as unknown as AuthUser;
+    if (!authUser.id || !authUser.email || !authUser.role) {
+      console.error('Token missing required fields');
+      return null;
+    }
+    
+    return authUser;
   } catch (error) {
-    console.error('Token verification failed:', error);
+    if (error instanceof Error) {
+      console.error('Token verification failed:', error.message);
+      // Log specific JWT errors for debugging
+      if (error.message.includes('signature verification failed')) {
+        console.error('JWT signature mismatch - token may have been created with different secret');
+      }
+    } else {
+      console.error('Token verification failed:', error);
+    }
     return null;
   }
 }
@@ -58,7 +89,11 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
     if (!token) return null
 
     const decoded = await verifyToken(token)
-    if (!decoded) return null
+    if (!decoded) {
+      // Clear invalid token
+      cookieStore.delete("auth-token")
+      return null
+    }
 
     // Verify user still exists and is active
     const user = await prisma.user.findFirst({
@@ -75,7 +110,12 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
     })
 
     return user as AuthUser & { provider?: { id: string } } | null
-  } catch {
+  } catch (error) {
+    // Clear invalid token on any error
+    try {
+      const cookieStore = await cookies()
+      cookieStore.delete("auth-token")
+    } catch {}
     return null
   }
 }

@@ -52,47 +52,59 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-gradient-to-br from-black via-gray-900 to-black overflow-hidden">
+      {/* Overlay for dark effect */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md"></div>
+
+      <div className="w-full max-w-md mx-auto relative z-10 animate-fade-in-up">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">S</span>
-            </div>
-            <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
-          </Link>
+          <div className="flex justify-center mb-6">
+            <button type="button" onClick={() => window.location.href = '/'}>
+              <img
+                src="/handshake.png"
+                alt="Handshake Logo"
+                className="w-16 h-16 rounded-xl shadow-lg object-cover animate-breathing"
+                style={{ animation: 'breathing 2.5s ease-in-out infinite' }}
+              />
+            </button>
+          </div>
+          <h1 className="text-4xl font-extrabold text-white mb-2 drop-shadow-lg animate-fade-in">Forgot Password</h1>
+          <p className="text-gray-300 text-base">Enter your email to receive a password reset link.</p>
         </div>
-        <Card className="shadow-xl border-0">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl">Forgot Password</CardTitle>
-            <CardDescription>Enter your email to receive a password reset link.</CardDescription>
-          </CardHeader>
-          <CardContent>
+
+        <Card className="shadow-2xl border-0 bg-white/10 backdrop-blur-xl text-white rounded-2xl transition-all duration-300 hover:shadow-3xl">
+          <CardContent className="p-8">
             {submitted ? (
               <div className="text-center py-8">
-                <p className="text-green-700 font-medium mb-2">If an account with that email exists, a password reset link has been sent.</p>
-                <Button className="mt-4 w-full" onClick={() => router.push("/login")}>Back to Login</Button>
+                <p className="text-green-400 font-medium mb-2">If an account with that email exists, a password reset link has been sent.</p>
+                <Button className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-bold text-lg py-3 rounded-xl shadow-lg transition-all duration-200" onClick={() => router.push("/login")}>Back to Login</Button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-gray-200 font-medium">Email Address</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 w-4 h-4 text-blue-400 animate-fade-in" />
                     <Input
                       id="email"
                       type="email"
                       placeholder="Enter your email"
-                      className="pl-10"
+                      className="pl-10 bg-white/20 border border-blue-500/30 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       required
+                      aria-label="Email Address"
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-bold text-lg py-3 rounded-xl shadow-lg transition-all duration-200" disabled={isLoading}>
                   {isLoading ? "Sending..." : "Send Reset Link"}
                 </Button>
+                <div className="text-center pt-2">
+                  <Link href="/login" className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                    Back to Login
+                  </Link>
+                </div>
               </form>
             )}
           </CardContent>
