@@ -1,0 +1,94 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const bookingId = params.id;
+    if (!bookingId) {
+      return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
+    }
+
+    // Get the booking with payment details
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        payment: true,
+        provider: {
+          include: {
+            user: {
+              select: {
+                name: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
+        service: {
+          select: {
+            name: true,
+            category: true
+          }
+        }
+      }
+    });
+
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    // Check if user has access to this booking
+    if (user.role === "CLIENT" && booking.clientId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (user.role === "PROVIDER" && booking.providerId !== user.provider?.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      booking: {
+        id: booking.id,
+        status: booking.status,
+        scheduledDate: booking.scheduledDate,
+        totalAmount: booking.totalAmount,
+        address: booking.address,
+        description: booking.description,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt
+      },
+      payment: booking.payment ? {
+        id: booking.payment.id,
+        amount: booking.payment.amount,
+        status: booking.payment.status,
+        paystackRef: booking.payment.paystackRef,
+        escrowAmount: booking.payment.escrowAmount,
+        platformFee: booking.payment.platformFee,
+        currency: booking.payment.currency,
+        paidAt: booking.payment.paidAt,
+        createdAt: booking.payment.createdAt,
+        updatedAt: booking.payment.updatedAt
+      } : null,
+      provider: booking.provider ? {
+        id: booking.provider.id,
+        businessName: booking.provider.businessName,
+        user: booking.provider.user
+      } : null,
+      service: booking.service
+    });
+
+  } catch (error) {
+    console.error("Get booking status error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const sendOfferSchema = z.object({
   providerId: z.string().min(1), // Accept any non-empty string, not just UUIDs
-  serviceId: z.string().uuid(),
+  serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
   date: z.string(), // ISO date string
   time: z.string(), // e.g. "14:00"
   address: z.string().min(1),
@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Validate UUID format before Zod validation
-    if (body.serviceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.serviceId)) {
+    // Validate serviceId format (Prisma custom ID format) before Zod validation
+    if (body.serviceId && !/^[a-z0-9]{25}$/i.test(body.serviceId)) {
       console.error('❌ Invalid serviceId format:', body.serviceId);
       return NextResponse.json({ 
-        error: `Invalid serviceId format: ${body.serviceId}. Expected UUID format.` 
+        error: `Invalid serviceId format: ${body.serviceId}. Expected 25 alphanumeric characters.` 
       }, { status: 400 });
     }
 
@@ -98,15 +98,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`🎯 Job offer request: Client ${user.id} requesting provider ${validated.providerId} for service ${validated.serviceId} on ${validated.date} at ${validated.time}`);
 
-    // Map the serviceId back to the actual database ID if it's one of our mapped IDs
-    let actualServiceId = validated.serviceId;
-    if (validated.serviceId === '123e4567-e89b-12d3-a456-426614174000') {
-      actualServiceId = 'haircut-service';
-    } else if (validated.serviceId === '987fcdeb-51a2-43d1-9f12-345678901234') {
-      actualServiceId = 'garden-service';
-    }
-
-    console.log('🔄 Service ID mapping:', { original: validated.serviceId, mapped: actualServiceId });
+    // Use the serviceId directly (it's already the correct Prisma ID format)
+    const actualServiceId = validated.serviceId;
+    console.log('🔄 Using service ID directly:', actualServiceId);
 
     // Verify the provider is still available for this service
     console.log('🔍 Starting provider verification...');
@@ -162,23 +156,55 @@ export async function POST(request: NextRequest) {
 
     // Check if provider is busy at the requested time
     console.log('🔍 Checking for booking conflicts...');
+    
+    // Parse the requested time (reuse existing requestedDateTime from above)
+    const requestedTime = validated.time;
+    const [requestedHour, requestedMinute] = requestedTime.split(':').map(Number);
+    
+    // Check for time-specific conflicts (within 2 hours of requested time)
+    const conflictStart = new Date(requestedDateTime.getTime() - 2 * 60 * 60 * 1000); // 2 hours before
+    const conflictEnd = new Date(requestedDateTime.getTime() + 2 * 60 * 60 * 1000);   // 2 hours after
+    
+    console.log('🔍 Conflict check details:', {
+      requestedTime: requestedTime,
+      requestedDateTime: requestedDateTime.toISOString(),
+      conflictStart: conflictStart.toISOString(),
+      conflictEnd: conflictEnd.toISOString(),
+      timeWindow: '4 hours (2 hours before and after)'
+    });
+    
     const conflictingBooking = await prisma.booking.findFirst({
       where: {
         providerId: validated.providerId,
         scheduledDate: {
-          gte: new Date(`${validated.date}T00:00:00`),
-          lt: new Date(`${validated.date}T23:59:59`),
+          gte: conflictStart,
+          lte: conflictEnd,
         },
         status: {
-          notIn: ["CANCELLED", "COMPLETED"], // Removed "DISPUTED" as it's not in the database enum
+          notIn: ["CANCELLED", "COMPLETED"],
         },
       },
     });
 
     if (conflictingBooking) {
-      console.log(`❌ Provider ${validated.providerId} has conflicting booking ${conflictingBooking.id} on ${validated.date}`);
+      console.log(`❌ Provider ${validated.providerId} has conflicting booking ${conflictingBooking.id}`);
+      console.log('🔍 Conflict details:', {
+        conflictingTime: conflictingBooking.scheduledDate.toISOString(),
+        requestedTime: requestedDateTime.toISOString(),
+        timeDifference: Math.abs(conflictingBooking.scheduledDate.getTime() - requestedDateTime.getTime()) / (1000 * 60 * 60) + ' hours'
+      });
+      
+      // Find alternative available times for the same provider
+      console.log('🔍 Looking for alternative times...');
+      const alternativeTimes = await findAlternativeTimes(validated.providerId, validated.date, validated.serviceId);
+      
       return NextResponse.json({ 
-        error: "Provider is no longer available at the requested time. Please select a different time or provider." 
+        error: "Provider has a conflicting booking at this time. Please select a different time or provider.",
+        details: {
+          conflictingTime: conflictingBooking.scheduledDate.toISOString(),
+          requestedTime: requestedDateTime.toISOString(),
+          alternativeTimes: alternativeTimes
+        }
       }, { status: 400 });
     }
 
@@ -207,24 +233,14 @@ export async function POST(request: NextRequest) {
       platformFee: booking.platformFee
     });
 
-    // Create a proposal record for tracking
-    console.log('📝 Creating proposal...');
-    await prisma.proposal.create({
-      data: {
-        bookingId: booking.id,
-        providerId: validated.providerId,
-        status: "PENDING",
-        message: "Job offer sent by client",
-      },
-    });
-
-    console.log('✅ Proposal created');
+    // Note: Proposal creation removed - table doesn't exist in database
+    console.log('ℹ️ Skipping proposal creation (table not available)');
 
     // TODO: Send notification to provider about new job offer
     // TODO: Send email notification to provider
 
     console.log(`✅ Job offer sent successfully: Booking ${booking.id} to provider ${validated.providerId} for client ${user.id}`);
-    console.log(`✅ Proposal created: ${booking.id} with status PENDING`);
+    console.log(`✅ Booking created with status PENDING`);
 
     return NextResponse.json({ 
       success: true,
@@ -260,5 +276,68 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// Helper function to find alternative available times
+async function findAlternativeTimes(providerId: string, date: string, serviceId: string) {
+  try {
+    console.log('🔍 Finding alternative times for provider:', providerId, 'on date:', date);
+    
+    // Get all bookings for this provider on this date
+    const existingBookings = await prisma.booking.findMany({
+      where: {
+        providerId: providerId,
+        scheduledDate: {
+          gte: new Date(`${date}T00:00:00`),
+          lt: new Date(`${date}T23:59:59`),
+        },
+        status: {
+          notIn: ["CANCELLED", "COMPLETED"],
+        },
+      },
+      select: {
+        scheduledDate: true,
+      },
+      orderBy: {
+        scheduledDate: 'asc',
+      },
+    });
+
+    console.log('📅 Existing bookings:', existingBookings.map(b => b.scheduledDate.toISOString()));
+
+    // Define business hours (9 AM to 10 PM for flexibility)
+    const businessHours = {
+      start: 9,  // 9 AM
+      end: 22,   // 10 PM (extended for evening services)
+    };
+
+    // Generate available time slots
+    const availableSlots = [];
+    for (let hour = businessHours.start; hour < businessHours.end; hour++) {
+      for (let minute = 0; minute < 60; minute += 60) { // Every hour
+        const timeSlot = new Date(`${date}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+        
+        // Check if this time slot conflicts with existing bookings
+        const hasConflict = existingBookings.some(booking => {
+          const timeDiff = Math.abs(booking.scheduledDate.getTime() - timeSlot.getTime());
+          return timeDiff < 2 * 60 * 60 * 1000; // 2 hours buffer
+        });
+
+        if (!hasConflict && timeSlot > new Date()) {
+          availableSlots.push({
+            time: timeSlot.toTimeString().slice(0, 5), // HH:MM format
+            available: true,
+          });
+        }
+      }
+    }
+
+    console.log('✅ Available time slots:', availableSlots);
+    return availableSlots.slice(0, 5); // Return up to 5 alternatives
+
+  } catch (error) {
+    console.error('❌ Error finding alternative times:', error);
+    return [];
   }
 } 

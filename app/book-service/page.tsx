@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import React, { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,9 +9,80 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2, ArrowLeft } from "lucide-react"
+import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2, ArrowLeft, AlertTriangle } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { ProviderDiscovery } from "@/components/provider-discovery/provider-discovery"
+
+// Error Boundary Component
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: any;
+}
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: any): ErrorBoundaryState {
+    return { hasError: true, error, errorInfo: null };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('🔴 Error Boundary caught an error:', error, errorInfo);
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <AlertTriangle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-red-900 mb-4">Something went wrong</h1>
+            <p className="text-red-700 mb-6">
+              The page encountered an error during loading. This might be a hydration issue.
+            </p>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="w-full"
+              >
+                Reload Page
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
+                className="w-full"
+              >
+                Try Again
+              </Button>
+            </div>
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <details className="mt-4 text-left">
+                <summary className="cursor-pointer text-sm text-red-600">Error Details</summary>
+                <pre className="mt-2 text-xs bg-red-100 p-2 rounded overflow-auto">
+                  {this.state.error.toString()}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function BookServiceContent() {
   const router = useRouter();
@@ -19,6 +90,7 @@ function BookServiceContent() {
   const [services, setServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     serviceId: "",
@@ -34,11 +106,19 @@ function BookServiceContent() {
   const [showProviderDiscovery, setShowProviderDiscovery] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
+  // Debug logging function
+  const addDebugInfo = (message: string) => {
+    console.log(`🔍 [BookService] ${message}`);
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+
   // Check for sessionStorage booking data after login
   useEffect(() => {
+    addDebugInfo('Component mounted, checking sessionStorage');
     if (typeof window !== "undefined" && searchParams?.get("intent") === "booking") {
       const stored = sessionStorage.getItem("bookingDetails");
       if (stored) {
+        addDebugInfo('Found stored booking details in sessionStorage');
         setForm(JSON.parse(stored));
         setShowReview(true);
         sessionStorage.removeItem("bookingDetails");
@@ -47,32 +127,53 @@ function BookServiceContent() {
   }, [searchParams]);
 
   useEffect(() => {
+    addDebugInfo('Starting services fetch useEffect');
+    
     async function fetchServices() {
+      try {
+        addDebugInfo('Setting loading state to true');
       setLoadingServices(true);
       setServicesError(null);
-      try {
-        const res = await fetch("/api/services");
-        if (!res.ok) throw new Error("Failed to fetch services");
-        const data = await res.json();
-        console.log('Loaded services:', data);
         
-        // Validate service IDs
+        addDebugInfo('Making fetch request to /api/services');
+        const res = await fetch("/api/services");
+        addDebugInfo(`Fetch response status: ${res.status}, ok: ${res.ok}`);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        addDebugInfo('Parsing JSON response');
+        const data = await res.json();
+        addDebugInfo(`Parsed ${data.length} services from response`);
+        
+                      // Validate service IDs (Prisma custom ID format)
         const invalidServices = data.filter((service: any) => {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          return !uuidRegex.test(service.id);
+                const serviceIdRegex = /^[a-z0-9]{25}$/i;
+                return !serviceIdRegex.test(service.id);
         });
         
         if (invalidServices.length > 0) {
-          console.error('Found services with invalid UUIDs:', invalidServices);
+                addDebugInfo(`Found ${invalidServices.length} services with invalid ID format`);
+                console.error('Found services with invalid ID format:', invalidServices);
         }
         
+        addDebugInfo('Setting services state');
         setServices(data);
-      } catch (err) {
-        setServicesError("Could not load services. Please try again later.");
+        addDebugInfo('Services state set successfully');
+        
+      } catch (err: any) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        addDebugInfo(`Error fetching services: ${errorMessage}`);
+        console.error('❌ Error fetching services:', err);
+        setServicesError(`Could not load services: ${errorMessage}`);
       } finally {
+        addDebugInfo('Setting loading state to false');
         setLoadingServices(false);
       }
     }
+    
+    addDebugInfo('Calling fetchServices function');
     fetchServices();
   }, []);
 
@@ -83,26 +184,26 @@ function BookServiceContent() {
   // Check auth status before booking
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted with data:", form);
+    addDebugInfo(`Form submitted with data: ${JSON.stringify(form)}`);
     
     // Validate required fields
     if (!form.serviceId || !form.date || !form.time || !form.address) {
-      console.log("Validation failed - missing required fields");
+      addDebugInfo("Validation failed - missing required fields");
       setSubmitError("Please fill in all required fields.");
       return;
     }
     
-    console.log("Validation passed, checking authentication...");
+    addDebugInfo("Validation passed, checking authentication...");
     setSubmitting(true);
     setSubmitError(null);
     setConfirmation(null);
     try {
       // Check if logged in
       const res = await fetch("/api/auth/me");
-      console.log("Auth check response:", res.status);
+      addDebugInfo(`Auth check response: ${res.status}`);
       if (!res.ok) {
         // Not logged in: save form data and redirect to login
-        console.log("User not authenticated, redirecting to login...");
+        addDebugInfo("User not authenticated, redirecting to login...");
         if (typeof window !== "undefined") {
           sessionStorage.setItem("bookingDetails", JSON.stringify(form));
         }
@@ -110,9 +211,10 @@ function BookServiceContent() {
         return;
       }
       // If logged in, show review step before final submission
-      console.log("User authenticated, showing review step...");
+      addDebugInfo("User authenticated, showing review step...");
       setShowReview(true);
     } catch (err: any) {
+      addDebugInfo(`Auth check error: ${err.message}`);
       console.error("Auth check error:", err);
       setSubmitError("Could not check authentication. Please try again.");
     } finally {
@@ -122,18 +224,12 @@ function BookServiceContent() {
 
   // Show provider discovery after review
   const handleShowProviderDiscovery = () => {
-    console.log('Starting provider discovery with form data:', {
-      serviceId: form.serviceId,
-      date: form.date,
-      time: form.time,
-      address: form.address,
-      notes: form.notes
-    });
+    addDebugInfo('Starting provider discovery with form data');
     
-    // Validate serviceId format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(form.serviceId)) {
-      console.error('Invalid serviceId format in form:', form.serviceId);
+    // Validate serviceId format (Prisma custom ID format)
+    const serviceIdRegex = /^[a-z0-9]{25}$/i;
+    if (!serviceIdRegex.test(form.serviceId)) {
+      addDebugInfo(`Invalid serviceId format: ${form.serviceId}`);
       setSubmitError('Invalid service selection. Please try again.');
       return;
     }
@@ -144,6 +240,7 @@ function BookServiceContent() {
 
   // Handle provider selection
   const handleProviderSelected = (providerId: string) => {
+    addDebugInfo(`Provider selected: ${providerId}`);
     setSelectedProviderId(providerId);
     // The booking is already created by send-offer, just show confirmation
     setConfirmation({
@@ -155,10 +252,28 @@ function BookServiceContent() {
     setShowReview(false);
   };
 
-  // Remove the old handleFinalSubmit function since it's no longer needed
-  // The booking is created by send-offer API, not by this function
-
   const selectedService = services.find(s => s.id === form.serviceId);
+
+  // Debug info display
+  const debugInfoDisplay = process.env.NODE_ENV === 'development' && (
+    <div className="fixed bottom-4 right-4 bg-black/80 text-white p-4 rounded-lg max-w-md max-h-64 overflow-auto text-xs z-50">
+      <h4 className="font-bold mb-2">Debug Info</h4>
+      <div className="space-y-1">
+        <div>Services: {services?.length || 0}</div>
+        <div>Loading: {loadingServices.toString()}</div>
+        <div>Error: {servicesError || 'none'}</div>
+        <div>Selected Service: {selectedService?.name || 'none'}</div>
+      </div>
+      <details className="mt-2">
+        <summary className="cursor-pointer">Logs</summary>
+        <div className="mt-1 space-y-1">
+          {debugInfo.slice(-10).map((log, i) => (
+            <div key={i} className="text-green-300">{log}</div>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
 
   if (loadingServices) {
     return (
@@ -168,6 +283,10 @@ function BookServiceContent() {
           <div className="max-w-4xl mx-auto text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
             <p>Loading services...</p>
+            <p className="text-sm text-gray-500 mt-2">
+              If this takes too long, there might be a JavaScript error. Check the browser console.
+            </p>
+            {debugInfoDisplay}
           </div>
         </div>
       </div>
@@ -180,10 +299,18 @@ function BookServiceContent() {
         <BrandHeaderClient showAuth={false} showUserMenu={true} />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto text-center">
-            <p className="text-red-600">{servicesError}</p>
-            <Button onClick={() => window.location.reload()} className="mt-4">
+            <AlertTriangle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-red-900 mb-4">Failed to Load Services</h2>
+            <p className="text-red-600 mb-6">{servicesError}</p>
+            <div className="space-y-4">
+              <Button onClick={() => window.location.reload()} className="w-full">
               Try Again
             </Button>
+              <Button variant="outline" onClick={() => window.location.href = '/api/services'} className="w-full">
+                Test API Directly
+              </Button>
+            </div>
+            {debugInfoDisplay}
           </div>
         </div>
       </div>
@@ -379,16 +506,28 @@ function BookServiceContent() {
                             <SelectValue placeholder="Select a service" />
                           </SelectTrigger>
                           <SelectContent>
-                            {services.map((service) => (
+                            {services && services.length > 0 ? (
+                              services.map((service) => (
                               <SelectItem key={service.id} value={service.id}>
                                 <div className="flex items-center space-x-2">
                                   <span>{service.name}</span>
                                   <Badge variant="secondary">{service.category}</Badge>
                                 </div>
                               </SelectItem>
-                            ))}
+                              ))
+                            ) : (
+                              <SelectItem value="" disabled>
+                                <span className="text-gray-500">No services available</span>
+                              </SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
+                        {services && services.length === 0 && (
+                          <p className="text-sm text-gray-500">No services found. Please try refreshing the page.</p>
+                        )}
+                        {services && services.length > 0 && (
+                          <p className="text-sm text-green-600">✓ {services.length} services loaded successfully</p>
+                        )}
                       </div>
 
                       {/* Date and Time */}
@@ -511,12 +650,16 @@ function BookServiceContent() {
           </div>
         </div>
       </div>
+      
+      {/* Debug info overlay */}
+      {debugInfoDisplay}
     </div>
   );
 }
 
 export default function BookServicePage() {
   return (
+    <ErrorBoundary>
     <Suspense fallback={
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
@@ -527,5 +670,6 @@ export default function BookServicePage() {
     }>
       <BookServiceContent />
     </Suspense>
+    </ErrorBoundary>
   )
 }

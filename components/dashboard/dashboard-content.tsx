@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Search, Calendar, Clock, Star, MapPin, Plus, Home, Wrench, Paintbrush, Zap, Car, Scissors, TrendingUp, DollarSign, CheckCircle, AlertCircle, BarChart3 } from "lucide-react"
+import { Search, Calendar, Clock, Star, MapPin, Plus, Home, Wrench, Paintbrush, Zap, Car, Scissors, TrendingUp, DollarSign, CheckCircle, AlertCircle, BarChart3, RefreshCw, AlertTriangle, Loader2 } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { ReviewSection } from "@/components/review-section"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
@@ -12,6 +13,8 @@ import { EnhancedStatsDashboard } from "@/components/dashboard/enhanced-stats-da
 import { BookingManagement } from "@/components/dashboard/booking-management"
 import { showToast, handleApiError } from "@/lib/toast"
 import { LoadingCard } from "@/components/ui/loading-spinner"
+import { useBookingData } from "@/hooks/use-booking-data"
+import { PerformanceMonitor } from "@/components/ui/performance-monitor"
 
 // Helper function to get service icon
 function getServiceIcon(serviceName: string) {
@@ -27,10 +30,134 @@ function getServiceIcon(serviceName: string) {
 
 export function DashboardContent() {
   const [user, setUser] = useState<any>(null)
-  const [bookings, setBookings] = useState<any[]>([])
   const [services, setServices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [initialBookings, setInitialBookings] = useState<any[]>([])
+
+  // Get search params to detect payment success callback
+  const searchParams = useSearchParams()
+
+  // Use the optimized booking data hook
+  const { 
+    bookings, 
+    refreshBooking, 
+    refreshAllBookings, 
+    isLoading: isRefreshing, 
+    error: refreshError 
+  } = useBookingData(initialBookings)
+
+  // Handle payment success callback
+  useEffect(() => {
+    const paymentSuccess = searchParams.get('payment')
+    const bookingId = searchParams.get('booking')
+    
+    if (paymentSuccess === 'success' && bookingId) {
+      console.log('🎉 Payment success callback detected:', { paymentSuccess, bookingId })
+      
+      // Show success message
+      showToast.success('Payment completed successfully! Refreshing booking status...')
+      
+      // Refresh the specific booking to get updated status
+      if (refreshBooking) {
+        refreshBooking(bookingId)
+      }
+      
+      // Also refresh all bookings to ensure consistency
+      setTimeout(() => {
+        if (refreshAllBookings) {
+          refreshAllBookings()
+          setLastRefresh(new Date())
+        }
+      }, 1000)
+      
+      // Clean up URL params
+      const url = new URL(window.location.href)
+      url.searchParams.delete('payment')
+      url.searchParams.delete('booking')
+      url.searchParams.delete('trxref')
+      url.searchParams.delete('reference')
+      window.history.replaceState({}, '', url.toString())
+      
+      // Start aggressive polling for payment status update
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/book-service/${bookingId}/status`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED'].includes(data.payment.status)) {
+              console.log('✅ Payment status updated:', data.payment.status)
+              clearInterval(pollInterval)
+              // Refresh all bookings to show updated status
+              if (refreshAllBookings) {
+                refreshAllBookings()
+                setLastRefresh(new Date())
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Payment status check error:', error)
+        }
+      }, 3000) // Check every 3 seconds
+      
+      // Stop polling after 2 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval)
+      }, 120000)
+    }
+  }, [searchParams, refreshBooking, refreshAllBookings])
+
+  // Auto-refresh mechanism for payment status updates
+  useEffect(() => {
+    // Only start polling if we have bookings and user is authenticated
+    if (!bookings.length || !user) return;
+
+    // Check if any bookings are in payment-related states that need monitoring
+    const hasPaymentBookings = bookings.some(booking => 
+      booking.payment && ['PENDING', 'ESCROW'].includes(booking.payment.status)
+    );
+
+    if (!hasPaymentBookings) return;
+
+    console.log('🔄 Starting payment status polling for bookings with pending payments...');
+    
+    // Poll every 10 seconds for payment status updates
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log('🔄 Polling for payment status updates...');
+        if (refreshAllBookings) {
+          await refreshAllBookings();
+          setLastRefresh(new Date());
+        }
+      } catch (error) {
+        console.error('❌ Payment status polling error:', error);
+      }
+    }, 10000); // 10 seconds
+
+    // Cleanup interval on unmount or when dependencies change
+    return () => {
+      console.log('🔄 Stopping payment status polling...');
+      clearInterval(pollInterval);
+    };
+  }, [bookings, user, refreshAllBookings]);
+
+  // Manual refresh function with proper error handling
+  const handleManualRefresh = async () => {
+    if (isRefreshing) {
+      showToast.info("Refresh already in progress. Please wait.")
+      return
+    }
+
+    try {
+      await refreshAllBookings()
+      setLastRefresh(new Date())
+      showToast.success("Payment statuses refreshed successfully!")
+    } catch (error) {
+      console.error('Manual refresh error:', error)
+      showToast.error("Failed to refresh payment statuses. Please try again.")
+    }
+  }
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -101,7 +228,8 @@ export function DashboardContent() {
             })
           }
           
-          setBookings(bookingsData.bookings)
+          // Initialize the useBookingData hook with fetched data
+          setInitialBookings(bookingsData.bookings || [])
         } else {
           console.error('❌ Failed to fetch bookings:', bookingsRes.status, bookingsRes.statusText)
           const errorText = await bookingsRes.text()
@@ -175,6 +303,15 @@ export function DashboardContent() {
   const confirmedBookings = bookings.filter(b => b.status === "CONFIRMED").length
   const inProgressBookings = bookings.filter(b => b.status === "IN_PROGRESS").length
   const cancelledBookings = bookings.filter(b => b.status === "CANCELLED").length
+  
+  // Calculate recent bookings (created within last 24 hours)
+  const recentBookings = bookings.filter(b => {
+    if (!b.createdAt) return false
+    const now = new Date()
+    const created = new Date(b.createdAt)
+    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60)
+    return hoursDiff < 24
+  }).length
   
   const totalSpent = bookings
     .filter(b => b.payment)
@@ -280,7 +417,21 @@ export function DashboardContent() {
       details: [
         { label: "This Month", value: `R${(totalSpent * 0.3).toFixed(2)}`, trend: "up" },
         { label: "Average per Booking", value: `R${totalBookings > 0 ? (totalSpent / totalBookings).toFixed(2) : '0.00'}`, trend: "up" },
-        { label: "Paid Bookings", value: bookings.filter(b => b.payment).length, trend: "up" }
+        { label: "Payment Received", value: bookings.filter(b => b.payment).length, trend: "up" }
+      ]
+    },
+    {
+      title: "Recent Bookings",
+      value: recentBookings,
+      icon: Clock,
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
+      change: "Last 24h",
+      changeType: "neutral",
+      details: [
+        { label: "New Today", value: recentBookings, trend: "up" },
+        { label: "Pending Review", value: bookings.filter(b => b.status === "COMPLETED" && !b.review).length, trend: "stable" },
+        { label: "Active Now", value: pendingBookings + confirmedBookings + inProgressBookings, trend: "up" }
       ]
     }
   ]
@@ -291,27 +442,245 @@ export function DashboardContent() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
-          {/* Welcome Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-                  Welcome back, {user.name || user.email}!
-                </h1>
-                <p className="text-xl text-gray-600">
-                  Here's what's happening with your services
-                </p>
-              </div>
-              <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                <a href="/book-service">
-                  <Plus className="w-5 h-5 mr-2" />
-                  Book New Service
-                </a>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-gray-600 mt-2">Welcome back, {user.name || user.email}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                variant="outline"
+                size="sm"
+              >
+                {isRefreshing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Refresh
+                  </>
+                )}
               </Button>
+              
+              {/* Debug Section */}
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/webhooks/paystack');
+                      const data = await response.json();
+                      console.log('Webhook debug info:', data);
+                      showToast.success('Webhook debug info logged to console');
+                    } catch (error) {
+                      console.error('Webhook debug error:', error);
+                      showToast.error('Failed to get webhook debug info');
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  Test Webhook
+                </Button>
+                
+                <Button
+                  onClick={async () => {
+                    try {
+                      // Force refresh all bookings
+                      if (refreshAllBookings) {
+                        await refreshAllBookings();
+                        setLastRefresh(new Date());
+                        showToast.success('Forced refresh completed');
+                      }
+                    } catch (error) {
+                      console.error('Forced refresh error:', error);
+                      showToast.error('Forced refresh failed');
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  Force Refresh
+                </Button>
+                
+                <Button 
+                  onClick={async () => {
+                    try {
+                      // Find any PENDING payments and attempt recovery
+                      const pendingPayments = bookings.filter(b => 
+                        b.payment && b.payment.status === 'PENDING'
+                      );
+                      
+                      if (pendingPayments.length === 0) {
+                        showToast.info('No pending payments found');
+                        return;
+                      }
+                      
+                      showToast.info(`Found ${pendingPayments.length} pending payment(s). Attempting recovery...`);
+                      
+                      // Attempt recovery for each pending payment
+                      for (const booking of pendingPayments) {
+                        try {
+                          console.log(`🔄 Attempting payment recovery for booking ${booking.id}, payment ${booking.payment.id}`);
+                          
+                          const response = await fetch('/api/payment/recover-status', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ paymentId: booking.payment.id })
+                          });
+                          
+                          console.log(`📡 Recovery API response status:`, response.status);
+                          console.log(`📡 Recovery API response headers:`, Object.fromEntries(response.headers.entries()));
+                          
+                          const result = await response.json();
+                          console.log(`📡 Recovery API response body:`, result);
+                          
+                          if (!response.ok) {
+                            console.error(`❌ Recovery API error response:`, {
+                              status: response.status,
+                              statusText: response.statusText,
+                              result
+                            });
+                            
+                            const errorMessage = result.error || result.message || `HTTP ${response.status}: ${response.statusText}`;
+                            showToast.error(`Payment recovery failed for booking ${booking.id}: ${errorMessage}`);
+                            continue;
+                          }
+                          
+                          if (result.success) {
+                            console.log(`✅ Payment recovery successful for booking ${booking.id}:`, result);
+                            showToast.success(`Payment recovered for booking ${booking.id}`);
+                          } else {
+                            console.error(`❌ Payment recovery failed for booking ${booking.id}:`, result);
+                            const errorMessage = result.message || result.error || 'Unknown error';
+                            showToast.error(`Payment recovery failed for booking ${booking.id}: ${errorMessage}`);
+                          }
+                        } catch (error) {
+                          console.error(`❌ Payment recovery error for booking ${booking.id}:`, error);
+                          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                          showToast.error(`Payment recovery error for booking ${booking.id}: ${errorMessage}`);
+                        }
+                      }
+                      
+                      // Refresh bookings after recovery attempts
+                      setTimeout(() => {
+                        if (refreshAllBookings) {
+                          refreshAllBookings();
+                          setLastRefresh(new Date());
+                        }
+                      }, 2000);
+                      
+                    } catch (error) {
+                      console.error('Payment recovery error:', error);
+                      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                      showToast.error(`Payment recovery failed: ${errorMessage}`);
+                    }
+                  }}
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                >
+                  Recover Payments
+                </Button>
+                
+                {user?.role === 'ADMIN' && (
+                  <Button
+                    onClick={async () => {
+                      try {
+                        showToast.info('Cleaning up duplicate payout records...');
+                        
+                        const response = await fetch('/api/payment/cleanup-orphaned-payouts', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                          console.log('🧹 Cleanup result:', result);
+                          showToast.success(`Cleanup completed! Cleaned ${result.cleanedCount} items.`);
+                          
+                          // Refresh bookings after cleanup
+                          setTimeout(() => {
+                            if (refreshAllBookings) {
+                              refreshAllBookings();
+                              setLastRefresh(new Date());
+                            }
+                          }, 1000);
+                        } else {
+                          console.error('❌ Cleanup failed:', result);
+                          showToast.error(`Cleanup failed: ${result.message}`);
+                        }
+                      } catch (error) {
+                        console.error('Cleanup error:', error);
+                        showToast.error('Cleanup failed');
+                      }
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Cleanup Payouts
+                  </Button>
+                )}
+                
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  <a href="/payment-debug">
+                    Payment Debug
+                  </a>
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Enhanced Stats Dashboard */}
+          {/* Payment Status Summary */}
+          {bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status)) && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-blue-700">
+                    {bookings.filter(b => b.payment && b.payment.status === 'PENDING').length} payment(s) processing
+                  </span>
+                  <span className="text-xs text-blue-600">
+                    • {bookings.filter(b => b.payment && b.payment.status === 'ESCROW').length} payment(s) in escrow
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-blue-600">
+                  <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
+                  {isRefreshing && (
+                    <span className="flex items-center">
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      Refreshing...
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <div className="mb-6">
+            <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+              <a href="/book-service">
+                <Plus className="w-5 h-5 mr-2" />
+                Book New Service
+              </a>
+            </Button>
+          </div>
+
+          {/* Stats Dashboard */}
           <EnhancedStatsDashboard 
             stats={enhancedStats}
             bookings={bookings}
@@ -349,10 +718,41 @@ export function DashboardContent() {
                     </div>
                   ) : (
                     <div className="space-y-6">
+                      {/* Payment Troubleshooting Info */}
+                      {bookings.some(b => b.payment && b.payment.status === 'PENDING') && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                          <div className="flex items-start space-x-3">
+                            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                            <div className="flex-1">
+                              <h4 className="text-sm font-medium text-amber-800 mb-1">
+                                Payment Processing Information
+                              </h4>
+                              <p className="text-sm text-amber-700 mb-2">
+                                Some of your payments are currently being processed. Here's what to expect:
+                              </p>
+                              <div className="text-xs text-amber-600 space-y-1">
+                                <p>• <strong>Normal processing time:</strong> 2-5 minutes</p>
+                                <p>• <strong>If you completed payment:</strong> Refresh this page or wait for automatic update</p>
+                                <p>• <strong>If payment is taking longer:</strong> This is usually normal - wait up to 10 minutes</p>
+                                <p>• <strong>Payment stuck after 10 minutes:</strong> Use the "Check Status" button on each booking</p>
+                                <p>• <strong>Still having issues:</strong> Contact support only after trying the above steps</p>
+                              </div>
+                              <div className="mt-3 pt-2 border-t border-amber-200">
+                                <p className="text-xs text-amber-600">
+                                  <strong>💡 Pro tip:</strong> You can safely close the payment tab after completing payment. 
+                                  The status will update automatically on this page.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       {/* Debug info - remove this later */}
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                         <p className="text-sm text-blue-800">
                           <strong>Debug:</strong> Total bookings: {bookings.length} | 
+                          Recent (24h): {recentBookings} | 
                           Showing: {Math.min(bookings.length, 5)} | 
                           Statuses: {bookings.map(b => b.status).join(', ')}
                         </p>
@@ -363,11 +763,9 @@ export function DashboardContent() {
                           key={booking.id}
                           booking={booking}
                           onStatusChange={(bookingId, newStatus) => {
-                            // Update local state
-                            setBookings(prev => prev.map(b => 
-                              b.id === bookingId ? { ...b, status: newStatus } : b
-                            ))
+                            // This functionality is now handled by useBookingData
                           }}
+                          onRefresh={refreshBooking}
                         />
                       ))}
                       
@@ -500,9 +898,7 @@ export function DashboardContent() {
                 <BookingManagement
                   booking={bookings[0]} // Show management for the most recent booking
                   onUpdate={(bookingId, updates) => {
-                    setBookings(prev => prev.map(b => 
-                      b.id === bookingId ? { ...b, ...updates } : b
-                    ))
+                    // This functionality is now handled by useBookingData
                   }}
                 />
               )}
@@ -542,6 +938,9 @@ export function DashboardContent() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Performance Monitor */}
+              <PerformanceMonitor />
             </div>
           </div>
         </div>

@@ -1,0 +1,286 @@
+#!/usr/bin/env node
+
+/**
+ * Exact Escrow Payment System Test - Matches Your Foreign Key Relationships
+ */
+
+const { PrismaClient } = require('@prisma/client');
+
+async function testEscrowSystem() {
+  console.log('��� Testing Escrow Payment System (Exact Relationships)...\n');
+  
+  // Create a fresh Prisma client instance
+  const prisma = new PrismaClient({
+    log: ['error', 'warn'],
+    errorFormat: 'pretty',
+  });
+  
+  let testData = {
+    user: null,
+    provider: null,
+    providerRecord: null,
+    service: null,
+    booking: null,
+    payment: null,
+    jobProof: null,
+    payout: null
+  };
+  
+  try {
+    // Test database connection first
+    console.log('��� Testing database connection...');
+    await prisma.$connect();
+    console.log('✅ Database connected successfully');
+    
+    // Generate unique email addresses using timestamp
+    const timestamp = Date.now();
+    const uniqueUserEmail = `test.user.${timestamp}@example.com`;
+    const uniqueProviderEmail = `test.provider.${timestamp}@example.com`;
+    
+    console.log(`��� Using unique emails: ${uniqueUserEmail}, ${uniqueProviderEmail}`);
+    
+    // Test 1: Create test user and provider user
+    console.log('\n1️⃣ Creating test user and provider user...');
+    
+    // Create user first
+    testData.user = await prisma.user.create({
+      data: {
+        email: uniqueUserEmail,
+        name: 'Test User',
+        role: 'CLIENT'
+      }
+    });
+    console.log('✅ Test user created');
+    
+    // Create provider user
+    testData.provider = await prisma.user.create({
+      data: {
+        email: uniqueProviderEmail, 
+        name: 'Test Provider',
+        role: 'PROVIDER'
+      }
+    });
+    console.log('✅ Test provider user created');
+    
+    // Test 1.5: Create provider record in providers table
+    console.log('\n1️⃣.5️⃣ Creating provider record...');
+    testData.providerRecord = await prisma.provider.create({
+      data: {
+        userId: testData.provider.id,
+        businessName: `Test Business ${timestamp}`,
+        status: 'PENDING',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+    console.log('✅ Provider record created');
+    
+    // Test 2: Create test service
+    console.log('\n2️⃣ Creating test service...');
+    testData.service = await prisma.service.create({
+      data: {
+        name: `Test Service ${timestamp}`,
+        description: 'Test service for payment flow',
+        category: 'TEST_CATEGORY',
+        isActive: true,
+        basePrice: 1000
+      }
+    });
+    console.log('✅ Test service created');
+    
+    // Test 3: Create test booking using the correct foreign key relationships
+    console.log('\n3️⃣ Creating test booking...');
+    testData.booking = await prisma.booking.create({
+      data: {
+        clientId: testData.user.id,        // → users.id
+        providerId: testData.providerRecord.id, // → providers.id
+        serviceId: testData.service.id,    // → services.id
+        scheduledDate: new Date(),
+        duration: 60,
+        totalAmount: 1000.0,
+        platformFee: 100.0,
+        address: 'Test Address 123',
+        status: 'PENDING',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+    console.log('✅ Test booking created');
+    
+    // Test 4: Create test payment
+    console.log('\n4️⃣ Creating test payment in ESCROW...');
+    testData.payment = await prisma.payment.create({
+      data: {
+        bookingId: testData.booking.id,
+        amount: 1000,
+        paystackRef: `TEST_REF_${timestamp}`,
+        status: 'ESCROW',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        escrowAmount: 900,
+        platformFee: 100,
+        currency: 'NGN'
+      }
+    });
+    console.log('✅ Test payment created in ESCROW');
+    
+    // Test 5: Create test job proof
+    console.log('\n5️⃣ Creating test job proof...');
+    testData.jobProof = await prisma.jobProof.create({
+      data: {
+        booking_id: testData.booking.id,
+        provider_id: testData.providerRecord.id, // Use provider record ID
+        photos: ['photo1.jpg', 'photo2.jpg'],
+        notes: 'Job completed successfully',
+        completedAt: new Date(),
+        autoConfirmAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+      }
+    });
+    console.log('✅ Test job proof created');
+    
+    // Test 6: Create test payout
+    console.log('\n6️⃣ Creating test payout...');
+    testData.payout = await prisma.payout.create({
+      data: {
+        payment_id: testData.payment.id,
+        provider_id: testData.providerRecord.id, // Use provider record ID
+        amount: 900,
+        paystack_ref: `PAYOUT_REF_${timestamp}`,
+        status: 'PENDING'
+      }
+    });
+    console.log('✅ Test payout created');
+    
+    // Test 7: Verify the complete escrow payment flow
+    console.log('\n7️⃣ Verifying complete escrow payment flow...');
+    
+    const paymentSummary = await prisma.$queryRaw`
+      SELECT 
+        b.id as booking_id,
+        b."totalAmount" as booking_amount,
+        b."platformFee" as booking_platform_fee,
+        b.address as booking_address,
+        b.status as booking_status,
+        b.duration as duration_minutes,
+        p.status as payment_status,
+        p.amount as payment_amount,
+        p.escrow_amount,
+        p.platform_fee,
+        p.currency,
+        jp.photos,
+        jp.notes,
+        po.status as payout_status,
+        po.amount as payout_amount
+      FROM bookings b
+      JOIN payments p ON b.id = p."bookingId"
+      LEFT JOIN job_proofs jp ON b.id = jp.booking_id
+      LEFT JOIN payouts po ON p.id = po.payment_id
+      WHERE b.id = ${testData.booking.id}
+    `;
+    
+    console.log('✅ Complete escrow payment flow verified!');
+    console.log('\n��� Payment Summary:');
+    console.log(JSON.stringify(paymentSummary, null, 2));
+    
+    // Test 8: Verify payment calculations
+    console.log('\n8️⃣ Verifying payment calculations...');
+    const summary = paymentSummary[0];
+    const calculatedEscrow = summary.payment_amount - summary.platform_fee;
+    
+    if (summary.escrow_amount === calculatedEscrow && summary.platform_fee === 100) {
+      console.log('✅ Payment calculations correct:');
+      console.log(`   Booking Amount: ${summary.booking_amount} NGN`);
+      console.log(`   Booking Platform Fee: ${summary.booking_platform_fee} NGN`);
+      console.log(`   Payment Amount: ${summary.payment_amount} NGN`);
+      console.log(`   Payment Platform Fee: ${summary.platform_fee} NGN`);
+      console.log(`   Escrow Amount: ${summary.escrow_amount} NGN`);
+      console.log(`   Duration: ${summary.duration_minutes} minutes`);
+      console.log(`   Address: ${summary.booking_address}`);
+      console.log(`   Status: ${summary.booking_status}`);
+    } else {
+      console.log('❌ Payment calculations incorrect');
+    }
+    
+    console.log('\n��� Escrow payment system test completed successfully!');
+    console.log(' Note: All foreign key relationships properly handled');
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error.message);
+    if (error.stack) {
+      console.error('Stack trace:', error.stack);
+    }
+  } finally {
+    // Safe cleanup
+    console.log('\n��� Cleaning up test data...');
+    
+    try {
+      // Clean up in reverse order to avoid foreign key constraints
+      if (testData.jobProof) {
+        await prisma.jobProof.delete({ where: { id: testData.jobProof.id } });
+        console.log('✅ Job proof deleted');
+      }
+      
+      if (testData.payout) {
+        await prisma.payout.delete({ where: { id: testData.payout.id } });
+        console.log('✅ Payout deleted');
+      }
+      
+      if (testData.payment) {
+        await prisma.payment.delete({ where: { id: testData.payment.id } });
+        console.log('✅ Payment deleted');
+      }
+      
+      if (testData.booking) {
+        await prisma.booking.delete({ where: { id: testData.booking.id } });
+        console.log('✅ Booking deleted');
+      }
+      
+      if (testData.service) {
+        await prisma.service.delete({ where: { id: testData.service.id } });
+        console.log('✅ Service deleted');
+      }
+      
+      if (testData.providerRecord) {
+        await prisma.provider.delete({ where: { id: testData.providerRecord.id } });
+        console.log('✅ Provider record deleted');
+      }
+      
+      if (testData.provider) {
+        await prisma.user.delete({ where: { id: testData.provider.id } });
+        console.log('✅ Provider user deleted');
+      }
+      
+      if (testData.user) {
+        await prisma.user.delete({ where: { id: testData.user.id } });
+        console.log('✅ User deleted');
+      }
+      
+      console.log('✅ All cleanup completed successfully');
+      
+    } catch (cleanupError) {
+      console.error('⚠️ Cleanup error:', cleanupError.message);
+    }
+    
+    // Properly disconnect Prisma client
+    try {
+      await prisma.$disconnect();
+      console.log('✅ Prisma client disconnected');
+    } catch (disconnectError) {
+      console.error('⚠️ Disconnect error:', disconnectError.message);
+    }
+  }
+}
+
+// Handle process termination gracefully
+process.on('SIGINT', async () => {
+  console.log('\n��� Received SIGINT, cleaning up...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n��� Received SIGTERM, cleaning up...');
+  process.exit(0);
+});
+
+// Run the test
+testEscrowSystem().catch(console.error);

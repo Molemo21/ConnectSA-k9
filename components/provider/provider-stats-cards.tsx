@@ -14,6 +14,7 @@ import {
 interface ProviderStats {
   pendingJobs: number
   confirmedJobs: number
+  pendingExecutionJobs: number
   inProgressJobs: number
   completedJobs: number
   totalEarnings: number
@@ -44,6 +45,15 @@ export function ProviderStatsCards({ stats }: ProviderStatsCardsProps) {
       color: "text-blue-600",
       bgColor: "bg-blue-100",
       change: "Ready",
+      changeType: "positive"
+    },
+    {
+      title: "Pending Execution",
+      value: stats.pendingExecutionJobs,
+      icon: Play,
+      color: "text-green-600",
+      bgColor: "bg-green-100",
+      change: "Start",
       changeType: "positive"
     },
     {

@@ -20,7 +20,8 @@ import {
   Shield, 
   Calendar,
   CreditCard,
-  HelpCircle
+  HelpCircle,
+  Banknote
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
 
@@ -133,6 +134,15 @@ export function UserMenu({ user, showNotifications = true }: UserMenuProps) {
               <span>Settings</span>
             </a>
           </DropdownMenuItem>
+          
+          {user.role === "PROVIDER" && (
+            <DropdownMenuItem asChild>
+              <a href="/provider/bank-details" className="flex items-center">
+                <Banknote className="mr-2 h-4 w-4" />
+                <span>Bank Details</span>
+              </a>
+            </DropdownMenuItem>
+          )}
           
           <DropdownMenuItem asChild>
             <a href="/payments" className="flex items-center">

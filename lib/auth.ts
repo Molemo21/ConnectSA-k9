@@ -80,6 +80,15 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
   }
 }
 
+export async function getCurrentUserSafe(): Promise<AuthUser & { provider?: { id: string } } | null> {
+  try {
+    return await getCurrentUser()
+  } catch (error) {
+    console.error('Safe user fetch failed:', error)
+    return null
+  }
+}
+
 export async function getUserFromRequest(request: Request): Promise<AuthUser | null> {
   const cookieHeader = request.headers.get("cookie")
   if (!cookieHeader) return null

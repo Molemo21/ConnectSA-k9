@@ -18,7 +18,10 @@ export async function POST(request: NextRequest) {
 
     const booking = await prisma.booking.findUnique({ 
       where: { id: bookingId },
-      include: { payment: true }
+      include: { 
+        payment: true,
+        service: true
+      }
     });
     
     if (!booking) {
@@ -27,8 +30,9 @@ export async function POST(request: NextRequest) {
     if (booking.providerId !== user.provider?.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    if (booking.status !== "CONFIRMED") {
-      return NextResponse.json({ error: "Booking is not confirmed" }, { status: 400 });
+    // Allow both CONFIRMED and PENDING_EXECUTION statuses to start work
+    if (!["CONFIRMED", "PENDING_EXECUTION"].includes(booking.status)) {
+      return NextResponse.json({ error: "Booking is not ready to start" }, { status: 400 });
     }
     if (!booking.payment) {
       return NextResponse.json({ error: "Payment required before starting job" }, { status: 400 });
@@ -38,6 +42,16 @@ export async function POST(request: NextRequest) {
       where: { id: bookingId },
       data: { status: "IN_PROGRESS" },
     });
+
+    // TODO: Create notification for client that job has started (when Notification table is available)
+    // await prisma.notification.create({
+    //   data: {
+    //     userId: booking.clientId,
+    //     type: 'JOB_STARTED',
+    //     content: `Your ${booking.service?.name || 'service'} has started! Provider is now working on your booking #${booking.id}.`,
+    //     read: false,
+    //   }
+    // });
 
     // TODO: Notify client (in-app/email) that job has started
 

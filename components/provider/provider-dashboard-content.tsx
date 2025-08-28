@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,13 +25,17 @@ import {
   CalendarDays,
   BarChart3,
   Settings,
-  Bell
+  Bell,
+  Banknote,
+  RefreshCw
 } from "lucide-react"
 import { showToast, handleApiError } from "@/lib/toast"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderStatsCards } from "./provider-stats-cards"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
+import BankDetailsForm from "./bank-details-form"
+import Link from "next/link"
 
 interface Booking {
   id: string
@@ -93,11 +97,111 @@ export function ProviderDashboardContent() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [selectedAction, setSelectedAction] = useState<string>("")
   const [processingAction, setProcessingAction] = useState(false)
+  const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [completionData, setCompletionData] = useState<{ photos: string[], notes: string }>({ photos: [], notes: '' })
+  const [currentProviderId, setCurrentProviderId] = useState<string>("")
+  const [hasBankDetails, setHasBankDetails] = useState<boolean>(false)
+  const [isCheckingBankDetails, setIsCheckingBankDetails] = useState<boolean>(false)
+
+  // Check if provider has bank details
+  const checkBankDetails = async (providerId: string) => {
+    try {
+      setIsCheckingBankDetails(true)
+      
+      const response = await fetch(`/api/provider/${providerId}/bank-details`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Check if all required bank details fields are present and valid
+        const hasDetails = !!data.bankDetails && 
+          !!data.bankDetails.bankCode && 
+          !!data.bankDetails.accountName && 
+          !!data.bankDetails.bankName &&
+          data.bankDetails.bankCode.trim() !== '' &&
+          data.bankDetails.accountName.trim() !== '' &&
+          data.bankDetails.bankName.trim() !== ''
+        
+        const wasFalse = !hasBankDetails
+        setHasBankDetails(hasDetails)
+        
+        // Show success message if status changed from false to true
+        if (wasFalse && hasDetails) {
+          showToast.success('Bank details found! Your payment setup is complete.')
+        }
+      } else if (response.status === 404) {
+        setHasBankDetails(false)
+      } else {
+        console.error('Failed to check bank details:', response.status)
+        setHasBankDetails(false)
+      }
+    } catch (error) {
+      console.error('Error checking bank details:', error)
+      setHasBankDetails(false)
+    } finally {
+      setIsCheckingBankDetails(false)
+    }
+  }
+
+  // Fetch current user and provider ID
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (response.ok) {
+          const user = await response.json()
+          if (user.provider?.id) {
+            setCurrentProviderId(user.provider.id)
+            // Check if provider has bank details
+            checkBankDetails(user.provider.id)
+          }
+        } else {
+          console.error('Failed to fetch user:', response.status, response.statusText)
+        }
+      } catch (error) {
+        console.error('Error fetching current user:', error)
+      }
+    }
+    
+    fetchCurrentUser()
+  }, [])
 
   // Fetch bookings and stats
   useEffect(() => {
     fetchBookings()
   }, [])
+
+  // Refresh bank details status when needed
+  const refreshBankDetailsStatus = useCallback(() => {
+    if (currentProviderId) {
+      checkBankDetails(currentProviderId)
+    }
+  }, [currentProviderId])
+
+  // Add periodic refresh and focus event listener for bank details status
+  useEffect(() => {
+    if (!currentProviderId) return
+
+    // Refresh bank details status every 30 seconds while on dashboard
+    const intervalId = setInterval(() => {
+      refreshBankDetailsStatus()
+    }, 30000)
+
+    // Refresh when user returns to the tab
+    const handleFocus = () => {
+      refreshBankDetailsStatus()
+    }
+
+    window.addEventListener('focus', handleFocus)
+
+    // Initial check
+    refreshBankDetailsStatus()
+
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [currentProviderId, refreshBankDetailsStatus])
 
   const fetchBookings = async () => {
     try {
@@ -148,14 +252,58 @@ export function ProviderDashboardContent() {
 
   // Confirm action dialog
   const confirmAction = (booking: Booking, action: string) => {
-    setSelectedBooking(booking)
-    setSelectedAction(action)
-    setShowConfirmDialog(true)
+    if (action === "complete") {
+      setSelectedBooking(booking)
+      setShowCompletionModal(true)
+    } else {
+      setSelectedBooking(booking)
+      setSelectedAction(action)
+      setShowConfirmDialog(true)
+    }
+  }
+
+  // Handle job completion submission
+  const handleJobCompletion = async (photos: string[], notes: string) => {
+    if (!selectedBooking) return
+    
+    setProcessingAction(true)
+    try {
+      const response = await fetch(`/api/book-service/${selectedBooking.id}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          photos: photos || [], 
+          notes: notes || '' 
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        showToast.success(data.message || "Job completed successfully")
+        setShowCompletionModal(false)
+        setSelectedBooking(null)
+        fetchBookings() // Refresh data
+      } else {
+        await handleApiError(response, "Failed to complete job")
+      }
+    } catch (error) {
+      console.error("Job completion error:", error)
+      showToast.error("Network error. Please try again.")
+    } finally {
+      setProcessingAction(false)
+    }
   }
 
   // Filter bookings
   const filteredBookings = bookings.filter(booking => {
-    const matchesFilter = selectedFilter === "all" || booking.status === selectedFilter.toUpperCase()
+    let matchesFilter = true
+    if (selectedFilter !== "all") {
+      if (selectedFilter === "pending_execution") {
+        matchesFilter = booking.status === "PENDING_EXECUTION"
+      } else {
+        matchesFilter = booking.status === selectedFilter.toUpperCase()
+      }
+    }
     const matchesSearch = booking.service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          booking.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          booking.address.toLowerCase().includes(searchTerm.toLowerCase())
@@ -165,6 +313,7 @@ export function ProviderDashboardContent() {
   // Group bookings by status
   const pendingBookings = filteredBookings.filter(b => b.status === "PENDING")
   const confirmedBookings = filteredBookings.filter(b => b.status === "CONFIRMED")
+  const pendingExecutionBookings = filteredBookings.filter(b => b.status === "PENDING_EXECUTION")
   const inProgressBookings = filteredBookings.filter(b => b.status === "IN_PROGRESS")
   const completedBookings = filteredBookings.filter(b => b.status === "COMPLETED")
 
@@ -235,12 +384,119 @@ export function ProviderDashboardContent() {
                   <Users className="w-5 h-5 mr-2" />
                   View Profile
                 </Button>
+                <Button variant="outline" size="lg" asChild>
+                  <Link href="/provider/bank-details">
+                    <Banknote className="w-5 h-5 mr-2" />
+                    Bank Details
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>
 
+          {/* Bank Details Reminder Banner */}
+          {!hasBankDetails && currentProviderId && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                      <Banknote className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-amber-900">
+                        Complete Your Payment Setup
+                      </h3>
+                      <p className="text-sm text-amber-800">
+                        Set up your bank account details to receive payments from completed jobs
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshBankDetailsStatus}
+                      disabled={isCheckingBankDetails}
+                      className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                    >
+                      {isCheckingBankDetails ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                      )}
+                      {isCheckingBankDetails ? "Checking..." : "Refresh"}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      asChild
+                    >
+                      <Link href="/provider/bank-details">
+                        Set Up Now
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message for Bank Details */}
+          {hasBankDetails && currentProviderId && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-green-900">
+                        Payment Setup Complete
+                      </h3>
+                      <p className="text-sm text-green-800">
+                        Your bank details are configured and ready for receiving payments
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshBankDetailsStatus}
+                      disabled={isCheckingBankDetails}
+                      className="text-green-700 border-green-300 hover:bg-green-100"
+                    >
+                      {isCheckingBankDetails ? (
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                      )}
+                      {isCheckingBankDetails ? "Checking..." : "Refresh"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <ProviderStatsCards stats={stats} />
+
+          {/* Bank Details Section */}
+          {currentProviderId && (
+            <div className="mb-8">
+              <BankDetailsForm 
+                providerId={currentProviderId} 
+                onSuccess={() => {
+                  // Refresh data if needed
+                  refreshBankDetailsStatus() // Use the new function
+                  showToast.success('Bank details updated successfully! You can now receive payments.')
+                }}
+              />
+            </div>
+          )}
 
           {/* Earnings Chart */}
           <div className="mb-8">
@@ -260,6 +516,7 @@ export function ProviderDashboardContent() {
                   <option value="all">All Bookings</option>
                   <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
+                  <option value="pending_execution">Pending Execution</option>
                   <option value="in_progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>
@@ -332,6 +589,36 @@ export function ProviderDashboardContent() {
                         onMessage={() => {/* TODO: Implement messaging */}}
                         onCall={() => {/* TODO: Implement calling */}}
                         showStartButton={!!booking.payment}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pending Execution Bookings */}
+            {pendingExecutionBookings.length > 0 && (
+              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Play className="w-5 h-5 text-purple-600" />
+                    <span>Pending Execution ({pendingExecutionBookings.length})</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Jobs that have payment completed and are waiting for the provider to start.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {pendingExecutionBookings.map((booking) => (
+                      <ProviderBookingCard
+                        key={booking.id}
+                        booking={booking}
+                        onStart={() => confirmAction(booking, "start")}
+                        onViewDetails={() => {/* TODO: Implement details modal */}}
+                        onMessage={() => {/* TODO: Implement messaging */}}
+                        onCall={() => {/* TODO: Implement calling */}}
+                        showStartButton={true}
                       />
                     ))}
                   </div>
@@ -453,6 +740,69 @@ export function ProviderDashboardContent() {
         loadingText="Processing..."
         isLoading={processingAction}
       />
+
+      {/* Job Completion Modal */}
+      {showCompletionModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Complete Job</h3>
+            <p className="text-gray-600 mb-4">
+              Please provide proof of job completion for {selectedBooking.service.name}
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Photos (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter photo URLs (comma separated)"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  onChange={(e) => {
+                    const urls = e.target.value.split(',').map(url => url.trim()).filter(url => url)
+                    setCompletionData(prev => ({ ...prev, photos: urls }))
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter photo URLs separated by commas (optional)
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes (optional)
+                </label>
+                <textarea
+                  placeholder="Add any notes about the completed job..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 h-20"
+                  onChange={(e) => setCompletionData(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false)
+                  setSelectedBooking(null)
+                  setCompletionData({ photos: [], notes: '' })
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleJobCompletion(completionData.photos, completionData.notes)}
+                disabled={processingAction}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processingAction ? "Completing..." : "Complete Job"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

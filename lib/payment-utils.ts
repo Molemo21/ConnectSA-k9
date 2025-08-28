@@ -5,21 +5,38 @@ export interface PaymentResult {
   message: string
   bookingStatus?: string
   error?: string
+  authorizationUrl?: string
+  shouldRedirect?: boolean
 }
 
 export async function processPayment(bookingId: string): Promise<PaymentResult> {
   try {
     const response = await fetch(`/api/book-service/${bookingId}/pay`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callbackUrl: `${window.location.origin}/dashboard?payment=success&booking=${bookingId}`
+      })
     })
     
     if (response.ok) {
       const data = await response.json()
+      
+      // If we get an authorization URL, prepare for redirect to Paystack
+      if (data.authorizationUrl) {
+        return {
+          success: true,
+          message: "Payment gateway ready. Redirecting to complete payment...",
+          bookingStatus: "CONFIRMED", // Keep as CONFIRMED until payment is actually completed
+          authorizationUrl: data.authorizationUrl,
+          shouldRedirect: true
+        }
+      }
+      
       return {
         success: true,
         message: data.message || "Payment processed successfully!",
-        bookingStatus: "CONFIRMED" // Keep as CONFIRMED, not PAID
+        bookingStatus: "PENDING_EXECUTION"
       }
     } else {
       const errorData = await response.json()
@@ -28,7 +45,7 @@ export async function processPayment(bookingId: string): Promise<PaymentResult> 
         return {
           success: true,
           message: "Payment has already been processed for this booking",
-          bookingStatus: "CONFIRMED" // Keep as CONFIRMED, not PAID
+          bookingStatus: "PENDING_EXECUTION"
         }
       } else {
         return {
@@ -50,13 +67,36 @@ export async function processPayment(bookingId: string): Promise<PaymentResult> 
 
 export function handlePaymentResult(result: PaymentResult, onStatusChange?: (bookingId: string, status: string) => void, bookingId?: string) {
   if (result.success) {
-    showToast.success(result.message)
-    // Don't change the booking status - it should remain CONFIRMED
-    // The payment flag will be updated via the API response
+    if (result.shouldRedirect && result.authorizationUrl) {
+      // Show success message and redirect to payment gateway
+      showToast.success(result.message)
+      
+      // Update the current page to show payment is being processed
+      if (onStatusChange && bookingId) {
+        onStatusChange(bookingId, "CONFIRMED") // Keep as CONFIRMED until payment completes
+      }
+      
+      // Redirect to payment gateway in the same tab for better UX
+      setTimeout(() => {
+        try {
+          // Redirect to payment gateway
+          window.location.href = result.authorizationUrl
+        } catch (error) {
+          console.error("Redirect failed, opening in new tab:", error)
+          // Fallback to new tab if redirect fails
+          window.open(result.authorizationUrl, '_blank', 'noopener,noreferrer')
+        }
+      }, 1000)
+    } else {
+      // Regular success case (no redirect needed)
+      showToast.success(result.message)
+      if (result.bookingStatus && onStatusChange && bookingId) {
+        onStatusChange(bookingId, result.bookingStatus)
+      }
+    }
   } else {
     if (result.error === "Payment already exists for this booking") {
       showToast.warning(result.message)
-      // Don't change the booking status - it should remain CONFIRMED
     } else {
       showToast.error(result.message)
     }

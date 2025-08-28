@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const bookingSchema = z.object({
-  serviceId: z.string().uuid(),
+  serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
   date: z.string(), // ISO date string
   time: z.string(), // e.g. "14:00"
   address: z.string().min(1),

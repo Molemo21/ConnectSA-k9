@@ -5,8 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BrandHeaderServer } from "@/components/ui/brand-header-server"
-import { Users, Briefcase, Calendar, TrendingUp, AlertTriangle, CheckCircle, Clock, Star } from "lucide-react"
+import { Users, Briefcase, Calendar, TrendingUp, AlertTriangle, CheckCircle, Clock, Star, DollarSign, BarChart3, RefreshCw, Loader2, Shield, Zap, Activity } from "lucide-react"
 import ProviderList from '@/components/admin/provider-list'
+import AdminPaymentManagement from '@/components/admin/admin-payment-management'
+import AdminBookingOverview from '@/components/admin/admin-booking-overview'
+import AdminSystemHealth from '@/components/admin/admin-system-health'
 
 export default async function AdminDashboard() {
   const user = await getCurrentUser()
@@ -19,38 +22,68 @@ export default async function AdminDashboard() {
     redirect("/dashboard")
   }
 
-  // Fetch admin stats
+  // Fetch comprehensive admin stats
   const [
     totalUsers,
     totalProviders,
     pendingProviders,
     totalBookings,
     completedBookings,
+    cancelledBookings,
     totalRevenue,
-    averageRating
+    pendingRevenue,
+    escrowRevenue,
+    averageRating,
+    totalPayments,
+    pendingPayments,
+    escrowPayments,
+    completedPayments,
+    failedPayments,
+    totalPayouts,
+    pendingPayouts,
+    completedPayouts
   ] = await Promise.all([
     prisma.user.count({ where: { role: "CLIENT" } }),
     prisma.provider.count(),
     prisma.provider.count({ where: { status: "PENDING" } }),
     prisma.booking.count(),
     prisma.booking.count({ where: { status: "COMPLETED" } }),
+    prisma.booking.count({ where: { status: "CANCELLED" } }),
     prisma.payment.aggregate({
       _sum: { amount: true },
-      where: { status: "completed" }
+      where: { status: "RELEASED" }
+    }),
+    prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: { status: "PENDING" }
+    }),
+    prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: { status: "ESCROW" }
     }),
     prisma.review.aggregate({
       _avg: { rating: true }
-    })
+    }),
+    prisma.payment.count(),
+    prisma.payment.count({ where: { status: "PENDING" } }),
+    prisma.payment.count({ where: { status: "ESCROW" } }),
+    prisma.payment.count({ where: { status: "RELEASED" } }),
+    prisma.payment.count({ where: { status: "FAILED" } }),
+    prisma.payout.count(),
+    prisma.payout.count({ where: { status: "PENDING" } }),
+    prisma.payout.count({ where: { status: "COMPLETED" } })
   ])
 
   const revenue = totalRevenue._sum.amount || 0
+  const pendingRev = pendingRevenue._sum.amount || 0
+  const escrowRev = escrowRevenue._sum.amount || 0
   const avgRating = averageRating._avg.rating || 0
 
   const stats = [
     {
       title: "Total Users",
       value: totalUsers.toLocaleString(),
-      icon: Users,
+      icon: "Users",
       color: "text-blue-600",
       bgColor: "bg-blue-100",
       change: "+12%",
@@ -59,7 +92,7 @@ export default async function AdminDashboard() {
     {
       title: "Active Providers",
       value: totalProviders.toLocaleString(),
-      icon: Briefcase,
+      icon: "Briefcase",
       color: "text-green-600",
       bgColor: "bg-green-100",
       change: "+8%",
@@ -68,7 +101,7 @@ export default async function AdminDashboard() {
     {
       title: "Pending Approvals",
       value: pendingProviders.toLocaleString(),
-      icon: Clock,
+      icon: "Clock",
       color: "text-orange-600",
       bgColor: "bg-orange-100",
       change: "3 new",
@@ -77,7 +110,7 @@ export default async function AdminDashboard() {
     {
       title: "Total Bookings",
       value: totalBookings.toLocaleString(),
-      icon: Calendar,
+      icon: "Calendar",
       color: "text-purple-600",
       bgColor: "bg-purple-100",
       change: "+15%",
@@ -86,7 +119,7 @@ export default async function AdminDashboard() {
     {
       title: "Completed Jobs",
       value: completedBookings.toLocaleString(),
-      icon: CheckCircle,
+      icon: "CheckCircle",
       color: "text-green-600",
       bgColor: "bg-green-100",
       change: "+20%",
@@ -95,11 +128,77 @@ export default async function AdminDashboard() {
     {
       title: "Total Revenue",
       value: `R${revenue.toLocaleString()}`,
-      icon: TrendingUp,
+      icon: "TrendingUp",
       color: "text-emerald-600",
       bgColor: "bg-emerald-100",
       change: "+25%",
       changeType: "positive"
+    }
+  ]
+
+  const paymentStats = [
+    {
+      title: "Total Payments",
+      value: totalPayments.toLocaleString(),
+      icon: "DollarSign",
+      color: "text-blue-600",
+      bgColor: "bg-blue-100"
+    },
+    {
+      title: "Pending Payments",
+      value: pendingPayments.toLocaleString(),
+      icon: "Clock",
+      color: "text-orange-600",
+      bgColor: "bg-orange-100"
+    },
+    {
+      title: "Escrow Payments",
+      value: escrowPayments.toLocaleString(),
+      icon: "Shield",
+      color: "text-purple-600",
+      bgColor: "bg-purple-100"
+    },
+    {
+      title: "Completed Payments",
+      value: completedPayments.toLocaleString(),
+      icon: "CheckCircle",
+      color: "text-green-600",
+      bgColor: "bg-green-100"
+    },
+    {
+      title: "Failed Payments",
+      value: failedPayments.toLocaleString(),
+      icon: "AlertTriangle",
+      color: "text-red-600",
+      bgColor: "bg-red-100"
+    },
+    {
+      title: "Total Payouts",
+      value: totalPayouts.toLocaleString(),
+      icon: "Zap",
+      color: "text-indigo-600",
+      bgColor: "bg-indigo-100"
+    }
+  ]
+
+  const revenueBreakdown = [
+    {
+      title: "Released Revenue",
+      value: `R${revenue.toLocaleString()}`,
+      color: "text-green-600",
+      bgColor: "bg-green-100"
+    },
+    {
+      title: "Pending Revenue",
+      value: `R${pendingRev.toLocaleString()}`,
+      color: "text-orange-600",
+      bgColor: "bg-orange-100"
+    },
+    {
+      title: "Escrow Revenue",
+      value: `R${escrowRev.toLocaleString()}`,
+      color: "text-purple-600",
+      bgColor: "bg-purple-100"
     }
   ]
 
@@ -112,18 +211,29 @@ export default async function AdminDashboard() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-            <p className="text-xl text-gray-600">Monitor and manage your platform</p>
+            <p className="text-xl text-gray-600">Monitor and manage your platform with comprehensive oversight</p>
           </div>
 
-          {/* Stats Grid */}
+          {/* Main Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {stats.map((stat, index) => {
-              const Icon = stat.icon
+              const getIcon = (iconName: string) => {
+                switch (iconName) {
+                  case "Users": return Users;
+                  case "Briefcase": return Briefcase;
+                  case "Clock": return Clock;
+                  case "Calendar": return Calendar;
+                  case "CheckCircle": return CheckCircle;
+                  case "TrendingUp": return TrendingUp;
+                  default: return Users;
+                }
+              };
+              const Icon = getIcon(stat.icon);
               return (
                 <Card key={index} className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-    <div>
+                      <div>
                         <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
                         <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                         <div className="flex items-center mt-2">
@@ -143,6 +253,18 @@ export default async function AdminDashboard() {
                 </Card>
               )
             })}
+          </div>
+
+          {/* Payment Management Section */}
+          <div className="mb-8">
+            <AdminPaymentManagement 
+              paymentStats={paymentStats}
+              revenueBreakdown={revenueBreakdown}
+              pendingPayments={pendingPayments}
+              escrowPayments={escrowPayments}
+              totalPayouts={totalPayouts}
+              pendingPayouts={pendingPayouts}
+            />
           </div>
 
           {/* Quick Actions */}
@@ -195,6 +317,12 @@ export default async function AdminDashboard() {
                       {totalBookings > 0 ? Math.round((completedBookings / totalBookings) * 100) : 0}%
                     </span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Cancellation Rate</span>
+                    <span className="font-medium">
+                      {totalBookings > 0 ? Math.round((cancelledBookings / totalBookings) * 100) : 0}%
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -216,12 +344,36 @@ export default async function AdminDashboard() {
                     <span className="font-medium">R{revenue.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">This Month</span>
-                    <span className="font-medium text-green-600">+25%</span>
+                    <span className="text-sm text-gray-600">Pending Revenue</span>
+                    <span className="font-medium text-orange-600">R{pendingRev.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Escrow Revenue</span>
+                    <span className="font-medium text-purple-600">R{escrowRev.toLocaleString()}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* System Health Monitoring */}
+          <div className="mb-8">
+            <AdminSystemHealth 
+              totalBookings={totalBookings}
+              pendingPayments={pendingPayments}
+              escrowPayments={escrowPayments}
+              pendingPayouts={pendingPayouts}
+            />
+          </div>
+
+          {/* Booking Overview */}
+          <div className="mb-8">
+            <AdminBookingOverview 
+              totalBookings={totalBookings}
+              completedBookings={completedBookings}
+              cancelledBookings={cancelledBookings}
+              totalRevenue={revenue}
+            />
           </div>
 
           {/* Provider Management */}
@@ -233,7 +385,7 @@ export default async function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-      <ProviderList />
+              <ProviderList />
             </CardContent>
           </Card>
         </div>

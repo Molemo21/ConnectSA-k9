@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserSafe } from "@/lib/auth"
-import { checkDatabaseConnection } from "@/lib/db-connection"
+import { healthCheck } from "@/lib/db-connection"
 
 export async function GET(request: NextRequest) {
   try {
     const startTime = Date.now()
     
     // Check database connection
-    const dbConnected = await checkDatabaseConnection()
+    const dbConnected = await healthCheck()
     const dbLatency = Date.now() - startTime
     
     // Check authentication

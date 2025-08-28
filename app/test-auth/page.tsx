@@ -17,7 +17,7 @@ export default function TestAuthPage() {
       console.log("Auth test result:", result)
     } catch (error) {
       console.error("Auth test error:", error)
-      setAuthResult({ error: error.message })
+      setAuthResult({ error: error instanceof Error ? error.message : 'Unknown error' })
     } finally {
       setLoading(false)
     }

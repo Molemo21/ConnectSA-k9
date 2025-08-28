@@ -3,15 +3,16 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
-import { User, Briefcase, FileText, Upload, CheckCircle, AlertCircle, MapPin, DollarSign, ArrowRight, ArrowLeft, Loader2 } from "lucide-react"
+import { User, Briefcase, FileText, Upload, CheckCircle, AlertCircle, MapPin, DollarSign, ArrowRight, ArrowLeft, Loader2, Save } from "lucide-react"
 import type { AuthUser } from "@/lib/auth"
 import type { Provider } from "@prisma/client"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import { useFormValidation } from "@/hooks/use-form-validation"
+import { MobileInputField, MobileTextareaField } from "@/components/ui/mobile-form-field"
+import { MobileServiceSelector } from "@/components/ui/mobile-service-selector"
 
 interface ProviderOnboardingFormProps {
   user: AuthUser
@@ -55,12 +56,58 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
 
+  // Form validation rules
+  const validationRules = {
+    businessName: { required: true, minLength: 2, maxLength: 100 },
+    description: { required: true, minLength: 20, maxLength: 500 },
+    experience: { required: true, min: 0, max: 50 },
+    hourlyRate: { required: true, min: 1, max: 10000 },
+    location: { required: true, minLength: 2, maxLength: 100 },
+    selectedServices: { 
+      required: true, 
+      custom: (value: string[]) => value.length === 0 ? "At least one service must be selected" : null 
+    }
+  }
+
+  // Form validation
+  const {
+    errors,
+    touched,
+    isValid,
+    getFieldError,
+    hasFieldError,
+    markTouched,
+    markAllTouched
+  } = useFormValidation(formData, validationRules, 1000) // 1 second debounce
+
+  // Auto-save functionality
+  const { loadFromLocalStorage, clearLocalStorage, manualSave, isSaving } = useAutoSave({
+    data: formData,
+    onSave: async (data) => {
+      // Save to API endpoint (draft mode)
+      const response = await fetch("/api/provider/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, isDraft: true }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save draft')
+      }
+    },
+    saveInterval: 3000, // Save every 3 seconds
+    localStorageKey: `provider-onboarding-${user.id}`,
+    enableLocalStorage: true
+  })
+
   useEffect(() => {
     async function fetchServices() {
       setLoadingServices(true);
       setServicesError(null);
       try {
-        const res = await fetch("/api/services");
+        const res = await fetch("/api/services", {
+          credentials: 'include'
+        });
         if (!res.ok) throw new Error("Failed to fetch services");
         const data = await res.json();
         setAvailableServices(data);
@@ -73,11 +120,40 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
     fetchServices();
   }, []);
 
+  // Load saved draft on mount
+  useEffect(() => {
+    const savedDraft = loadFromLocalStorage()
+    if (savedDraft && !provider) {
+      setFormData(prev => ({ ...prev, ...savedDraft }))
+      toast({
+        title: "Draft loaded",
+        description: "Your previous progress has been restored",
+        duration: 3000,
+      })
+    }
+  }, [loadFromLocalStorage, provider, toast])
+
   const totalSteps = 4
   const progress = (currentStep / totalSteps) * 100
 
   const handleNext = () => {
     if (readOnly) return;
+    
+    // Mark current step fields as touched
+    const currentStepFields = getCurrentStepFields()
+    currentStepFields.forEach(field => markTouched(field))
+    
+    // Check if current step is valid
+    const currentStepErrors = currentStepFields.filter(field => hasFieldError(field))
+    if (currentStepErrors.length > 0) {
+      toast({
+        title: "Please fix errors",
+        description: "Please complete all required fields before continuing",
+        variant: "destructive",
+      })
+      return
+    }
+    
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1)
     }
@@ -90,8 +166,30 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
     }
   }
 
+  const getCurrentStepFields = () => {
+    switch (currentStep) {
+      case 1: return ['businessName', 'description', 'experience', 'hourlyRate']
+      case 2: return ['selectedServices']
+      case 3: return ['location']
+      default: return []
+    }
+  }
+
   const handleSubmit = async () => {
     if (readOnly) return;
+    
+    // Mark all fields as touched to show all errors
+    markAllTouched()
+    
+    if (!isValid) {
+      toast({
+        title: "Please fix errors",
+        description: "Please complete all required fields before submitting",
+        variant: "destructive",
+      })
+      return
+    }
+    
     setIsLoading(true)
     try {
       const response = await fetch("/api/provider/onboarding", {
@@ -101,6 +199,9 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
       })
 
       if (response.ok) {
+        // Clear draft after successful submission
+        clearLocalStorage()
+        
         toast({
           title: "Profile submitted!",
           description: "Your profile has been submitted for review. We'll notify you once approved.",
@@ -161,60 +262,60 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="businessName" className="text-sm font-medium">Business Name *</Label>
-                <Input
-                  id="businessName"
-                  value={formData.businessName}
-                  onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                  placeholder="Enter your business name"
-                  disabled={readOnly}
-                  required
-                />
-              </div>
+              <MobileInputField
+                label="Business Name *"
+                id="businessName"
+                value={formData.businessName}
+                onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                error={getFieldError('businessName')}
+                touched={touched.businessName}
+                placeholder="Enter your business name"
+                disabled={readOnly}
+                required
+              />
 
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium">Business Description *</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe your services, experience, and what makes you unique..."
-                  rows={4}
-                  disabled={readOnly}
-                  required
-                />
-              </div>
+              <MobileTextareaField
+                label="Business Description *"
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                error={getFieldError('description')}
+                touched={touched.description}
+                placeholder="Describe your services, experience, and what makes you unique..."
+                rows={4}
+                disabled={readOnly}
+                required
+              />
 
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="experience" className="text-sm font-medium">Years of Experience *</Label>
-                  <Input
-                    id="experience"
-                    type="number"
-                    value={formData.experience}
-                    onChange={(e) => setFormData({ ...formData, experience: parseInt(e.target.value) || 0 })}
-                    placeholder="0"
-                    min="0"
-                    disabled={readOnly}
-                    required
-                  />
-                </div>
+                <MobileInputField
+                  label="Years of Experience *"
+                  id="experience"
+                  type="number"
+                  value={formData.experience}
+                  onChange={(e) => setFormData({ ...formData, experience: parseInt(e.target.value) || 0 })}
+                  error={getFieldError('experience')}
+                  touched={touched.experience}
+                  placeholder="0"
+                  min="0"
+                  disabled={readOnly}
+                  required
+                />
 
-                <div className="space-y-2">
-                  <Label htmlFor="hourlyRate" className="text-sm font-medium">Hourly Rate (R) *</Label>
-                  <Input
-                    id="hourlyRate"
-                    type="number"
-                    value={formData.hourlyRate}
-                    onChange={(e) => setFormData({ ...formData, hourlyRate: parseFloat(e.target.value) || 0 })}
-                    placeholder="150"
-                    min="0"
-                    step="0.01"
-                    disabled={readOnly}
-                    required
-                  />
-                </div>
+                <MobileInputField
+                  label="Hourly Rate (R) *"
+                  id="hourlyRate"
+                  type="number"
+                  value={formData.hourlyRate}
+                  onChange={(e) => setFormData({ ...formData, hourlyRate: parseFloat(e.target.value) || 0 })}
+                  error={getFieldError('hourlyRate')}
+                  touched={touched.hourlyRate}
+                  placeholder="150"
+                  min="0"
+                  step="0.01"
+                  disabled={readOnly}
+                  required
+                />
               </div>
             </div>
           </div>
@@ -243,35 +344,13 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
                 {servicesError}
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {availableServices.map((service) => (
-                  <div
-                    key={service.id}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      formData.selectedServices.includes(service.id)
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                    onClick={() => toggleService(service.id)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        formData.selectedServices.includes(service.id)
-                          ? "border-blue-500 bg-blue-500"
-                          : "border-gray-300"
-                      }`}>
-                        {formData.selectedServices.includes(service.id) && (
-                          <CheckCircle className="w-3 h-3 text-white" />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">{service.name}</h4>
-                        <p className="text-sm text-gray-600">{service.category}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <MobileServiceSelector
+                services={availableServices}
+                selectedServices={formData.selectedServices}
+                onServiceToggle={toggleService}
+                maxSelections={20}
+                disabled={readOnly}
+              />
             )}
           </div>
         )
@@ -288,20 +367,20 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="location" className="text-sm font-medium">Service Location *</Label>
-                <Input
-                  id="location"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="e.g., Johannesburg, Pretoria, Cape Town"
-                  disabled={readOnly}
-                  required
-                />
-                <p className="text-xs text-gray-500">
-                  Enter the city or area where you provide services
-                </p>
-              </div>
+              <MobileInputField
+                label="Service Location *"
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                error={getFieldError('location')}
+                touched={touched.location}
+                placeholder="e.g., Johannesburg, Pretoria, Cape Town"
+                disabled={readOnly}
+                required
+              />
+              <p className="text-xs text-gray-500">
+                Enter the city or area where you provide services
+              </p>
             </div>
           </div>
         )
@@ -362,9 +441,39 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700">Step {currentStep} of {totalSteps}</span>
-          <span className="text-sm text-gray-500">{Math.round(progress)}% Complete</span>
+          <div className="flex items-center space-x-4">
+            {/* Auto-save indicator */}
+            <div className="flex items-center space-x-2">
+              {isSaving ? (
+                <div className="flex items-center space-x-2 text-sm text-blue-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Saving...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 text-sm text-green-600">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Auto-saved</span>
+                </div>
+              )}
+            </div>
+            <span className="text-sm text-gray-500">{Math.round(progress)}% Complete</span>
+          </div>
         </div>
         <Progress value={progress} className="h-2" />
+      </div>
+
+      {/* Manual Save Button */}
+      <div className="mb-6 flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={manualSave}
+          disabled={isSaving || readOnly}
+          className="flex items-center space-x-2"
+        >
+          <Save className="w-4 h-4" />
+          <span>{isSaving ? 'Saving...' : 'Save Progress'}</span>
+        </Button>
       </div>
 
       {/* Feedback Message */}

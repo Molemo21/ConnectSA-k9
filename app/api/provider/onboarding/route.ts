@@ -10,6 +10,7 @@ const onboardingSchema = z.object({
   hourlyRate: z.number().min(1, "Hourly rate must be greater than 0"),
   location: z.string().min(1, "Location is required"),
   selectedServices: z.array(z.string()).min(1, "At least one service must be selected"),
+  isDraft: z.boolean().optional().default(false), // Add draft support
 })
 
 export async function POST(request: NextRequest) {
@@ -45,13 +46,16 @@ export async function POST(request: NextRequest) {
           experience: validatedData.experience,
           hourlyRate: validatedData.hourlyRate,
           location: validatedData.location,
-          status: "INCOMPLETE", // or "PENDING" if all required fields are filled
+          status: validatedData.isDraft ? "INCOMPLETE" : (isComplete ? "PENDING" : "INCOMPLETE"),
         },
       });
     }
 
     let newStatus = provider.status;
-    if (provider.status === "REJECTED") {
+    if (validatedData.isDraft) {
+      // For drafts, keep current status or set to INCOMPLETE
+      newStatus = provider.status === "PENDING" ? "PENDING" : "INCOMPLETE";
+    } else if (provider.status === "REJECTED") {
       newStatus = isComplete ? "PENDING" : "INCOMPLETE";
     } else if (isComplete) {
       newStatus = "PENDING";
@@ -87,7 +91,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ message: "Profile submitted successfully" })
+    return NextResponse.json({ 
+      message: validatedData.isDraft ? "Draft saved successfully" : "Profile submitted successfully",
+      isDraft: validatedData.isDraft,
+      status: newStatus
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0]?.message || "Invalid input" }, { status: 400 })

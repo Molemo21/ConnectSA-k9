@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const discoverProvidersSchema = z.object({
-  serviceId: z.string().uuid(),
+  serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
   date: z.string(), // ISO date string
   time: z.string(), // e.g. "14:00"
   address: z.string().min(1),
@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
     // Log the incoming request for debugging
     console.log('Discover providers request body:', JSON.stringify(body, null, 2));
     
-    // Validate UUID format before Zod validation
-    if (body.serviceId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.serviceId)) {
-      console.error('Invalid UUID format received:', body.serviceId);
+    // Validate serviceId format (Prisma custom ID format) before Zod validation
+    if (body.serviceId && !/^[a-z0-9]{25}$/i.test(body.serviceId)) {
+      console.error('Invalid serviceId format received:', body.serviceId);
       return NextResponse.json({ 
-        error: `Invalid serviceId format: ${body.serviceId}. Expected UUID format.` 
+        error: `Invalid serviceId format: ${body.serviceId}. Expected 25 alphanumeric characters.` 
       }, { status: 400 });
     }
 
@@ -39,14 +39,8 @@ export async function POST(request: NextRequest) {
       address: validated.address
     });
 
-    // Map the serviceId back to the actual database ID if it's one of our mapped IDs
-    let actualServiceId = validated.serviceId;
-    if (validated.serviceId === '123e4567-e89b-12d3-a456-426614174000') {
-      actualServiceId = 'haircut-service';
-    } else if (validated.serviceId === '987fcdeb-51a2-43d1-9f12-345678901234') {
-      actualServiceId = 'garden-service';
-    }
-
+    // Use the serviceId directly (it's already the correct Prisma ID format)
+    const actualServiceId = validated.serviceId;
     console.log('Using service ID:', actualServiceId);
 
     // Find available providers for the service

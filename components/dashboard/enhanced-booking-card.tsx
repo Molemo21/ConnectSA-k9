@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle } from "lucide-react"
+import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
@@ -35,17 +35,20 @@ interface Booking {
     id: string
     amount: number
     status: string
+    createdAt?: string // Add creation date for payment
   } | null
   review?: {
     id: string
     rating: number
     comment?: string | null
   } | null
+  createdAt: Date // Add creation date
 }
 
 interface EnhancedBookingCardProps {
   booking: Booking
   onStatusChange?: (bookingId: string, newStatus: string) => void
+  onRefresh?: (bookingId: string) => Promise<void>
 }
 
 const getStatusInfo = (status: string, hasPayment?: boolean) => {
@@ -72,6 +75,13 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
         icon: CheckCircle,
         description: "Provider has confirmed your booking"
       }
+    case "PENDING_EXECUTION":
+      return {
+        label: "Payment Received",
+        color: "bg-green-100 text-green-800 border-green-200",
+        icon: CheckCircle,
+        description: "Payment completed - funds held in escrow, waiting for execution"
+      }
     case "IN_PROGRESS":
       return {
         label: "In Progress",
@@ -79,12 +89,19 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
         icon: Loader2,
         description: "Provider is working on your service"
       }
+    case "AWAITING_CONFIRMATION":
+      return {
+        label: "Awaiting Confirmation",
+        color: "bg-orange-100 text-orange-800 border-orange-200",
+        icon: AlertCircle,
+        description: "Provider has completed the job. Please confirm completion to release payment."
+      }
     case "COMPLETED":
       return {
         label: "Completed",
         color: "bg-green-100 text-green-800 border-green-200",
         icon: CheckCircle,
-        description: "Service has been completed"
+        description: "Service has been completed and payment released"
       }
     case "CANCELLED":
       return {
@@ -92,6 +109,13 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
         color: "bg-red-100 text-red-800 border-red-200",
         icon: X,
         description: "Booking has been cancelled"
+      }
+    case "DISPUTED":
+      return {
+        label: "Disputed",
+        color: "bg-red-100 text-red-800 border-red-200",
+        icon: AlertTriangle,
+        description: "A dispute has been raised for this booking"
       }
     default:
       return {
@@ -106,28 +130,89 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
 const getTimelineSteps = (status: string, hasPayment?: boolean) => {
   const steps = [
     { id: "booked", label: "Booked", completed: true },
-    { id: "confirmed", label: "Confirmed", completed: ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(status) },
-    { id: "payment", label: "Payment Completed", completed: hasPayment && ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(status) },
-    { id: "in_progress", label: "In Progress", completed: ["IN_PROGRESS", "COMPLETED"].includes(status) },
+    { id: "confirmed", label: "Provider Confirmed", completed: ["CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+    { id: "payment", label: "Payment Processing", completed: hasPayment && ["PENDING_EXECUTION", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+    { id: "in_progress", label: "In Progress", completed: ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+    { id: "awaiting_confirmation", label: "Awaiting Confirmation", completed: ["AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
     { id: "completed", label: "Completed", completed: status === "COMPLETED" }
   ]
   
+  // Handle special cases
   if (status === "CANCELLED") {
     return steps.map(step => ({ ...step, completed: step.id === "booked" }))
+  }
+  
+  if (status === "DISPUTED") {
+    return steps.map(step => ({ ...step, completed: ["booked", "confirmed", "payment"].includes(step.id) }))
   }
   
   return steps
 }
 
-export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBookingCardProps) {
+export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: EnhancedBookingCardProps) {
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
+
+  // Check if booking is recent (created within last 24 hours)
+  const isRecent = () => {
+    if (!booking.createdAt) return false
+    const now = new Date()
+    const created = new Date(booking.createdAt)
+    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60)
+    return hoursDiff < 24
+  }
 
   const statusInfo = getStatusInfo(booking.status, booking.payment)
   const StatusIcon = statusInfo.icon
   const timelineSteps = getTimelineSteps(booking.status, booking.payment)
+  
+  // Enhanced payment status checking with better logic
+  const hasPayment = booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(booking.payment.status)
+  const isPaymentProcessing = booking.payment && ['PENDING'].includes(booking.payment.status)
+  const isPaymentFailed = booking.payment && ['FAILED'].includes(booking.payment.status)
+  const isPaymentInEscrow = booking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)
+
+  // Check if payment is stuck in processing state (more than 8 minutes)
+  const isPaymentStuck = () => {
+    if (!booking.payment || !isPaymentProcessing) return false
+    if (!booking.payment.createdAt) return false
+    
+    const now = new Date()
+    const created = new Date(booking.payment.createdAt)
+    const minutesDiff = (now.getTime() - created.getTime()) / (1000 * 60)
+    
+    // More user-friendly: only show warning after 8 minutes (instead of 5)
+    // This gives more time for normal webhook processing
+    return minutesDiff > 8
+  }
+
+  // Check if payment is taking longer than expected (but not necessarily stuck)
+  const isPaymentDelayed = () => {
+    if (!booking.payment || !isPaymentProcessing) return false
+    if (!booking.payment.createdAt) return false
+    
+    const now = new Date()
+    const created = new Date(booking.payment.createdAt)
+    const minutesDiff = (now.getTime() - created.getTime()) / (1000 * 60)
+    
+    // Show gentle warning after 5 minutes
+    return minutesDiff > 5 && minutesDiff <= 8
+  }
+
+  // Use the provided refresh function instead of making direct API calls
+  const handleCheckStatus = async () => {
+    if (onRefresh) {
+      try {
+        await onRefresh(booking.id)
+        showToast.success("Payment status checked successfully!")
+      } catch (error) {
+        showToast.error("Unable to check payment status. Please try again.")
+      }
+    }
+  }
 
   const handleCancel = async () => {
     try {
@@ -146,23 +231,205 @@ export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBooking
   }
 
   const handlePay = async () => {
+    // Prevent multiple payment attempts
+    if (isProcessingPayment) {
+      showToast.warning("Payment is already being processed. Please wait.")
+      return
+    }
+
     setIsProcessingPayment(true)
+    setPaymentStatus('PENDING')
+    
     try {
       const result = await processPayment(booking.id)
-      handlePaymentResult(result, onStatusChange, booking.id)
-      // Refresh the page or trigger a re-fetch to update the payment state
-      if (result.success) {
-        window.location.reload() // Simple solution for now
+      
+      if (result.success && result.shouldRedirect) {
+        // Payment gateway is ready, user will be redirected
+        showToast.success("Payment gateway opened in new tab. Please complete your payment there.")
+        
+        // Set a timeout to reset processing state if no webhook update
+        setTimeout(() => {
+          if (isPaymentProcessing) {
+            setIsProcessingPayment(false)
+            setPaymentStatus(null)
+            showToast.info("Payment processing timeout. Please check your payment status.")
+          }
+        }, 300000) // 5 minutes timeout
+        
+      } else if (result.success) {
+        // Payment processed without redirect (e.g., already paid)
+        handlePaymentResult(result, onStatusChange, booking.id)
+        setPaymentStatus('COMPLETED')
+        setIsProcessingPayment(false)
+        
+        // Only refresh if payment was actually completed
+        if (result.bookingStatus === "PENDING_EXECUTION") {
+          window.location.reload()
+        }
+      } else {
+        // Payment failed
+        showToast.error(result.message || "Payment failed. Please try again.")
+        setPaymentStatus('FAILED')
+        setIsProcessingPayment(false)
       }
-    } finally {
+    } catch (error) {
+      console.error("Payment error:", error)
+      showToast.error("Network error. Please try again.")
+      setPaymentStatus('FAILED')
       setIsProcessingPayment(false)
     }
   }
 
+  // Enhanced payment status display
+  const renderPaymentStatus = () => {
+    if (isPaymentProcessing && isProcessingPayment) {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+          <span className="text-orange-600 font-medium">Processing Payment...</span>
+        </div>
+      )
+    }
+    
+    if (isPaymentProcessing && isPaymentStuck()) {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="flex items-start space-x-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-amber-800">Payment Status Update Needed</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCheckStatus}
+                  className="text-xs h-6 px-2 border-amber-300 text-amber-700 hover:bg-amber-100"
+                >
+                  Check Status
+                </Button>
+              </div>
+              <p className="text-xs text-amber-700 mb-2">
+                Your payment may have been completed but our system needs to sync. This usually resolves automatically.
+              </p>
+              <div className="text-xs text-amber-600 space-y-1">
+                <p>• <strong>Try this first:</strong> Click "Check Status" above</p>
+                <p>• <strong>If that doesn't work:</strong> Refresh the page</p>
+                <p>• <strong>Still stuck?</strong> Your payment is likely fine - wait 10-15 minutes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (isPaymentProcessing && isPaymentDelayed()) {
+      return (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-start space-x-2">
+            <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium text-blue-800 mb-2 block">Payment Taking Longer Than Expected</span>
+              <p className="text-xs text-blue-700 mb-2">
+                Your payment is still processing. This is normal and may take a few more minutes.
+              </p>
+              <div className="text-xs text-blue-600 space-y-1">
+                <p>• <strong>What's happening:</strong> We're waiting for payment confirmation</p>
+                <p>• <strong>This is normal:</strong> Payments can take 2-8 minutes to process</p>
+                <p>• <strong>No action needed:</strong> Just wait a bit longer</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (isPaymentProcessing) {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <Clock className="w-4 h-4 text-yellow-500" />
+          <span className="text-yellow-600 font-medium">Awaiting Payment Confirmation</span>
+        </div>
+      )
+    }
+    
+    if (isPaymentFailed) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="flex items-start space-x-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-medium text-red-800 mb-2 block">Payment Failed</span>
+              <p className="text-xs text-red-700 mb-2">
+                Your payment couldn't be processed. This is usually temporary.
+              </p>
+              <div className="text-xs text-red-600 space-y-1">
+                <p>• <strong>Try again:</strong> Click "Pay Now" below</p>
+                <p>• <strong>Check:</strong> Your payment method and internet connection</p>
+                <p>• <strong>Contact us:</strong> Only if the issue persists after multiple attempts</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    
+    if (hasPayment) {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <CheckCircle className="w-4 h-4 text-green-500" />
+          <span className="text-green-600 font-medium">Payment Completed</span>
+        </div>
+      )
+    }
+    
+    if (isPaymentInEscrow) {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <DollarSign className="w-4 h-4 text-blue-500" />
+          <span className="text-blue-600 font-medium">Payment in Escrow - Provider Can Start Work</span>
+        </div>
+      )
+    }
+    
+    return null
+  }
+
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
-  const canPay = booking.status === "CONFIRMED" && !booking.payment
-  const hasPayment = booking.payment // Remove the status check, only check payment flag
+  const canPay = (booking.status === "CONFIRMED") && !booking.payment
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
+  const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
+  const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)
+  
+  // Prevent payment if already processing or stuck
+  const isPaymentInProgress = isProcessingPayment || isPaymentStuck()
+
+  const handleConfirmCompletion = async () => {
+    try {
+      const response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        showToast.success(data.message || "Job completion confirmed! Payment will be released to provider.")
+        onStatusChange?.(booking.id, "COMPLETED")
+        // Refresh the page to update the status
+        window.location.reload()
+      } else {
+        const errorData = await response.json()
+        showToast.error(errorData.error || "Failed to confirm completion")
+      }
+    } catch (error) {
+      console.error("Confirm completion error:", error)
+      showToast.error("Network error. Please try again.")
+    }
+  }
+
+  const handleDispute = async () => {
+    // This will open the dispute modal in the actions modal
+    setShowActionsModal(true)
+  }
 
   return (
     <>
@@ -175,7 +442,14 @@ export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBooking
                 <Calendar className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900 text-lg">{booking.service.name}</h3>
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-semibold text-gray-900 text-lg">{booking.service.name}</h3>
+                  {isRecent() && (
+                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                      New
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600">{booking.service.category}</p>
               </div>
             </div>
@@ -216,6 +490,9 @@ export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBooking
             </div>
           </div>
 
+          {/* Payment Status Display */}
+          {renderPaymentStatus()}
+          
           {/* Details */}
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div className="space-y-2">
@@ -234,6 +511,18 @@ export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBooking
                   })}
                 </span>
               </div>
+              {booking.createdAt && (
+                <div className="flex items-center space-x-2 text-sm">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700">
+                    Created: {new Date(booking.createdAt).toLocaleDateString()} at{' '}
+                    {new Date(booking.createdAt).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </span>
+                </div>
+              )}
               <div className="flex items-start space-x-2 text-sm">
                 <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
                 <span className="text-gray-700">{booking.address}</span>
@@ -244,12 +533,6 @@ export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBooking
                 <span className="text-gray-600">Amount:</span>
                 <span className="font-semibold text-gray-900">R{booking.totalAmount.toFixed(2)}</span>
               </div>
-              {hasPayment && (
-                <div className="flex items-center space-x-2 text-sm">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-green-600 font-medium">Payment Completed</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -299,21 +582,51 @@ export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBooking
                   size="sm" 
                   onClick={handlePay} 
                   className="bg-green-600 hover:bg-green-700 pay-button"
-                  disabled={isProcessingPayment}
+                  disabled={isPaymentInProgress}
                 >
-                  {isProcessingPayment ? (
+                  {isPaymentInProgress ? (
                     <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                   ) : (
                     <DollarSign className="w-4 h-4 mr-1" />
                   )}
-                  {isProcessingPayment ? "Processing..." : "Pay Now"}
+                  {isPaymentInProgress ? "Processing..." : "Pay Now"}
+                </Button>
+              )}
+              
+              {canConfirmCompletion && (
+                <Button 
+                  size="sm" 
+                  onClick={handleConfirmCompletion} 
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  Confirm Completion
+                </Button>
+              )}
+              
+              {canDispute && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleDispute}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <AlertTriangle className="w-4 h-4 mr-1" />
+                  Dispute
                 </Button>
               )}
               
               {hasPayment && (
                 <Badge variant="secondary" className="text-green-600 border-green-200">
                   <CheckCircle className="w-3 h-3 mr-1" />
-                  Paid
+                  Payment Received
+                </Badge>
+              )}
+              
+              {isPaymentInEscrow && (
+                <Badge variant="secondary" className="text-blue-600 border-blue-200">
+                  <DollarSign className="w-3 h-3 mr-1" />
+                  Payment in Escrow
                 </Badge>
               )}
               
@@ -376,7 +689,7 @@ export function EnhancedBookingCard({ booking, onStatusChange }: EnhancedBooking
           )}
 
           {/* Review Section for completed bookings */}
-          {booking.status === "COMPLETED" && (
+          {(booking.status === "COMPLETED" || booking.status === "AWAITING_CONFIRMATION") && (
             <div className="mt-4 pt-4 border-t border-gray-100">
               <ReviewSection
                 bookingId={booking.id}

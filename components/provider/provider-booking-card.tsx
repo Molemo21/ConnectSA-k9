@@ -74,7 +74,7 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
     case "CONFIRMED":
       if (hasPayment) {
         return {
-          label: "Confirmed & Paid",
+          label: "Confirmed & Payment Received",
           color: "bg-green-100 text-green-800 border-green-200",
           icon: CheckCircle,
           description: "Ready to start"
@@ -85,6 +85,13 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
         color: "bg-blue-100 text-blue-800 border-blue-200",
         icon: CheckCircle,
         description: "Waiting for payment"
+      }
+    case "PENDING_EXECUTION":
+      return {
+        label: "Payment Received",
+        color: "bg-green-100 text-green-800 border-green-200",
+        icon: Play,
+        description: "Payment completed - you can start the job now!"
       }
     case "IN_PROGRESS":
       return {

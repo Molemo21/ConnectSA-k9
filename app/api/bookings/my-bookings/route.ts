@@ -26,7 +26,7 @@ export async function GET() {
         payment: true,
         review: true,
       },
-      orderBy: { scheduledDate: "desc" },
+      orderBy: { createdAt: 'desc' }, // Order by creation date (most recent first)
     });
 
     return NextResponse.json({ bookings });

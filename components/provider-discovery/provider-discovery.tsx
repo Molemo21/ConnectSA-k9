@@ -68,6 +68,8 @@ export function ProviderDiscovery({
   const [error, setError] = useState<string | null>(null)
   const [declinedProviders, setDeclinedProviders] = useState<string[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [alternativeTimes, setAlternativeTimes] = useState<Array<{time: string, available: boolean}>>([])
+  const [lastError, setLastError] = useState<string | null>(null)
 
   useEffect(() => {
     discoverProviders()
@@ -84,9 +86,9 @@ export function ProviderDiscovery({
         return
       }
 
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(serviceId)) {
+      // Validate serviceId format (Prisma custom ID format)
+      const serviceIdRegex = /^[a-z0-9]{25}$/i;
+      if (!serviceIdRegex.test(serviceId)) {
         console.error('Invalid serviceId format:', serviceId);
         setError(`Invalid service ID format: ${serviceId}`)
         showToast.error('Invalid service selection. Please try again.')
@@ -146,9 +148,9 @@ export function ProviderDiscovery({
         return
       }
 
-      // Validate serviceId is a UUID (since we're using mapped IDs)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(serviceId)) {
+      // Validate serviceId format (Prisma custom ID format)
+      const serviceIdRegex = /^[a-z0-9]{25}$/i;
+      if (!serviceIdRegex.test(serviceId)) {
         console.error('Invalid serviceId format:', serviceId);
         showToast.error('Invalid service selection. Please try again.')
         return
@@ -191,6 +193,8 @@ export function ProviderDiscovery({
         
         // Try to get more details about the error
         let errorMessage = 'Failed to send job offer';
+        let alternativeTimes = null;
+        
         if (errorData && typeof errorData === 'object') {
           if (errorData.error) {
             errorMessage = errorData.error;
@@ -199,10 +203,27 @@ export function ProviderDiscovery({
           } else if (Object.keys(errorData).length === 0) {
             errorMessage = `API returned ${response.status} with no error details`;
           }
+          
+                  // Check for alternative times
+        if (errorData.details && errorData.details.alternativeTimes) {
+          alternativeTimes = errorData.details.alternativeTimes;
+          setAlternativeTimes(alternativeTimes);
+          setLastError(errorMessage);
+        } else {
+          setAlternativeTimes([]);
+          setLastError(errorMessage);
         }
-        
+      }
+      
+      // Show error with alternative times if available
+      if (alternativeTimes && alternativeTimes.length > 0) {
+        const timeList = alternativeTimes.map(t => t.time).join(', ');
+        showToast.error(`${errorMessage} Alternative times: ${timeList}`);
+      } else {
         showToast.error(errorMessage);
-        return;
+      }
+      
+      return;
       }
 
       const data = await response.json()
@@ -238,6 +259,9 @@ export function ProviderDiscovery({
   const goToNextProvider = () => {
     if (currentIndex < providers.length - 1) {
       setCurrentIndex(prev => prev + 1)
+      // Clear error state when moving to next provider
+      setAlternativeTimes([])
+      setLastError(null)
     } else {
       showToast.info('This is the last provider.')
     }
@@ -246,6 +270,9 @@ export function ProviderDiscovery({
   const goToPreviousProvider = () => {
     if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1)
+      // Clear error state when moving to previous provider
+      setAlternativeTimes([])
+      setLastError(null)
     } else {
       showToast.info('This is the first provider.')
     }
@@ -257,6 +284,9 @@ export function ProviderDiscovery({
       setProviders(remainingProviders)
       setCurrentIndex(0)
       setDeclinedProviders([])
+      // Clear error state when retrying
+      setAlternativeTimes([])
+      setLastError(null)
       showToast.success('Showing declined providers again')
     }
   }
@@ -364,6 +394,44 @@ export function ProviderDiscovery({
         onDecline={handleDeclineProvider}
         onViewDetails={handleViewDetails}
       />
+
+      {/* Alternative Times Display */}
+      {alternativeTimes.length > 0 && lastError && (
+        <Card className="shadow-lg border-0 bg-orange-50 border-orange-200">
+          <CardContent className="p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="font-medium text-orange-800 mb-2">Time Conflict Detected</h4>
+                <p className="text-sm text-orange-700 mb-3">{lastError}</p>
+                <div className="bg-white rounded-lg p-3 border border-orange-200">
+                  <p className="text-sm font-medium text-orange-800 mb-2">Alternative Available Times:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {alternativeTimes.map((timeSlot, index) => (
+                      <Badge 
+                        key={index} 
+                        variant="outline" 
+                        className="bg-white text-orange-700 border-orange-300 hover:bg-orange-50 cursor-pointer"
+                        onClick={() => {
+                          // Update the time and retry
+                          const newTime = timeSlot.time;
+                          showToast.info(`Time updated to ${newTime}. Please try again.`);
+                          // You could add a callback here to update the parent component's time
+                        }}
+                      >
+                        {timeSlot.time}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-orange-600 mt-2">
+                  Click on a time to select it, or try a different provider
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Navigation */}
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">

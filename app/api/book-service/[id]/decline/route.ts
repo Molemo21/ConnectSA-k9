@@ -27,14 +27,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Booking is not pending" }, { status: 400 });
     }
 
-    // Update proposal status
-    await prisma.proposal.updateMany({
-      where: { 
-        bookingId: bookingId,
-        providerId: user.provider.id 
-      },
-      data: { status: "DECLINED" }
-    });
+    // Note: Proposal update removed - table doesn't exist in database
+    console.log('ℹ️ Skipping proposal update (table not available)');
 
     const updated = await prisma.booking.update({
       where: { id: bookingId },

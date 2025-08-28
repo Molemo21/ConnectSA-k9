@@ -81,8 +81,9 @@ export function BookingActionsModal({
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
   const canModify = ["PENDING"].includes(booking.status)
   const canReschedule = ["CONFIRMED"].includes(booking.status)
-  const canDispute = ["IN_PROGRESS", "COMPLETED"].includes(booking.status)
+  const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)
   const canPay = booking.status === "CONFIRMED" && !booking.payment
+  const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
   const hasPayment = booking.payment // Only check payment flag, not status
 
   const handleAction = async (action: string) => {
@@ -131,6 +132,13 @@ export function BookingActionsModal({
           })
           break
           
+        case "confirm":
+          response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+          })
+          break
+          
         case "pay":
           // Use shared payment utility
           const result = await processPayment(booking.id)
@@ -164,10 +172,18 @@ export function BookingActionsModal({
         return "bg-green-100 text-green-800"
       case "CONFIRMED":
         return "bg-blue-100 text-blue-800"
+      case "PENDING_EXECUTION":
+        return "bg-green-100 text-green-800"
       case "IN_PROGRESS":
+        return "bg-purple-100 text-purple-800"
+      case "AWAITING_CONFIRMATION":
         return "bg-orange-100 text-orange-800"
       case "CANCELLED":
         return "bg-red-100 text-red-800"
+      case "DISPUTED":
+        return "bg-red-100 text-red-800"
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -179,10 +195,18 @@ export function BookingActionsModal({
         return <CheckCircle className="w-4 h-4" />
       case "CONFIRMED":
         return <Calendar className="w-4 h-4" />
+      case "PENDING_EXECUTION":
+        return <CheckCircle className="w-4 h-4" />
       case "IN_PROGRESS":
         return <Clock className="w-4 h-4" />
+      case "AWAITING_CONFIRMATION":
+        return <AlertCircle className="w-4 h-4" />
       case "CANCELLED":
         return <X className="w-4 h-4" />
+      case "DISPUTED":
+        return <AlertTriangle className="w-4 h-4" />
+      case "PENDING":
+        return <Clock className="w-4 h-4" />
       default:
         return <AlertCircle className="w-4 h-4" />
     }
@@ -282,6 +306,17 @@ export function BookingActionsModal({
             >
               <RefreshCw className="w-4 h-4" />
               <span>Reschedule</span>
+            </Button>
+          )}
+          
+          {canConfirmCompletion && (
+            <Button
+              variant="outline"
+              onClick={() => setActiveAction("confirm")}
+              className="flex items-center space-x-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span>Confirm Completion</span>
             </Button>
           )}
           
@@ -397,7 +432,7 @@ export function BookingActionsModal({
             <CardHeader>
               <CardTitle className="text-lg">Reschedule Booking</CardTitle>
               <CardDescription>
-                Choose a new date and time for your booking
+                Change the date and time of your booking
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -408,7 +443,6 @@ export function BookingActionsModal({
                   type="date"
                   value={formData.newDate}
                   onChange={(e) => setFormData(prev => ({ ...prev, newDate: e.target.value }))}
-                  min={new Date().toISOString().split('T')[0]}
                 />
               </div>
               <div>
@@ -420,12 +454,6 @@ export function BookingActionsModal({
                   onChange={(e) => setFormData(prev => ({ ...prev, newTime: e.target.value }))}
                 />
               </div>
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  New time must be at least 2 hours from now
-                </AlertDescription>
-              </Alert>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setActiveAction(null)}>
                   Cancel
@@ -435,6 +463,41 @@ export function BookingActionsModal({
                   disabled={loading || !formData.newDate || !formData.newTime}
                 >
                   {loading ? "Rescheduling..." : "Reschedule Booking"}
+                </Button>
+              </DialogFooter>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeAction === "confirm" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg text-orange-600">Confirm Job Completion</CardTitle>
+              <CardDescription>
+                Confirm that the service has been completed to release payment to the provider
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-orange-50 rounded-lg">
+                <p className="text-sm text-orange-800">
+                  The provider has marked this job as complete. By confirming, you agree that:
+                </p>
+                <ul className="mt-2 text-sm text-orange-700 list-disc list-inside space-y-1">
+                  <li>The service was performed as agreed</li>
+                  <li>The work meets your expectations</li>
+                  <li>Payment will be released to the provider</li>
+                </ul>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setActiveAction(null)}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="bg-orange-600 hover:bg-orange-700"
+                  onClick={() => handleAction("confirm")}
+                  disabled={loading}
+                >
+                  {loading ? "Confirming..." : "Confirm Completion"}
                 </Button>
               </DialogFooter>
             </CardContent>

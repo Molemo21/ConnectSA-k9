@@ -27,7 +27,7 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [sortBy, setSortBy] = useState("date")
+  const [sortBy, setSortBy] = useState("created") // Changed from "date" to "created"
 
   useEffect(() => {
     async function fetchBookings() {
@@ -71,8 +71,10 @@ export default function BookingsPage() {
     // Apply sorting
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "date":
-          return new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
+        case "created":
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() // Most recent first
+        case "scheduled":
+          return new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime() // Most recent scheduled first
         case "amount":
           return b.totalAmount - a.totalAmount
         case "status":
@@ -259,7 +261,8 @@ export default function BookingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="date">Date (Newest)</SelectItem>
+                      <SelectItem value="created">Date (Newest)</SelectItem>
+                      <SelectItem value="scheduled">Date (Most Recent)</SelectItem>
                       <SelectItem value="amount">Amount (High to Low)</SelectItem>
                       <SelectItem value="status">Status</SelectItem>
                     </SelectContent>
@@ -272,7 +275,7 @@ export default function BookingsPage() {
                     onClick={() => {
                       setSearchTerm("")
                       setStatusFilter("all")
-                      setSortBy("date")
+                      setSortBy("created")
                     }}
                     className="w-full"
                   >

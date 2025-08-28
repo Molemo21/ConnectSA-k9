@@ -23,12 +23,37 @@ export default function ProviderList() {
   const [modalOpen, setModalOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProviders = async () => {
-      const res = await fetch('/api/admin/providers');
-      const data = await res.json();
-      setProviders(data);
+      try {
+        setIsLoading(true);
+        setError(null);
+        const res = await fetch('/api/admin/providers');
+        if (!res.ok) {
+          console.error('Failed to fetch providers:', res.status);
+          setError(`Failed to fetch providers: ${res.status}`);
+          setProviders([]);
+          return;
+        }
+        const data = await res.json();
+        // Ensure data is an array
+        if (Array.isArray(data)) {
+          setProviders(data);
+        } else {
+          console.error('Providers data is not an array:', data);
+          setError('Invalid data format received');
+          setProviders([]);
+        }
+      } catch (error) {
+        console.error('Error fetching providers:', error);
+        setError('Failed to fetch providers');
+        setProviders([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
     fetchProviders();
   }, []);
@@ -58,6 +83,38 @@ export default function ProviderList() {
     setActionLoading(false);
     closeModal();
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading providers...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error: {error}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (providers.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <p className="text-gray-600">No providers found.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
