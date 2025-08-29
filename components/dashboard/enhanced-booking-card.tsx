@@ -245,16 +245,27 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       
       if (result.success && result.shouldRedirect) {
         // Payment gateway is ready, user will be redirected
-        showToast.success("Payment gateway opened in new tab. Please complete your payment there.")
+        // IMPORTANT: Call handlePaymentResult to execute the redirect logic
+        const redirectSuccess = handlePaymentResult(result, onStatusChange, booking.id)
         
-        // Set a timeout to reset processing state if no webhook update
-        setTimeout(() => {
-          if (isPaymentProcessing) {
-            setIsProcessingPayment(false)
-            setPaymentStatus(null)
-            showToast.info("Payment processing timeout. Please check your payment status.")
-          }
-        }, 300000) // 5 minutes timeout
+        if (redirectSuccess) {
+          // Redirect was initiated successfully
+          showToast.success("Payment Gateway Ready - Redirecting to Paystack payment gateway...")
+          
+          // Set a timeout to reset processing state if no webhook update
+          setTimeout(() => {
+            if (isPaymentProcessing) {
+              setIsProcessingPayment(false)
+              setPaymentStatus(null)
+              showToast.info("Payment processing timeout. Please check your payment status.")
+            }
+          }, 300000) // 5 minutes timeout
+        } else {
+          // Redirect failed, show manual option
+          showToast.warning("Redirect failed. Please manually navigate to the payment gateway.")
+          setIsProcessingPayment(false)
+          setPaymentStatus(null)
+        }
         
       } else if (result.success) {
         // Payment processed without redirect (e.g., already paid)

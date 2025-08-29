@@ -1,427 +1,290 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { DollarSign, Clock, Shield, CheckCircle, AlertTriangle, Zap, RefreshCw, Loader2, Trash2, AlertCircle, TrendingUp, Activity } from "lucide-react"
-import { showToast } from "@/lib/toast"
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, RefreshCw, AlertTriangle, CheckCircle, Clock, DollarSign } from 'lucide-react';
+import { showToast } from '@/lib/toast';
 
-interface AdminPaymentManagementProps {
-  paymentStats: Array<{
-    title: string
-    value: string
-    icon: string
-    color: string
-    bgColor: string
-  }>
-  revenueBreakdown: Array<{
-    title: string
-    value: string
-    color: string
-    bgColor: string
-  }>
-  pendingPayments: number
-  escrowPayments: number
-  totalPayouts: number
-  pendingPayouts: number
+interface PaymentStatus {
+  status: string;
+  count: number;
 }
 
-export default function AdminPaymentManagement({
-  paymentStats,
-  revenueBreakdown,
-  pendingPayments,
-  escrowPayments,
-  totalPayouts,
-  pendingPayouts
-}: AdminPaymentManagementProps) {
-  const [isCleaningUp, setIsCleaningUp] = useState(false)
-  const [isRecoveringPayments, setIsRecoveringPayments] = useState(false)
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
-  const [isClient, setIsClient] = useState(false)
+interface PaymentStats {
+  total: number;
+  pending: number;
+  escrow: number;
+  released: number;
+  failed: number;
+}
 
-  // Fix hydration issue by only setting date on client
-  useEffect(() => {
-    setIsClient(true)
-    setLastRefresh(new Date())
-  }, [])
+export function AdminPaymentManagement() {
+  const [paymentStats, setPaymentStats] = useState<PaymentStats | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [lastRecovery, setLastRecovery] = useState<any>(null);
 
-  const handleCleanupPayouts = async () => {
+  // Fetch payment statistics
+  const fetchPaymentStats = async () => {
     try {
-      setIsCleaningUp(true)
-      showToast.info('Cleaning up duplicate and orphaned payout records...')
+      setIsLoading(true);
+      const response = await fetch('/api/admin/payments/pending');
       
-      const response = await fetch('/api/payment/cleanup-orphaned-payouts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      
-      const result = await response.json()
-      
-      if (result.success) {
-        console.log('🧹 Cleanup result:', result)
-        showToast.success(`Cleanup completed! Cleaned ${result.cleanedCount} items.`)
-        
-        // Refresh the page to show updated stats
-        setTimeout(() => {
-          window.location.reload()
-        }, 2000)
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentStats(data.stats);
       } else {
-        console.error('❌ Cleanup failed:', result)
-        showToast.error(`Cleanup failed: ${result.message}`)
+        console.error('Failed to fetch payment stats');
       }
     } catch (error) {
-      console.error('Cleanup error:', error)
-      showToast.error('Cleanup failed')
+      console.error('Error fetching payment stats:', error);
     } finally {
-      setIsCleaningUp(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const handleRecoverStuckPayments = async () => {
+  // Auto-recover stuck payments
+  const triggerAutoRecovery = async () => {
     try {
-      setIsRecoveringPayments(true)
-      showToast.info('Attempting to recover stuck payments...')
-      
-      // First, get all pending payments
-      const response = await fetch('/api/admin/payments/pending')
-      if (!response.ok) {
-        throw new Error('Failed to fetch pending payments')
-      }
-      
-      const data = await response.json()
-      const pendingPayments = data.payments || []
-      
-      if (pendingPayments.length === 0) {
-        showToast.info('No pending payments found')
-        return
-      }
-      
-      showToast.info(`Found ${pendingPayments.length} pending payment(s). Attempting recovery...`)
-      
-      let successCount = 0
-      let errorCount = 0
-      
-      // Attempt recovery for each pending payment
-      for (const payment of pendingPayments) {
-        try {
-          const recoveryResponse = await fetch('/api/payment/recover-status', {
+      setIsRecovering(true);
+      const response = await fetch('/api/payment/auto-recover', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentId: payment.id })
-          })
+        headers: { 'Content-Type': 'application/json' }
+      });
           
-          const result = await recoveryResponse.json()
+      if (response.ok) {
+        const result = await response.json();
+        setLastRecovery(result);
+        showToast.success(`Auto-recovery completed! ${result.summary.recovered} payments recovered.`);
           
-          if (result.success) {
-            console.log(`✅ Payment recovery successful for payment ${payment.id}:`, result)
-            successCount++
+        // Refresh stats after recovery
+        setTimeout(() => fetchPaymentStats(), 1000);
           } else {
-            console.error(`❌ Payment recovery failed for payment ${payment.id}:`, result)
-            errorCount++
+        const error = await response.json();
+        showToast.error(`Auto-recovery failed: ${error.message}`);
           }
         } catch (error) {
-          console.error(`❌ Payment recovery error for payment ${payment.id}:`, error)
-          errorCount++
-        }
-      }
-      
-      if (successCount > 0) {
-        showToast.success(`Recovery completed! ${successCount} successful, ${errorCount} failed.`)
-        // Refresh the page to show updated stats
-        setTimeout(() => {
-          window.location.reload()
-        }, 2000)
-      } else {
-        showToast.error(`Recovery failed for all payments. Check console for details.`)
-      }
-      
-    } catch (error) {
-      console.error('Payment recovery error:', error)
-      showToast.error('Payment recovery failed')
+      console.error('Auto-recovery error:', error);
+      showToast.error('Auto-recovery failed. Please try again.');
     } finally {
-      setIsRecoveringPayments(false)
+      setIsRecovering(false);
     }
-  }
+  };
 
-  const handleRefreshStats = () => {
-    setLastRefresh(new Date())
-    window.location.reload()
-  }
+  // Fetch stats on component mount
+  useEffect(() => {
+    fetchPaymentStats();
+  }, []);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'ESCROW': return 'bg-blue-100 text-blue-800';
+      case 'RELEASED': return 'bg-green-100 text-green-800';
+      case 'FAILED': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'PENDING': return <Clock className="w-4 h-4" />;
+      case 'ESCROW': return <DollarSign className="w-4 h-4" />;
+      case 'RELEASED': return <CheckCircle className="w-4 h-4" />;
+      case 'FAILED': return <AlertTriangle className="w-4 h-4" />;
+      default: return <Clock className="w-4 h-4" />;
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Payment Management Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Payment Management</h2>
-          <p className="text-gray-600">Monitor and manage all payment operations across the platform</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button
-            onClick={handleRefreshStats}
-            variant="outline"
-            size="sm"
-            className="flex items-center space-x-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </Button>
-          <span className="text-xs text-gray-500">
-            Last updated: {isClient && lastRefresh ? lastRefresh.toLocaleTimeString() : 'Loading...'}
-          </span>
-        </div>
-      </div>
-
-      {/* Payment Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {paymentStats.map((stat, index) => {
-          const getIcon = (iconName: string) => {
-            switch (iconName) {
-              case "DollarSign": return DollarSign;
-              case "Clock": return Clock;
-              case "Shield": return Shield;
-              case "CheckCircle": return CheckCircle;
-              case "AlertTriangle": return AlertTriangle;
-              case "Zap": return Zap;
-              default: return DollarSign;
-            }
-          };
-          const Icon = getIcon(stat.icon);
-          return (
-            <Card key={index} className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  </div>
-                  <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
-
-      {/* Revenue Breakdown */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {revenueBreakdown.map((item, index) => (
-          <Card key={index} className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">{item.title}</p>
-                  <p className="text-xl font-bold text-gray-900">{item.value}</p>
-                </div>
-                <div className={`w-10 h-10 ${item.bgColor} rounded-lg flex items-center justify-center`}>
-                  <TrendingUp className={`w-5 h-5 ${item.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Payment Health Alerts */}
-      {(pendingPayments > 0 || escrowPayments > 0) && (
-        <div className="space-y-4">
-          {pendingPayments > 0 && (
-            <Alert className="border-orange-200 bg-orange-50">
-              <AlertCircle className="h-4 w-4 text-orange-600" />
-              <AlertDescription className="text-orange-800">
-                <strong>{pendingPayments} payment(s)</strong> are currently pending and may need attention. 
-                Consider using the recovery tools below if payments are stuck.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {escrowPayments > 0 && (
-            <Alert className="border-purple-200 bg-purple-50">
-              <Shield className="h-4 w-4 text-purple-600" />
-              <AlertDescription className="text-purple-800">
-                <strong>{escrowPayments} payment(s)</strong> are currently in escrow. 
-                These will be released to providers when jobs are completed and confirmed.
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-      )}
-
-      {/* Admin Actions */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Activity className="w-5 h-5 text-blue-600" />
-            <span>Admin Actions</span>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Payment Status Overview
           </CardTitle>
           <CardDescription>
-            Critical administrative functions for payment system maintenance
+            Monitor payment statuses and manage stuck payments
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Cleanup Payouts */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">Cleanup Payouts</h4>
-                  <p className="text-sm text-gray-600">
-                    Remove duplicate and orphaned payout records
-                  </p>
-                </div>
-                <Badge variant="secondary">{totalPayouts} total</Badge>
-              </div>
-              <Button
-                onClick={handleCleanupPayouts}
-                disabled={isCleaningUp}
-                variant="outline"
-                className="w-full"
-              >
-                {isCleaningUp ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Cleaning...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Cleanup Payouts
-                  </>
-                )}
-              </Button>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-muted-foreground">
+              Last updated: {new Date().toLocaleString()}
+        </div>
+          <Button
+              onClick={fetchPaymentStats} 
+              disabled={isLoading}
+            variant="outline"
+            size="sm"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Refresh
+          </Button>
+      </div>
 
-            {/* Recover Stuck Payments */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-gray-900">Recover Stuck Payments</h4>
-                  <p className="text-sm text-gray-600">
-                    Attempt to recover payments stuck in pending status
-                  </p>
+          {paymentStats ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">{paymentStats.total}</div>
+                <div className="text-sm text-gray-600">Total Payments</div>
+                  </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-700">{paymentStats.pending}</div>
+                <div className="text-sm text-yellow-600">Pending</div>
+                  </div>
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{paymentStats.escrow}</div>
+                <div className="text-sm text-blue-600">In Escrow</div>
                 </div>
-                <Badge variant="secondary">{pendingPayments} pending</Badge>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-700">{paymentStats.released}</div>
+                <div className="text-sm text-green-600">Released</div>
+                </div>
               </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              {isLoading ? 'Loading payment statistics...' : 'No payment data available'}
+            </div>
+          )}
+            </CardContent>
+          </Card>
+
+      {/* Auto-Recovery Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            Stuck Payment Recovery
+          </CardTitle>
+          <CardDescription>
+            Automatically recover payments stuck in PENDING status
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {paymentStats?.pending && paymentStats.pending > 0 ? (
+            <Alert className="mb-4 border-yellow-200 bg-yellow-50">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription>
+                <strong>{paymentStats.pending} payments</strong> are currently stuck in PENDING status. 
+                This usually indicates webhook processing issues.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert className="mb-4 border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription>
+                No stuck payments detected. All payments are processing correctly.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex items-center gap-4">
               <Button
-                onClick={handleRecoverStuckPayments}
-                disabled={isRecoveringPayments}
-                variant="outline"
-                className="w-full"
-              >
-                {isRecoveringPayments ? (
-                  <>
+              onClick={triggerAutoRecovery}
+              disabled={isRecovering || !paymentStats?.pending}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {isRecovering ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Recovering...
-                  </>
                 ) : (
-                  <>
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Recover Payments
-                  </>
                 )}
+              {isRecovering ? 'Recovering...' : `Recover ${paymentStats?.pending || 0} Stuck Payments`}
               </Button>
+
+            <div className="text-sm text-muted-foreground">
+              This will verify all PENDING payments with Paystack and update their status accordingly.
             </div>
           </div>
 
-          {/* Additional Tools */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <div className="grid md:grid-cols-3 gap-4">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                <a href="/payment-debug">
-                  <Zap className="w-4 h-4 mr-2" />
-                  Payment Debug
-                </a>
-              </Button>
-              
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                <a href="/admin/webhooks">
-                  <Activity className="w-4 h-4 mr-2" />
-                  Webhook Monitor
-                </a>
-              </Button>
-              
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                <a href="/admin/payments">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Payment History
-                </a>
-              </Button>
+          {/* Last Recovery Results */}
+          {lastRecovery && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-semibold text-blue-900 mb-2">Last Recovery Results</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Total Processed:</span> {lastRecovery.summary.total}
+                </div>
+                <div>
+                  <span className="font-medium">Recovered:</span> 
+                  <span className="text-green-600 ml-1">{lastRecovery.summary.recovered}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Failed:</span> 
+                  <span className="text-red-600 ml-1">{lastRecovery.summary.failed}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Errors:</span> 
+                  <span className="text-yellow-600 ml-1">{lastRecovery.summary.errors}</span>
+                </div>
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Payment System Status */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+      {/* Webhook Status */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Shield className="w-5 h-5 text-green-600" />
-            <span>Payment System Status</span>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Webhook Status
           </CardTitle>
           <CardDescription>
-            Real-time overview of payment processing health
+            Monitor webhook processing and troubleshoot issues
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h4 className="font-medium text-gray-900">Payment Processing</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Pending Payments</span>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${pendingPayments > 0 ? 'bg-orange-500' : 'bg-green-500'}`}></div>
-                    <span className="text-sm font-medium">{pendingPayments}</span>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <div className="font-medium">Webhook Endpoint</div>
+                <div className="text-sm text-muted-foreground">
+                  /api/webhooks/paystack
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Escrow Payments</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                    <span className="text-sm font-medium">{escrowPayments}</span>
+              <Badge variant="outline">Active</Badge>
                   </div>
+
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <div className="font-medium">Supported Events</div>
+                <div className="text-sm text-muted-foreground">
+                  charge.success, transfer.success, transfer.failed
                 </div>
               </div>
+              <Badge variant="outline">3 Events</Badge>
             </div>
             
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-900">Payout System</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Total Payouts</span>
-                  <span className="text-sm font-medium">{totalPayouts}</span>
+            <Separator />
+
+            <div className="text-sm text-muted-foreground">
+              <strong>Common Issues:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Webhook URL not configured in Paystack dashboard</li>
+                <li>Incorrect webhook secret in environment variables</li>
+                <li>Webhook endpoint not accessible from Paystack servers</li>
+                <li>Database connection issues during webhook processing</li>
+              </ul>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Pending Payouts</span>
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${pendingPayouts > 0 ? 'bg-orange-500' : 'bg-green-500'}`}></div>
-                    <span className="text-sm font-medium">{pendingPayouts}</span>
-                  </div>
-                </div>
-              </div>
+
+            <div className="text-sm text-muted-foreground">
+              <strong>Quick Fix:</strong> Check your Paystack dashboard webhook configuration and ensure 
+              the webhook URL points to your domain with the correct endpoint.
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

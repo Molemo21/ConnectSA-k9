@@ -10,49 +10,31 @@ const verifyPaymentSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const { reference } = await request.json();
     
-    // Only authenticated users can verify payments
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!reference) {
+      return NextResponse.json({ error: "Payment reference is required" }, { status: 400 });
     }
 
-    const body = await request.json();
-    const validated = verifyPaymentSchema.parse(body);
-
-    const { reference } = validated;
-
-    console.log(`🔍 Payment verification requested for reference: ${reference} by user ${user.id}`);
+    console.log(`🔍 Verifying payment with reference: ${reference}`);
 
     // Find payment in database
     const payment = await prisma.payment.findUnique({
       where: { paystackRef: reference },
-      include: { 
-        booking: { 
-          include: { 
-            client: true, 
-            provider: true,
-            service: true 
-          } 
-        } 
-      }
+      include: { booking: true }
     });
 
     if (!payment) {
-      return NextResponse.json({ 
-        error: "Payment not found",
-        reference 
-      }, { status: 404 });
+      console.log(`❌ Payment not found for reference: ${reference}`);
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
-    // Check if user has permission to view this payment
-    if (user.role === 'CLIENT' && payment.booking.clientId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    if (user.role === 'PROVIDER' && payment.booking.providerId !== user.provider?.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    console.log(`✅ Payment found:`, {
+      id: payment.id,
+      status: payment.status,
+      amount: payment.amount,
+      paystackRef: payment.paystackRef
+    });
 
     // Verify payment with Paystack
     let paystackVerification = null;
@@ -70,6 +52,7 @@ export async function POST(request: NextRequest) {
     // Determine if payment status should be updated based on verification
     let statusUpdate = null;
     let shouldUpdate = false;
+    let recoveryMessage = null;
 
     if (paystackVerification && paystackVerification.status) {
       const paystackStatus = paystackVerification.data.status;
@@ -77,147 +60,127 @@ export async function POST(request: NextRequest) {
 
       console.log(`📊 Status comparison: Database=${currentStatus}, Paystack=${paystackStatus}`);
 
-      // Update payment status if there's a mismatch
+      // Check for stuck payments that need recovery
       if (paystackStatus === 'success' && currentStatus === 'PENDING') {
-        statusUpdate = 'HELD_IN_ESCROW';
+        statusUpdate = 'ESCROW';
         shouldUpdate = true;
+        recoveryMessage = 'Payment was successful but stuck in PENDING status. Automatically recovered.';
+        console.log(`🔄 Payment recovery needed: PENDING → ESCROW`);
+      } else if (paystackStatus === 'success' && currentStatus === 'ESCROW') {
+        recoveryMessage = 'Payment is already in correct ESCROW status.';
+        console.log(`✅ Payment status is correct: ESCROW`);
       } else if (paystackStatus === 'failed' && currentStatus !== 'FAILED') {
         statusUpdate = 'FAILED';
         shouldUpdate = true;
+        recoveryMessage = 'Payment failed. Status updated automatically.';
+        console.log(`🔄 Payment failed: ${currentStatus} → FAILED`);
       } else if (paystackStatus === 'abandoned' && currentStatus === 'PENDING') {
         statusUpdate = 'FAILED';
         shouldUpdate = true;
+        recoveryMessage = 'Payment was abandoned. Status updated automatically.';
+        console.log(`🔄 Payment abandoned: PENDING → FAILED`);
+      } else {
+        recoveryMessage = 'Payment status is up to date.';
+        console.log(`ℹ️ No status update needed: ${currentStatus} matches Paystack status`);
       }
+    } else {
+      recoveryMessage = 'Unable to verify payment with Paystack.';
+      console.log(`⚠️ Paystack verification unavailable:`, verificationError);
     }
 
     // Update payment status if needed
+    let updatedPayment = payment;
+    let updatedBooking = null;
+
     if (shouldUpdate && statusUpdate) {
+      console.log(`🔄 Updating payment status from ${payment.status} to ${statusUpdate}`);
+      
       try {
-        console.log(`🔄 Updating payment status from ${payment.status} to ${statusUpdate}`);
-        
-        const updatedPayment = await prisma.payment.update({
+        // Update payment status
+        updatedPayment = await prisma.payment.update({
           where: { id: payment.id },
           data: { 
             status: statusUpdate,
             updatedAt: new Date(),
-            ...(statusUpdate === 'HELD_IN_ESCROW' && {
-              paidAt: new Date(),
-              transactionId: paystackVerification?.data.id?.toString() || null
-            })
+            ...(statusUpdate === 'ESCROW' && { paidAt: new Date() })
           }
         });
 
         console.log(`✅ Payment status updated successfully to ${statusUpdate}`);
 
-        // Update booking status if payment is successful
-        if (statusUpdate === 'HELD_IN_ESCROW') {
-          await prisma.booking.update({
+        // If payment moved to ESCROW, update booking status
+        if (statusUpdate === 'ESCROW' && payment.booking.status === 'CONFIRMED') {
+          updatedBooking = await prisma.booking.update({
             where: { id: payment.bookingId },
             data: { status: 'PENDING_EXECUTION' }
           });
+          
           console.log(`✅ Booking status updated to PENDING_EXECUTION`);
-
-          // ✅ NEW: Create notification for provider that payment is complete and they can start the job
-          const booking = await prisma.booking.findUnique({
-            where: { id: payment.bookingId },
-            include: { 
-              provider: { include: { user: true } },
-              service: true 
+          
+          // Create notification for provider
+          await prisma.notification.create({
+            data: {
+              userId: payment.booking.providerId,
+              type: 'PAYMENT_RECEIVED',
+              title: 'Payment Received',
+              message: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
+              isRead: false,
             }
           });
-
-          if (booking?.provider?.user) {
-            // TODO: Create notification for provider when Notification table is available
-            // await prisma.notification.create({
-            //   data: {
-            //     userId: booking.provider.user.id,
-            //     type: 'PAYMENT_RECEIVED',
-            //     content: `Payment received for ${booking.service?.name || 'your service'} - Booking #${booking.id}. You can now start the job!`,
-            //     read: false,
-            //   }
-            // });
-            console.log(`🔔 Provider notification would be created for user ${booking.provider.user.id} (when Notification table is available)`);
-          }
+          
+          console.log(`🔔 Provider notification created`);
         }
 
-        // Update payment object for response
-        payment.status = updatedPayment.status;
-        payment.paidAt = updatedPayment.paidAt;
-        payment.transactionId = updatedPayment.transactionId;
-        payment.updatedAt = updatedPayment.updatedAt;
-
+        recoveryMessage = `Payment status automatically recovered from ${payment.status} to ${statusUpdate}.`;
+        
       } catch (updateError) {
         console.error(`❌ Failed to update payment status:`, updateError);
-        // Continue with verification response even if update fails
+        recoveryMessage = `Payment verification successful but status update failed.`;
       }
     }
 
-    // Prepare response
+    // Return comprehensive response
     const response = {
       success: true,
       payment: {
-        id: payment.id,
-        status: payment.status,
-        amount: payment.amount,
-        escrowAmount: payment.escrowAmount,
-        platformFee: payment.platformFee,
-        currency: payment.currency,
-        paystackRef: payment.paystackRef,
-        transactionId: payment.transactionId,
-        paidAt: payment.paidAt,
-        createdAt: payment.createdAt,
-        updatedAt: payment.updatedAt,
+        id: updatedPayment.id,
+        status: updatedPayment.status,
+        amount: updatedPayment.amount,
+        paystackRef: updatedPayment.paystackRef,
+        paidAt: updatedPayment.paidAt,
+        updatedAt: updatedPayment.updatedAt
       },
-      booking: {
+      booking: updatedBooking ? {
+        id: updatedBooking.id,
+        status: updatedBooking.status
+      } : {
         id: payment.booking.id,
-        status: payment.booking.status,
-        scheduledDate: payment.booking.scheduledDate,
-        totalAmount: payment.booking.totalAmount,
-        serviceName: payment.booking.service?.name,
-        clientName: payment.booking.client.name,
-        providerName: payment.booking.provider.businessName || payment.booking.provider.user.name,
+        status: payment.booking.status
       },
       paystackVerification: paystackVerification ? {
         status: paystackVerification.data.status,
         amount: paystackVerification.data.amount,
         currency: paystackVerification.data.currency,
-        gateway_response: paystackVerification.data.gateway_response,
-        paid_at: paystackVerification.data.paid_at,
-        created_at: paystackVerification.data.created_at,
+        gateway_response: paystackVerification.data.gateway_response
       } : null,
-      verificationError,
-      statusUpdate: shouldUpdate ? {
-        from: payment.status,
-        to: statusUpdate,
-        updated: shouldUpdate
-      } : null,
-      message: "Payment verification completed successfully"
+      recovery: {
+        needed: shouldUpdate,
+        message: recoveryMessage,
+        previousStatus: payment.status,
+        newStatus: updatedPayment.status
+      },
+      message: recoveryMessage || 'Payment verification completed'
     };
 
-    console.log(`✅ Payment verification response prepared for reference: ${reference}`);
-
+    console.log(`📤 Sending verification response:`, response);
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error("❌ Payment verification error:", error);
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ 
-        error: "Invalid request data", 
-        details: error.errors 
-      }, { status: 400 });
-    }
-
-    if (error instanceof Error) {
-      if (error.message === "Payment not found") {
-        return NextResponse.json({ error: "Payment not found" }, { status: 404 });
-      }
-      if (error.message === "Forbidden") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
-
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error('❌ Payment verification error:', error);
+    return NextResponse.json({ 
+      error: 'Payment verification failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
 

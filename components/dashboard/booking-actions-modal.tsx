@@ -20,13 +20,12 @@ import {
   X, 
   RefreshCw,
   MessageSquare,
-  CreditCard,
   CheckCircle,
   AlertCircle
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { showToast, handleApiError } from "@/lib/toast"
-import { processPayment, handlePaymentResult } from "@/lib/payment-utils"
+
 
 interface Booking {
   id: string
@@ -82,7 +81,6 @@ export function BookingActionsModal({
   const canModify = ["PENDING"].includes(booking.status)
   const canReschedule = ["CONFIRMED"].includes(booking.status)
   const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)
-  const canPay = booking.status === "CONFIRMED" && !booking.payment
   const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
   const hasPayment = booking.payment // Only check payment flag, not status
 
@@ -139,15 +137,10 @@ export function BookingActionsModal({
           })
           break
           
-        case "pay":
-          // Use shared payment utility
-          const result = await processPayment(booking.id)
-          const success = handlePaymentResult(result, onUpdate, booking.id)
-          if (success) {
-            // Refresh the page or trigger a re-fetch to update the payment state
-            window.location.reload() // Simple solution for now
-          }
-          return // Exit early for payment
+        case "message":
+          // Message action doesn't need API call, just close modal
+          onClose()
+          return // Exit early for message
       }
       
       if (response?.ok) {
@@ -328,17 +321,6 @@ export function BookingActionsModal({
             >
               <AlertTriangle className="w-4 h-4" />
               <span>Dispute</span>
-            </Button>
-          )}
-          
-          {canPay && (
-            <Button
-              variant="outline"
-              onClick={() => setActiveAction("pay")}
-              className="flex items-center space-x-2"
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>Pay Now</span>
             </Button>
           )}
           
@@ -557,44 +539,7 @@ export function BookingActionsModal({
           </Card>
         )}
 
-        {activeAction === "pay" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg text-green-600">Payment</CardTitle>
-              <CardDescription>
-                Complete payment for your booking
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Service Amount:</span>
-                  <span className="font-medium">R{booking.totalAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Platform Fee:</span>
-                  <span className="font-medium">R{(booking.totalAmount * 0.1).toFixed(2)}</span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <span className="font-semibold">Total:</span>
-                  <span className="font-bold text-lg">R{(booking.totalAmount * 1.1).toFixed(2)}</span>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setActiveAction(null)}>
-                  Cancel
-                </Button>
-                <Button 
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => handleAction("pay")}
-                  disabled={loading}
-                >
-                  {loading ? "Processing..." : "Pay Now"}
-                </Button>
-              </DialogFooter>
-            </CardContent>
-          </Card>
-        )}
+
 
         {activeAction === "message" && (
           <Card>

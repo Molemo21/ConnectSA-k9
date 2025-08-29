@@ -52,9 +52,11 @@ export function DashboardContent() {
   useEffect(() => {
     const paymentSuccess = searchParams.get('payment')
     const bookingId = searchParams.get('booking')
+    const trxref = searchParams.get('trxref')
+    const reference = searchParams.get('reference')
     
     if (paymentSuccess === 'success' && bookingId) {
-      console.log('🎉 Payment success callback detected:', { paymentSuccess, bookingId })
+      console.log('🎉 Payment success callback detected:', { paymentSuccess, bookingId, trxref, reference })
       
       // Show success message
       showToast.success('Payment completed successfully! Refreshing booking status...')
@@ -83,28 +85,44 @@ export function DashboardContent() {
       // Start aggressive polling for payment status update
       const pollInterval = setInterval(async () => {
         try {
+          console.log('🔄 Polling for payment status update for booking:', bookingId)
+          
+          // First try to get booking status
           const response = await fetch(`/api/book-service/${bookingId}/status`)
           if (response.ok) {
             const data = await response.json()
+            console.log('📊 Current booking status:', data)
+            
             if (data.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED'].includes(data.payment.status)) {
-              console.log('✅ Payment status updated:', data.payment.status)
+              console.log('✅ Payment status updated to:', data.payment.status)
               clearInterval(pollInterval)
+              
               // Refresh all bookings to show updated status
               if (refreshAllBookings) {
                 refreshAllBookings()
                 setLastRefresh(new Date())
               }
+              
+              // Show final success message
+              showToast.success(`Payment confirmed! Status: ${data.payment.status}`)
+            } else if (data.payment && data.payment.status === 'PENDING') {
+              console.log('⏳ Payment still pending, continuing to poll...')
+            } else {
+              console.log('ℹ️ Payment status:', data.payment?.status || 'No payment found')
             }
+          } else {
+            console.error('❌ Failed to get booking status:', response.status)
           }
         } catch (error) {
           console.error('Payment status check error:', error)
         }
-      }, 3000) // Check every 3 seconds
+      }, 2000) // Check every 2 seconds for faster response
       
-      // Stop polling after 2 minutes
+      // Stop polling after 3 minutes
       setTimeout(() => {
         clearInterval(pollInterval)
-      }, 120000)
+        console.log('⏰ Payment status polling stopped after timeout')
+      }, 180000)
     }
   }, [searchParams, refreshBooking, refreshAllBookings])
 
@@ -122,22 +140,47 @@ export function DashboardContent() {
 
     console.log('🔄 Starting payment status polling for bookings with pending payments...');
     
-    // Poll every 10 seconds for payment status updates
+    // Poll every 8 seconds for payment status updates (more frequent for better UX)
     const pollInterval = setInterval(async () => {
       try {
         console.log('🔄 Polling for payment status updates...');
-        if (refreshAllBookings) {
-          await refreshAllBookings();
-          setLastRefresh(new Date());
+        
+        // Check if any payments have changed status
+        const currentBookings = await fetch('/api/bookings/my-bookings').then(res => res.json()).catch(() => null);
+        
+        if (currentBookings && currentBookings.bookings) {
+          // Compare current status with stored status
+          let hasChanges = false;
+          
+          currentBookings.bookings.forEach((currentBooking: any) => {
+            const storedBooking = bookings.find(b => b.id === currentBooking.id);
+            if (storedBooking && storedBooking.payment && currentBooking.payment) {
+              if (storedBooking.payment.status !== currentBooking.payment.status) {
+                console.log(`🔄 Payment status changed for booking ${currentBooking.id}:`, {
+                  from: storedBooking.payment.status,
+                  to: currentBooking.payment.status
+                });
+                hasChanges = true;
+              }
+            }
+          });
+          
+          if (hasChanges) {
+            console.log('✅ Payment status changes detected, refreshing dashboard...');
+            if (refreshAllBookings) {
+              await refreshAllBookings();
+              setLastRefresh(new Date());
+            }
+          }
         }
       } catch (error) {
         console.error('❌ Payment status polling error:', error);
       }
-    }, 10000); // 10 seconds
+    }, 8000); // 8 seconds
 
     // Cleanup interval on unmount or when dependencies change
     return () => {
-      console.log('🔄 Stopping payment status polling...');
+      console.log('🧹 Cleaning up payment status polling interval');
       clearInterval(pollInterval);
     };
   }, [bookings, user, refreshAllBookings]);

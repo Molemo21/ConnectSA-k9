@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Frontend Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .button.success {
+            background: #28a745;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        .input-group {
+            margin: 15px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Payment Frontend Integration Test</h1>
+        <p>This page tests the exact frontend payment flow logic from your React components.</p>
+        
+        <div class="test-section">
+            <h3>📋 Test Configuration</h3>
+            <div class="input-group">
+                <label for="authUrl">Paystack Authorization URL:</label>
+                <input type="text" id="authUrl" placeholder="https://checkout.paystack.com/..." 
+                       value="https://checkout.paystack.com/qs2763qwyn10y2x">
+            </div>
+            <div class="input-group">
+                <label for="delay">Redirect Delay (ms):</label>
+                <input type="number" id="delay" value="1000" min="0" max="5000">
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test Controls</h3>
+            <button class="button" onclick="testRedirect()">🚀 Test Redirect Logic</button>
+            <button class="button" onclick="testFallback1()">🔄 Test Fallback 1 (replace)</button>
+            <button class="button" onclick="testFallback2()">🆕 Test Fallback 2 (new tab)</button>
+            <button class="button" onclick="clearLogs()">🧹 Clear Logs</button>
+            <button class="button danger" onclick="resetTest()">🔄 Reset Test</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Test Status</h3>
+            <div id="status" class="status info">Ready to test</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Console Logs</h3>
+            <div id="log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 What This Tests</h3>
+            <p>This page simulates the exact logic from your <code>lib/payment-utils.ts</code> file:</p>
+            <ul>
+                <li>✅ <strong>Primary Redirect</strong>: <code>window.location.href</code></li>
+                <li>✅ <strong>Fallback 1</strong>: <code>window.location.replace</code></li>
+                <li>✅ <strong>Fallback 2</strong>: <code>window.open</code> (new tab)</li>
+                <li>✅ <strong>Error Handling</strong>: Multiple try-catch blocks</li>
+                <li>✅ <strong>User Feedback</strong>: Status updates and logging</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Simulate the exact logic from your payment-utils.ts
+        let testResults = {
+            primaryRedirect: false,
+            fallback1: false,
+            fallback2: false,
+            errors: []
+        };
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logElement.innerHTML += logEntry + '\n';
+            logElement.scrollTop = logElement.scrollTop + 1000;
+            
+            // Also log to browser console
+            console.log(message);
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+
+        function updateTestResults(method, success, error = null) {
+            testResults[method] = success;
+            if (error) {
+                testResults.errors.push({ method, error: error.message });
+            }
+        }
+
+        // Test 1: Primary Redirect (window.location.href)
+        function testRedirect() {
+            const authUrl = document.getElementById('authUrl').value;
+            const delay = parseInt(document.getElementById('delay').value);
+            
+            if (!authUrl) {
+                updateStatus('❌ Please enter a valid Paystack URL', 'error');
+                return;
+            }
+
+            log('🚀 Starting Primary Redirect Test...');
+            updateStatus('🔄 Testing primary redirect...', 'info');
+            
+            // Simulate the exact logic from your payment-utils.ts
+            setTimeout(() => {
+                try {
+                    log('🔄 Attempting direct redirect...');
+                    log('🔄 Using window.location.href for redirect...');
+                    
+                    // This is the exact line from your code
+                    window.location.href = authUrl;
+                    
+                    log('✅ Primary redirect initiated successfully');
+                    updateTestResults('primaryRedirect', true);
+                    updateStatus('✅ Primary redirect working!', 'success');
+                    
+                } catch (redirectError) {
+                    log(`❌ Primary redirect failed: ${redirectError.message}`);
+                    updateTestResults('primaryRedirect', false, redirectError);
+                    updateStatus('❌ Primary redirect failed', 'error');
+                }
+            }, delay);
+        }
+
+        // Test 2: Fallback 1 (window.location.replace)
+        function testFallback1() {
+            const authUrl = document.getElementById('authUrl').value;
+            const delay = parseInt(document.getElementById('delay').value);
+            
+            if (!authUrl) {
+                updateStatus('❌ Please enter a valid Paystack URL', 'error');
+                return;
+            }
+
+            log('🔄 Testing Fallback 1 (window.location.replace)...');
+            updateStatus('🔄 Testing fallback 1...', 'info');
+            
+            setTimeout(() => {
+                try {
+                    log('🔄 Trying window.location.replace...');
+                    window.location.replace(authUrl);
+                    
+                    log('✅ Fallback 1 redirect initiated successfully');
+                    updateTestResults('fallback1', true);
+                    updateStatus('✅ Fallback 1 working!', 'success');
+                    
+                } catch (replaceError) {
+                    log(`❌ Fallback 1 failed: ${replaceError.message}`);
+                    updateTestResults('fallback1', false, replaceError);
+                    updateStatus('❌ Fallback 1 failed', 'error');
+                }
+            }, delay);
+        }
+
+        // Test 3: Fallback 2 (window.open - new tab)
+        function testFallback2() {
+            const authUrl = document.getElementById('authUrl').value;
+            const delay = parseInt(document.getElementById('delay').value);
+            
+            if (!authUrl) {
+                updateStatus('❌ Please enter a valid Paystack URL', 'error');
+                return;
+            }
+
+            log('🆕 Testing Fallback 2 (window.open - new tab)...');
+            updateStatus('🆕 Testing fallback 2...', 'info');
+            
+            setTimeout(() => {
+                try {
+                    log('🔄 Opening payment gateway in new tab...');
+                    const newWindow = window.open(authUrl, '_blank', 'noopener,noreferrer');
+                    
+                    if (newWindow) {
+                        log('✅ Payment gateway opened in new tab');
+                        newWindow.focus();
+                        updateTestResults('fallback2', true);
+                        updateStatus('✅ Fallback 2 working! New tab opened.', 'success');
+                    } else {
+                        throw new Error('Popup blocked');
+                    }
+                    
+                } catch (newTabError) {
+                    log(`❌ Fallback 2 failed: ${newTabError.message}`);
+                    updateTestResults('fallback2', false, newTabError);
+                    updateStatus('❌ Fallback 2 failed - popup blocked', 'error');
+                }
+            }, delay);
+        }
+
+        function clearLogs() {
+            document.getElementById('log').innerHTML = '';
+            log('🧹 Logs cleared');
+        }
+
+        function resetTest() {
+            testResults = {
+                primaryRedirect: false,
+                fallback1: false,
+                fallback2: false,
+                errors: []
+            };
+            updateStatus('🔄 Test reset - ready to test again', 'info');
+            clearLogs();
+            log('🔄 Test reset complete');
+        }
+
+        // Initialize
+        log('🚀 Payment Frontend Test Page Loaded');
+        log('📍 This page simulates your React component logic');
+        log('🔍 Ready to test redirect mechanisms');
+        
+        // Auto-populate with the URL from your logs
+        document.getElementById('authUrl').value = 'https://checkout.paystack.com/qs2763qwyn10y2x';
+    </script>
+</body>
+</html>

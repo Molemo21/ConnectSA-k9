@@ -125,21 +125,21 @@ model Booking {
 }
 
 model Payment {
-  id              String    @id @default(cuid())
-  bookingId       String    @unique
+  id              String        @id @default(cuid())
+  bookingId       String        @unique
   amount          Float
-  paystackRef     String    @unique
+  paystackRef     String        @unique
   status          PaymentStatus
-  escrowAmount    Float     @map("escrow_amount")
-  platformFee     Float     @map("platform_fee")
-  currency        String    @default("ZAR")
-  transactionId   String?   @map("transaction_id")
-  authorizationUrl String?  @map("authorization_url")
-  accessCode      String?   @map("access_code")
+  escrowAmount    Float         @map("escrow_amount")
+  platformFee     Float         @map("platform_fee")
+  currency        String        @default("ZAR")
+  transactionId   String?       @map("transaction_id")
+  authorizationUrl String?      @map("authorization_url")
+  accessCode      String?       @map("access_code")
   paidAt          DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  booking         Booking   @relation(fields: [bookingId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  booking         Booking       @relation(fields: [bookingId], references: [id])
   payout          Payout?
 
   @@map("payments")
@@ -188,35 +188,42 @@ model PasswordResetToken {
 }
 
 model Proposal {
-  id         String    @id @default(dbgenerated("gen_random_uuid()"))
+  id         String    @id @default(cuid())
   bookingId  String
   providerId String
   status     String
   message    String?
-  createdAt  DateTime? @default(now()) @db.Timestamptz(6)
-  updatedAt  DateTime? @default(now()) @updatedAt @db.Timestamptz(6)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   booking    Booking   @relation(fields: [bookingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   provider   Provider  @relation(fields: [providerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("proposals")
 }
 
 model Message {
-  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  id        String    @id @default(cuid())
   bookingId String
   senderId  String
   content   String
-  sentAt    DateTime? @default(now()) @db.Timestamptz(6)
+  sentAt    DateTime  @default(now())
   booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sender    User      @relation("UserMessages", fields: [senderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("messages")
 }
 
 model Notification {
-  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  id        String   @id @default(cuid())
   userId    String
+  title     String   // Database has this column
+  message   String   // Database has 'message' not 'content'
   type      String
-  content   String
-  read      Boolean?  @default(false)
-  createdAt DateTime? @default(now()) @db.Timestamptz(6)
-  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  isRead    Boolean  @default(false) @map("isRead") // Database has 'isRead' not 'read'
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("notifications")
 }
 
 model Payout {
@@ -255,8 +262,8 @@ model JobProof {
 }
 
 model Dispute {
-  id          String    @id @default(cuid())
-  bookingId   String    @unique
+  id          String        @id @default(cuid())
+  bookingId   String        @unique
   raisedBy    String
   reason      String
   description String
@@ -264,18 +271,27 @@ model Dispute {
   resolvedBy  String?
   resolution  String?
   resolvedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  booking     Booking   @relation(fields: [bookingId], references: [id])
-  raisedByUser User     @relation("UserDisputes", fields: [raisedBy], references: [id])
-  resolvedByUser User?  @relation("AdminDisputes", fields: [resolvedBy], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  booking     Booking       @relation(fields: [bookingId], references: [id])
+  raisedByUser User         @relation("UserDisputes", fields: [raisedBy], references: [id])
+  resolvedByUser User?      @relation("AdminDisputes", fields: [resolvedBy], references: [id])
 
   @@map("disputes")
 }
 
-model test_table {
-  id   Int     @id @default(autoincrement())
-  name String?
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  eventType   String   // Database has 'eventType' not 'event_type'
+  paystackRef String?  // Database has 'paystackRef' not 'paystack_ref'
+  payload     Json
+  processed   Boolean  @default(false)
+  error       String?
+  retryCount  Int      @default(0) // Database has 'retryCount' not 'retry_count'
+  createdAt   DateTime @default(now()) // Database has 'createdAt' not 'created_at'
+  processedAt DateTime? // Database has 'processedAt' not 'processed_at'
+
+  @@map("webhook_events")
 }
 
 enum UserRole {
@@ -325,18 +341,4 @@ enum BookingStatus {
   COMPLETED
   CANCELLED
   DISPUTED
-}
-
-model WebhookEvent {
-  id          String   @id @default(cuid())
-  eventType   String   @map("event_type")
-  paystackRef String?  @map("paystack_ref")
-  payload     Json
-  processed   Boolean  @default(false)
-  error       String?
-  retryCount  Int      @default(0) @map("retry_count")
-  createdAt   DateTime @default(now()) @map("created_at")
-  processedAt DateTime? @map("processed_at")
-
-  @@map("webhook_events")
 }
