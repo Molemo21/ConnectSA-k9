@@ -321,12 +321,12 @@ export function ProviderDashboardContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <BrandHeaderClient showAuth={false} showUserMenu={true} />
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center h-48 sm:h-64">
               <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-                <p>Loading your dashboard...</p>
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin mx-auto mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base">Loading your dashboard...</p>
               </div>
             </div>
           </div>
@@ -339,13 +339,13 @@ export function ProviderDashboardContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <BrandHeaderClient showAuth={false} showUserMenu={true} />
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
           <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center h-48 sm:h-64">
               <div className="text-center">
-                <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-                <p className="text-red-600 mb-4">{error}</p>
-                <Button onClick={fetchBookings}>Try Again</Button>
+                <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 mx-auto mb-3 sm:mb-4" />
+                <p className="text-red-600 mb-3 sm:mb-4 text-sm sm:text-base">{error}</p>
+                <Button onClick={fetchBookings} size="sm" className="h-9 sm:h-10">Try Again</Button>
               </div>
             </div>
           </div>
@@ -358,78 +358,82 @@ export function ProviderDashboardContent() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <BrandHeaderClient showAuth={false} showUserMenu={true} />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="max-w-7xl mx-auto">
-          {/* Welcome Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
+          {/* Welcome Header - Mobile First */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <div>
-                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 leading-tight">
                   Provider Dashboard
                 </h1>
-                <p className="text-xl text-gray-600">
+                <p className="text-lg sm:text-xl text-gray-600 leading-relaxed">
                   Manage your bookings and grow your business
                 </p>
               </div>
-              <div className="flex items-center space-x-3">
-                <Button variant="outline" size="lg">
-                  <Bell className="w-5 h-5 mr-2" />
-                  Notifications
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <Button variant="outline" size="sm" className="h-9 sm:h-10 text-xs sm:text-sm">
+                  <Bell className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Notifications</span>
+                  <span className="sm:hidden">Notify</span>
                 </Button>
-                <Button variant="outline" size="lg">
-                  <MapPin className="w-5 h-5 mr-2" />
-                  Update Location
+                <Button variant="outline" size="sm" className="h-9 sm:h-10 text-xs sm:text-sm">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Update Location</span>
+                  <span className="sm:hidden">Location</span>
                 </Button>
-                <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  <Users className="w-5 h-5 mr-2" />
-                  View Profile
+                <Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-9 sm:h-10 text-xs sm:text-sm">
+                  <Users className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">View Profile</span>
+                  <span className="sm:hidden">Profile</span>
                 </Button>
-                <Button variant="outline" size="lg" asChild>
+                <Button variant="outline" size="sm" asChild className="h-9 sm:h-10 text-xs sm:text-sm">
                   <Link href="/provider/bank-details">
-                    <Banknote className="w-5 h-5 mr-2" />
-                    Bank Details
+                    <Banknote className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Bank Details</span>
+                    <span className="sm:hidden">Bank</span>
                   </Link>
                 </Button>
               </div>
             </div>
           </div>
 
-          {/* Bank Details Reminder Banner */}
+          {/* Bank Details Reminder Banner - Mobile First */}
           {!hasBankDetails && currentProviderId && (
-            <div className="mb-6">
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                      <Banknote className="w-5 h-5 text-amber-600" />
+            <div className="mb-4 sm:mb-6">
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                  <div className="flex items-start sm:items-center space-x-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Banknote className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-amber-900">
+                      <h3 className="text-sm font-semibold text-amber-900 leading-tight">
                         Complete Your Payment Setup
                       </h3>
-                      <p className="text-sm text-amber-800">
+                      <p className="text-sm text-amber-800 leading-relaxed mt-1">
                         Set up your bank account details to receive payments from completed jobs
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                     <Button 
                       size="sm" 
                       variant="outline"
                       onClick={refreshBankDetailsStatus}
                       disabled={isCheckingBankDetails}
-                      className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                      className="text-amber-700 border-amber-300 hover:bg-amber-100 h-8 sm:h-9 text-xs"
                     >
                       {isCheckingBankDetails ? (
-                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-spin" />
                       ) : (
-                        <RefreshCw className="w-4 h-4 mr-1" />
+                        <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                       )}
                       {isCheckingBankDetails ? "Checking..." : "Refresh"}
                     </Button>
                     <Button 
                       size="sm" 
-                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      className="bg-amber-600 hover:bg-amber-700 text-white h-8 sm:h-9 text-xs"
                       asChild
                     >
                       <Link href="/provider/bank-details">
@@ -442,36 +446,36 @@ export function ProviderDashboardContent() {
             </div>
           )}
 
-          {/* Success Message for Bank Details */}
+          {/* Success Message for Bank Details - Mobile First */}
           {hasBankDetails && currentProviderId && (
-            <div className="mb-6">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+            <div className="mb-4 sm:mb-6">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                  <div className="flex items-start sm:items-center space-x-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-green-900">
+                      <h3 className="text-sm font-semibold text-green-900 leading-tight">
                         Payment Setup Complete
                       </h3>
-                      <p className="text-sm text-green-800">
+                      <p className="text-sm text-green-800 leading-relaxed mt-1">
                         Your bank details are configured and ready for receiving payments
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center">
                     <Button 
                       size="sm" 
                       variant="outline"
                       onClick={refreshBankDetailsStatus}
                       disabled={isCheckingBankDetails}
-                      className="text-green-700 border-green-300 hover:bg-green-100"
+                      className="text-green-700 border-green-300 hover:bg-green-100 h-8 sm:h-9 text-xs"
                     >
                       {isCheckingBankDetails ? (
-                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-spin" />
                       ) : (
-                        <RefreshCw className="w-4 h-4 mr-1" />
+                        <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                       )}
                       {isCheckingBankDetails ? "Checking..." : "Refresh"}
                     </Button>
@@ -481,12 +485,12 @@ export function ProviderDashboardContent() {
             </div>
           )}
 
-          {/* Stats Cards */}
+          {/* Stats Cards - Mobile First */}
           <ProviderStatsCards stats={stats} />
 
-          {/* Bank Details Section */}
+          {/* Bank Details Section - Mobile First */}
           {currentProviderId && (
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               <BankDetailsForm 
                 providerId={currentProviderId} 
                 onSuccess={() => {
@@ -498,20 +502,20 @@ export function ProviderDashboardContent() {
             </div>
           )}
 
-          {/* Earnings Chart */}
-          <div className="mb-8">
+          {/* Earnings Chart - Mobile First */}
+          <div className="mb-6 sm:mb-8">
             <ProviderEarningsChart bookings={completedBookings} />
           </div>
 
-          {/* Filters and Search */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center space-x-4">
+          {/* Filters and Search - Mobile First */}
+          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <div className="flex items-center space-x-2">
                 <Filter className="w-4 h-4 text-gray-500" />
                 <select
                   value={selectedFilter}
                   onChange={(e) => setSelectedFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-9 sm:h-10"
                 >
                   <option value="all">All Bookings</option>
                   <option value="pending">Pending</option>
@@ -529,27 +533,27 @@ export function ProviderDashboardContent() {
                 placeholder="Search bookings..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64 h-9 sm:h-10"
               />
             </div>
           </div>
 
-          {/* Bookings Sections */}
-          <div className="space-y-8">
+          {/* Bookings Sections - Mobile First */}
+          <div className="space-y-6 sm:space-y-8">
             {/* Pending Bookings */}
             {pendingBookings.length > 0 && (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Clock className="w-5 h-5 text-orange-600" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                    <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
                     <span>Pending Bookings ({pendingBookings.length})</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm sm:text-base">
                     New booking requests waiting for your response
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
                     {pendingBookings.map((booking) => (
                       <ProviderBookingCard
                         key={booking.id}
@@ -569,17 +573,17 @@ export function ProviderDashboardContent() {
             {/* Confirmed Bookings */}
             {confirmedBookings.length > 0 && (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                     <span>Confirmed Bookings ({confirmedBookings.length})</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm sm:text-base">
                     Upcoming jobs that are confirmed and ready to start
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
                     {confirmedBookings.map((booking) => (
                       <ProviderBookingCard
                         key={booking.id}
@@ -599,17 +603,17 @@ export function ProviderDashboardContent() {
             {/* Pending Execution Bookings */}
             {pendingExecutionBookings.length > 0 && (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Play className="w-5 h-5 text-purple-600" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                    <Play className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
                     <span>Pending Execution ({pendingExecutionBookings.length})</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm sm:text-base">
                     Jobs that have payment completed and are waiting for the provider to start.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
                     {pendingExecutionBookings.map((booking) => (
                       <ProviderBookingCard
                         key={booking.id}
@@ -629,17 +633,17 @@ export function ProviderDashboardContent() {
             {/* In Progress Bookings */}
             {inProgressBookings.length > 0 && (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Play className="w-5 h-5 text-purple-600" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                    <Play className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
                     <span>In Progress ({inProgressBookings.length})</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm sm:text-base">
                     Jobs currently being worked on
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
                     {inProgressBookings.map((booking) => (
                       <ProviderBookingCard
                         key={booking.id}
@@ -659,17 +663,17 @@ export function ProviderDashboardContent() {
             {/* Completed Bookings */}
             {completedBookings.length > 0 && (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
+                <CardHeader className="p-4 sm:p-6">
+                  <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                     <span>Completed Jobs ({completedBookings.length})</span>
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-sm sm:text-base">
                     Recently completed jobs and client feedback
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-3 sm:space-y-4">
                     {completedBookings.map((booking) => (
                       <ProviderBookingCard
                         key={booking.id}
@@ -688,14 +692,14 @@ export function ProviderDashboardContent() {
             {/* No bookings message */}
             {filteredBookings.length === 0 && (
               <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardContent className="p-12 text-center">
-                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="w-8 h-8 text-orange-600" />
+                <CardContent className="p-8 sm:p-12 text-center">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 leading-tight">
                     {searchTerm || selectedFilter !== "all" ? "No Matching Bookings" : "No Active Bookings"}
                   </h2>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base leading-relaxed">
                     {searchTerm || selectedFilter !== "all" 
                       ? "Try adjusting your search or filter criteria."
                       : "You don't have any bookings at the moment. New bookings will appear here when clients book your services."
@@ -708,6 +712,8 @@ export function ProviderDashboardContent() {
                         setSearchTerm("")
                         setSelectedFilter("all")
                       }}
+                      size="sm"
+                      className="h-9 sm:h-10"
                     >
                       Clear Filters
                     </Button>
@@ -741,16 +747,16 @@ export function ProviderDashboardContent() {
         isLoading={processingAction}
       />
 
-      {/* Job Completion Modal */}
+      {/* Job Completion Modal - Mobile First */}
       {showCompletionModal && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Complete Job</h3>
-            <p className="text-gray-600 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-3 sm:mb-4">Complete Job</h3>
+            <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
               Please provide proof of job completion for {selectedBooking.service.name}
             </p>
             
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Photos (optional)
@@ -758,7 +764,7 @@ export function ProviderDashboardContent() {
                 <input
                   type="text"
                   placeholder="Enter photo URLs (comma separated)"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 h-10 sm:h-11 text-sm sm:text-base"
                   onChange={(e) => {
                     const urls = e.target.value.split(',').map(url => url.trim()).filter(url => url)
                     setCompletionData(prev => ({ ...prev, photos: urls }))
@@ -775,27 +781,27 @@ export function ProviderDashboardContent() {
                 </label>
                 <textarea
                   placeholder="Add any notes about the completed job..."
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 h-20"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 h-20 text-sm sm:text-base"
                   onChange={(e) => setCompletionData(prev => ({ ...prev, notes: e.target.value }))}
                 />
               </div>
             </div>
             
-            <div className="flex space-x-3 mt-6">
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-4 sm:mt-6">
               <button
                 onClick={() => {
                   setShowCompletionModal(false)
                   setSelectedBooking(null)
                   setCompletionData({ photos: [], notes: '' })
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 h-10 sm:h-11 text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleJobCompletion(completionData.photos, completionData.notes)}
                 disabled={processingAction}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed h-10 sm:h-11 text-sm sm:text-base"
               >
                 {processingAction ? "Completing..." : "Complete Job"}
               </button>
