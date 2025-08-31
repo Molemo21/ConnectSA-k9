@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     console.time('💾 Database Query')
     // Get booking with optimized includes - only fetch what's needed
-    const booking = await prisma.booking.findUnique({
+    const booking = await db.booking.findUnique({
       where: { id: bookingId },
       select: {
         id: true,

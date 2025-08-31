@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { db } from "@/lib/db-utils"
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Admin fetching pending payments...')
 
     // Fetch all pending payments with related booking and provider information
-    const pendingPayments = await prisma.payment.findMany({
+    const pendingPayments = await db.payment.findMany({
       where: {
         status: "PENDING"
       },

@@ -32,6 +32,13 @@ export function AdminPaymentManagement() {
   const fetchPaymentStats = async () => {
     try {
       setIsLoading(true);
+      
+      // Skip API calls during build time
+      if (typeof window === 'undefined') {
+        console.log('Skipping API call during build time');
+        return;
+      }
+      
       const response = await fetch('/api/admin/payments/pending');
       
       if (response.ok) {
@@ -77,7 +84,10 @@ export function AdminPaymentManagement() {
 
   // Fetch stats on component mount
   useEffect(() => {
-    fetchPaymentStats();
+    // Only fetch stats in the browser, not during build time
+    if (typeof window !== 'undefined') {
+      fetchPaymentStats();
+    }
   }, []);
 
   const getStatusColor = (status: string) => {

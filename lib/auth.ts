@@ -1,7 +1,7 @@
 import * as jose from 'jose';
 import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
-import { prisma } from "./prisma"
+import { db } from "./db-utils"
 import type { UserRole } from "@prisma/client"
 
 const JWT_EXPIRES_IN = "7d"
@@ -52,6 +52,18 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
 
 export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: string } } | null> {
   try {
+    // Skip database queries during build time
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      console.log('Skipping getCurrentUser during build time');
+      return null;
+    }
+
+    // Check if we're in a browser/Edge runtime environment
+    if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'edge') {
+      console.log('Skipping getCurrentUser in browser/Edge runtime');
+      return null;
+    }
+
     const cookieStore = await cookies()
     const token = cookieStore.get("auth-token")?.value
 
@@ -61,7 +73,7 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
     if (!decoded) return null
 
     // Verify user still exists and is active
-    const user = await prisma.user.findFirst({
+    const user = await db.user.findFirst({
       where: { id: decoded.id, isActive: true },
       select: {
         id: true,
@@ -75,7 +87,8 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
     })
 
     return user as AuthUser & { provider?: { id: string } } | null
-  } catch {
+  } catch (error) {
+    console.error('Error in getCurrentUser:', error);
     return null
   }
 }
@@ -90,6 +103,18 @@ export async function getCurrentUserSafe(): Promise<AuthUser & { provider?: { id
 }
 
 export async function getUserFromRequest(request: Request): Promise<AuthUser | null> {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    console.log('Skipping getUserFromRequest during build time');
+    return null;
+  }
+
+  // Check if we're in a browser/Edge runtime environment
+  if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'edge') {
+    console.log('Skipping getUserFromRequest in browser/Edge runtime');
+    return null;
+  }
+
   const cookieHeader = request.headers.get("cookie")
   if (!cookieHeader) return null
 
