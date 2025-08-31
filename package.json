@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
+    "build": "prisma generate && next build",
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --watchAll=false",
     "clean": "rm -rf .next node_modules/.cache && npm ci",
-    "diag:deps": "npm list react react-dom next --depth=0 && npm ls --depth=0 | grep -E '(react|next)'"
+    "diag:deps": "npm list react react-dom next --depth=0 && npm ls --depth=0 | grep -E '(react|next)'",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

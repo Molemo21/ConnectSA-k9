@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { BrandHeaderServer } from "@/components/ui/brand-header-server"
 import { Users, Briefcase, Calendar, TrendingUp, AlertTriangle, CheckCircle, Clock, Star, DollarSign, BarChart3, RefreshCw, Loader2, Shield, Zap, Activity } from "lucide-react"
 import ProviderList from '@/components/admin/provider-list'
-import AdminPaymentManagement from '@/components/admin/admin-payment-management'
+import { AdminPaymentManagement } from '@/components/admin/admin-payment-management'
 import AdminBookingOverview from '@/components/admin/admin-booking-overview'
 import AdminSystemHealth from '@/components/admin/admin-system-health'
 
