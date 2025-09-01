@@ -7,15 +7,32 @@ class DatabaseConnection {
   private isConnected = false;
 
   private constructor() {
+    // Skip initialization during build time
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      // Create a dummy client for build time
+      this.prisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: 'postgresql://dummy:dummy@localhost:5432/dummy',
+          },
+        },
+      });
+      return;
+    }
+
     // Fix for Supabase prepared statement conflicts
     const databaseUrl = process.env.DATABASE_URL;
-    const directUrl = databaseUrl?.replace(':6543/', ':5432/').replace('?pgbouncer=true', '');
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL is required');
+    }
+    
+    const directUrl = databaseUrl.replace(':6543/', ':5432/').replace('?pgbouncer=true', '');
     
     this.prisma = new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
       datasources: {
         db: {
-          url: directUrl || process.env.DATABASE_URL,
+          url: directUrl,
         },
       },
       // Disable prepared statements to avoid conflicts
@@ -37,6 +54,13 @@ class DatabaseConnection {
   public async connect(): Promise<void> {
     if (!this.isConnected) {
       try {
+        // Skip connection during build time
+        if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+          this.isConnected = false;
+          console.log('Skipping database connection during build time');
+          return;
+        }
+        
         await this.prisma.$connect();
         this.isConnected = true;
         console.log('Database connected successfully');
@@ -66,6 +90,11 @@ class DatabaseConnection {
 
   public async healthCheck(): Promise<boolean> {
     try {
+      // Skip health check during build time
+      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+        return false; // Return false during build to indicate service unavailable
+      }
+      
       // Use a simple query instead of raw query
       await this.prisma.user.findFirst();
       return true;
