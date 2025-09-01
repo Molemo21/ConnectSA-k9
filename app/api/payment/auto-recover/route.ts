@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { paystackClient } from "@/lib/paystack";
 
 export async function POST(request: NextRequest) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      error: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
   try {
     // Only admins can trigger auto-recovery
     const user = await getCurrentUser();

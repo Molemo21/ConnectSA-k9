@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      success: false,
+      message: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
   try {
     // Test endpoint - no authentication required
     const bookings = await prisma.booking.findMany({

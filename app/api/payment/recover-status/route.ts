@@ -4,6 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { paystackClient } from "@/lib/paystack";
 
 export async function POST(request: NextRequest) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      success: false,
+      message: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
   console.log('🚀 POST /api/payment/recover-status called');
   console.log('🚀 Request URL:', request.url);
   console.log('🚀 Request method:', request.method);

@@ -6,6 +6,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      error: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
   try {
     const user = await getCurrentUser();
     if (!user) {

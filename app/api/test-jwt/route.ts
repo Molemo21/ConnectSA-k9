@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { generateToken, verifyToken } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      error: "Service temporarily unavailable during deployment",
+      timestamp: new Date().toISOString()
+    }, { status: 503 });
+  }
+
   try {
     // Check if JWT_SECRET is set
     const jwtSecret = process.env.JWT_SECRET

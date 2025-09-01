@@ -3,6 +3,15 @@ import { getCurrentUserSafe } from "@/lib/auth"
 import { healthCheck } from "@/lib/db-connection"
 
 export async function GET(request: NextRequest) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      status: "deploying",
+      timestamp: new Date().toISOString(),
+      message: "Service is being deployed, please try again in a few minutes"
+    }, { status: 503 });
+  }
+
   try {
     const startTime = Date.now()
     

@@ -2,6 +2,13 @@ import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 
 export async function GET() {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      error: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
   try {
     const user = await getCurrentUser()
 

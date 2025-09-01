@@ -3,6 +3,13 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      error: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
   try {
     const user = await getCurrentUser();
     
@@ -109,6 +116,13 @@ export async function GET(request: NextRequest) {
 
 // Retry failed webhook events
 export async function POST(request: NextRequest) {
+  // Skip during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return NextResponse.json({
+      error: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
   try {
     const user = await getCurrentUser();
     

@@ -27,6 +27,7 @@ export function AdminPaymentManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
   const [lastRecovery, setLastRecovery] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState<string>('');
 
   // Fetch payment statistics
   const fetchPaymentStats = async () => {
@@ -90,6 +91,21 @@ export function AdminPaymentManagement() {
     }
   }, []);
 
+  // Update timestamp on client side to prevent hydration mismatch
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(new Date().toLocaleString());
+    };
+    
+    // Set initial time
+    updateTime();
+    
+    // Update time every second
+    const interval = setInterval(updateTime, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PENDING': return 'bg-yellow-100 text-yellow-800';
@@ -125,7 +141,7 @@ export function AdminPaymentManagement() {
         <CardContent>
           <div className="flex items-center justify-between mb-4">
             <div className="text-sm text-muted-foreground">
-              Last updated: {new Date().toLocaleString()}
+              Last updated: {currentTime || 'Loading...'}
         </div>
           <Button
               onClick={fetchPaymentStats} 
