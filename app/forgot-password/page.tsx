@@ -1,9 +1,18 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { Mail } from "lucide-react"
 
 export default function ForgotPasswordPage() {
+  const router = useRouter()
+  const { toast } = useToast()
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -11,109 +20,95 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    
     try {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       })
-      
       const data = await response.json()
-      
       if (response.ok) {
         setSubmitted(true)
-        console.log("Success:", data.message)
+        toast({
+          title: "Check your email",
+          description: data.message,
+        })
       } else {
-        console.error("Error:", data.error)
+        toast({
+          title: "Error",
+          description: data.error || "Something went wrong.",
+          variant: "destructive",
+        })
       }
     } catch (error) {
-      console.error("Network error:", error)
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Check your email</h1>
-          <p className="text-green-700 mb-6">
-            If an account with that email exists, a password reset link has been sent.
-          </p>
-          <Link 
-            href="/login" 
-            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Back to Login
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-gradient-to-br from-black via-gray-900 to-black overflow-hidden">
+      {/* Overlay for dark effect */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md"></div>
+
+      <div className="w-full max-w-md mx-auto relative z-10 animate-fade-in-up">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">S</span>
-            </div>
-            <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
-          </Link>
-        </div>
-        
-        <div className="bg-white shadow-xl rounded-lg p-8">
-          <h1 className="text-2xl font-bold text-center mb-2">Forgot Password</h1>
-          <p className="text-gray-600 text-center mb-6">
-            Enter your email to receive a password reset link.
-          </p>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="Enter your email address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
+          <div className="flex justify-center mb-6">
+            <button type="button" onClick={() => window.location.href = '/'}>
+              <img
+                src="/handshake.png"
+                alt="Handshake Logo"
+                className="w-16 h-16 rounded-xl shadow-lg object-cover animate-breathing"
+                style={{ animation: 'breathing 2.5s ease-in-out infinite' }}
               />
-            </div>
-            
-            <button 
-              type="submit" 
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              disabled={isLoading || !email.trim()}
-            >
-              {isLoading ? "Sending..." : "Send Reset Link"}
             </button>
-            
-            <div className="text-center pt-4">
-              <Link 
-                href="/login" 
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Remember your password? Sign in
-              </Link>
-            </div>
-          </form>
-        </div>
-        
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-700 text-center">
-              💡 <strong>Development Mode:</strong> Check the console for the password reset link
-            </p>
           </div>
-        )}
+          <h1 className="text-4xl font-extrabold text-white mb-2 drop-shadow-lg animate-fade-in">Forgot Password</h1>
+          <p className="text-gray-300 text-base">Enter your email to receive a password reset link.</p>
+        </div>
+
+        <Card className="shadow-2xl border-0 bg-white/10 backdrop-blur-xl text-white rounded-2xl transition-all duration-300 hover:shadow-3xl">
+          <CardContent className="p-8">
+            {submitted ? (
+              <div className="text-center py-8">
+                <p className="text-green-400 font-medium mb-2">If an account with that email exists, a password reset link has been sent.</p>
+                <Button className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-bold text-lg py-3 rounded-xl shadow-lg transition-all duration-200" onClick={() => router.push("/login")}>Back to Login</Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-gray-200 font-medium">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 w-4 h-4 text-blue-400 animate-fade-in" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      className="pl-10 bg-white/20 border border-blue-500/30 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      aria-label="Email Address"
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-bold text-lg py-3 rounded-xl shadow-lg transition-all duration-200" disabled={isLoading}>
+                  {isLoading ? "Sending..." : "Send Reset Link"}
+                </Button>
+                <div className="text-center pt-2">
+                  <Link href="/login" className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                    Back to Login
+                  </Link>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
