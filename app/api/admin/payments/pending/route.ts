@@ -35,7 +35,13 @@ export async function GET(request: NextRequest) {
               select: {
                 id: true,
                 businessName: true,
-                email: true
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    name: true
+                  }
+                }
               }
             },
             client: {

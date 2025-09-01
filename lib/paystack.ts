@@ -1,17 +1,24 @@
 import { z } from 'zod';
 
-// Environment variables validation
+// Environment variables validation - only validate at runtime, not during build
 const requiredEnvVars = {
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
   PAYSTACK_PUBLIC_KEY: process.env.PAYSTACK_PUBLIC_KEY,
 };
 
-// Validate environment variables
-Object.entries(requiredEnvVars).forEach(([key, value]) => {
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+// Validate environment variables only at runtime
+const validateEnvVars = () => {
+  // Skip validation during build time
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    return;
   }
-});
+  
+  Object.entries(requiredEnvVars).forEach(([key, value]) => {
+    if (!value) {
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
+  });
+};
 
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';
 
@@ -135,6 +142,14 @@ class PaystackClient {
   private publicKey: string;
 
   constructor() {
+    // Skip initialization during build time
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      this.secretKey = 'dummy-key';
+      this.publicKey = 'dummy-key';
+      return;
+    }
+    
+    validateEnvVars();
     this.secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY!;
     this.publicKey = requiredEnvVars.PAYSTACK_PUBLIC_KEY!;
   }
@@ -291,6 +306,12 @@ export class PaymentProcessor {
 
   // Validate Paystack webhook signature
   validateWebhookSignature(payload: string, signature: string): boolean {
+    // Skip validation during build time
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      return false;
+    }
+    
+    validateEnvVars();
     const crypto = require('crypto');
     const secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY!;
     
