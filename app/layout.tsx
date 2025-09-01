@@ -8,7 +8,7 @@ import { ClientRoot } from "@/components/client-root"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "ServiceHub SA - Your Trusted Services Marketplace",
+  title: "Proliink Connect - Your Trusted Services Marketplace",
   description:
     "Connect with verified service providers across South Africa. Book trusted professionals for cleaning, plumbing, electrical work, and more.",
     generator: 'v0.dev'

@@ -12,8 +12,9 @@ DATABASE_URL=your_database_connection_string
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=7d
 
-# Email Service
-RESEND_API_KEY=your_resend_api_key
+# Email Service (Resend)
+RESEND_API_KEY=re_ZTeSkpCV_8haEEpLg4Z1vGtT3jSj74HoUn
+FROM_EMAIL=noreply@v0-south-africa-marketplace-platfo.vercel.app
 
 # Paystack Configuration
 PAYSTACK_SECRET_KEY=your_paystack_secret_key

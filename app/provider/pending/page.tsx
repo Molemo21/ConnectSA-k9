@@ -74,7 +74,7 @@ export default async function ProviderPendingPage() {
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-xl">S</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
+              <span className="text-2xl font-bold text-gray-900">Proliink Connect</span>
             </Link>
           </div>
 
@@ -163,7 +163,7 @@ export default async function ProviderPendingPage() {
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Mail className="w-4 h-4" />
-                    <span>support@servicehub.co.za</span>
+                    <span>support@proliinkconnect.com</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Phone className="w-4 h-4" />

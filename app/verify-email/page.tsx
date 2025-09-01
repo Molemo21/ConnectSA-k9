@@ -123,7 +123,7 @@ function VerifyEmailContent() {
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-xl">S</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
+              <span className="text-2xl font-bold text-gray-900">Proliink Connect</span>
             </Link>
           </div>
           <Card className="shadow-xl border-0">
@@ -178,7 +178,7 @@ function VerifyEmailContent() {
               <span className="text-white font-bold text-xl">P</span>
             </div>
             <div className="text-left">
-              <span className="text-2xl font-bold text-gray-900">ProLiink Connect</span>
+              <span className="text-2xl font-bold text-gray-900">Proliink Connect</span>
               <div className="text-xs text-gray-500">Trusted Services</div>
             </div>
           </Link>

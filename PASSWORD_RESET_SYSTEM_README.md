@@ -107,7 +107,7 @@ The system requires these packages:
 ## 🎨 Design Features
 
 ### Visual Design
-- **Consistent Branding**: Matches ServiceHub SA design system
+- **Consistent Branding**: Matches Proliink Connect design system
 - **Gradient Backgrounds**: Green to yellow theme
 - **Modern UI Components**: Using shadcn/ui components
 - **Responsive Layout**: Works on all device sizes
@@ -141,7 +141,7 @@ The system requires these packages:
 ### Production Mode
 - Uses Resend email service
 - Professional HTML email templates
-- Branded with ServiceHub SA styling
+- Branded with Proliink Connect styling
 - Fallback text links for accessibility
 
 ## 🧪 Testing

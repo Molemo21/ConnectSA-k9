@@ -92,8 +92,8 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm sm:text-lg">S</span>
             </div>
-            <span className="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">ServiceHub SA</span>
-            <span className="text-base font-bold text-gray-900 sm:hidden">ServiceHub</span>
+            <span className="text-lg sm:text-xl font-bold text-gray-900 hidden sm:block">Proliink Connect</span>
+            <span className="text-base font-bold text-gray-900 sm:hidden">Proliink</span>
           </Link>
 
           {/* Navigation - Desktop Only */}

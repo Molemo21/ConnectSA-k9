@@ -225,7 +225,7 @@ export default function HomePage() {
                 <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg border-white text-white hover:bg-white hover:text-blue-600 w-full sm:w-auto">
+            <Button asChild size="lg" variant="secondary" className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg w-full sm:w-auto">
               <Link href="/provider/onboarding">
                 Become a Provider
               </Link>

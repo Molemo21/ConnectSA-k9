@@ -23,7 +23,7 @@ function ResetPasswordContent() {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-xl">S</span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
+              <span className="text-2xl font-bold text-gray-900">Proliink Connect</span>
             </Link>
           </div>
           <div className="bg-white shadow-xl rounded-lg p-8 text-center">
@@ -122,7 +122,7 @@ function ResetPasswordContent() {
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-xl">S</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">ServiceHub SA</span>
+            <span className="text-2xl font-bold text-gray-900">Proliink Connect</span>
           </Link>
         </div>
         
