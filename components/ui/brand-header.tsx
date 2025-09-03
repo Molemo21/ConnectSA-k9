@@ -29,22 +29,29 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
               className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
             />
             <div className="flex flex-col">
-              <span className="text-lg sm:text-xl font-bold text-white leading-tight">ProLiink Connect</span>
+              <span className="text-lg sm:text-xl font-bold text-white leading-tight">ProL<span className="text-blue-400">ii</span>nk Connect</span>
               <span className="text-xs text-gray-300 leading-tight hidden xs:block">Trusted Services</span>
             </div>
           </Link>
 
           {/* Navigation - Desktop Only */}
           <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <Link href="#services" className="text-gray-200 hover:text-blue-400 transition-colors font-medium text-sm lg:text-base">
-              Services
-            </Link>
-            <Link href="#how-it-works" className="text-gray-200 hover:text-blue-400 transition-colors font-medium text-sm lg:text-base">
-              How it Works
-            </Link>
-            <Link href="/provider/onboarding" className="text-gray-200 hover:text-blue-400 transition-colors font-medium text-sm lg:text-base">
-              Become a Provider
-            </Link>
+            <div className="relative group">
+              <button className="text-gray-200 hover:text-blue-400 transition-colors font-medium text-sm lg:text-base focus:outline-none">
+                Explore
+              </button>
+              <div className="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-lg py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <Link href="#services" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                  Services
+                </Link>
+                <Link href="#how-it-works" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                  How it Works
+                </Link>
+                <Link href="#about-us" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                  About Us
+                </Link>
+              </div>
+            </div>
           </nav>
 
           {/* Auth/User Menu - Desktop */}
@@ -53,7 +60,7 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
               <UserMenu user={user} />
             ) : showAuth ? (
               <div className="flex items-center space-x-3">
-                <Button variant="ghost" asChild className="text-sm lg:text-base text-gray-200 hover:text-white">
+                <Button variant="ghost" asChild className="text-sm lg:text-base text-gray-200 hover:text-white hover:border-purple-500 hover:shadow-xl">
                   <Link href="/login">Sign In</Link>
                 </Button>
                 <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm lg:text-base text-white">

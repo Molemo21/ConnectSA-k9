@@ -14,7 +14,6 @@ import {
   ArrowUpRight, ArrowDownRight
 } from "lucide-react"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
-import { BookingTimeline, CompactBookingTimeline } from "@/components/dashboard/booking-timeline"
 import { showToast, handleApiError } from "@/lib/toast"
 import { LoadingCard } from "@/components/ui/loading-spinner"
 import { useBookingData } from "@/hooks/use-booking-data"
@@ -301,11 +300,6 @@ export function DashboardContent() {
     { name: 'Settings', href: '/settings', icon: Settings, current: false },
   ]
 
-  // Find the most recent active booking
-  const activeBooking = bookings
-    .filter(b => ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'PENDING_EXECUTION'].includes(b.status))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
-
   return (
     <div className="h-screen bg-gray-950 text-gray-100 flex overflow-hidden">
       {/* Mobile sidebar overlay */}
@@ -377,13 +371,6 @@ export function DashboardContent() {
             )
           })}
         </nav>
-
-        {/* Compact Timeline in Sidebar (when not collapsed) */}
-        {!sidebarCollapsed && bookings.length > 0 && (
-          <div className="p-3 border-t border-gray-800">
-            <CompactBookingTimeline bookings={bookings} />
-          </div>
-        )}
 
         {/* User Profile */}
         {!sidebarCollapsed && (
@@ -532,45 +519,6 @@ export function DashboardContent() {
               </Button>
             </div>
 
-            {/* Current Active Booking Section */}
-            {activeBooking && (
-              <Card className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-800/50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
-                        <Activity className="w-5 h-5 text-white animate-pulse" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg font-semibold text-gray-100">Current Active Booking</CardTitle>
-                        <p className="text-sm text-gray-400">Your ongoing service booking</p>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20"
-                      asChild
-                    >
-                      <a href="/bookings">View All Bookings</a>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <EnhancedBookingCard
-                    booking={activeBooking}
-                    onStatusChange={(bookingId, newStatus) => {
-                      // Update the booking status in the local state
-                      setInitialBookings(prev => prev.map(b => 
-                        b.id === bookingId ? { ...b, status: newStatus } : b
-                      ))
-                    }}
-                    onRefresh={refreshBooking}
-                  />
-                </CardContent>
-              </Card>
-            )}
-
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
@@ -639,20 +587,11 @@ export function DashboardContent() {
               })}
             </div>
 
-            {/* Main Content Grid with Timeline */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
-              {/* Booking Timeline - Takes full width on mobile, 1 column on xl */}
-              <div className="xl:col-span-1">
-                <BookingTimeline 
-                  bookings={bookings} 
-                  maxItems={4}
-                  showViewAll={true}
-                />
-              </div>
-
-              {/* Recent Bookings - Takes remaining space */}
-              <Card className="xl:col-span-2 bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+              {/* Recent Bookings */}
+              <Card className="lg:col-span-2 bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg font-semibold text-gray-100">Recent Bookings</CardTitle>
@@ -710,7 +649,7 @@ export function DashboardContent() {
               </Card>
 
               {/* Popular Services */}
-              <Card className="xl:col-span-1 bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+              <Card className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg font-semibold text-gray-100 flex items-center">
                     <TrendingUp className="w-5 h-5 mr-2 text-purple-400" />
