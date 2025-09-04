@@ -6,15 +6,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { 
   Search, Calendar, Clock, Star, MapPin, Plus, Home, Wrench, Paintbrush, Zap, Car, Scissors, 
   TrendingUp, DollarSign, CheckCircle, AlertCircle, BarChart3, RefreshCw, AlertTriangle, 
   Loader2, Menu, X, Bell, Settings, User, LogOut, ChevronLeft, ChevronRight, Activity,
   CreditCard, BookOpen, MessageSquare, Shield, HelpCircle, PanelLeftClose, PanelLeftOpen,
-  ArrowUpRight, ArrowDownRight
+  ArrowUpRight, ArrowDownRight, Phone, Edit
 } from "lucide-react"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
 import { BookingTimeline, CompactBookingTimeline } from "@/components/dashboard/booking-timeline"
+import { DashboardLoadingScreen } from "@/components/dashboard/dashboard-loading-screen"
+import { PaymentsDashboard } from "@/components/dashboard/payments-dashboard"
 import { showToast, handleApiError } from "@/lib/toast"
 import { LoadingCard } from "@/components/ui/loading-spinner"
 import { useBookingData } from "@/hooks/use-booking-data"
@@ -40,6 +43,12 @@ export function DashboardContent() {
   const [initialBookings, setInitialBookings] = useState<any[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [selectedActiveBooking, setSelectedActiveBooking] = useState<any>(null)
+  
+  // Payments dashboard state
+  const [isPaymentsDashboardExpanded, setIsPaymentsDashboardExpanded] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<any>(null)
 
   // Get search params to detect payment success callback
   const searchParams = useSearchParams()
@@ -201,7 +210,7 @@ export function DashboardContent() {
   if (loading) {
     return (
       <div className="h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
-        <LoadingCard text="Loading your dashboard..." />
+        <DashboardLoadingScreen />
       </div>
     )
   }
@@ -231,7 +240,7 @@ export function DashboardContent() {
 
   // Calculate real stats with enhanced details
   const totalBookings = bookings.length
-  const completedBookings = bookings.filter(b => b.status === "COMPLETED").length
+  const completedBookingsCount = bookings.filter(b => b.status === "COMPLETED").length
   const pendingBookings = bookings.filter(b => b.status === "PENDING").length
   const confirmedBookings = bookings.filter(b => b.status === "CONFIRMED").length
   const inProgressBookings = bookings.filter(b => b.status === "IN_PROGRESS").length
@@ -286,6 +295,17 @@ export function DashboardContent() {
     }
   }).filter(service => service.providerCount > 0).slice(0, 6) // Show top 6 services with providers
 
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Logout failed:', error)
+      showToast.error('Failed to logout. Please try again.')
+    }
+  }
+
   // Navigation items - now defined inside component where bookings is available
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, current: true },
@@ -299,10 +319,20 @@ export function DashboardContent() {
     { name: 'Payments', href: '/payments', icon: CreditCard, current: false },
     { name: 'Support', href: '/support', icon: HelpCircle, current: false },
     { name: 'Settings', href: '/settings', icon: Settings, current: false },
+    { name: 'Logout', href: '#', icon: LogOut, current: false, isAction: true },
   ]
 
-  // Find the most recent active booking
-  const activeBooking = bookings
+  // Filter bookings for different sections
+  const incompleteBookings = bookings.filter(b => 
+    !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(b.status)
+  )
+  
+  const completedBookings = bookings.filter(b => 
+    b.status === 'COMPLETED'
+  )
+
+  // Find the most recent active booking or use selected one
+  const activeBooking = selectedActiveBooking || bookings
     .filter(b => ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'PENDING_EXECUTION'].includes(b.status))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
 
@@ -325,11 +355,15 @@ export function DashboardContent() {
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
           {!sidebarCollapsed && (
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
+              <img 
+                src="/handshake.png" 
+                alt="ProLiink Connect Logo" 
+                className="w-8 h-8 rounded-lg object-cover shadow-lg"
+              />
               <div>
-                <h1 className="text-lg font-bold text-gray-100">ConnectSA</h1>
+                <h1 className="text-lg font-bold text-gray-100">
+                  ProL<span className="text-blue-400">ii</span>nk Connect
+                </h1>
                 <p className="text-xs text-gray-400">Client Dashboard</p>
               </div>
             </div>
@@ -349,6 +383,57 @@ export function DashboardContent() {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navigationItems.map((item) => {
             const Icon = item.icon
+            
+            if (item.isAction) {
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className={`group flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-red-400 hover:bg-red-900/20 hover:text-red-300 ${
+                    sidebarCollapsed ? 'justify-center' : ''
+                  }`}
+                  title={sidebarCollapsed ? item.name : ''}
+                >
+                  <Icon className={`flex-shrink-0 w-5 h-5 ${
+                    sidebarCollapsed ? '' : 'mr-3'
+                  }`} />
+                  {!sidebarCollapsed && (
+                    <span className="truncate">{item.name}</span>
+                  )}
+                </button>
+              )
+            }
+            
+            // Handle Payments navigation specially
+            if (item.name === 'Payments') {
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => setIsPaymentsDashboardExpanded(true)}
+                  className={`group flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                    item.current
+                      ? 'bg-purple-900/50 text-purple-400 border border-purple-800/50'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                  } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                  title={sidebarCollapsed ? item.name : ''}
+                >
+                  <Icon className={`flex-shrink-0 w-5 h-5 ${
+                    sidebarCollapsed ? '' : 'mr-3'
+                  }`} />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="truncate">{item.name}</span>
+                      {item.badge && item.badge > 0 && (
+                        <Badge className="ml-auto bg-purple-900/50 text-purple-400 text-xs border-purple-800/50">
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                </button>
+              )
+            }
+            
             return (
               <a
                 key={item.name}
@@ -378,10 +463,18 @@ export function DashboardContent() {
           })}
         </nav>
 
-        {/* Compact Timeline in Sidebar (when not collapsed) */}
-        {!sidebarCollapsed && bookings.length > 0 && (
+        {/* Payments Dashboard in Sidebar (when not collapsed) */}
+        {!sidebarCollapsed && (
           <div className="p-3 border-t border-gray-800">
-            <CompactBookingTimeline bookings={bookings} />
+            <PaymentsDashboard
+              bookings={bookings}
+              isExpanded={false}
+              onPaymentSelect={(payment) => {
+                setSelectedPayment(payment)
+                setIsPaymentsDashboardExpanded(true)
+              }}
+              onExpandToggle={() => setIsPaymentsDashboardExpanded(true)}
+            />
           </div>
         )}
 
@@ -482,34 +575,7 @@ export function DashboardContent() {
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           <div className="max-w-7xl mx-auto space-y-8">
             
-            {/* Payment Status Alert */}
-            {bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status)) && (
-              <Card className="bg-blue-900/20 border-blue-800/50 rounded-xl">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-300">
-                        {bookings.filter(b => b.payment && b.payment.status === 'PENDING').length} payment(s) processing
-                      </p>
-                      <p className="text-xs text-blue-400">
-                        Your payments are being processed. This usually takes 2-5 minutes.
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleManualRefresh} 
-                      disabled={isRefreshing}
-                      className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
-                    >
-                      {isRefreshing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Check Status'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
+            
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
               <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white transition-all duration-200 hover:scale-105" asChild>
@@ -532,16 +598,27 @@ export function DashboardContent() {
               </Button>
             </div>
 
-            {/* Current Active Booking Section */}
-            {activeBooking && (
-              <Card className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-purple-800/50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+            {/* Current Active Booking Section OR Expanded Payments Dashboard */}
+            {isPaymentsDashboardExpanded ? (
+              <PaymentsDashboard
+                bookings={bookings}
+                isExpanded={true}
+                selectedPayment={selectedPayment}
+                onPaymentSelect={setSelectedPayment}
+                onExpandToggle={() => {
+                  setIsPaymentsDashboardExpanded(false)
+                  setSelectedPayment(null)
+                }}
+              />
+            ) : activeBooking ? (
+              <Card className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
                 <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Activity className="w-5 h-5 text-white animate-pulse" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <CardTitle className="text-lg font-semibold text-gray-100">Current Active Booking</CardTitle>
                         <p className="text-sm text-gray-400">Your ongoing service booking</p>
                       </div>
@@ -549,27 +626,29 @@ export function DashboardContent() {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20"
+                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 self-start sm:self-auto"
                       asChild
                     >
-                      <a href="/bookings">View All Bookings</a>
+                      <a href="/bookings">View All</a>
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <EnhancedBookingCard
-                    booking={activeBooking}
-                    onStatusChange={(bookingId, newStatus) => {
-                      // Update the booking status in the local state
-                      setInitialBookings(prev => prev.map(b => 
-                        b.id === bookingId ? { ...b, status: newStatus } : b
-                      ))
-                    }}
-                    onRefresh={refreshBooking}
-                  />
+                  <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+                    <EnhancedBookingCard
+                      booking={activeBooking}
+                      onStatusChange={(bookingId, newStatus) => {
+                        // Update the booking status in the local state
+                        setInitialBookings(prev => prev.map(b => 
+                          b.id === bookingId ? { ...b, status: newStatus } : b
+                        ))
+                      }}
+                      onRefresh={refreshBooking}
+                    />
+                  </div>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -584,8 +663,8 @@ export function DashboardContent() {
                 },
                 {
                   title: "Completed Jobs",
-                  value: completedBookings,
-                  change: `${totalBookings > 0 ? Math.round((completedBookings / totalBookings) * 100) : 0}%`,
+                  value: completedBookingsCount,
+                  change: `${totalBookings > 0 ? Math.round((completedBookingsCount / totalBookings) * 100) : 0}%`,
                   trend: "up",
                   icon: CheckCircle,
                   color: "text-green-400"
@@ -642,124 +721,242 @@ export function DashboardContent() {
             {/* Main Content Grid with Timeline */}
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
               
-              {/* Booking Timeline - Takes full width on mobile, 1 column on xl */}
-              <div className="xl:col-span-1">
+              {/* Booking Timeline - Takes 3 columns on xl - Shows only incomplete bookings */}
+              <div className="xl:col-span-3">
                 <BookingTimeline 
-                  bookings={bookings} 
-                  maxItems={4}
+                  bookings={incompleteBookings} 
+                  maxItems={3}
                   showViewAll={true}
+                  onBookingClick={(booking) => setSelectedActiveBooking(booking)}
                 />
               </div>
 
-              {/* Recent Bookings - Takes remaining space */}
-              <Card className="xl:col-span-2 bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-gray-100">Recent Bookings</CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20"
-                      asChild
-                    >
-                      <a href="/bookings">View All</a>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {bookings.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Calendar className="w-8 h-8 text-gray-400" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-100 mb-2">No bookings yet</h3>
-                      <p className="text-gray-400 mb-6">Start by booking your first service</p>
-                      <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700" asChild>
-                        <a href="/book-service">Book Your First Service</a>
+              {/* Recent Completed Jobs - Takes 1 column on far right */}
+              <div className="xl:col-span-1">
+                <Card className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold text-gray-100">Completed</CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 text-xs"
+                        asChild
+                      >
+                        <a href="/bookings">All</a>
                       </Button>
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {bookings.slice(0, 3).map((booking) => (
-                        <div 
-                          key={booking.id} 
-                          className="flex items-center justify-between p-4 bg-gray-800 rounded-lg hover:bg-gray-750 transition-all duration-200 cursor-pointer"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
-                              <Calendar className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-100">{booking.service?.name || 'Service'}</p>
-                              <p className="text-xs text-gray-400">{new Date(booking.scheduledDate).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          <Badge className={`text-xs ${
-                            booking.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border-green-800/50' :
-                            booking.status === 'CONFIRMED' ? 'bg-blue-900/50 text-blue-400 border-blue-800/50' :
-                            booking.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50' :
-                            'bg-gray-800 text-gray-400 border-gray-700'
-                          }`}>
-                            {booking.status}
-                          </Badge>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {completedBookings.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <CheckCircle className="w-6 h-6 text-gray-400" />
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Popular Services */}
-              <Card className="xl:col-span-1 bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-semibold text-gray-100 flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2 text-purple-400" />
-                    Popular Services
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {popularServices.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Search className="w-6 h-6 text-gray-400" />
+                        <h3 className="text-sm font-medium text-gray-100 mb-2">No completed jobs</h3>
+                        <p className="text-xs text-gray-400 mb-4">Complete your first booking</p>
+                        <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-xs" asChild>
+                          <a href="/book-service">Book Now</a>
+                        </Button>
                       </div>
-                      <h3 className="text-sm font-medium text-gray-100 mb-2">No services available</h3>
-                      <p className="text-xs text-gray-400">Check back later for available services</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {popularServices.slice(0, 4).map((service) => {
-                        const Icon = service.icon
-                        return (
-                          <div 
-                            key={service.id}
-                            className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 cursor-pointer transition-all duration-200"
-                            onClick={() => window.location.href = `/book-service?service=${service.id}`}
-                          >
-                            <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
-                              <Icon className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-100 truncate">{service.name}</p>
-                              <div className="flex items-center space-x-1">
-                                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                                <span className="text-xs text-gray-400">{service.averageRating.toFixed(1)}</span>
+                    ) : (
+                      <div className="space-y-2">
+                        {completedBookings.slice(0, 4).map((booking) => (
+                          <Dialog key={booking.id}>
+                            <DialogTrigger asChild>
+                              <div className="flex items-center space-x-3 p-2 bg-gray-800 rounded-lg hover:bg-gray-750 transition-all duration-200 cursor-pointer">
+                                <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-green-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <CheckCircle className="w-4 h-4 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-gray-100 truncate">{booking.service?.name || 'Service'}</p>
+                                  <p className="text-xs text-gray-400">{new Date(booking.scheduledDate).toLocaleDateString()}</p>
+                                  <Badge className="text-xs mt-1 inline-block bg-green-900/50 text-green-400 border-green-800/50">
+                                    Completed
+                                  </Badge>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                  <Button variant="outline" size="sm" className="w-full mt-4 bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700" asChild>
-                    <a href="/book-service">View All Services</a>
-                  </Button>
-                </CardContent>
-              </Card>
+                            </DialogTrigger>
+                            <DialogContent className="bg-gray-900 border-gray-800 text-gray-100 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                              <DialogHeader className="flex-shrink-0">
+                                <DialogTitle className="text-xl font-semibold text-gray-100">
+                                  {booking.service?.name || 'Service Details'}
+                                </DialogTitle>
+                                <DialogDescription className="text-gray-400">
+                                  Booking details and information
+                                </DialogDescription>
+                              </DialogHeader>
+                              
+                              <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                                {/* Service Info */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Service</h4>
+                                    <p className="text-sm text-gray-100">{booking.service?.name || 'N/A'}</p>
+                                    <p className="text-xs text-gray-400">{booking.service?.category || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Status</h4>
+                                    <Badge className={`text-xs ${
+                                      booking.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border-green-800/50' :
+                                      booking.status === 'CONFIRMED' ? 'bg-blue-900/50 text-blue-400 border-blue-800/50' :
+                                      booking.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50' :
+                                      booking.status === 'PENDING_EXECUTION' ? 'bg-purple-900/50 text-purple-400 border-purple-800/50' :
+                                      'bg-gray-800 text-gray-400 border-gray-700'
+                                    }`}>
+                                      {booking.status.replace('_', ' ')}
+                                    </Badge>
+                                  </div>
+                                </div>
+
+                                {/* Date & Time */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Date</h4>
+                                    <div className="flex items-center space-x-2">
+                                      <Calendar className="w-4 h-4 text-gray-400" />
+                                      <span className="text-sm text-gray-100">
+                                        {new Date(booking.scheduledDate).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Time</h4>
+                                    <div className="flex items-center space-x-2">
+                                      <Clock className="w-4 h-4 text-gray-400" />
+                                      <span className="text-sm text-gray-100">
+                                        {new Date(booking.scheduledDate).toLocaleTimeString([], { 
+                                          hour: '2-digit', 
+                                          minute: '2-digit' 
+                                        })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Address */}
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-300 mb-2">Address</h4>
+                                  <div className="flex items-start space-x-2">
+                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                                    <span className="text-sm text-gray-100">{booking.address}</span>
+                                  </div>
+                                </div>
+
+                                {/* Amount */}
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-300 mb-2">Amount</h4>
+                                  <div className="flex items-center space-x-2">
+                                    <DollarSign className="w-4 h-4 text-gray-400" />
+                                    <span className="text-lg font-semibold text-gray-100">
+                                      R{booking.totalAmount?.toFixed(2) || '0.00'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Provider Info */}
+                                {booking.provider && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Provider</h4>
+                                    <div className="bg-gray-800 rounded-lg p-3">
+                                      <p className="text-sm font-medium text-gray-100">{booking.provider.user.name}</p>
+                                      <p className="text-xs text-gray-400">{booking.provider.businessName}</p>
+                                      {booking.provider.user.phone && (
+                                        <div className="flex items-center space-x-2 mt-2">
+                                          <Phone className="w-4 h-4 text-gray-400" />
+                                          <span className="text-xs text-gray-300">{booking.provider.user.phone}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Description */}
+                                {booking.description && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Notes</h4>
+                                    <p className="text-sm text-gray-100 bg-gray-800 rounded-lg p-3">
+                                      {booking.description}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Payment Info */}
+                                {booking.payment && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Payment</h4>
+                                    <div className="bg-gray-800 rounded-lg p-3">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-100">Amount: R{booking.payment.amount?.toFixed(2)}</span>
+                                        <Badge className={`text-xs ${
+                                          booking.payment.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border-green-800/50' :
+                                          booking.payment.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50' :
+                                          'bg-gray-800 text-gray-400 border-gray-700'
+                                        }`}>
+                                          {booking.payment.status}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              <DialogFooter>
+                                <Button 
+                                  variant="outline" 
+                                  className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
+                                  asChild
+                                >
+                                  <a href="/bookings">View All Bookings</a>
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         </main>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <DialogContent className="bg-gray-900 border-gray-800 text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-100 flex items-center">
+              <LogOut className="w-5 h-5 mr-2 text-red-400" />
+              Confirm Logout
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Are you sure you want to logout? You will need to sign in again to access your dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowLogoutConfirm(false)}
+              className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowLogoutConfirm(false)
+                handleLogout()
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

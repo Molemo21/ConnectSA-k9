@@ -37,6 +37,7 @@ interface BookingTimelineProps {
   className?: string
   maxItems?: number
   showViewAll?: boolean
+  onBookingClick?: (booking: Booking) => void
 }
 
 const getStatusInfo = (status: string, hasPayment?: boolean) => {
@@ -135,7 +136,15 @@ const getTimelineSteps = (status: string, hasPayment?: boolean) => {
   }))
 }
 
-function BookingTimelineItem({ booking, isLast }: { booking: Booking; isLast: boolean }) {
+function BookingTimelineItem({ 
+  booking, 
+  isLast, 
+  onBookingClick 
+}: { 
+  booking: Booking; 
+  isLast: boolean;
+  onBookingClick?: (booking: Booking) => void;
+}) {
   const statusInfo = getStatusInfo(booking.status, booking.payment)
   const StatusIcon = statusInfo.icon
   const timelineSteps = getTimelineSteps(booking.status, booking.payment)
@@ -148,7 +157,10 @@ function BookingTimelineItem({ booking, isLast }: { booking: Booking; isLast: bo
         <div className="absolute left-6 top-12 w-0.5 h-16 bg-gray-700"></div>
       )}
       
-      <div className="flex items-start space-x-4 pb-6">
+      <div 
+        className={`flex items-start space-x-4 pb-6 ${onBookingClick ? 'cursor-pointer hover:bg-gray-800/30 rounded-lg p-2 -m-2 transition-colors' : ''}`}
+        onClick={() => onBookingClick?.(booking)}
+      >
         {/* Status indicator */}
         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
           statusInfo.step > 0 ? 'bg-purple-900/50 border-2 border-purple-800/50' : 'bg-gray-800 border-2 border-gray-700'
@@ -172,7 +184,10 @@ function BookingTimelineItem({ booking, isLast }: { booking: Booking; isLast: bo
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowDetails(!showDetails)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowDetails(!showDetails)
+              }}
               className="text-gray-400 hover:text-gray-100 hover:bg-gray-800 p-1"
             >
               <ChevronRight className={`w-4 h-4 transition-transform ${showDetails ? 'rotate-90' : ''}`} />
@@ -254,7 +269,8 @@ export function BookingTimeline({
   bookings, 
   className = "", 
   maxItems = 5, 
-  showViewAll = true 
+  showViewAll = true,
+  onBookingClick
 }: BookingTimelineProps) {
   const [showAll, setShowAll] = useState(false)
   
@@ -320,6 +336,7 @@ export function BookingTimeline({
               key={booking.id}
               booking={booking}
               isLast={index === displayBookings.length - 1}
+              onBookingClick={onBookingClick}
             />
           ))}
         </div>

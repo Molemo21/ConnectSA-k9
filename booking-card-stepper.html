@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Card Stepper - Flipping Animation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .demo-controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .demo-controls h1 {
+            color: #f1f5f9;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .demo-controls p {
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+        }
+
+        /* Booking Card Styles */
+        .booking-card-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 400px;
+            margin: 0 auto;
+        }
+
+        .booking-card {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .booking-card.flipping {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid #475569;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .card-face.back {
+            transform: rotateY(180deg);
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 8px;
+        }
+
+        .card-subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .step-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .step-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .step-icon svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+
+        .step-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 12px;
+        }
+
+        .step-description {
+            color: #94a3b8;
+            line-height: 1.6;
+            max-width: 300px;
+        }
+
+        .card-footer {
+            margin-top: 30px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #374151;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+        }
+
+        .status-badge.pending {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        }
+
+        .status-badge.processing {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        }
+
+        .status-badge.completed {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 640px) {
+            .booking-card-container {
+                height: 350px;
+            }
+            
+            .card-face {
+                padding: 20px;
+            }
+            
+            .card-title {
+                font-size: 1.25rem;
+            }
+            
+            .step-icon {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .step-icon svg {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .control-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* Loading Animation */
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #374151;
+            border-top: 2px solid #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Demo Controls -->
+        <div class="demo-controls">
+            <h1>Booking Card Stepper</h1>
+            <p>Watch the card flip automatically as the booking progresses through each step</p>
+            
+            <div class="control-buttons">
+                <button class="btn" onclick="nextStep()">Next Step</button>
+                <button class="btn" onclick="prevStep()">Previous Step</button>
+                <button class="btn secondary" onclick="resetDemo()">Reset Demo</button>
+                <button class="btn secondary" onclick="autoDemo()">Auto Demo</button>
+            </div>
+        </div>
+
+        <!-- Booking Card -->
+        <div class="booking-card-container">
+            <div class="booking-card" id="bookingCard">
+                <!-- Front Face -->
+                <div class="card-face front" id="frontFace">
+                    <div class="card-header">
+                        <h2 class="card-title">Current Active Booking</h2>
+                        <p class="card-subtitle">Your service booking progress</p>
+                    </div>
+                    
+                    <div class="step-content" id="frontContent">
+                        <!-- Content will be dynamically updated -->
+                    </div>
+                    
+                    <div class="card-footer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="step-indicator">
+                            <span id="stepCounter">Step 1 of 4</span>
+                            <div class="status-badge" id="statusBadge">
+                                <span id="statusText">Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Back Face -->
+                <div class="card-face back" id="backFace">
+                    <div class="card-header">
+                        <h2 class="card-title">Current Active Booking</h2>
+                        <p class="card-subtitle">Your service booking progress</p>
+                    </div>
+                    
+                    <div class="step-content" id="backContent">
+                        <!-- Content will be dynamically updated -->
+                    </div>
+                    
+                    <div class="card-footer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFillBack"></div>
+                        </div>
+                        <div class="step-indicator">
+                            <span id="stepCounterBack">Step 1 of 4</span>
+                            <div class="status-badge" id="statusBadgeBack">
+                                <span id="statusTextBack">Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Booking Steps Configuration
+        const bookingSteps = [
+            {
+                id: 'created',
+                title: 'Booking Created',
+                description: 'Your service request has been submitted and we\'re finding the best provider for you.',
+                icon: `<svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>`,
+                status: 'pending',
+                statusText: 'Pending'
+            },
+            {
+                id: 'confirmed',
+                title: 'Provider Confirmed',
+                description: 'Great news! A qualified provider has accepted your booking and confirmed the service details.',
+                icon: `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+                status: 'confirmed',
+                statusText: 'Confirmed'
+            },
+            {
+                id: 'payment',
+                title: 'Payment Processing',
+                description: 'Your payment is being processed securely. Funds will be held in escrow until service completion.',
+                icon: `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+                status: 'processing',
+                statusText: 'Processing'
+            },
+            {
+                id: 'completed',
+                title: 'Service Completed',
+                description: 'Excellent! Your service has been completed successfully. Payment has been released to the provider.',
+                icon: `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+                status: 'completed',
+                statusText: 'Completed'
+            }
+        ];
+
+        // State Management
+        let currentStepIndex = 0;
+        let isFlipping = false;
+        let autoInterval = null;
+
+        // DOM Elements
+        const bookingCard = document.getElementById('bookingCard');
+        const frontContent = document.getElementById('frontContent');
+        const backContent = document.getElementById('backContent');
+        const progressFill = document.getElementById('progressFill');
+        const progressFillBack = document.getElementById('progressFillBack');
+        const stepCounter = document.getElementById('stepCounter');
+        const stepCounterBack = document.getElementById('stepCounterBack');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusBadgeBack = document.getElementById('statusBadgeBack');
+        const statusText = document.getElementById('statusText');
+        const statusTextBack = document.getElementById('statusTextBack');
+
+        // Initialize the card
+        function initializeCard() {
+            updateCardContent(frontContent, currentStepIndex);
+            updateCardFooter('front', currentStepIndex);
+        }
+
+        // Update card content
+        function updateCardContent(contentElement, stepIndex) {
+            const step = bookingSteps[stepIndex];
+            contentElement.innerHTML = `
+                <div class="step-icon">
+                    ${step.icon}
+                </div>
+                <h3 class="step-title">${step.title}</h3>
+                <p class="step-description">${step.description}</p>
+            `;
+        }
+
+        // Update card footer
+        function updateCardFooter(face, stepIndex) {
+            const step = bookingSteps[stepIndex];
+            const progress = ((stepIndex + 1) / bookingSteps.length) * 100;
+            
+            const progressElement = face === 'front' ? progressFill : progressFillBack;
+            const counterElement = face === 'front' ? stepCounter : stepCounterBack;
+            const badgeElement = face === 'front' ? statusBadge : statusBadgeBack;
+            const textElement = face === 'front' ? statusText : statusTextBack;
+            
+            progressElement.style.width = `${progress}%`;
+            counterElement.textContent = `Step ${stepIndex + 1} of ${bookingSteps.length}`;
+            badgeElement.className = `status-badge ${step.status}`;
+            textElement.textContent = step.statusText;
+        }
+
+        // Flip to next step
+        function nextStep() {
+            if (isFlipping || currentStepIndex >= bookingSteps.length - 1) return;
+            
+            const nextIndex = currentStepIndex + 1;
+            flipCard(nextIndex);
+        }
+
+        // Flip to previous step
+        function prevStep() {
+            if (isFlipping || currentStepIndex <= 0) return;
+            
+            const prevIndex = currentStepIndex - 1;
+            flipCard(prevIndex);
+        }
+
+        // Main flip function
+        function flipCard(newStepIndex) {
+            if (isFlipping) return;
+            
+            isFlipping = true;
+            
+            // Update the back face with new content before flipping
+            updateCardContent(backContent, newStepIndex);
+            updateCardFooter('back', newStepIndex);
+            
+            // Start flip animation
+            bookingCard.classList.add('flipping');
+            
+            // After flip completes, update front face and reset
+            setTimeout(() => {
+                // Update front face with new content
+                updateCardContent(frontContent, newStepIndex);
+                updateCardFooter('front', newStepIndex);
+                
+                // Update current step
+                currentStepIndex = newStepIndex;
+                
+                // Reset flip
+                bookingCard.classList.remove('flipping');
+                isFlipping = false;
+                
+                // Trigger custom event for external listeners
+                window.dispatchEvent(new CustomEvent('bookingStepChanged', {
+                    detail: { 
+                        stepIndex: currentStepIndex, 
+                        step: bookingSteps[currentStepIndex] 
+                    }
+                }));
+                
+            }, 800); // Match CSS transition duration
+        }
+
+        // Reset demo
+        function resetDemo() {
+            if (autoInterval) {
+                clearInterval(autoInterval);
+                autoInterval = null;
+            }
+            
+            if (currentStepIndex === 0) return;
+            
+            currentStepIndex = 0;
+            updateCardContent(frontContent, currentStepIndex);
+            updateCardFooter('front', currentStepIndex);
+            
+            if (bookingCard.classList.contains('flipping')) {
+                bookingCard.classList.remove('flipping');
+                isFlipping = false;
+            }
+        }
+
+        // Auto demo
+        function autoDemo() {
+            if (autoInterval) {
+                clearInterval(autoInterval);
+                autoInterval = null;
+                return;
+            }
+            
+            resetDemo();
+            
+            autoInterval = setInterval(() => {
+                if (currentStepIndex < bookingSteps.length - 1) {
+                    nextStep();
+                } else {
+                    resetDemo();
+                }
+            }, 3000);
+        }
+
+        // Simulate backend status updates
+        function simulateStatusUpdate(newStatus) {
+            const stepIndex = bookingSteps.findIndex(step => step.id === newStatus);
+            if (stepIndex !== -1 && stepIndex !== currentStepIndex) {
+                flipCard(stepIndex);
+            }
+        }
+
+        // API for external integration
+        window.BookingCardStepper = {
+            updateStatus: simulateStatusUpdate,
+            getCurrentStep: () => bookingSteps[currentStepIndex],
+            getCurrentStepIndex: () => currentStepIndex,
+            addStep: (step) => bookingSteps.push(step),
+            removeStep: (stepId) => {
+                const index = bookingSteps.findIndex(s => s.id === stepId);
+                if (index > -1) bookingSteps.splice(index, 1);
+            }
+        };
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', initializeCard);
+
+        // Listen for custom events (for external integration)
+        window.addEventListener('bookingStepChanged', (event) => {
+            console.log('Booking step changed:', event.detail);
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                event.preventDefault();
+                nextStep();
+            } else if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                prevStep();
+            } else if (event.key === 'r' || event.key === 'R') {
+                event.preventDefault();
+                resetDemo();
+            }
+        });
+
+        // Touch/swipe support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        bookingCard.addEventListener('touchstart', (event) => {
+            touchStartX = event.changedTouches[0].screenX;
+        });
+
+        bookingCard.addEventListener('touchend', (event) => {
+            touchEndX = event.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swipe left - next step
+                    nextStep();
+                } else {
+                    // Swipe right - previous step
+                    prevStep();
+                }
+            }
+        }
+
+        // Example of how to integrate with backend
+        /*
+        // Replace this with your actual API call
+        async function fetchBookingStatus(bookingId) {
+            try {
+                const response = await fetch(`/api/bookings/${bookingId}/status`);
+                const data = await response.json();
+                
+                // Update the card based on backend status
+                window.BookingCardStepper.updateStatus(data.status);
+                
+            } catch (error) {
+                console.error('Failed to fetch booking status:', error);
+            }
+        }
+        
+        // Poll for updates every 30 seconds
+        setInterval(() => {
+            fetchBookingStatus('your-booking-id');
+        }, 30000);
+        */
+    </script>
+</body>
+</html>
