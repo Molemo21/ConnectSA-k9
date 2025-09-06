@@ -108,7 +108,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-6 lg:py-8">
         <div className="max-w-6xl mx-auto">
           {/* Header - Mobile First */}
           <div className="text-center mb-6 sm:mb-8">
@@ -122,7 +122,7 @@ export default function SignupPage() {
               </div>
             </Link>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 leading-tight">Join ProLiink Connect</h1>
-            <p className="text-lg sm:text-xl text-gray-600 leading-relaxed">Create your account and start your journey with us</p>
+            <p className="text-base sm:text-lg lg:text-xl text-gray-600 leading-relaxed">Create your account and start your journey with us</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
@@ -139,7 +139,7 @@ export default function SignupPage() {
                     onValueChange={(value) => setFormData({ ...formData, role: value.toUpperCase() as "CLIENT" | "PROVIDER" })}
                     className="w-full"
                   >
-                    <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6">
+                    <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 h-12">
                       <TabsTrigger value="client" className="flex items-center space-x-2 text-xs sm:text-sm">
                         <User className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>Client</span>
@@ -150,7 +150,7 @@ export default function SignupPage() {
                       </TabsTrigger>
                     </TabsList>
 
-                    <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                       <div className="space-y-2">
                         <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
                         <Input
@@ -161,7 +161,7 @@ export default function SignupPage() {
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           required
-                          className="h-11 sm:h-12 text-base"
+                          className="h-12 sm:h-12 text-base"
                         />
                       </div>
 
@@ -175,7 +175,7 @@ export default function SignupPage() {
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           required
-                          className="h-11 sm:h-12 text-base"
+                          className="h-12 sm:h-12 text-base"
                         />
                       </div>
 
@@ -189,7 +189,7 @@ export default function SignupPage() {
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           required
-                          className="h-11 sm:h-12 text-base"
+                          className="h-12 sm:h-12 text-base"
                         />
                       </div>
 
@@ -203,23 +203,23 @@ export default function SignupPage() {
                             placeholder="Create a strong password"
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="pr-10 h-11 sm:h-12 text-base"
+                            className="pr-12 h-12 sm:h-12 text-base"
                             required
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-2"
                             aria-label={showPassword ? "Hide password" : "Show password"}
                           >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                           </button>
                         </div>
                       </div>
 
                       <Button
                         type="submit"
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white h-11 sm:h-12 text-base sm:text-lg font-medium"
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white h-12 sm:h-12 text-base sm:text-lg font-medium"
                         disabled={isLoading}
                       >
                         {isLoading ? (

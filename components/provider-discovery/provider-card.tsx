@@ -29,17 +29,15 @@ interface Provider {
   averageRating: number
   totalReviews: number
   completedJobs: number
-      recentReviews: Array<{
-      id: string
-      rating: number
-      comment?: string
-      booking: {
-        client: {
-          name: string
-        }
-      }
-      createdAt: string
-    }>
+  recentReviews: Array<{
+    id: string
+    rating: number
+    comment?: string
+    // Support both shapes: direct client or nested booking.client
+    client?: { name?: string }
+    booking?: { client?: { name?: string } }
+    createdAt: string
+  }>
   isAvailable: boolean
 }
 
@@ -131,7 +129,8 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
           </div>
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <Star className="w-4 h-4 text-yellow-500" />
-            <span>{provider.averageRating} ({provider.totalReviews} reviews)</span>
+            <span>{provider.averageRating}</span>
+            <span>({provider.totalReviews} reviews)</span>
           </div>
         </div>
 
@@ -146,15 +145,15 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
           <div className="text-center">
             <div className="text-lg font-semibold text-gray-900">{provider.completedJobs}</div>
-            <div className="text-xs text-gray-600">Jobs Completed</div>
+            <span className="text-xs text-gray-600">Jobs Completed</span>
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-gray-900">{provider.averageRating}</div>
-            <div className="text-xs text-gray-600">Average Rating</div>
+            <span className="text-xs text-gray-600">Average Rating</span>
           </div>
           <div className="text-center">
             <div className="text-lg font-semibold text-gray-900">{provider.totalReviews}</div>
-            <div className="text-xs text-gray-600">Total Reviews</div>
+            <span className="text-xs text-gray-600">Total Reviews</span>
           </div>
         </div>
 
@@ -182,6 +181,8 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
                         <div className="flex items-center space-x-1">
                           {[...Array(5)].map((_, i) => (
                             <Star
+                              role="img"
+                              aria-label={i < review.rating ? 'star-filled' : 'star-empty'}
                               key={i}
                               className={`w-3 h-3 ${
                                 i < review.rating ? "text-yellow-500 fill-current" : "text-gray-300"
@@ -190,7 +191,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
                           ))}
                         </div>
                         <span className="text-sm font-medium text-gray-900">
-                          {review.booking.client.name}
+                          {review.client?.name || review.booking?.client?.name || 'Anonymous'}
                         </span>
                       </div>
                       <span className="text-xs text-gray-500">

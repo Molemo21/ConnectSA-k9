@@ -1,6 +1,7 @@
+export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { z } from "zod";
 
 const bookingSchema = z.object({
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const validated = bookingSchema.parse(body);
 
     // Find available providers for the service
-    const providers = await prisma.provider.findMany({
+    const providers = await db.provider.findMany({
       where: {
         services: {
           some: { serviceId: validated.serviceId },
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create booking with assigned provider
-    const booking = await prisma.booking.create({
+    const booking = await db.booking.create({
       data: {
         clientId: user.id,
         providerId: assignedProvider.id,

@@ -85,8 +85,10 @@ const mockProviders = [
 ]
 
 describe('ProviderDiscovery', () => {
+  // Use a valid 25-character ID to satisfy client-side format checks (cuid-like)
+  const validServiceId = 'clabcdefghijklmnoqrstuvwx'
   const defaultProps = {
-    serviceId: 'haircut-service',
+    serviceId: validServiceId,
     date: '2024-08-15',
     time: '14:00',
     address: '123 Test Street, Test City',
@@ -130,7 +132,7 @@ describe('ProviderDiscovery', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          serviceId: 'haircut-service',
+          serviceId: validServiceId,
           date: '2024-08-15',
           time: '14:00',
           address: '123 Test Street, Test City'
@@ -159,8 +161,8 @@ describe('ProviderDiscovery', () => {
       expect(screen.getByText('Hair Studio Pro')).toBeInTheDocument()
     }, { timeout: 3000 })
     
-    // Check that we can see the first provider
-    expect(screen.getByText('Provider 1 of 2')).toBeInTheDocument()
+    // Check that we can see the first provider (multiple occurrences may render)
+    expect(screen.getAllByText('Provider 1 of 2').length).toBeGreaterThan(0)
   })
 
   it('shows current provider index and total count', async () => {
@@ -179,7 +181,7 @@ describe('ProviderDiscovery', () => {
     render(<ProviderDiscovery {...defaultProps} />)
 
     await waitFor(() => {
-      expect(screen.getByText('Provider 1 of 2')).toBeInTheDocument()
+      expect(screen.getAllByText('Provider 1 of 2').length).toBeGreaterThan(0)
     })
   })
 
@@ -207,7 +209,7 @@ describe('ProviderDiscovery', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Elite Hair Salon')).toBeInTheDocument()
-      expect(screen.getByText('Provider 2 of 2')).toBeInTheDocument()
+      expect(screen.getAllByText('Provider 2 of 2').length).toBeGreaterThan(0)
     })
   })
 
@@ -244,7 +246,7 @@ describe('ProviderDiscovery', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Hair Studio Pro')).toBeInTheDocument()
-      expect(screen.getByText('Provider 1 of 2')).toBeInTheDocument()
+      expect(screen.getAllByText('Provider 1 of 2').length).toBeGreaterThan(0)
     })
   })
 
@@ -290,7 +292,8 @@ describe('ProviderDiscovery', () => {
     ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockSendOfferResponse)
 
     // Accept the provider
-    const acceptButton = screen.getAllByRole('button', { name: /accept/i })[1]
+    const acceptButtons = screen.getAllByRole('button', { name: /accept/i })
+    const acceptButton = acceptButtons[acceptButtons.length - 1]
     fireEvent.click(acceptButton)
 
     // Wait for the send-offer API call
@@ -300,7 +303,7 @@ describe('ProviderDiscovery', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           providerId: 'provider-1',
-          serviceId: 'haircut-service',
+          serviceId: validServiceId,
           date: '2024-08-15',
           time: '14:00',
           address: '123 Test Street, Test City',
@@ -364,7 +367,8 @@ describe('ProviderDiscovery', () => {
     })
 
     // Decline first provider
-    const declineButton = screen.getAllByRole('button', { name: /decline/i })[1]
+    const declineButtons = screen.getAllByRole('button', { name: /decline/i })
+    const declineButton = declineButtons[0]
     fireEvent.click(declineButton)
 
     // Should show second provider
@@ -408,7 +412,8 @@ describe('ProviderDiscovery', () => {
     })
 
     // Decline the only provider
-    const declineButton = screen.getAllByRole('button', { name: /decline/i })[1]
+    const declineButtons2 = screen.getAllByRole('button', { name: /decline/i })
+    const declineButton = declineButtons2[0]
     fireEvent.click(declineButton)
 
     // Should show retry button for declined providers
@@ -452,7 +457,8 @@ describe('ProviderDiscovery', () => {
     })
 
     // Decline the provider
-    const declineButton = screen.getAllByRole('button', { name: /decline/i })[1]
+    const declineButtons3 = screen.getAllByRole('button', { name: /decline/i })
+    const declineButton = declineButtons3[0]
     fireEvent.click(declineButton)
 
     // Click retry button

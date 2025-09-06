@@ -1,6 +1,7 @@
+export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { z } from "zod";
 
 const sendOfferSchema = z.object({
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       expectedAvailable: true
     });
     
-    const provider = await prisma.provider.findFirst({
+    const provider = await db.provider.findFirst({
       where: {
         id: validated.providerId,
         services: {
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
       timeWindow: '4 hours (2 hours before and after)'
     });
     
-    const conflictingBooking = await prisma.booking.findFirst({
+    const conflictingBooking = await db.booking.findFirst({
       where: {
         providerId: validated.providerId,
         scheduledDate: {
@@ -219,7 +220,7 @@ export async function POST(request: NextRequest) {
 
     // Create a booking with PENDING status (waiting for provider response)
     console.log('📝 Creating booking...');
-    const booking = await prisma.booking.create({
+    const booking = await db.booking.create({
       data: {
         clientId: user.id,
         providerId: validated.providerId,
@@ -292,7 +293,7 @@ async function findAlternativeTimes(providerId: string, date: string, serviceId:
     console.log('🔍 Finding alternative times for provider:', providerId, 'on date:', date);
     
     // Get all bookings for this provider on this date
-    const existingBookings = await prisma.booking.findMany({
+    const existingBookings = await db.booking.findMany({
       where: {
         providerId: providerId,
         scheduledDate: {

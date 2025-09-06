@@ -1,15 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server"
+export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
 const onboardingSchema = z.object({
-  businessName: z.string().optional(),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  businessName: z.string().min(2, "Business name must be at least 2 characters"),
+  description: z.string().min(20, "Description must be at least 20 characters"),
   experience: z.number().min(0, "Experience must be 0 or greater"),
   hourlyRate: z.number().min(1, "Hourly rate must be greater than 0"),
   location: z.string().min(1, "Location is required"),
   selectedServices: z.array(z.string()).min(1, "At least one service must be selected"),
+  // Document uploads
+  idDocument: z.string().optional(),
+  proofOfAddress: z.string().optional(),
+  certifications: z.array(z.string()).optional().default([]),
+  profileImages: z.array(z.string()).optional().default([]),
+  // Bank details
+  bankName: z.string().optional(),
+  bankCode: z.string().optional(),
+  accountNumber: z.string().optional(),
+  accountName: z.string().optional(),
   isDraft: z.boolean().optional().default(false), // Add draft support
 })
 
@@ -38,7 +49,13 @@ export async function POST(request: NextRequest) {
       validatedData.experience > 0 &&
       validatedData.hourlyRate > 0 &&
       validatedData.location &&
-      validatedData.selectedServices && validatedData.selectedServices.length > 0
+      validatedData.selectedServices && validatedData.selectedServices.length > 0 &&
+      validatedData.idDocument &&
+      validatedData.proofOfAddress &&
+      validatedData.bankName &&
+      validatedData.bankCode &&
+      validatedData.accountNumber &&
+      validatedData.accountName
     )
 
     // Get current provider status
@@ -82,6 +99,16 @@ export async function POST(request: NextRequest) {
           hourlyRate: validatedData.hourlyRate,
           location: validatedData.location,
           status: newStatus,
+          // Document uploads
+          idDocument: validatedData.idDocument,
+          proofOfAddress: validatedData.proofOfAddress,
+          certifications: validatedData.certifications,
+          profileImages: validatedData.profileImages,
+          // Bank details
+          bankName: validatedData.bankName,
+          bankCode: validatedData.bankCode,
+          accountNumber: validatedData.accountNumber,
+          accountName: validatedData.accountName,
         },
       });
 

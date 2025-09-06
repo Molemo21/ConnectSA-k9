@@ -1,4 +1,7 @@
 import { Resend } from 'resend';
+import { VerificationEmailHTML, VerificationEmailText } from '../emails/templates/verification-email';
+import { PasswordResetEmailHTML, PasswordResetEmailText } from '../emails/templates/password-reset-email';
+import { BookingConfirmationEmailHTML, BookingConfirmationEmailText } from '../emails/templates/booking-confirmation-email';
 
 // Initialize Resend client conditionally
 const createResendClient = () => {
@@ -14,6 +17,7 @@ export interface EmailData {
   to: string;
   subject: string;
   html: string;
+  text?: string;
   from?: string;
 }
 
@@ -30,16 +34,16 @@ export interface EmailResponse {
 const getFromEmail = () => {
   // Use verified domain in production, fallback to generic in development
   if (process.env.NODE_ENV === 'production') {
-    return process.env.FROM_EMAIL || 'noreply@v0-south-africa-marketplace-platfo.vercel.app';
+    return process.env.FROM_EMAIL || 'no-reply@app.proliinkconnect.co.za';
   }
-  return 'noreply@proliinkconnect.com';
+  return 'no-reply@app.proliinkconnect.co.za';
 };
 
 /**
  * Send email using Resend in production, or log to console in development
  */
 export async function sendEmail(data: EmailData): Promise<EmailResponse> {
-  const { to, subject, html, from = getFromEmail() } = data;
+  const { to, subject, html, text, from = getFromEmail() } = data;
 
   // Development mode: log email to console
   if (process.env.NODE_ENV === 'development') {
@@ -61,12 +65,19 @@ export async function sendEmail(data: EmailData): Promise<EmailResponse> {
   }
 
   try {
-    const result = await resend.emails.send({
+    const emailData: any = {
       from,
       to,
       subject,
       html,
-    });
+    };
+    
+    // Add text version if provided
+    if (text) {
+      emailData.text = text;
+    }
+    
+    const result = await resend.emails.send(emailData);
 
     if (result.error) {
       console.error('❌ Email sending failed:', result.error);
@@ -100,36 +111,10 @@ export async function sendPasswordResetEmail(
   resetLink: string
 ): Promise<EmailResponse> {
   const subject = 'Password Reset Request - Proliink Connect';
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #10b981, #f59e0b); padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Proliink Connect</h1>
-      </div>
-      <div style="padding: 30px; background: white; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        <h2 style="color: #374151; margin-bottom: 20px;">Password Reset Request</h2>
-        <p style="color: #6b7280; line-height: 1.6; margin-bottom: 25px;">
-          Hello ${name || 'there'},<br><br>
-          We received a request to reset your password. Click the button below to create a new password:
-        </p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="background: linear-gradient(135deg, #10b981, #f59e0b); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-            Reset Password
-          </a>
-        </div>
-        <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-          If you didn't request this password reset, you can safely ignore this email.<br>
-          This link will expire in 1 hour for security reasons.
-        </p>
-        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 25px 0;">
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          If the button doesn't work, copy and paste this link into your browser:<br>
-          <a href="${resetLink}" style="color: #10b981;">${resetLink}</a>
-        </p>
-      </div>
-    </div>
-  `;
+  const html = PasswordResetEmailHTML({ name, resetLink });
+  const text = PasswordResetEmailText({ name, resetLink });
 
-  return sendEmail({ to, subject, html });
+  return sendEmail({ to, subject, html, text });
 }
 
 /**
@@ -141,35 +126,10 @@ export async function sendVerificationEmail(
   verificationLink: string
 ): Promise<EmailResponse> {
   const subject = 'Verify Your Email - Proliink Connect';
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #10b981, #f59e0b); padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Proliink Connect</h1>
-      </div>
-      <div style="padding: 30px; background: white; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        <h2 style="color: #374151; margin-bottom: 20px;">Verify Your Email Address</h2>
-        <p style="color: #6b7280; line-height: 1.6; margin-bottom: 25px;">
-          Hello ${name || 'there'},<br><br>
-          Welcome to Proliink Connect! Please verify your email address by clicking the button below:
-        </p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${verificationLink}" style="background: linear-gradient(135deg, #10b981, #f59e0b); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-            Verify Email
-          </a>
-        </div>
-        <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-          If you didn't create an account with Proliink Connect, you can safely ignore this email.
-        </p>
-        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 25px 0;">
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          If the button doesn't work, copy and paste this link into your browser:<br>
-          <a href="${verificationLink}" style="color: #10b981;">${verificationLink}</a>
-        </p>
-      </div>
-    </div>
-  `;
+  const html = VerificationEmailHTML({ name, verificationLink });
+  const text = VerificationEmailText({ name, verificationLink });
 
-  return sendEmail({ to, subject, html });
+  return sendEmail({ to, subject, html, text });
 }
 
 /**
@@ -184,37 +144,13 @@ export async function sendBookingConfirmationEmail(
     date: string;
     time: string;
     location: string;
+    bookingId: string;
+    totalAmount?: number;
   }
 ): Promise<EmailResponse> {
   const subject = 'Booking Confirmation - Proliink Connect';
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #10b981, #f59e0b); padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Proliink Connect</h1>
-      </div>
-      <div style="padding: 30px; background: white; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        <h2 style="color: #374151; margin-bottom: 20px;">Booking Confirmed!</h2>
-        <p style="color: #6b7280; line-height: 1.6; margin-bottom: 25px;">
-          Hello ${name},<br><br>
-          Your booking has been confirmed! Here are the details:
-        </p>
-        <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 8px 0;"><strong>Service:</strong> ${bookingDetails.serviceName}</p>
-          <p style="margin: 8px 0;"><strong>Provider:</strong> ${bookingDetails.providerName}</p>
-          <p style="margin: 8px 0;"><strong>Date:</strong> ${bookingDetails.date}</p>
-          <p style="margin: 8px 0;"><strong>Time:</strong> ${bookingDetails.time}</p>
-          <p style="margin: 8px 0;"><strong>Location:</strong> ${bookingDetails.location}</p>
-        </div>
-        <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-          We'll send you a reminder before your appointment. If you need to make changes, please contact your service provider.
-        </p>
-        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 25px 0;">
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          Thank you for choosing Proliink Connect!
-        </p>
-      </div>
-    </div>
-  `;
+  const html = BookingConfirmationEmailHTML({ name, bookingDetails });
+  const text = BookingConfirmationEmailText({ name, bookingDetails });
 
-  return sendEmail({ to, subject, html });
+  return sendEmail({ to, subject, html, text });
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { z } from "zod";
 
 const discoverProvidersSchema = z.object({
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log('Using service ID:', actualServiceId);
 
     // Find available providers for the service
-    const providers = await prisma.provider.findMany({
+    const providers = await db.provider.findMany({
       where: {
         services: {
           some: { serviceId: actualServiceId },

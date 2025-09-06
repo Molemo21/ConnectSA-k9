@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { showToast, handleApiError } from "@/lib/toast"
+import { StatusBadge } from "@/components/ui/status-badge"
 
 
 interface Booking {
@@ -159,51 +160,7 @@ export function BookingActionsModal({
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-green-100 text-green-800"
-      case "CONFIRMED":
-        return "bg-blue-100 text-blue-800"
-      case "PENDING_EXECUTION":
-        return "bg-green-100 text-green-800"
-      case "IN_PROGRESS":
-        return "bg-purple-100 text-purple-800"
-      case "AWAITING_CONFIRMATION":
-        return "bg-orange-100 text-orange-800"
-      case "CANCELLED":
-        return "bg-red-100 text-red-800"
-      case "DISPUTED":
-        return "bg-red-100 text-red-800"
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return <CheckCircle className="w-4 h-4" />
-      case "CONFIRMED":
-        return <Calendar className="w-4 h-4" />
-      case "PENDING_EXECUTION":
-        return <CheckCircle className="w-4 h-4" />
-      case "IN_PROGRESS":
-        return <Clock className="w-4 h-4" />
-      case "AWAITING_CONFIRMATION":
-        return <AlertCircle className="w-4 h-4" />
-      case "CANCELLED":
-        return <X className="w-4 h-4" />
-      case "DISPUTED":
-        return <AlertTriangle className="w-4 h-4" />
-      case "PENDING":
-        return <Clock className="w-4 h-4" />
-      default:
-        return <AlertCircle className="w-4 h-4" />
-    }
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -252,12 +209,11 @@ export function BookingActionsModal({
             </div>
             
             <div className="flex items-center space-x-2">
-              <Badge className={getStatusColor(booking.status)}>
-                <div className="flex items-center space-x-1">
-                  {getStatusIcon(booking.status)}
-                  <span>{booking.status.replace('_', ' ')}</span>
-                </div>
-              </Badge>
+              <StatusBadge 
+                status={booking.status} 
+                type="booking" 
+                size="sm"
+              />
               {booking.provider && (
                 <span className="text-sm text-gray-600">
                   Provider: {booking.provider.businessName}

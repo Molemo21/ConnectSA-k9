@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { ProviderDashboardContent } from "@/components/provider/provider-dashboard-content"
+import { MobileProviderDashboard } from "@/components/provider/mobile-provider-dashboard"
 
 export default async function ProviderDashboardPage() {
   const user = await getCurrentUser()
@@ -34,5 +34,5 @@ export default async function ProviderDashboardPage() {
     redirect("/provider/pending")
   }
 
-  return <ProviderDashboardContent />
+  return <MobileProviderDashboard />
 } 

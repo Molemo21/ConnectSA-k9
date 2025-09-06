@@ -15,52 +15,40 @@ export interface AuthUser {
   avatar?: string
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12)
+export async function hashPassword(password: string) {
+  const saltRounds = 10
+  return await bcrypt.hash(password, saltRounds)
 }
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword)
+export async function verifyPassword(password: string, hashedPassword: string) {
+  return await bcrypt.compare(password, hashedPassword)
 }
 
-export async function generateToken(payload: AuthUser): Promise<string> {
-  const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-  if (!secret) {
-    throw new Error('JWT_SECRET is not defined in the environment.');
-  }
-  return await new jose.SignJWT(payload as any)
+export async function signToken(payload: Record<string, any>) {
+  const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'secret')
+
+  return await new jose.SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRES_IN)
-    .sign(secret);
+    .sign(secret)
 }
 
-export async function verifyToken(token: string): Promise<AuthUser | null> {
+export async function verifyToken(token: string) {
   try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    if (!secret) {
-      console.error('JWT_SECRET is not defined in the environment.');
-      return null;
-    }
-    const { payload } = await jose.jwtVerify(token, secret);
-    return payload as unknown as AuthUser;
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'secret')
+    const { payload } = await jose.jwtVerify(token, secret)
+    return payload
   } catch (error) {
-    console.error('Token verification failed:', error);
-    return null;
+    return null
   }
 }
 
-export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: string } } | null> {
+export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: string } }) | null> {
   try {
-    // Skip database queries during build time
-    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
-      console.log('Skipping getCurrentUser during build time');
-      return null;
-    }
-
     // Check if we're in a browser/Edge runtime environment
     if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'edge') {
-      console.log('Skipping getCurrentUser in browser/Edge runtime');
+      console.log('Skipping getCurrentUser in browser/Edge runtime')
       return null;
     }
 
@@ -74,7 +62,7 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
 
     // Verify user still exists and is active
     const user = await db.user.findFirst({
-      where: { id: decoded.id, isActive: true },
+      where: { id: decoded.id as string, isActive: true },
       select: {
         id: true,
         email: true,
@@ -82,7 +70,7 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
         role: true,
         emailVerified: true,
         avatar: true,
-        provider: { select: { id: true } }, // include provider id
+        provider: { select: { id: true } },
       },
     })
 
@@ -93,13 +81,10 @@ export async function getCurrentUser(): Promise<AuthUser & { provider?: { id: st
   }
 }
 
-export async function getCurrentUserSafe(): Promise<AuthUser & { provider?: { id: string } } | null> {
-  try {
-    return await getCurrentUser()
-  } catch (error) {
-    console.error('Safe user fetch failed:', error)
-    return null
-  }
+export async function requireAdmin(): Promise<AuthUser | null> {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'ADMIN') return null
+  return user
 }
 
 export async function getUserFromRequest(request: Request): Promise<AuthUser | null> {
@@ -135,7 +120,7 @@ export async function getUserFromRequest(request: Request): Promise<AuthUser | n
 }
 
 export async function setAuthCookie(user: AuthUser) {
-  const token = await generateToken(user);
+  const token = await signToken(user);
   const cookieStore = await cookies();
 
   cookieStore.set('auth-token', token, {

@@ -11,8 +11,11 @@ jest.mock('@/lib/paystack', () => ({
     processRefund: jest.fn(),
   },
   paymentProcessor: {
-    calculatePaymentBreakdown: jest.fn(),
-    generateReference: jest.fn(),
+    calculatePaymentBreakdown: jest.fn((serviceAmount: number, feePct: number) => {
+      const platformFee = Math.round(serviceAmount * feePct);
+      return { serviceAmount, platformFee, escrowAmount: serviceAmount - platformFee, totalAmount: serviceAmount };
+    }),
+    generateReference: jest.fn((prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
     validateWebhookSignature: jest.fn(),
   },
   PAYMENT_CONSTANTS: {
@@ -67,13 +70,11 @@ describe('Escrow Payment System', () => {
       };
 
       (paystackClient.initializePayment as jest.Mock).mockResolvedValue(mockPaystackResponse);
-      (paymentProcessor.calculatePaymentBreakdown as jest.Mock).mockReturnValue({
-        serviceAmount: 1000,
-        platformFee: 100,
-        escrowAmount: 900,
-        totalAmount: 1000,
+      (paymentProcessor.calculatePaymentBreakdown as jest.Mock).mockImplementation((serviceAmount: number, pct: number) => {
+        const platformFee = Math.round(serviceAmount * pct);
+        return { serviceAmount, platformFee, escrowAmount: serviceAmount - platformFee, totalAmount: serviceAmount };
       });
-      (paymentProcessor.generateReference as jest.Mock).mockReturnValue('CS_1234567890_abc123');
+      (paymentProcessor.generateReference as jest.Mock).mockImplementation((prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
 
       // Test the payment initialization logic
       const result = await paystackClient.initializePayment({

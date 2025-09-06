@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUserSafe } from "@/lib/auth"
-import { healthCheck } from "@/lib/db-connection"
+import { prisma } from "@/lib/prisma"
 
 export async function GET(request: NextRequest) {
   // Skip during build time
@@ -16,7 +16,14 @@ export async function GET(request: NextRequest) {
     const startTime = Date.now()
     
     // Check database connection
-    const dbConnected = await healthCheck()
+    let dbConnected = false
+    try {
+      // Lightweight query to validate connectivity
+      await prisma.user.findFirst()
+      dbConnected = true
+    } catch (e) {
+      dbConnected = false
+    }
     const dbLatency = Date.now() - startTime
     
     // Check authentication

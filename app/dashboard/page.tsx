@@ -1,6 +1,6 @@
-import { DashboardContent } from "@/components/dashboard/dashboard-content"
+import { MobileClientDashboard } from "@/components/dashboard/mobile-client-dashboard"
 
 export default function ClientDashboard() {
-  return <DashboardContent />
+  return <MobileClientDashboard />
 }
 

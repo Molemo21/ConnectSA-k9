@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+export const runtime = 'nodejs'
 import { paystackClient, paymentProcessor } from "@/lib/paystack";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";

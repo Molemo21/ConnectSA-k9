@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, Suspense } from "react"
+import React, { useEffect, useMemo, useRef, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,14 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2, ArrowLeft, AlertTriangle } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { ProviderDiscovery } from "@/components/provider-discovery/provider-discovery"
+import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
+import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
+import { z } from "zod"
+import { StepIndicator as Stepper } from "@/components/book-service/StepIndicator"
+import { BookingForm as BookingFormPanel } from "@/components/book-service/BookingForm"
+import { BookingSummary as SummaryPanel } from "@/components/book-service/BookingSummary"
+import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel"
+import { ConfirmPanel } from "@/components/book-service/ConfirmPanel"
 
 // Error Boundary Component
 interface ErrorBoundaryState {
@@ -84,6 +92,44 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
+// Step indicator for better wayfinding
+function StepIndicator({ step }: { step: 'FORM' | 'REVIEW' | 'DISCOVERY' | 'CONFIRM' }) {
+  const steps = [
+    { id: 'FORM', label: 'Service Details' },
+    { id: 'REVIEW', label: 'Review' },
+    { id: 'DISCOVERY', label: 'Choose Provider' },
+    { id: 'CONFIRM', label: 'Confirmation' },
+  ] as const
+  const currentIndex = steps.findIndex(s => s.id === step)
+  return (
+    <div className="flex items-center justify-center sm:justify-start space-x-2 overflow-x-auto py-2" aria-label="Booking steps">
+      {steps.map((s, idx) => (
+        <div key={s.id} className="flex items-center flex-shrink-0">
+          <div
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors duration-300 ${idx <= currentIndex ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+            aria-current={s.id === step ? 'step' : undefined}
+          >
+            {idx + 1}
+          </div>
+          <span className={`ml-2 text-xs sm:text-sm ${idx <= currentIndex ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>{s.label}</span>
+          {idx < steps.length - 1 && (
+            <div className={`mx-2 h-0.5 w-6 sm:w-10 ${idx < currentIndex ? 'bg-purple-600' : 'bg-gray-200'}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Zod schema for inline form validation
+const bookingFormSchema = z.object({
+  serviceId: z.string().min(1, 'Please select a service'),
+  date: z.string().min(1, 'Select a date'),
+  time: z.string().min(1, 'Select a time'),
+  address: z.string().min(3, 'Address is required'),
+  notes: z.string().optional(),
+})
+
 function BookServiceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,6 +137,7 @@ function BookServiceContent() {
   const [loadingServices, setLoadingServices] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const abortRef = useRef<AbortController | null>(null)
 
   const [form, setForm] = useState({
     serviceId: "",
@@ -99,12 +146,14 @@ function BookServiceContent() {
     address: "",
     notes: "",
   });
+  const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<any>(null);
   const [showReview, setShowReview] = useState(false);
   const [showProviderDiscovery, setShowProviderDiscovery] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const [activeStep, setActiveStep] = useState<'FORM' | 'REVIEW' | 'DISCOVERY' | 'CONFIRM'>('FORM')
 
   // Debug logging function
   const addDebugInfo = (message: string) => {
@@ -121,6 +170,7 @@ function BookServiceContent() {
         addDebugInfo('Found stored booking details in sessionStorage');
         setForm(JSON.parse(stored));
         setShowReview(true);
+        setActiveStep('REVIEW')
         sessionStorage.removeItem("bookingDetails");
       }
     }
@@ -136,7 +186,9 @@ function BookServiceContent() {
       setServicesError(null);
         
         addDebugInfo('Making fetch request to /api/services');
-        const res = await fetch("/api/services");
+        if (abortRef.current) abortRef.current.abort()
+        abortRef.current = new AbortController()
+        const res = await fetch("/api/services", { signal: abortRef.current.signal });
         addDebugInfo(`Fetch response status: ${res.status}, ok: ${res.ok}`);
         
         if (!res.ok) {
@@ -149,8 +201,9 @@ function BookServiceContent() {
         
                       // Validate service IDs (Prisma custom ID format)
         const invalidServices = data.filter((service: any) => {
-                const serviceIdRegex = /^[a-z0-9]{25}$/i;
-                return !serviceIdRegex.test(service.id);
+                const cuidLike = /^[a-z0-9]{25}$/i;
+                const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                return !(cuidLike.test(service.id) || uuid.test(service.id));
         });
         
         if (invalidServices.length > 0) {
@@ -163,6 +216,11 @@ function BookServiceContent() {
         addDebugInfo('Services state set successfully');
         
       } catch (err: any) {
+        // Ignore abort errors caused by fast re-renders or navigation
+        if (err?.name === 'AbortError') {
+          addDebugInfo('Services fetch aborted (ignored)');
+          return;
+        }
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         addDebugInfo(`Error fetching services: ${errorMessage}`);
         console.error('❌ Error fetching services:', err);
@@ -178,7 +236,16 @@ function BookServiceContent() {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const next = { ...form, [e.target.name]: e.target.value }
+    setForm(next);
+    // Real-time validation
+    const validation = bookingFormSchema.safeParse(next)
+    if (!validation.success) {
+      const fieldError = validation.error.issues[0]
+      if (fieldError && fieldError.path[0]) setErrors(prev => ({ ...prev, [fieldError.path[0] as keyof typeof form]: fieldError.message }))
+    } else {
+      setErrors({})
+    }
   };
 
   // Check auth status before booking
@@ -186,11 +253,14 @@ function BookServiceContent() {
     e.preventDefault();
     addDebugInfo(`Form submitted with data: ${JSON.stringify(form)}`);
     
-    // Validate required fields
-    if (!form.serviceId || !form.date || !form.time || !form.address) {
-      addDebugInfo("Validation failed - missing required fields");
-      setSubmitError("Please fill in all required fields.");
-      return;
+    // Zod validation first
+    const result = bookingFormSchema.safeParse(form)
+    if (!result.success) {
+      const errs: Record<string, string> = {}
+      result.error.issues.forEach(i => { if (i.path[0]) errs[i.path[0] as string] = i.message })
+      setErrors(errs)
+      setSubmitError("Please correct the highlighted fields.")
+      return
     }
     
     addDebugInfo("Validation passed, checking authentication...");
@@ -213,6 +283,7 @@ function BookServiceContent() {
       // If logged in, show review step before final submission
       addDebugInfo("User authenticated, showing review step...");
       setShowReview(true);
+      setActiveStep('REVIEW')
     } catch (err: any) {
       addDebugInfo(`Auth check error: ${err.message}`);
       console.error("Auth check error:", err);
@@ -227,8 +298,9 @@ function BookServiceContent() {
     addDebugInfo('Starting provider discovery with form data');
     
     // Validate serviceId format (Prisma custom ID format)
-    const serviceIdRegex = /^[a-z0-9]{25}$/i;
-    if (!serviceIdRegex.test(form.serviceId)) {
+    const cuidLike = /^[a-z0-9]{25}$/i;
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!(cuidLike.test(form.serviceId) || uuid.test(form.serviceId))) {
       addDebugInfo(`Invalid serviceId format: ${form.serviceId}`);
       setSubmitError('Invalid service selection. Please try again.');
       return;
@@ -236,6 +308,11 @@ function BookServiceContent() {
     
     setShowProviderDiscovery(true);
     setShowReview(false);
+    setActiveStep('DISCOVERY')
+    // Smoothly scroll to the top of the main content when step changes
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   };
 
   // Handle provider selection
@@ -250,42 +327,34 @@ function BookServiceContent() {
     });
     setShowProviderDiscovery(false);
     setShowReview(false);
+    setActiveStep('CONFIRM')
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   };
 
   const selectedService = services.find(s => s.id === form.serviceId);
 
   // Debug info display
-  const debugInfoDisplay = process.env.NODE_ENV === 'development' && (
-    <div className="fixed bottom-4 right-4 bg-black/80 text-white p-4 rounded-lg max-w-md max-h-64 overflow-auto text-xs z-50">
-      <h4 className="font-bold mb-2">Debug Info</h4>
-      <div className="space-y-1">
-        <div>Services: {services?.length || 0}</div>
-        <div>Loading: {loadingServices.toString()}</div>
-        <div>Error: {servicesError || 'none'}</div>
-        <div>Selected Service: {selectedService?.name || 'none'}</div>
-      </div>
-      <details className="mt-2">
-        <summary className="cursor-pointer">Logs</summary>
-        <div className="mt-1 space-y-1">
-          {debugInfo.slice(-10).map((log, i) => (
-            <div key={i} className="text-green-300">{log}</div>
-          ))}
-        </div>
-      </details>
-    </div>
-  );
+  const debugInfoDisplay = null
 
   if (loadingServices) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <BrandHeaderClient showAuth={false} showUserMenu={true} />
         <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p>Loading services...</p>
-            <p className="text-sm text-gray-500 mt-2">
-              If this takes too long, there might be a JavaScript error. Check the browser console.
-            </p>
+          <div className="max-w-4xl mx-auto">
+            <div className="h-40 rounded-xl bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 animate-pulse mb-6" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <div className="h-36 bg-gray-100 rounded-lg animate-pulse" />
+                <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+                <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+              </div>
+              <div className="space-y-4">
+                <div className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+              </div>
+            </div>
             {debugInfoDisplay}
           </div>
         </div>
@@ -352,304 +421,97 @@ function BookServiceContent() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <BrandHeaderClient showAuth={false} showUserMenu={true} />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Book a Service</h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Tell us what you need and we'll connect you with trusted professionals in your area
-            </p>
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
+        <div className="max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-5xl mx-auto">
+          {/* Hero */}
+          <div className="relative overflow-hidden rounded-2xl p-5 sm:p-6 mb-4 sm:mb-6 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"/>
+            <h1 className="text-white text-2xl sm:text-3xl lg:text-4xl font-bold">Book a Service</h1>
+            <p className="text-white/80 mt-2 max-w-2xl">Tell us what you need and we’ll connect you with trusted professionals nearby.</p>
+            <div className="mt-4">
+              <Stepper step={activeStep} />
+            </div>
+            {(form.serviceId || form.date || form.time || form.address) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedService?.name && (
+                  <span className="px-2 py-1 rounded-full text-xs bg-white/15 text-white/90">{selectedService.name}</span>
+                )}
+                {selectedService?.category && (
+                  <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80">{selectedService.category}</span>
+                )}
+                {form.date && form.time && (
+                  <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80">{form.date} • {form.time}</span>
+                )}
+                {form.address && (
+                  <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80 max-w-[60%] truncate" title={form.address}>{form.address}</span>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             {/* Main Form */}
-            <div className="lg:col-span-2">
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    <span>{showReview ? "Review Booking" : "Service Details"}</span>
-                  </CardTitle>
-                  <CardDescription>
-                    {showReview ? "Please review your booking details before confirming" : "Fill in the details below to book your service"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {submitError && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-red-600">{submitError}</p>
-                    </div>
-                  )}
-
-                  {showReview ? (
-                    // Review Step
-                    <div className="space-y-6">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-blue-900 mb-2">Review Your Booking</h3>
-                        <p className="text-blue-700 text-sm">
-                          Please review your booking details before confirming.
-                        </p>
-                      </div>
-                      
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-sm font-medium text-gray-700">Selected Service</Label>
-                            <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                              <span className="font-medium">{selectedService?.name}</span>
-                              <Badge variant="secondary" className="ml-2">{selectedService?.category}</Badge>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <Label className="text-sm font-medium text-gray-700">Date & Time</Label>
-                            <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                              <div className="flex items-center space-x-2">
-                                <Calendar className="w-4 h-4 text-gray-500" />
-                                <span>{form.date}</span>
-                              </div>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <Clock className="w-4 h-4 text-gray-500" />
-                                <span>{form.time}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-sm font-medium text-gray-700">Service Address</Label>
-                            <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                              <div className="flex items-start space-x-2">
-                                <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
-                                <span>{form.address}</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {form.notes && (
-                            <div>
-                              <Label className="text-sm font-medium text-gray-700">Additional Notes</Label>
-                              <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                                <div className="flex items-start space-x-2">
-                                  <FileText className="w-4 h-4 text-gray-500 mt-0.5" />
-                                  <span>{form.notes}</span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-4 pt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowReview(false)}
-                          className="flex-1"
-                        >
-                          <ArrowLeft className="w-4 h-4 mr-2" />
-                          Edit Details
-                        </Button>
-                        <Button
-                          onClick={handleShowProviderDiscovery}
-                          disabled={submitting}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <span>Choose Provider</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </div>
-                        </Button>
-                      </div>
-                    </div>
-                  ) : showProviderDiscovery ? (
-                    // Provider Discovery Step
-                    <div className="space-y-6">
-                      <div className="text-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Provider</h2>
-                        <p className="text-gray-600">
-                          Review available providers and select the one that best fits your needs
-                        </p>
-                      </div>
-                      
-                      <ProviderDiscovery
-                        serviceId={form.serviceId}
-                        date={form.date}
-                        time={form.time}
-                        address={form.address}
-                        notes={form.notes}
-                        onProviderSelected={handleProviderSelected}
-                        onBack={() => setShowProviderDiscovery(false)}
-                      />
-                      
-                      {/* Debug info */}
-                      {process.env.NODE_ENV === 'development' && (
-                        <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs">
-                          <p><strong>Debug Info:</strong></p>
-                          <p>Service ID: {form.serviceId}</p>
-                          <p>Date: {form.date}</p>
-                          <p>Time: {form.time}</p>
-                          <p>Address: {form.address}</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    // Form Step
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      {/* Service Selection */}
-                      <div className="space-y-2">
-                        <Label htmlFor="serviceId">Service Type *</Label>
-                        <Select name="serviceId" value={form.serviceId} onValueChange={(value) => setForm({ ...form, serviceId: value })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a service" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {services && services.length > 0 ? (
-                              services.map((service) => (
-                              <SelectItem key={service.id} value={service.id}>
-                                <div className="flex items-center space-x-2">
-                                  <span>{service.name}</span>
-                                  <Badge variant="secondary">{service.category}</Badge>
-                                </div>
-                              </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="" disabled>
-                                <span className="text-gray-500">No services available</span>
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        {services && services.length === 0 && (
-                          <p className="text-sm text-gray-500">No services found. Please try refreshing the page.</p>
-                        )}
-                        {services && services.length > 0 && (
-                          <p className="text-sm text-green-600">✓ {services.length} services loaded successfully</p>
-                        )}
-                      </div>
-
-                      {/* Date and Time */}
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="date">Date *</Label>
-                          <Input
-                            type="date"
-                            name="date"
-                            value={form.date}
-                            onChange={handleChange}
-                            min={new Date().toISOString().split('T')[0]}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="time">Time *</Label>
-                          <Input
-                            type="time"
-                            name="time"
-                            value={form.time}
-                            onChange={handleChange}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Address */}
-                      <div className="space-y-2">
-                        <Label htmlFor="address">Service Address *</Label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                          <Input
-                            name="address"
-                            value={form.address}
-                            onChange={handleChange}
-                            placeholder="Enter your address"
-                            className="pl-10"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      {/* Notes */}
-                      <div className="space-y-2">
-                        <Label htmlFor="notes">Additional Notes</Label>
-                        <Textarea
-                          name="notes"
-                          value={form.notes}
-                          onChange={handleChange}
-                          placeholder="Any specific requirements or details..."
-                          rows={4}
-                        />
-                      </div>
-
-                      <Button type="submit" disabled={submitting} className="w-full">
-                        {submitting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            Continue
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                          </>
-                        )}
-                      </Button>
-                    </form>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Selected Service Info */}
-              {selectedService && (
+            <div className="md:col-span-2">
+              {showProviderDiscovery ? (
+                <ProviderDiscoveryPanel
+                  form={form}
+                  onProviderSelected={handleProviderSelected}
+                  onBack={() => { setShowProviderDiscovery(false); setActiveStep('REVIEW') }}
+                />
+              ) : showReview ? (
                 <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Selected Service</CardTitle>
+                  <CardHeader className="pb-4 sm:pb-6">
+                    <CardTitle className="text-lg sm:text-xl">Review Booking</CardTitle>
+                    <CardDescription>Please review your booking details before confirming</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div>
-                        <h3 className="font-semibold">{selectedService.name}</h3>
-                        <p className="text-sm text-gray-600">{selectedService.category}</p>
+                        <Label className="text-sm font-medium text-gray-700">Selected Service</Label>
+                        <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                          <span className="font-medium text-sm sm:text-base">{selectedService?.name}</span>
+                          <Badge variant="secondary" className="ml-2 text-xs">{selectedService?.category}</Badge>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        <p>{selectedService.description}</p>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">Date & Time</Label>
+                        <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                          <div className="text-sm sm:text-base">{form.date} • {form.time}</div>
+                        </div>
                       </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
+                      <Button type="button" variant="outline" onClick={() => { setShowReview(false); setActiveStep('FORM') }} className="flex-1 h-12 sm:h-11 order-2 sm:order-1">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Edit Details
+                      </Button>
+                      <Button onClick={handleShowProviderDiscovery} disabled={submitting} className="flex-1 h-12 sm:h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 order-1 sm:order-2">
+                        <div className="flex items-center space-x-2">
+                          <span>Choose Provider</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
+              ) : (
+                <BookingFormPanel
+                  value={form}
+                  onChange={setForm}
+                  onNext={(/* unused e */) => handleSubmit({ preventDefault: () => {} } as any)}
+                />
               )}
-
-              {/* Booking Tips */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">Booking Tips</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-start space-x-2">
-                      <Clock className="w-4 h-4 text-blue-600 mt-0.5" />
-                      <p>Book at least 24 hours in advance for best availability</p>
-                    </div>
-                    <div className="flex items-start space-x-2">
-                      <MapPin className="w-4 h-4 text-green-600 mt-0.5" />
-                      <p>Provide accurate address for better service matching</p>
-                    </div>
-                    <div className="flex items-start space-x-2">
-                      <FileText className="w-4 h-4 text-purple-600 mt-0.5" />
-                      <p>Include specific details in notes for better service quality</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
+
+            {/* Sidebar */}
+            <SummaryPanel service={selectedService} date={form.date} time={form.time} address={form.address} />
           </div>
         </div>
       </div>
+      
+      {/* Mobile Navigation */}
+      <MobileBottomNav userRole="CLIENT" />
+      <MobileFloatingActionButton userRole="CLIENT" />
       
       {/* Debug info overlay */}
       {debugInfoDisplay}

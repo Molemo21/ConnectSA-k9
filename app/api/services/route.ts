@@ -1,5 +1,6 @@
+export const runtime = "nodejs";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 
 export async function GET() {
   // Skip during build time
@@ -10,7 +11,7 @@ export async function GET() {
   }
 
   try {
-    const services = await prisma.service.findMany({
+    const services = await db.service.findMany({
       where: { isActive: true },
       select: {
         id: true,

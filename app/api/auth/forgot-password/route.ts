@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/db-utils';
 import { generateSecureToken } from '@/lib/utils';
 import { sendPasswordResetEmail } from '@/lib/email';
 import { z } from 'zod';

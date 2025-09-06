@@ -108,6 +108,10 @@ export function ProviderDiscovery({
         body: JSON.stringify({ serviceId, date, time, address })
       })
 
+      if (!response || typeof response.ok !== 'boolean') {
+        throw new Error('Network error')
+      }
+
       if (!response.ok) {
         const errorData = await response.json()
         const errorMessage = errorData.error || 'Failed to discover providers'
@@ -173,7 +177,11 @@ export function ProviderDiscovery({
         body: JSON.stringify(requestData)
       })
 
-      console.log('📥 Send-offer response status:', response.status);
+      console.log('📥 Send-offer response status:', response && 'status' in response ? (response as any).status : 'unknown');
+
+      if (!response || typeof response.ok !== 'boolean') {
+        throw new Error('Network error')
+      }
 
       if (!response.ok) {
         let errorData = {};

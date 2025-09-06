@@ -1,0 +1,182 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { 
+  Home, 
+  Calendar, 
+  User, 
+  Settings, 
+  BarChart3,
+  Users,
+  Shield,
+  Bell,
+  Plus,
+  Search,
+  MessageCircle,
+  Briefcase,
+  DollarSign,
+  Wrench,
+  Activity
+} from "lucide-react"
+
+interface MobileBottomNavProps {
+  userRole: "CLIENT" | "PROVIDER" | "ADMIN"
+  className?: string
+}
+
+export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
+  const pathname = usePathname()
+
+  const getNavItems = () => {
+    switch (userRole) {
+      case "CLIENT":
+        return [
+          {
+            href: "/dashboard",
+            icon: Home,
+            label: "Home",
+            active: pathname === "/dashboard",
+            isPrimary: false
+          },
+          {
+            href: "/search",
+            icon: Search,
+            label: "Search",
+            active: pathname.startsWith("/search") || pathname === "/book-service",
+            isPrimary: true // Primary action - Search/Book
+          },
+          {
+            href: "/bookings",
+            icon: Calendar,
+            label: "Bookings",
+            active: pathname.startsWith("/bookings"),
+            isPrimary: false
+          },
+          {
+            href: "/profile",
+            icon: User,
+            label: "Profile",
+            active: pathname === "/profile",
+            isPrimary: false
+          }
+        ]
+      
+      case "PROVIDER":
+        return [
+          {
+            href: "/provider/dashboard",
+            icon: Home,
+            label: "Home",
+            active: pathname === "/provider/dashboard",
+            isPrimary: false
+          },
+          {
+            href: "/provider/bookings",
+            icon: Briefcase,
+            label: "Jobs",
+            active: pathname.startsWith("/provider") && pathname.includes("booking"),
+            isPrimary: true // Primary action - Manage Bookings
+          },
+          {
+            href: "/provider/earnings",
+            icon: DollarSign,
+            label: "Earnings",
+            active: pathname === "/provider/earnings",
+            isPrimary: false
+          },
+          {
+            href: "/provider/profile",
+            icon: User,
+            label: "Profile",
+            active: pathname === "/provider/profile",
+            isPrimary: false
+          }
+        ]
+      
+      case "ADMIN":
+        return [
+          {
+            href: "/admin/dashboard",
+            icon: Home,
+            label: "Home",
+            active: pathname === "/admin/dashboard",
+            isPrimary: false
+          },
+          {
+            href: "/admin/users",
+            icon: Users,
+            label: "Users",
+            active: pathname.startsWith("/admin") && pathname.includes("user"),
+            isPrimary: true // Primary action - Manage Users
+          },
+          {
+            href: "/admin/providers",
+            icon: Briefcase,
+            label: "Providers",
+            active: pathname.startsWith("/admin") && pathname.includes("provider"),
+            isPrimary: false
+          },
+          {
+            href: "/admin/audit-logs",
+            icon: Shield,
+            label: "Audit",
+            active: pathname.startsWith("/admin") && pathname.includes("audit"),
+            isPrimary: false
+          }
+        ]
+      
+      default:
+        return []
+    }
+  }
+
+  const navItems = getNavItems()
+
+  return (
+    <nav className={cn(
+      "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-50",
+      "sm:hidden", // Only show on mobile
+      className
+    )}>
+      <div className="flex items-center justify-around">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isPrimary = item.isPrimary
+          const isActive = item.active
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center space-y-1 py-2 px-3 rounded-xl text-xs font-medium transition-all duration-200",
+                "min-h-[48px] min-w-[48px] justify-center", // Larger touch target for better UX
+                isActive
+                  ? isPrimary
+                    ? "text-white bg-blue-600 shadow-lg shadow-blue-600/25" // Primary action when active
+                    : "text-blue-600 bg-blue-50"
+                  : isPrimary
+                    ? "text-blue-600 bg-blue-50 hover:bg-blue-100" // Primary action when inactive
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              )}
+            >
+              <Icon className={cn(
+                "transition-transform duration-200",
+                isActive && isPrimary ? "w-6 h-6" : "w-5 h-5", // Slightly larger icon for primary active
+                isActive && isPrimary && "animate-pulse" // Subtle animation for primary active
+              )} />
+              <span className={cn(
+                "text-xs leading-tight font-medium",
+                isActive && isPrimary && "font-semibold" // Bolder text for primary active
+              )}>
+                {item.label}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}

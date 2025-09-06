@@ -109,17 +109,17 @@ export function ProviderStatsCards({ stats }: ProviderStatsCardsProps) {
   return (
     <>
       {/* Job Status Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
         {jobStats.map((stat, index) => {
           const Icon = stat.icon
           return (
             <Card key={index} className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                    <div className="flex items-center mt-2">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{stat.value}</p>
+                    <div className="flex items-center mt-1 sm:mt-2">
                       <Badge 
                         variant={stat.changeType === "positive" ? "default" : "secondary"}
                         className="text-xs"
@@ -128,8 +128,8 @@ export function ProviderStatsCards({ stats }: ProviderStatsCardsProps) {
                       </Badge>
                     </div>
                   </div>
-                  <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 ${stat.bgColor} rounded-xl flex items-center justify-center mx-auto sm:mx-0`}>
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 ${stat.color}`} />
                   </div>
                 </div>
               </CardContent>
@@ -139,17 +139,17 @@ export function ProviderStatsCards({ stats }: ProviderStatsCardsProps) {
       </div>
 
       {/* Earnings & Performance Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
         {earningsStats.map((stat, index) => {
           const Icon = stat.icon
           return (
             <Card key={index} className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                    <div className="flex items-center mt-2">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">{stat.value}</p>
+                    <div className="flex items-center mt-1 sm:mt-2">
                       <Badge 
                         variant={stat.changeType === "positive" ? "default" : "secondary"}
                         className="text-xs"
@@ -158,8 +158,8 @@ export function ProviderStatsCards({ stats }: ProviderStatsCardsProps) {
                       </Badge>
                     </div>
                   </div>
-                  <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 ${stat.bgColor} rounded-xl flex items-center justify-center mx-auto sm:mx-0`}>
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 ${stat.color}`} />
                   </div>
                 </div>
               </CardContent>

@@ -1,5 +1,6 @@
+export const runtime = 'nodejs'
 import { type NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { db } from "@/lib/db-utils"
 import { verifyPassword, setAuthCookie, getUserDashboardPath } from "@/lib/auth"
 import { z } from "zod"
 
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     const { email, password } = loginSchema.parse(body)
 
     // Find user with provider info if applicable
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { email },
       include: {
         provider: {

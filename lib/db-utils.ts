@@ -20,6 +20,11 @@ const isRetryableError = (error: any): boolean => {
   const message = error.message || '';
   const code = error.code || '';
   
+  // Retry on "Engine is not yet connected" errors (common with pooler)
+  if (message.includes('Engine is not yet connected')) {
+    return true;
+  }
+  
   // Retry on prepared statement errors (Supabase connection issues)
   if (message.includes('prepared statement') || message.includes('does not exist')) {
     return true;
@@ -31,7 +36,7 @@ const isRetryableError = (error: any): boolean => {
   }
   
   // Retry on timeout errors
-  if (code === 'P2024' || message.includes('timeout')) {
+  if (code === 'P2024' || message.includes('timeout') || message.includes('connection pool')) {
     return true;
   }
   
@@ -66,8 +71,8 @@ export async function withRetry<T>(
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, getDelay(attempt)));
       
-      // For prepared statement errors, try to refresh the connection
-      if (error.message && error.message.includes('prepared statement')) {
+      // For connection errors, try to refresh the connection
+      if (error.message && (error.message.includes('prepared statement') || error.message.includes('Engine is not yet connected') || error.message.includes('connection pool'))) {
         console.log('🔄 Attempting to refresh Prisma connection...');
         try {
           await prisma.$disconnect();
@@ -93,7 +98,10 @@ const createDbWrapper = () => {
         findFirst: () => Promise.resolve(null), 
         findMany: () => Promise.resolve([]), 
         findUnique: () => Promise.resolve(null), 
-        count: () => Promise.resolve(0) 
+        count: () => Promise.resolve(0),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        create: () => Promise.resolve(null)
       },
       provider: { 
         findFirst: () => Promise.resolve(null), 
@@ -105,7 +113,9 @@ const createDbWrapper = () => {
         findFirst: () => Promise.resolve(null), 
         findMany: () => Promise.resolve([]), 
         findUnique: () => Promise.resolve(null), 
-        count: () => Promise.resolve(0) 
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
       },
       payment: { 
         findFirst: () => Promise.resolve(null), 
@@ -133,6 +143,13 @@ const createDbWrapper = () => {
         findUnique: () => Promise.resolve(null), 
         count: () => Promise.resolve(0) 
       },
+      adminAuditLog: { 
+        findFirst: () => Promise.resolve(null), 
+        findMany: () => Promise.resolve([]), 
+        findUnique: () => Promise.resolve(null), 
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null)
+      },
     };
   }
 
@@ -144,6 +161,9 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.user.findMany(args), 'user.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.user.findUnique(args), 'user.findUnique'),
       count: (args: any) => withRetry(() => prisma.user.count(args), 'user.count'),
+      update: (args: any) => withRetry(() => prisma.user.update(args), 'user.update'),
+      delete: (args: any) => withRetry(() => prisma.user.delete(args), 'user.delete'),
+      create: (args: any) => withRetry(() => prisma.user.create(args), 'user.create'),
     },
     
     // Provider operations
@@ -160,6 +180,8 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.booking.findMany(args), 'booking.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.booking.findUnique(args), 'booking.findUnique'),
       count: (args: any) => withRetry(() => prisma.booking.count(args), 'booking.count'),
+      create: (args: any) => withRetry(() => prisma.booking.create(args), 'booking.create'),
+      update: (args: any) => withRetry(() => prisma.booking.update(args), 'booking.update'),
     },
     
     // Payment operations
@@ -194,6 +216,15 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.service.findMany(args), 'service.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.service.findUnique(args), 'service.findUnique'),
       count: (args: any) => withRetry(() => prisma.service.count(args), 'service.count'),
+    },
+    
+    // AdminAuditLog operations
+    adminAuditLog: {
+      findFirst: (args: any) => withRetry(() => prisma.adminAuditLog.findFirst(args), 'adminAuditLog.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.adminAuditLog.findMany(args), 'adminAuditLog.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.adminAuditLog.findUnique(args), 'adminAuditLog.findUnique'),
+      count: (args: any) => withRetry(() => prisma.adminAuditLog.count(args), 'adminAuditLog.count'),
+      create: (args: any) => withRetry(() => prisma.adminAuditLog.create(args), 'adminAuditLog.create'),
     },
   };
 };

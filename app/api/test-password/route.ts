@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+export const runtime = 'nodejs'
 import { verifyPassword, hashPassword } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 

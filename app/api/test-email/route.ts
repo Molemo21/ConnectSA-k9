@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
           </p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 25px 0;">
           <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-            Domain: v0-south-africa-marketplace-platfo.vercel.app
+            Domain: app.proliinkconnect.co.za
           </p>
         </div>
       </div>

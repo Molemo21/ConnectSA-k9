@@ -7,13 +7,25 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test": "jest --testPathIgnorePatterns=__tests__/smoke/",
+    "test:watch": "jest --watch --testPathIgnorePatterns=__tests__/smoke/",
+    "test:coverage": "jest --coverage --testPathIgnorePatterns=__tests__/smoke/",
+    "test:ci": "jest --ci --coverage --watchAll=false --testPathIgnorePatterns=__tests__/smoke/",
+    "test:e2e": "start-server-and-test dev http://localhost:3000 \"jest __tests__/smoke\"",
+    "test:e2e:auth": "start-server-and-test dev http://localhost:3000 \"jest __tests__/smoke/signup-verification-flow.test.ts\"",
+    "test:email-verification": "node scripts/comprehensive-email-verification-test.js",
+    "test:provider-onboarding": "node scripts/test-provider-onboarding.js",
+    "test:admin-users": "node scripts/test-admin-user-management.js",
+    "test:admin-users:api": "node scripts/test-admin-api-only.js",
+    "test:admin-users:setup": "node scripts/setup-test-data.js",
+    "test:admin-users:full": "node scripts/run-admin-tests.js",
+    "test:db": "node scripts/test-db-connectivity.js",
+    "deploy:staging": "./scripts/deploy-staging.sh",
+    "deploy:production": "./scripts/deploy-production.sh",
     "clean": "rm -rf .next node_modules/.cache && npm ci",
     "diag:deps": "npm list react react-dom next --depth=0 && npm ls --depth=0 | grep -E '(react|next)'",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "fix:db:payment-enum": "node scripts/repair-payment-enum.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -66,10 +78,14 @@
     "recharts": "^2.15.0",
     "resend": "^4.7.0",
     "sonner": "^1.7.1",
+    "swr": "^2.3.6",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
     "zod": "^3.24.1"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
@@ -82,10 +98,13 @@
     "@types/react-dom": "^18.3.7",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
+    "node-fetch": "^2.7.0",
     "postcss": "^8.5",
     "prisma": "^6.13.0",
+    "start-server-and-test": "^2.1.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.3",
-    "typescript": "^5"
+    "typescript": "^5",
+    "whatwg-fetch": "^3.6.20"
   }
 }

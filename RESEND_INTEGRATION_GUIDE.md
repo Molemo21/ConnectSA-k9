@@ -1,10 +1,10 @@
 # 🚀 **Resend Email Integration Guide**
 
-## **Domain: v0-south-africa-marketplace-platfo.vercel.app**
+## **Domain: app.proliinkconnect.co.za**
 
 ### **📋 Prerequisites**
 - ✅ Resend API Key: `re_ZTeSkpCV_8haEEpLg4Z1vGtT3jSj74HoUn`
-- ✅ Domain: `v0-south-africa-marketplace-platfo.vercel.app`
+- ✅ Domain: `app.proliinkconnect.co.za`
 - ✅ Vercel deployment ready
 
 ---
@@ -19,7 +19,7 @@
 
 2. **Add Your Domain**
    - Click "Add Domain"
-   - Enter: `v0-south-africa-marketplace-platfo.vercel.app`
+   - Enter: `app.proliinkconnect.co.za`
    - Click "Add Domain"
 
 3. **Configure DNS Records**
@@ -51,7 +51,7 @@ JWT_EXPIRES_IN=7d
 
 # Email Service (Resend)
 RESEND_API_KEY=re_ZTeSkpCV_8haEEpLg4Z1vGtT3jSj74HoUn
-FROM_EMAIL=noreply@v0-south-africa-marketplace-platfo.vercel.app
+FROM_EMAIL=no-reply@app.proliinkconnect.co.za
 
 # App Configuration
 NEXTAUTH_SECRET=your_nextauth_secret
@@ -69,11 +69,11 @@ JWT_EXPIRES_IN=7d
 
 # Email Service (Resend)
 RESEND_API_KEY=re_ZTeSkpCV_8haEEpLg4Z1vGtT3jSj74HoUn
-FROM_EMAIL=noreply@v0-south-africa-marketplace-platfo.vercel.app
+FROM_EMAIL=no-reply@app.proliinkconnect.co.za
 
 # App Configuration
 NEXTAUTH_SECRET=your_production_nextauth_secret
-NEXTAUTH_URL=https://v0-south-africa-marketplace-platfo.vercel.app
+NEXTAUTH_URL=https://app.proliinkconnect.co.za
 ```
 
 ### **Step 3: Vercel Environment Variables**
@@ -85,7 +85,7 @@ NEXTAUTH_URL=https://v0-south-africa-marketplace-platfo.vercel.app
 2. **Add Environment Variables**
    ```
    RESEND_API_KEY = re_ZTeSkpCV_8haEEpLg4Z1vGtT3jSj74HoUn
-   FROM_EMAIL = noreply@v0-south-africa-marketplace-platfo.vercel.app
+   FROM_EMAIL = no-reply@app.proliinkconnect.co.za
    ```
 
 3. **Redeploy Application**
@@ -104,7 +104,7 @@ NEXTAUTH_URL=https://v0-south-africa-marketplace-platfo.vercel.app
    ```
 
 2. **Production Testing**
-   - Visit your app: https://v0-south-africa-marketplace-platfo.vercel.app
+   - Visit your app: https://app.proliinkconnect.co.za
    - Test signup/verification flow
    - Check Resend dashboard for sent emails
 
@@ -136,7 +136,7 @@ NEXTAUTH_URL=https://v0-south-africa-marketplace-platfo.vercel.app
 #### **3. "From address not authorized" Error**
 **Solution:**
 - Ensure domain is verified in Resend
-- Use correct from email format: `noreply@v0-south-africa-marketplace-platfo.vercel.app`
+- Use correct from email format: `no-reply@app.proliinkconnect.co.za`
 - Check FROM_EMAIL environment variable
 
 #### **4. Emails not sending in production**
@@ -154,7 +154,7 @@ echo $RESEND_API_KEY
 echo $FROM_EMAIL
 
 # Test email sending
-curl -X POST https://v0-south-africa-marketplace-platfo.vercel.app/api/auth/send-verification \
+curl -X POST https://app.proliinkconnect.co.za/api/auth/send-verification \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com"}'
 ```

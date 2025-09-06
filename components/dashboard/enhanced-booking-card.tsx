@@ -11,6 +11,8 @@ import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { processPayment, handlePaymentResult } from "@/lib/payment-utils"
+import { StatusBadge } from "@/components/ui/status-badge"
+import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
 
 interface Booking {
   id: string
@@ -165,8 +167,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return hoursDiff < 24
   }
 
-  const statusInfo = getStatusInfo(booking.status, booking.payment)
-  const StatusIcon = statusInfo.icon
   const timelineSteps = getTimelineSteps(booking.status, booking.payment)
   
   // Enhanced payment status checking with better logic
@@ -291,119 +291,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     }
   }
 
-  // Enhanced payment status display
-  const renderPaymentStatus = () => {
-    if (isPaymentProcessing && isProcessingPayment) {
-      return (
-        <div className="flex items-center space-x-2 text-sm">
-          <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
-          <span className="text-orange-600 font-medium">Processing Payment...</span>
-        </div>
-      )
-    }
-    
-    if (isPaymentProcessing && isPaymentStuck()) {
-      return (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <div className="flex items-start space-x-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-amber-800">Payment Status Update Needed</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCheckStatus}
-                  className="text-xs h-6 px-2 border-amber-300 text-amber-700 hover:bg-amber-100"
-                >
-                  Check Status
-                </Button>
-              </div>
-              <p className="text-xs text-amber-700 mb-2">
-                Your payment may have been completed but our system needs to sync. This usually resolves automatically.
-              </p>
-              <div className="text-xs text-amber-600 space-y-1">
-                <p>• <strong>Try this first:</strong> Click "Check Status" above</p>
-                <p>• <strong>If that doesn't work:</strong> Refresh the page</p>
-                <p>• <strong>Still stuck?</strong> Your payment is likely fine - wait 10-15 minutes</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    
-    if (isPaymentProcessing && isPaymentDelayed()) {
-      return (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="flex items-start space-x-2">
-            <Clock className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-blue-800 mb-2 block">Payment Taking Longer Than Expected</span>
-              <p className="text-xs text-blue-700 mb-2">
-                Your payment is still processing. This is normal and may take a few more minutes.
-              </p>
-              <div className="text-xs text-blue-600 space-y-1">
-                <p>• <strong>What's happening:</strong> We're waiting for payment confirmation</p>
-                <p>• <strong>This is normal:</strong> Payments can take 2-8 minutes to process</p>
-                <p>• <strong>No action needed:</strong> Just wait a bit longer</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    
-    if (isPaymentProcessing) {
-      return (
-        <div className="flex items-center space-x-2 text-sm">
-          <Clock className="w-4 h-4 text-yellow-500" />
-          <span className="text-yellow-600 font-medium">Awaiting Payment Confirmation</span>
-        </div>
-      )
-    }
-    
-    if (isPaymentFailed) {
-      return (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <div className="flex items-start space-x-2">
-            <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-red-800 mb-2 block">Payment Failed</span>
-              <p className="text-xs text-red-700 mb-2">
-                Your payment couldn't be processed. This is usually temporary.
-              </p>
-              <div className="text-xs text-red-600 space-y-1">
-                <p>• <strong>Try again:</strong> Click "Pay Now" below</p>
-                <p>• <strong>Check:</strong> Your payment method and internet connection</p>
-                <p>• <strong>Contact us:</strong> Only if the issue persists after multiple attempts</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    
-    if (hasPayment) {
-      return (
-        <div className="flex items-center space-x-2 text-sm">
-          <CheckCircle className="w-4 h-4 text-green-500" />
-          <span className="text-green-600 font-medium">Payment Completed</span>
-        </div>
-      )
-    }
-    
-    if (isPaymentInEscrow) {
-      return (
-        <div className="flex items-center space-x-2 text-sm">
-          <DollarSign className="w-4 h-4 text-blue-500" />
-          <span className="text-blue-600 font-medium">Payment in Escrow - Provider Can Start Work</span>
-        </div>
-      )
-    }
-    
-    return null
-  }
+
 
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
   const canPay = (booking.status === "CONFIRMED") && !booking.payment
@@ -444,55 +332,56 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
   return (
     <>
-      <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500" data-booking-id={booking.id}>
-        <CardContent className="p-6">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-blue-600" />
+      <Card className="max-w-sm mx-auto hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500" data-booking-id={booking.id}>
+        <CardContent className="p-4">
+          {/* Header - Compact */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2 flex-1 min-w-0">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-4 h-4 text-blue-600" />
               </div>
-              <div>
-                <div className="flex items-center space-x-2">
-                  <h3 className="font-semibold text-gray-900 text-lg">{booking.service.name}</h3>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center space-x-1">
+                  <h3 className="font-semibold text-gray-900 text-sm truncate">{booking.service.name}</h3>
                   {isRecent() && (
-                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs px-1 py-0">
                       New
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-gray-600">{booking.service.category}</p>
+                <p className="text-xs text-gray-600 truncate">{booking.service.category}</p>
               </div>
             </div>
-            <Badge className={`${statusInfo.color} border`}>
-              <StatusIcon className="w-3 h-3 mr-1" />
-              {statusInfo.label}
-            </Badge>
+            <StatusBadge 
+              status={booking.status} 
+              type="booking" 
+              size="sm"
+            />
           </div>
 
-          {/* Timeline */}
-          <div className="mb-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Booking Timeline</span>
+          {/* Timeline - Compact */}
+          <div className="mb-3">
+            <div className="flex items-center space-x-1 mb-2">
+              <Clock className="w-3 h-3 text-gray-500" />
+              <span className="text-xs font-medium text-gray-700">Progress</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 overflow-x-auto">
               {timelineSteps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                <div key={step.id} className="flex items-center flex-shrink-0">
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-medium ${
                     step.completed 
                       ? 'bg-green-500 text-white' 
                       : 'bg-gray-200 text-gray-500'
                   }`}>
                     {step.completed ? '✓' : index + 1}
                   </div>
-                  <span className={`text-xs ml-1 ${
+                  <span className={`text-xs ml-1 whitespace-nowrap ${
                     step.completed ? 'text-green-600 font-medium' : 'text-gray-500'
                   }`}>
                     {step.label}
                   </span>
                   {index < timelineSteps.length - 1 && (
-                    <div className={`w-8 h-0.5 mx-2 ${
+                    <div className={`w-4 h-0.5 mx-1 ${
                       timelineSteps[index + 1].completed ? 'bg-green-500' : 'bg-gray-200'
                     }`} />
                   )}
@@ -502,19 +391,23 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
           </div>
 
           {/* Payment Status Display */}
-          {renderPaymentStatus()}
+          <PaymentStatusDisplay
+            payment={booking.payment}
+            isProcessing={isProcessingPayment}
+            onCheckStatus={handleCheckStatus}
+          />
           
-          {/* Details */}
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2 text-sm">
-                <Calendar className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-700">
+          {/* Details - Compact Grid */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-1 text-xs">
+                <Calendar className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                <span className="text-gray-700 truncate">
                   {new Date(booking.scheduledDate).toLocaleDateString()}
                 </span>
               </div>
-              <div className="flex items-center space-x-2 text-sm">
-                <Clock className="w-4 h-4 text-gray-500" />
+              <div className="flex items-center space-x-1 text-xs">
+                <Clock className="w-3 h-3 text-gray-500 flex-shrink-0" />
                 <span className="text-gray-700">
                   {new Date(booking.scheduledDate).toLocaleTimeString([], { 
                     hour: '2-digit', 
@@ -522,25 +415,13 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   })}
                 </span>
               </div>
-              {booking.createdAt && (
-                <div className="flex items-center space-x-2 text-sm">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">
-                    Created: {new Date(booking.createdAt).toLocaleDateString()} at{' '}
-                    {new Date(booking.createdAt).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-start space-x-2 text-sm">
-                <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
-                <span className="text-gray-700">{booking.address}</span>
-              </div>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-1 text-xs">
+                <MapPin className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                <span className="text-gray-700 truncate">{booking.address}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-600">Amount:</span>
                 <span className="font-semibold text-gray-900">R{booking.totalAmount.toFixed(2)}</span>
               </div>
@@ -628,17 +509,21 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
               )}
               
               {hasPayment && (
-                <Badge variant="secondary" className="text-green-600 border-green-200">
-                  <CheckCircle className="w-3 h-3 mr-1" />
-                  Payment Received
-                </Badge>
+                <StatusBadge 
+                  status="COMPLETED" 
+                  type="payment" 
+                  size="sm"
+                  className="text-green-600 border-green-200"
+                />
               )}
               
               {isPaymentInEscrow && (
-                <Badge variant="secondary" className="text-blue-600 border-blue-200">
-                  <DollarSign className="w-3 h-3 mr-1" />
-                  Payment in Escrow
-                </Badge>
+                <StatusBadge 
+                  status="ESCROW" 
+                  type="payment" 
+                  size="sm"
+                  className="text-blue-600 border-blue-200"
+                />
               )}
               
               {canCancel && (

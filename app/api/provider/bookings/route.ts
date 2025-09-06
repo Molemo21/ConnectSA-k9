@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { db } from "@/lib/db-utils"
 
 export async function GET(request: NextRequest) {
   // Skip during build time
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const provider = await prisma.provider.findUnique({
+    const provider = await db.provider.findUnique({
       where: { userId: user.id },
     })
 
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all bookings for this provider
-    const bookings = await prisma.booking.findMany({
+    const bookings = await db.booking.findMany({
       where: {
         providerId: provider.id,
         status: {

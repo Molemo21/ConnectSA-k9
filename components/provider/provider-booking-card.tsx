@@ -136,34 +136,34 @@ export function ProviderBookingCard({
 
   return (
     <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500">
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-blue-600" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 text-lg">{booking.service.name}</h3>
-              <p className="text-sm text-gray-600">{booking.service.category}</p>
+              <h3 className="font-semibold text-gray-900 text-base sm:text-lg">{booking.service.name}</h3>
+              <p className="text-xs sm:text-sm text-gray-600">{booking.service.category}</p>
             </div>
           </div>
-          <Badge className={`${statusInfo.color} border`}>
+          <Badge className={`${statusInfo.color} border text-xs`}>
             <StatusIcon className="w-3 h-3 mr-1" />
             {statusInfo.label}
           </Badge>
         </div>
 
         {/* Client Info */}
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between">
+        <div className="mb-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">{booking.client.name}</p>
-                <p className="text-sm text-gray-600">{booking.client.email}</p>
+                <p className="font-medium text-gray-900 text-sm sm:text-base">{booking.client.name}</p>
+                <p className="text-xs sm:text-sm text-gray-600">{booking.client.email}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -172,9 +172,9 @@ export function ProviderBookingCard({
                   size="sm"
                   variant="outline"
                   onClick={onCall}
-                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 text-xs"
                 >
-                  <Phone className="w-4 h-4 mr-1" />
+                  <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                   Call
                 </Button>
               )}
@@ -182,9 +182,9 @@ export function ProviderBookingCard({
                 size="sm"
                 variant="outline"
                 onClick={onMessage}
-                className="text-green-600 border-green-200 hover:bg-green-50"
+                className="text-green-600 border-green-200 hover:bg-green-50 h-8 text-xs"
               >
-                <MessageCircle className="w-4 h-4 mr-1" />
+                <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                 Message
               </Button>
             </div>
@@ -192,7 +192,7 @@ export function ProviderBookingCard({
         </div>
 
         {/* Details */}
-        <div className="grid md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm">
               <Calendar className="w-4 h-4 text-gray-500" />

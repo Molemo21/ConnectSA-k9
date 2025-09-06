@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -30,6 +31,7 @@ model User {
   provider            Provider?
   disputes            Dispute[]            @relation("UserDisputes")
   adminDisputes       Dispute[]            @relation("AdminDisputes")
+  adminAuditLogs      AdminAuditLog[]      @relation("AdminAuditLogs")
 
   @@map("users")
 }
@@ -165,6 +167,8 @@ model VerificationToken {
   expires   DateTime
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("VerificationToken")
 }
 
 model ProviderReview {
@@ -216,10 +220,10 @@ model Message {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  title     String   // Database has this column
-  message   String   // Database has 'message' not 'content'
+  title     String
+  content   String   // Changed from 'message' to 'content' for UI consistency
   type      String
-  isRead    Boolean  @default(false) @map("isRead") // Database has 'isRead' not 'read'
+  isRead    Boolean  @default(false) @map("isRead")
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -294,6 +298,22 @@ model WebhookEvent {
   @@map("webhook_events")
 }
 
+model AdminAuditLog {
+  id          String      @id @default(cuid())
+  adminId     String
+  action      AuditAction
+  targetType  String      // 'USER', 'PROVIDER', 'BOOKING', etc.
+  targetId    String
+  details     Json?       // Additional action details
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+  
+  admin       User        @relation("AdminAuditLogs", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_audit_logs")
+}
+
 enum UserRole {
   CLIENT
   PROVIDER
@@ -306,6 +326,7 @@ enum PaymentStatus {
   HELD_IN_ESCROW
   PROCESSING_RELEASE
   RELEASED
+  COMPLETED
   REFUNDED
   FAILED
 }
@@ -341,4 +362,20 @@ enum BookingStatus {
   COMPLETED
   CANCELLED
   DISPUTED
+}
+
+enum AuditAction {
+  USER_SUSPENDED
+  USER_UNSUSPENDED
+  USER_DELETED
+  USER_ROLE_CHANGED
+  PROVIDER_APPROVED
+  PROVIDER_REJECTED
+  PROVIDER_SUSPENDED
+  PROVIDER_UNSUSPENDED
+  PAYMENT_RELEASED
+  PAYMENT_REFUNDED
+  BOOKING_CANCELLED
+  DISPUTE_RESOLVED
+  SYSTEM_MAINTENANCE
 }

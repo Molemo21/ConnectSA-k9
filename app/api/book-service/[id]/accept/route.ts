@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
+import { sendBookingConfirmationEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   // Skip during build time
@@ -23,7 +25,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await db.booking.findUnique({ 
+      where: { id: bookingId },
+      include: {
+        client: { select: { name: true, email: true } },
+        provider: { 
+          include: { 
+            user: { select: { name: true } },
+            services: { 
+              where: { serviceId: booking?.serviceId },
+              include: { service: { select: { name: true } } }
+            }
+          }
+        }
+      }
+    });
     if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
@@ -37,13 +53,44 @@ export async function POST(request: NextRequest) {
     // Note: Proposal update removed - table doesn't exist in database
     console.log('ℹ️ Skipping proposal update (table not available)');
 
-    const updated = await prisma.booking.update({
+    const updated = await db.booking.update({
       where: { id: bookingId },
       data: { status: "CONFIRMED" },
     });
 
-    // TODO: Notify client (in-app/email) that provider accepted
-    // TODO: Send payment instructions to client
+    // Send booking confirmation email to client
+    try {
+      const serviceName = booking.provider.services[0]?.service?.name || 'Service';
+      const providerName = booking.provider.user.name || 'Service Provider';
+      const scheduledDate = new Date(booking.scheduledDate);
+      
+      await sendBookingConfirmationEmail(
+        booking.client.email,
+        booking.client.name,
+        {
+          serviceName,
+          providerName,
+          date: scheduledDate.toLocaleDateString('en-ZA', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }),
+          time: scheduledDate.toLocaleTimeString('en-ZA', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          location: booking.address,
+          bookingId: booking.id,
+          totalAmount: booking.totalAmount
+        }
+      );
+      
+      console.log(`📧 Booking confirmation email sent to client: ${booking.client.email}`);
+    } catch (emailError) {
+      console.error('❌ Failed to send booking confirmation email:', emailError);
+      // Don't fail the request if email fails
+    }
 
     return NextResponse.json({ 
       success: true,

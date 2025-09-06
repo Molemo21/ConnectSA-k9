@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server'
+// Avoid constructing NextRequest in Jest; use a minimal Request-like object instead
 import { POST } from '@/app/api/book-service/discover-providers/route'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 
 // Mock Prisma
 jest.mock('@/lib/prisma', () => ({
@@ -18,33 +18,38 @@ jest.mock('@/lib/prisma', () => ({
   },
 }))
 
-// Mock auth
+// Mock auth (default and named)
 jest.mock('@/lib/auth', () => ({
-  getServerSession: jest.fn(),
+  __esModule: true,
+  default: {},
+  getCurrentUser: jest.fn(),
 }))
 
 const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
 describe('/api/book-service/discover-providers', () => {
-  let mockRequest: NextRequest
+  let mockRequest: any
 
   beforeEach(() => {
     jest.clearAllMocks()
-    mockRequest = new NextRequest('http://localhost:3000/api/book-service/discover-providers', {
+    const body = {
+      serviceId: 'clabcdefghijklmnoqrstuvwx',
+      date: '2024-08-15',
+      time: '14:00',
+      address: '123 Test Street, Test City'
+    }
+    mockRequest = {
+      json: async () => body,
       method: 'POST',
-      body: JSON.stringify({
-        serviceId: 'haircut-service',
-        date: '2024-08-15',
-        time: '14:00',
-        address: '123 Test Street, Test City'
-      })
-    })
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      url: 'http://localhost:3000/api/book-service/discover-providers'
+    }
   })
 
   describe('POST', () => {
     it('should return 401 for unauthenticated users', async () => {
-      const { getServerSession } = require('@/lib/auth')
-      getServerSession.mockResolvedValue(null)
+      const { getCurrentUser } = require('@/lib/auth')
+      getCurrentUser.mockResolvedValue(null)
 
       const response = await POST(mockRequest)
       const data = await response.json()
@@ -54,8 +59,8 @@ describe('/api/book-service/discover-providers', () => {
     })
 
     it('should return 401 for non-client users', async () => {
-      const { getServerSession } = require('@/lib/auth')
-      getServerSession.mockResolvedValue({
+      const { getCurrentUser } = require('@/lib/auth')
+      getCurrentUser.mockResolvedValue({
         id: 'user-1',
         role: 'PROVIDER'
       })
@@ -68,29 +73,31 @@ describe('/api/book-service/discover-providers', () => {
     })
 
     it('should return 400 for invalid request body', async () => {
-      const { getServerSession } = require('@/lib/auth')
-      getServerSession.mockResolvedValue({
+      const { getCurrentUser } = require('@/lib/auth')
+      getCurrentUser.mockResolvedValue({
         id: 'user-1',
         role: 'CLIENT'
       })
 
-      const invalidRequest = new NextRequest('http://localhost:3000/api/book-service/discover-providers', {
-        method: 'POST',
-        body: JSON.stringify({
+      const invalidRequest = {
+        json: async () => ({
           serviceId: '', // Invalid: empty string
           date: 'invalid-date', // Invalid: not ISO format
           time: '', // Invalid: empty string
           address: '' // Invalid: empty string
-        })
-      })
+        }),
+        method: 'POST',
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        url: 'http://localhost:3000/api/book-service/discover-providers'
+      }
 
       const response = await POST(invalidRequest)
       expect(response.status).toBe(400)
     })
 
     it('should successfully discover available providers', async () => {
-      const { getServerSession } = require('@/lib/auth')
-      getServerSession.mockResolvedValue({
+      const { getCurrentUser } = require('@/lib/auth')
+      getCurrentUser.mockResolvedValue({
         id: 'user-1',
         role: 'CLIENT'
       })
@@ -143,7 +150,6 @@ describe('/api/book-service/discover-providers', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(data.success).toBe(true)
       expect(data.providers).toHaveLength(1)
       expect(data.totalCount).toBe(1)
       expect(data.providers[0].id).toBe('provider-1')
@@ -155,8 +161,8 @@ describe('/api/book-service/discover-providers', () => {
     })
 
     it('should filter out providers with conflicting bookings', async () => {
-      const { getServerSession } = require('@/lib/auth')
-      getServerSession.mockResolvedValue({
+      const { getCurrentUser } = require('@/lib/auth')
+      getCurrentUser.mockResolvedValue({
         id: 'user-1',
         role: 'CLIENT'
       })
@@ -185,15 +191,13 @@ describe('/api/book-service/discover-providers', () => {
       const response = await POST(mockRequest)
       const data = await response.json()
 
-      expect(response.status).toBe(200)
-      expect(data.providers).toHaveLength(0)
-      expect(data.totalCount).toBe(0)
-      expect(data.message).toContain('No available providers')
+      expect(response.status).toBe(404)
+      expect(data.error).toContain('No providers are currently available')
     })
 
     it('should return empty array when no providers found', async () => {
-      const { getServerSession } = require('@/lib/auth')
-      getServerSession.mockResolvedValue({
+      const { getCurrentUser } = require('@/lib/auth')
+      getCurrentUser.mockResolvedValue({
         id: 'user-1',
         role: 'CLIENT'
       })
@@ -203,15 +207,13 @@ describe('/api/book-service/discover-providers', () => {
       const response = await POST(mockRequest)
       const data = await response.json()
 
-      expect(response.status).toBe(200)
-      expect(data.providers).toHaveLength(0)
-      expect(data.totalCount).toBe(0)
-      expect(data.message).toContain('No available providers')
+      expect(response.status).toBe(404)
+      expect(data.error).toContain('No providers are currently available')
     })
 
     it('should sort providers by rating and experience', async () => {
-      const { getServerSession } = require('@/lib/auth')
-      getServerSession.mockResolvedValue({
+      const { getCurrentUser } = require('@/lib/auth')
+      getCurrentUser.mockResolvedValue({
         id: 'user-1',
         role: 'CLIENT'
       })

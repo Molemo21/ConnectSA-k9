@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { paystackClient } from "@/lib/paystack";
 import { z } from "zod";
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Verifying payment with reference: ${reference}`);
 
     // Find payment in database
-    const payment = await prisma.payment.findUnique({
+    const payment = await db.payment.findUnique({
       where: { paystackRef: reference },
       include: { booking: true }
     });
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       
       try {
         // Update payment status
-        updatedPayment = await prisma.payment.update({
+        updatedPayment = await db.payment.update({
           where: { id: payment.id },
           data: { 
             status: statusUpdate,
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
         // If payment moved to ESCROW, update booking status
         if (statusUpdate === 'ESCROW' && payment.booking.status === 'CONFIRMED') {
-          updatedBooking = await prisma.booking.update({
+          updatedBooking = await db.booking.update({
             where: { id: payment.bookingId },
             data: { status: 'PENDING_EXECUTION' }
           });
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
           console.log(`✅ Booking status updated to PENDING_EXECUTION`);
           
           // Create notification for provider
-          await prisma.notification.create({
+          await db.notification.create({
             data: {
               userId: payment.booking.providerId,
               type: 'PAYMENT_RECEIVED',
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
     let payment;
     
     if (reference) {
-      payment = await prisma.payment.findUnique({
+      payment = await db.payment.findUnique({
         where: { paystackRef: reference },
         include: { 
           booking: { 
@@ -233,7 +233,7 @@ export async function GET(request: NextRequest) {
         }
       });
     } else if (bookingId) {
-      payment = await prisma.payment.findUnique({
+      payment = await db.payment.findUnique({
         where: { bookingId },
         include: { 
           booking: { 

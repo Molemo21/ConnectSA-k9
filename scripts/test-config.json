@@ -1,0 +1,68 @@
+{
+  "testConfig": {
+    "baseUrl": "http://localhost:3000",
+    "headless": true,
+    "timeout": 30000,
+    "retries": 2,
+    "testUsers": {
+      "admin": {
+        "email": "admin@test.com",
+        "password": "admin123",
+        "role": "ADMIN"
+      },
+      "provider": {
+        "email": "provider@test.com", 
+        "password": "provider123",
+        "role": "PROVIDER"
+      },
+      "client": {
+        "email": "client@test.com",
+        "password": "client123", 
+        "role": "CLIENT"
+      }
+    },
+    "testData": {
+      "createTestUsers": true,
+      "cleanupAfterTests": false,
+      "useExistingUsers": true
+    },
+    "frontend": {
+      "viewport": {
+        "desktop": { "width": 1280, "height": 720 },
+        "mobile": { "width": 375, "height": 667 }
+      },
+      "waitForSelectors": {
+        "timeout": 10000,
+        "retries": 3
+      }
+    },
+    "api": {
+      "timeout": 10000,
+      "retries": 2,
+      "expectedStatusCodes": {
+        "success": [200, 201],
+        "unauthorized": [401],
+        "forbidden": [403],
+        "notFound": [404],
+        "validationError": [400]
+      }
+    },
+    "audit": {
+      "expectedActions": [
+        "USER_SUSPENDED",
+        "USER_UNSUSPENDED", 
+        "USER_DELETED",
+        "USER_ROLE_CHANGED",
+        "PROVIDER_APPROVED",
+        "PROVIDER_REJECTED",
+        "PROVIDER_SUSPENDED",
+        "PROVIDER_UNSUSPENDED",
+        "PAYMENT_RELEASED",
+        "PAYMENT_REFUNDED",
+        "BOOKING_CANCELLED",
+        "DISPUTE_RESOLVED",
+        "SYSTEM_MAINTENANCE"
+      ]
+    }
+  }
+}
