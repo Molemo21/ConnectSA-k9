@@ -542,7 +542,7 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
             userId: existingPayment.booking.provider.user.id,
             type: 'PAYMENT_RECEIVED',
             title: 'Payment Received',
-            message: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
+            content: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
             isRead: false,
           }
         });
@@ -583,7 +583,7 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
             userId: existingPayment.booking.provider.user.id,
             type: 'PAYMENT_RECEIVED',
             title: 'Payment Received',
-            message: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
+            content: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
             isRead: false,
           }
         });

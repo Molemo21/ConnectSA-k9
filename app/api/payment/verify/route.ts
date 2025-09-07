@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
               userId: payment.booking.providerId,
               type: 'PAYMENT_RECEIVED',
               title: 'Payment Received',
-              message: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
+              content: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
               isRead: false,
             }
           });
