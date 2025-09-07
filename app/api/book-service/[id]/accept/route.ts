@@ -31,13 +31,10 @@ export async function POST(request: NextRequest) {
         client: { select: { name: true, email: true } },
         provider: { 
           include: { 
-            user: { select: { name: true } },
-            services: { 
-              where: { serviceId: booking?.serviceId },
-              include: { service: { select: { name: true } } }
-            }
+            user: { select: { name: true } }
           }
-        }
+        },
+        service: { select: { name: true } }
       }
     });
     if (!booking) {
@@ -60,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // Send booking confirmation email to client
     try {
-      const serviceName = booking.provider.services[0]?.service?.name || 'Service';
+      const serviceName = booking.service?.name || 'Service';
       const providerName = booking.provider.user.name || 'Service Provider';
       const scheduledDate = new Date(booking.scheduledDate);
       
