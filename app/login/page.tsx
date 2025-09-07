@@ -79,79 +79,90 @@ function LoginContent() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-gradient-to-br from-blue-900 via-purple-900 to-black overflow-hidden">
+      {/* Responsive, less blurred, more visible background image using login.jpg */}
+      <div
+        className="absolute inset-0 bg-cover bg-center scale-100 opacity-70 transition-all duration-700"
+        style={{ backgroundImage: "url('/login.jpg')" }}
+      ></div>
+      {/* Overlay: lighter dim effect */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-md"></div>
+
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center relative z-10">
         {/* Left Side - Login Form */}
         <div className="w-full max-w-md mx-auto">
-          <div className="text-center mb-6 sm:mb-8">
-            <Link href="/" className="inline-flex items-center space-x-2 sm:space-x-3 mb-4 sm:mb-6 group">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200">
-                <span className="text-white font-bold text-lg sm:text-xl">P</span>
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center space-x-3 mb-6 group">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200">
+                <span className="text-white font-bold text-xl">P</span>
               </div>
               <div className="text-left">
-                <span className="text-xl sm:text-2xl font-bold text-gray-900">ProLiink Connect</span>
-                <div className="text-xs sm:text-sm text-gray-500">Trusted Services</div>
+                <span className="text-2xl font-bold text-gray-900">ProLiink Connect</span>
+                <div className="text-xs text-gray-500">Trusted Services</div>
               </div>
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-            <p className="text-base sm:text-lg text-gray-600">Sign in to your account to continue</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+            <p className="text-gray-600">Sign in to your account to continue</p>
           </div>
 
           <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-6 sm:p-8">
-              <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+            <CardContent className="p-8">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium">Email Address</Label>
+                  <Label htmlFor="email">Email Address</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
                       id="email"
                       type="email"
                       placeholder="Enter your email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="pl-10 sm:pl-12 h-12 sm:h-12 text-base"
+                      className="pl-10"
                       required
+                      aria-label="Email Address"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <Label htmlFor="password">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                    <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="pl-10 sm:pl-12 pr-12 sm:pr-12 h-12 sm:h-12 text-base"
+                      className="pl-10 pr-10"
                       required
+                      aria-label="Password"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-white focus:outline-none"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? (
-                        <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                        <EyeOff className="w-4 h-4 text-gray-400" />
                       ) : (
-                        <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                        <Eye className="w-4 h-4 text-gray-400" />
                       )}
                     </Button>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700">
+                  <Link href="/forgot-password" className="text-sm text-blue-400 hover:text-blue-300 underline underline-offset-2">
                     Forgot password?
                   </Link>
                 </div>
 
-                <Button type="submit" disabled={isLoading} className="w-full h-12 sm:h-12 text-base sm:text-lg font-medium">
+                <Button type="submit" disabled={isLoading} className="w-full">
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
@@ -165,12 +176,12 @@ function LoginContent() {
                   )}
                 </Button>
 
-                <Separator />
+                <Separator className="bg-gradient-to-r from-blue-500 to-purple-500 h-0.5" />
 
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-200">
                     Don't have an account?{" "}
-                    <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+                    <Link href="/signup" className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2">
                       Sign up
                     </Link>
                   </p>
@@ -181,23 +192,23 @@ function LoginContent() {
         </div>
 
         {/* Right Side - Features */}
-        <div className="hidden lg:block">
-          <div className="max-w-md">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">
+        <div className="hidden lg:block animate-fade-in-up">
+          <div className="max-w-md bg-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-2xl">
+            <h2 className="text-4xl font-extrabold text-white mb-6 drop-shadow-lg animate-fade-in">
               Connect with Trusted Service Providers
             </h2>
-            <p className="text-lg text-gray-600 mb-8">
+            <p className="text-lg text-gray-200 mb-8">
               Join thousands of satisfied customers who trust us for their service needs.
             </p>
             <div className="space-y-6">
               {features.map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <feature.icon className="w-6 h-6 text-white" />
+                <div key={index} className="flex items-start space-x-4 animate-fade-in-up">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <feature.icon className="w-6 h-6 text-white animate-bounce" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                    <p className="text-gray-600">{feature.description}</p>
+                    <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
+                    <p className="text-gray-200">{feature.description}</p>
                   </div>
                 </div>
               ))}
@@ -208,6 +219,18 @@ function LoginContent() {
     </div>
   )
 }
+
+// Add breathing keyframes to global styles if not present
+if (typeof window !== "undefined") {
+  const styleId = "breathing-keyframes-style";
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.innerHTML = `@keyframes breathing { 0% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } 100% { opacity: 0.7; transform: scale(1); } } .animate-breathing { animation: breathing 2.5s ease-in-out infinite; }`;
+    document.head.appendChild(style);
+  }
+}
+
 
 export default function LoginPage() {
   return (

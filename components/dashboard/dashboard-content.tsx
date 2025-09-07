@@ -5,16 +5,22 @@ import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Search, Calendar, Clock, Star, MapPin, Plus, Home, Wrench, Paintbrush, Zap, Car, Scissors, TrendingUp, DollarSign, CheckCircle, AlertCircle, BarChart3, RefreshCw, AlertTriangle, Loader2 } from "lucide-react"
-import { BrandHeaderClient } from "@/components/ui/brand-header-client"
-import { ReviewSection } from "@/components/review-section"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { 
+  Search, Calendar, Clock, Star, MapPin, Plus, Home, Wrench, Paintbrush, Zap, Car, Scissors, 
+  TrendingUp, DollarSign, CheckCircle, AlertCircle, BarChart3, RefreshCw, AlertTriangle, 
+  Loader2, Menu, X, Bell, Settings, User, LogOut, ChevronLeft, ChevronRight, Activity,
+  CreditCard, BookOpen, MessageSquare, Shield, HelpCircle, PanelLeftClose, PanelLeftOpen,
+  ArrowUpRight, ArrowDownRight, Phone, Edit
+} from "lucide-react"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
-import { EnhancedStatsDashboard } from "@/components/dashboard/enhanced-stats-dashboard"
-import { BookingManagement } from "@/components/dashboard/booking-management"
+import { BookingTimeline, CompactBookingTimeline } from "@/components/dashboard/booking-timeline"
+import { DashboardLoadingScreen } from "@/components/dashboard/dashboard-loading-screen"
+import { PaymentsDashboard } from "@/components/dashboard/payments-dashboard"
 import { showToast, handleApiError } from "@/lib/toast"
 import { LoadingCard } from "@/components/ui/loading-spinner"
 import { useBookingData } from "@/hooks/use-booking-data"
-import { PerformanceMonitor } from "@/components/ui/performance-monitor"
 
 // Helper function to get service icon
 function getServiceIcon(serviceName: string) {
@@ -35,6 +41,14 @@ export function DashboardContent() {
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const [initialBookings, setInitialBookings] = useState<any[]>([])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [selectedActiveBooking, setSelectedActiveBooking] = useState<any>(null)
+  
+  // Payments dashboard state
+  const [isPaymentsDashboardExpanded, setIsPaymentsDashboardExpanded] = useState(false)
+  const [selectedPayment, setSelectedPayment] = useState<any>(null)
 
   // Get search params to detect payment success callback
   const searchParams = useSearchParams()
@@ -81,109 +95,8 @@ export function DashboardContent() {
       url.searchParams.delete('trxref')
       url.searchParams.delete('reference')
       window.history.replaceState({}, '', url.toString())
-      
-      // Start aggressive polling for payment status update
-      const pollInterval = setInterval(async () => {
-        try {
-          console.log('🔄 Polling for payment status update for booking:', bookingId)
-          
-          // First try to get booking status
-          const response = await fetch(`/api/book-service/${bookingId}/status`)
-          if (response.ok) {
-            const data = await response.json()
-            console.log('📊 Current booking status:', data)
-            
-            if (data.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED'].includes(data.payment.status)) {
-              console.log('✅ Payment status updated to:', data.payment.status)
-              clearInterval(pollInterval)
-              
-              // Refresh all bookings to show updated status
-              if (refreshAllBookings) {
-                refreshAllBookings()
-                setLastRefresh(new Date())
-              }
-              
-              // Show final success message
-              showToast.success(`Payment confirmed! Status: ${data.payment.status}`)
-            } else if (data.payment && data.payment.status === 'PENDING') {
-              console.log('⏳ Payment still pending, continuing to poll...')
-            } else {
-              console.log('ℹ️ Payment status:', data.payment?.status || 'No payment found')
-            }
-          } else {
-            console.error('❌ Failed to get booking status:', response.status)
-          }
-        } catch (error) {
-          console.error('Payment status check error:', error)
-        }
-      }, 2000) // Check every 2 seconds for faster response
-      
-      // Stop polling after 3 minutes
-      setTimeout(() => {
-        clearInterval(pollInterval)
-        console.log('⏰ Payment status polling stopped after timeout')
-      }, 180000)
     }
   }, [searchParams, refreshBooking, refreshAllBookings])
-
-  // Auto-refresh mechanism for payment status updates
-  useEffect(() => {
-    // Only start polling if we have bookings and user is authenticated
-    if (!bookings.length || !user) return;
-
-    // Check if any bookings are in payment-related states that need monitoring
-    const hasPaymentBookings = bookings.some(booking => 
-      booking.payment && ['PENDING', 'ESCROW'].includes(booking.payment.status)
-    );
-
-    if (!hasPaymentBookings) return;
-
-    console.log('🔄 Starting payment status polling for bookings with pending payments...');
-    
-    // Poll every 8 seconds for payment status updates (more frequent for better UX)
-    const pollInterval = setInterval(async () => {
-      try {
-        console.log('🔄 Polling for payment status updates...');
-        
-        // Check if any payments have changed status
-        const currentBookings = await fetch('/api/bookings/my-bookings').then(res => res.json()).catch(() => null);
-        
-        if (currentBookings && currentBookings.bookings) {
-          // Compare current status with stored status
-          let hasChanges = false;
-          
-          currentBookings.bookings.forEach((currentBooking: any) => {
-            const storedBooking = bookings.find(b => b.id === currentBooking.id);
-            if (storedBooking && storedBooking.payment && currentBooking.payment) {
-              if (storedBooking.payment.status !== currentBooking.payment.status) {
-                console.log(`🔄 Payment status changed for booking ${currentBooking.id}:`, {
-                  from: storedBooking.payment.status,
-                  to: currentBooking.payment.status
-                });
-                hasChanges = true;
-              }
-            }
-          });
-          
-          if (hasChanges) {
-            console.log('✅ Payment status changes detected, refreshing dashboard...');
-            if (refreshAllBookings) {
-              await refreshAllBookings();
-              setLastRefresh(new Date());
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Payment status polling error:', error);
-      }
-    }, 8000); // 8 seconds
-
-    // Cleanup interval on unmount or when dependencies change
-    return () => {
-      console.log('🧹 Cleaning up payment status polling interval');
-      clearInterval(pollInterval);
-    };
-  }, [bookings, user, refreshAllBookings]);
 
   // Manual refresh function with proper error handling
   const handleManualRefresh = async () => {
@@ -263,14 +176,6 @@ export function DashboardContent() {
             bookings: bookingsData.bookings
           })
           
-          // Additional debugging - log each booking
-          if (bookingsData.bookings) {
-            console.log('📋 Individual bookings:')
-            bookingsData.bookings.forEach((booking: any, index: number) => {
-              console.log(`  ${index + 1}. ID: ${booking.id}, Status: ${booking.status}, Service: ${booking.service?.name}, Date: ${booking.scheduledDate}`)
-            })
-          }
-          
           // Initialize the useBookingData hook with fetched data
           setInitialBookings(bookingsData.bookings || [])
         } else {
@@ -304,33 +209,27 @@ export function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <BrandHeaderClient showAuth={false} showUserMenu={true} />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-7xl mx-auto">
-            <LoadingCard text="Loading your dashboard..." />
-          </div>
-        </div>
+      <div className="h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
+        <DashboardLoadingScreen />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <BrandHeaderClient showAuth={false} showUserMenu={true} />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-7xl mx-auto text-center">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-              <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-red-800 mb-2">Something went wrong</h3>
-              <p className="text-red-700 mb-4">{error}</p>
-              <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700">
+      <div className="h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4 bg-gray-900 border-gray-800">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-100 mb-2">Something went wrong</h3>
+              <p className="text-gray-400 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()} className="w-full bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700">
                 Try Again
               </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -341,20 +240,11 @@ export function DashboardContent() {
 
   // Calculate real stats with enhanced details
   const totalBookings = bookings.length
-  const completedBookings = bookings.filter(b => b.status === "COMPLETED").length
+  const completedBookingsCount = bookings.filter(b => b.status === "COMPLETED").length
   const pendingBookings = bookings.filter(b => b.status === "PENDING").length
   const confirmedBookings = bookings.filter(b => b.status === "CONFIRMED").length
   const inProgressBookings = bookings.filter(b => b.status === "IN_PROGRESS").length
   const cancelledBookings = bookings.filter(b => b.status === "CANCELLED").length
-  
-  // Calculate recent bookings (created within last 24 hours)
-  const recentBookings = bookings.filter(b => {
-    if (!b.createdAt) return false
-    const now = new Date()
-    const created = new Date(b.createdAt)
-    const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60)
-    return hoursDiff < 24
-  }).length
   
   const totalSpent = bookings
     .filter(b => b.payment)
@@ -405,589 +295,668 @@ export function DashboardContent() {
     }
   }).filter(service => service.providerCount > 0).slice(0, 6) // Show top 6 services with providers
 
-  const enhancedStats = [
-    {
-      title: "Total Bookings",
-      value: totalBookings,
-      icon: Calendar,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
-      change: `${bookingGrowth >= 0 ? '+' : ''}${bookingGrowth}%`,
-      changeType: bookingGrowth >= 0 ? "positive" : "negative",
-      details: [
-        { label: "This Month", value: thisMonthBookings, trend: bookingGrowth >= 0 ? "up" : "down" },
-        { label: "Last Month", value: lastMonthBookings, trend: "stable" },
-        { label: "Completed", value: completedBookings, trend: "up" },
-        { label: "Cancelled", value: cancelledBookings, trend: "down" }
-      ]
-    },
-    {
-      title: "Completed Jobs",
-      value: completedBookings,
-      icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
-      change: `${Math.round((completedBookings / totalBookings) * 100)}%`,
-      changeType: "positive",
-      details: [
-        { label: "Success Rate", value: `${Math.round((completedBookings / totalBookings) * 100)}%`, trend: "up" },
-        { label: "Average Rating", value: averageRating.toFixed(1), trend: "up" },
-        { label: "Total Reviews", value: bookings.filter(b => b.review).length, trend: "up" }
-      ]
-    },
-    {
-      title: "Active Bookings",
-      value: pendingBookings + confirmedBookings + inProgressBookings,
-      icon: Clock,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-      change: "Active",
-      changeType: "neutral",
-      details: [
-        { label: "Pending", value: pendingBookings, trend: "stable" },
-        { label: "Confirmed", value: confirmedBookings, trend: "up" },
-        { label: "In Progress", value: inProgressBookings, trend: "up" }
-      ]
-    },
-    {
-      title: "Total Spent",
-      value: `R${totalSpent.toFixed(2)}`,
-      icon: DollarSign,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-100",
-      change: "+25%",
-      changeType: "positive",
-      details: [
-        { label: "This Month", value: `R${(totalSpent * 0.3).toFixed(2)}`, trend: "up" },
-        { label: "Average per Booking", value: `R${totalBookings > 0 ? (totalSpent / totalBookings).toFixed(2) : '0.00'}`, trend: "up" },
-        { label: "Payment Received", value: bookings.filter(b => b.payment).length, trend: "up" }
-      ]
-    },
-    {
-      title: "Recent Bookings",
-      value: recentBookings,
-      icon: Clock,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
-      change: "Last 24h",
-      changeType: "neutral",
-      details: [
-        { label: "New Today", value: recentBookings, trend: "up" },
-        { label: "Pending Review", value: bookings.filter(b => b.status === "COMPLETED" && !b.review).length, trend: "stable" },
-        { label: "Active Now", value: pendingBookings + confirmedBookings + inProgressBookings, trend: "up" }
-      ]
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Logout failed:', error)
+      showToast.error('Failed to logout. Please try again.')
     }
+  }
+
+  // Navigation items - now defined inside component where bookings is available
+  const navigationItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: Home, current: true },
+    { 
+      name: 'Bookings', 
+      href: '/bookings', 
+      icon: Calendar, 
+      current: false, 
+      badge: pendingBookings > 0 ? pendingBookings : undefined 
+    },
+    { name: 'Payments', href: '/payments', icon: CreditCard, current: false },
+    { name: 'Support', href: '/support', icon: HelpCircle, current: false },
+    { name: 'Settings', href: '/settings', icon: Settings, current: false },
+    { name: 'Logout', href: '#', icon: LogOut, current: false, isAction: true },
   ]
 
+  // Filter bookings for different sections
+  const incompleteBookings = bookings.filter(b => 
+    !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(b.status)
+  )
+  
+  const completedBookings = bookings.filter(b => 
+    b.status === 'COMPLETED'
+  )
+
+  // Find the most recent active booking or use selected one
+  const activeBooking = selectedActiveBooking || bookings
+    .filter(b => ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'PENDING_EXECUTION'].includes(b.status))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <BrandHeaderClient showAuth={false} showUserMenu={true} />
+    <div className="h-screen bg-gray-950 text-gray-100 flex overflow-hidden">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
+      {/* Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-50 bg-gray-950/80 backdrop-blur border-r border-gray-800 transition-all duration-200 lg:static lg:translate-x-0 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } ${sidebarCollapsed ? 'w-16' : 'w-64'}`}>
+        
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
+          {!sidebarCollapsed && (
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/handshake.png" 
+                alt="ProLiink Connect Logo" 
+                className="w-8 h-8 rounded-lg object-cover shadow-lg"
+              />
               <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600 mt-2">Welcome back, {user.name || user.email}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={handleManualRefresh}
-                disabled={isRefreshing}
-                variant="outline"
-                size="sm"
-              >
-                {isRefreshing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Refreshing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Refresh
-                  </>
-                )}
-              </Button>
-              
-              {/* Debug Section */}
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={async () => {
-                    try {
-                      const response = await fetch('/api/webhooks/paystack');
-                      const data = await response.json();
-                      console.log('Webhook debug info:', data);
-                      showToast.success('Webhook debug info logged to console');
-                    } catch (error) {
-                      console.error('Webhook debug error:', error);
-                      showToast.error('Failed to get webhook debug info');
-                    }
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Test Webhook
-                </Button>
-                
-                <Button
-                  onClick={async () => {
-                    try {
-                      // Force refresh all bookings
-                      if (refreshAllBookings) {
-                        await refreshAllBookings();
-                        setLastRefresh(new Date());
-                        showToast.success('Forced refresh completed');
-                      }
-                    } catch (error) {
-                      console.error('Forced refresh error:', error);
-                      showToast.error('Forced refresh failed');
-                    }
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Force Refresh
-                </Button>
-                
-                <Button 
-                  onClick={async () => {
-                    try {
-                      // Find any PENDING payments and attempt recovery
-                      const pendingPayments = bookings.filter(b => 
-                        b.payment && b.payment.status === 'PENDING'
-                      );
-                      
-                      if (pendingPayments.length === 0) {
-                        showToast.info('No pending payments found');
-                        return;
-                      }
-                      
-                      showToast.info(`Found ${pendingPayments.length} pending payment(s). Attempting recovery...`);
-                      
-                      // Attempt recovery for each pending payment
-                      for (const booking of pendingPayments) {
-                        try {
-                          console.log(`🔄 Attempting payment recovery for booking ${booking.id}, payment ${booking.payment.id}`);
-                          
-                          const response = await fetch('/api/payment/recover-status', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ paymentId: booking.payment.id })
-                          });
-                          
-                          console.log(`📡 Recovery API response status:`, response.status);
-                          console.log(`📡 Recovery API response headers:`, Object.fromEntries(response.headers.entries()));
-                          
-                          const result = await response.json();
-                          console.log(`📡 Recovery API response body:`, result);
-                          
-                          if (!response.ok) {
-                            console.error(`❌ Recovery API error response:`, {
-                              status: response.status,
-                              statusText: response.statusText,
-                              result
-                            });
-                            
-                            const errorMessage = result.error || result.message || `HTTP ${response.status}: ${response.statusText}`;
-                            showToast.error(`Payment recovery failed for booking ${booking.id}: ${errorMessage}`);
-                            continue;
-                          }
-                          
-                          if (result.success) {
-                            console.log(`✅ Payment recovery successful for booking ${booking.id}:`, result);
-                            showToast.success(`Payment recovered for booking ${booking.id}`);
-                          } else {
-                            console.error(`❌ Payment recovery failed for booking ${booking.id}:`, result);
-                            const errorMessage = result.message || result.error || 'Unknown error';
-                            showToast.error(`Payment recovery failed for booking ${booking.id}: ${errorMessage}`);
-                          }
-                        } catch (error) {
-                          console.error(`❌ Payment recovery error for booking ${booking.id}:`, error);
-                          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                          showToast.error(`Payment recovery error for booking ${booking.id}: ${errorMessage}`);
-                        }
-                      }
-                      
-                      // Refresh bookings after recovery attempts
-                      setTimeout(() => {
-                        if (refreshAllBookings) {
-                          refreshAllBookings();
-                          setLastRefresh(new Date());
-                        }
-                      }, 2000);
-                      
-                    } catch (error) {
-                      console.error('Payment recovery error:', error);
-                      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                      showToast.error(`Payment recovery failed: ${errorMessage}`);
-                    }
-                  }}
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs"
-                >
-                  Recover Payments
-                </Button>
-                
-                {user?.role === 'ADMIN' && (
-                  <Button
-                    onClick={async () => {
-                      try {
-                        showToast.info('Cleaning up duplicate payout records...');
-                        
-                        const response = await fetch('/api/payment/cleanup-orphaned-payouts', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' }
-                        });
-                        
-                        const result = await response.json();
-                        
-                        if (result.success) {
-                          console.log('🧹 Cleanup result:', result);
-                          showToast.success(`Cleanup completed! Cleaned ${result.cleanedCount} items.`);
-                          
-                          // Refresh bookings after cleanup
-                          setTimeout(() => {
-                            if (refreshAllBookings) {
-                              refreshAllBookings();
-                              setLastRefresh(new Date());
-                            }
-                          }, 1000);
-                        } else {
-                          console.error('❌ Cleanup failed:', result);
-                          showToast.error(`Cleanup failed: ${result.message}`);
-                        }
-                      } catch (error) {
-                        console.error('Cleanup error:', error);
-                        showToast.error('Cleanup failed');
-                      }
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Cleanup Payouts
-                  </Button>
-                )}
-                
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                >
-                  <a href="/payment-debug">
-                    Payment Debug
-                  </a>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Status Summary */}
-          {bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status)) && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-blue-700">
-                    {bookings.filter(b => b.payment && b.payment.status === 'PENDING').length} payment(s) processing
-                  </span>
-                  <span className="text-xs text-blue-600">
-                    • {bookings.filter(b => b.payment && b.payment.status === 'ESCROW').length} payment(s) in escrow
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 text-xs text-blue-600">
-                  <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
-                  {isRefreshing && (
-                    <span className="flex items-center">
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                      Refreshing...
-                    </span>
-                  )}
-                </div>
+                <h1 className="text-lg font-bold text-gray-100">
+                  ProL<span className="text-blue-400">ii</span>nk Connect
+                </h1>
+                <p className="text-xs text-gray-400">Client Dashboard</p>
               </div>
             </div>
           )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
 
-          {/* Quick Actions */}
-          <div className="mb-6">
-            <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-              <a href="/book-service">
-                <Plus className="w-5 h-5 mr-2" />
-                Book New Service
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navigationItems.map((item) => {
+            const Icon = item.icon
+            
+            if (item.isAction) {
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className={`group flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-red-400 hover:bg-red-900/20 hover:text-red-300 ${
+                    sidebarCollapsed ? 'justify-center' : ''
+                  }`}
+                  title={sidebarCollapsed ? item.name : ''}
+                >
+                  <Icon className={`flex-shrink-0 w-5 h-5 ${
+                    sidebarCollapsed ? '' : 'mr-3'
+                  }`} />
+                  {!sidebarCollapsed && (
+                    <span className="truncate">{item.name}</span>
+                  )}
+                </button>
+              )
+            }
+            
+            // Handle Payments navigation specially
+            if (item.name === 'Payments') {
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => setIsPaymentsDashboardExpanded(true)}
+                  className={`group flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                    item.current
+                      ? 'bg-purple-900/50 text-purple-400 border border-purple-800/50'
+                      : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                  } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                  title={sidebarCollapsed ? item.name : ''}
+                >
+                  <Icon className={`flex-shrink-0 w-5 h-5 ${
+                    sidebarCollapsed ? '' : 'mr-3'
+                  }`} />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="truncate">{item.name}</span>
+                      {item.badge && item.badge > 0 && (
+                        <Badge className="ml-auto bg-purple-900/50 text-purple-400 text-xs border-purple-800/50">
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                </button>
+              )
+            }
+            
+            return (
+              <a
+                key={item.name}
+                href={item.href}
+                className={`group flex items-center w-full px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                  item.current
+                    ? 'bg-purple-900/50 text-purple-400 border border-purple-800/50'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                } ${sidebarCollapsed ? 'justify-center' : ''}`}
+                title={sidebarCollapsed ? item.name : ''}
+              >
+                <Icon className={`flex-shrink-0 w-5 h-5 ${
+                  sidebarCollapsed ? '' : 'mr-3'
+                }`} />
+                {!sidebarCollapsed && (
+                  <>
+                    <span className="truncate">{item.name}</span>
+                    {item.badge && item.badge > 0 && (
+                      <Badge className="ml-auto bg-purple-900/50 text-purple-400 text-xs border-purple-800/50">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </>
+                )}
               </a>
-            </Button>
+            )
+          })}
+        </nav>
+
+        {/* Payments Dashboard in Sidebar (when not collapsed) */}
+        {!sidebarCollapsed && (
+          <div className="p-3 border-t border-gray-800">
+            <PaymentsDashboard
+              bookings={bookings}
+              isExpanded={false}
+              onPaymentSelect={(payment) => {
+                setSelectedPayment(payment)
+                setIsPaymentsDashboardExpanded(true)
+              }}
+              onExpandToggle={() => setIsPaymentsDashboardExpanded(true)}
+            />
           </div>
+        )}
 
-          {/* Stats Dashboard */}
-          <EnhancedStatsDashboard 
-            stats={enhancedStats}
-            bookings={bookings}
-            totalSpent={totalSpent}
-            averageRating={averageRating}
-          />
+        {/* User Profile */}
+        {!sidebarCollapsed && (
+          <div className="p-4 border-t border-gray-800">
+            <div className="flex items-center space-x-3">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={user.avatar} />
+                <AvatarFallback className="bg-purple-900/50 text-purple-400">
+                  {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-100 truncate">
+                  {user.name || 'User'}
+                </p>
+                <p className="text-xs text-gray-400 truncate">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </aside>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Recent Bookings */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    <span>Recent Bookings</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Track the status of your service bookings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {bookings.length === 0 ? (
-                    <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Calendar className="w-8 h-8 text-blue-600" />
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        
+        {/* Header */}
+        <header className="bg-gray-950/80 backdrop-blur border-b border-gray-800 flex-shrink-0 z-30">
+          <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+            
+            {/* Left side */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="hidden lg:flex text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              
+              <div>
+                <h2 className="text-xl font-bold text-gray-100">Dashboard</h2>
+                <p className="text-sm text-gray-400">Welcome back, {user.name || user.email}</p>
+              </div>
+            </div>
+
+            {/* Right side */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+              >
+                {isRefreshing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                className="relative text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+              >
+                <Bell className="w-5 h-5" />
+                {bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status)) && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-purple-600 rounded-full animate-pulse"></span>
+                )}
+              </Button>
+              
+              <Avatar className="w-8 h-8 cursor-pointer">
+                <AvatarImage src={user.avatar} />
+                <AvatarFallback className="bg-purple-900/50 text-purple-400">
+                  {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <div className="max-w-7xl mx-auto space-y-8">
+            
+            
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-3">
+              <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white transition-all duration-200 hover:scale-105" asChild>
+                <a href="/book-service">
+                  <Plus className="w-4 h-4 mr-2" />
+                  New Booking
+                </a>
+              </Button>
+              <Button className="bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-200 border border-gray-700" asChild>
+                <a href="/payments">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Payments
+                </a>
+              </Button>
+              <Button className="bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-200 border border-gray-700" asChild>
+                <a href="/support">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Support
+                </a>
+              </Button>
+            </div>
+
+            {/* Current Active Booking Section OR Expanded Payments Dashboard */}
+            {isPaymentsDashboardExpanded ? (
+              <PaymentsDashboard
+                bookings={bookings}
+                isExpanded={true}
+                selectedPayment={selectedPayment}
+                onPaymentSelect={setSelectedPayment}
+                onExpandToggle={() => {
+                  setIsPaymentsDashboardExpanded(false)
+                  setSelectedPayment(null)
+                }}
+              />
+            ) : activeBooking ? (
+              <Card className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+                <CardHeader className="pb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Activity className="w-5 h-5 text-white animate-pulse" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bookings Yet</h3>
-                      <p className="text-gray-600 mb-6">
-                        You haven't made any bookings yet. Start by exploring our available services!
-                      </p>
-                      <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                        <a href="/book-service">Book Your First Service</a>
+                      <div className="min-w-0">
+                        <CardTitle className="text-lg font-semibold text-gray-100">Current Active Booking</CardTitle>
+                        <p className="text-sm text-gray-400">Your ongoing service booking</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 self-start sm:self-auto"
+                      asChild
+                    >
+                      <a href="/bookings">View All</a>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+                    <EnhancedBookingCard
+                      booking={activeBooking}
+                      onStatusChange={(bookingId, newStatus) => {
+                        // Update the booking status in the local state
+                        setInitialBookings(prev => prev.map(b => 
+                          b.id === bookingId ? { ...b, status: newStatus } : b
+                        ))
+                      }}
+                      onRefresh={refreshBooking}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                {
+                  title: "Total Bookings",
+                  value: totalBookings,
+                  change: `${bookingGrowth >= 0 ? '+' : ''}${bookingGrowth}%`,
+                  trend: bookingGrowth >= 0 ? "up" : "down",
+                  icon: Calendar,
+                  color: "text-blue-400"
+                },
+                {
+                  title: "Completed Jobs",
+                  value: completedBookingsCount,
+                  change: `${totalBookings > 0 ? Math.round((completedBookingsCount / totalBookings) * 100) : 0}%`,
+                  trend: "up",
+                  icon: CheckCircle,
+                  color: "text-green-400"
+                },
+                {
+                  title: "Active Bookings",
+                  value: pendingBookings + confirmedBookings + inProgressBookings,
+                  change: "Active",
+                  trend: "neutral",
+                  icon: Clock,
+                  color: "text-orange-400"
+                },
+                {
+                  title: "Total Spent",
+                  value: `R${totalSpent.toFixed(2)}`,
+                  change: "+25%",
+                  trend: "up",
+                  icon: DollarSign,
+                  color: "text-emerald-400"
+                }
+              ].map((stat, index) => {
+                const Icon = stat.icon
+                const TrendIcon = stat.trend === 'up' ? ArrowUpRight : stat.trend === 'down' ? ArrowDownRight : Clock
+                return (
+                  <Card key={index} className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-400">{stat.title}</p>
+                          <p className="text-2xl font-bold text-gray-100 mt-1">{stat.value}</p>
+                          <div className="flex items-center mt-2">
+                            <TrendIcon className={`w-4 h-4 mr-1 ${
+                              stat.trend === 'up' ? 'text-green-400' : 
+                              stat.trend === 'down' ? 'text-red-400' : 'text-gray-400'
+                            }`} />
+                            <span className={`text-sm ${
+                              stat.trend === 'up' ? 'text-green-400' : 
+                              stat.trend === 'down' ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                              {stat.change}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-gray-800">
+                          <Icon className={`w-6 h-6 ${stat.color}`} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+
+            {/* Main Content Grid with Timeline */}
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+              
+              {/* Booking Timeline - Takes 3 columns on xl - Shows only incomplete bookings */}
+              <div className="xl:col-span-3">
+                <BookingTimeline 
+                  bookings={incompleteBookings} 
+                  maxItems={3}
+                  showViewAll={true}
+                  onBookingClick={(booking) => setSelectedActiveBooking(booking)}
+                />
+              </div>
+
+              {/* Recent Completed Jobs - Takes 1 column on far right */}
+              <div className="xl:col-span-1">
+                <Card className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold text-gray-100">Completed</CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 text-xs"
+                        asChild
+                      >
+                        <a href="/bookings">All</a>
                       </Button>
                     </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {/* Payment Troubleshooting Info */}
-                      {bookings.some(b => b.payment && b.payment.status === 'PENDING') && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                          <div className="flex items-start space-x-3">
-                            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
-                            <div className="flex-1">
-                              <h4 className="text-sm font-medium text-amber-800 mb-1">
-                                Payment Processing Information
-                              </h4>
-                              <p className="text-sm text-amber-700 mb-2">
-                                Some of your payments are currently being processed. Here's what to expect:
-                              </p>
-                              <div className="text-xs text-amber-600 space-y-1">
-                                <p>• <strong>Normal processing time:</strong> 2-5 minutes</p>
-                                <p>• <strong>If you completed payment:</strong> Refresh this page or wait for automatic update</p>
-                                <p>• <strong>If payment is taking longer:</strong> This is usually normal - wait up to 10 minutes</p>
-                                <p>• <strong>Payment stuck after 10 minutes:</strong> Use the "Check Status" button on each booking</p>
-                                <p>• <strong>Still having issues:</strong> Contact support only after trying the above steps</p>
-                              </div>
-                              <div className="mt-3 pt-2 border-t border-amber-200">
-                                <p className="text-xs text-amber-600">
-                                  <strong>💡 Pro tip:</strong> You can safely close the payment tab after completing payment. 
-                                  The status will update automatically on this page.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {completedBookings.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <CheckCircle className="w-6 h-6 text-gray-400" />
                         </div>
-                      )}
-                      
-                      {/* Debug info - remove this later */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-blue-800">
-                          <strong>Debug:</strong> Total bookings: {bookings.length} | 
-                          Recent (24h): {recentBookings} | 
-                          Showing: {Math.min(bookings.length, 5)} | 
-                          Statuses: {bookings.map(b => b.status).join(', ')}
-                        </p>
+                        <h3 className="text-sm font-medium text-gray-100 mb-2">No completed jobs</h3>
+                        <p className="text-xs text-gray-400 mb-4">Complete your first booking</p>
+                        <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-xs" asChild>
+                          <a href="/book-service">Book Now</a>
+                        </Button>
                       </div>
-                      
-                      {bookings.slice(0, 5).map((booking) => (
-                        <EnhancedBookingCard
-                          key={booking.id}
-                          booking={booking}
-                          onStatusChange={(bookingId, newStatus) => {
-                            // This functionality is now handled by useBookingData
-                          }}
-                          onRefresh={refreshBooking}
-                        />
-                      ))}
-                      
-                      {/* Show "View All" button if there are more than 5 bookings */}
-                      {bookings.length > 5 && (
-                        <div className="text-center pt-4">
-                          <Button 
-                            variant="outline" 
-                            onClick={() => window.location.href = '/bookings'}
-                            className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                          >
-                            View All {bookings.length} Bookings
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Popular Services */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
-                    <span>Available Services</span>
-                  </CardTitle>
-                  <CardDescription>
-                    Explore our most popular services
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {popularServices.length > 0 ? (
-                      popularServices.map((service, index) => {
-                        const Icon = service.icon
-                        return (
-                          <div 
-                            key={service.id} 
-                            className="group p-4 border border-gray-200 rounded-lg hover:shadow-lg transition-all duration-300 cursor-pointer"
-                            onClick={() => window.location.href = `/book-service?service=${service.id}`}
-                          >
-                            <div className="flex items-start space-x-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                                <Icon className="w-6 h-6 text-white" />
-                              </div>
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900 text-lg mb-1">{service.name}</h3>
-                                <p className="text-gray-600 mb-2">{service.category}</p>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-1">
-                                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                    <span className="text-sm text-gray-600">{service.averageRating.toFixed(1)}</span>
-                                  </div>
-                                  <span className="text-sm text-gray-500">{service.providerCount} providers</span>
+                    ) : (
+                      <div className="space-y-2">
+                        {completedBookings.slice(0, 4).map((booking) => (
+                          <Dialog key={booking.id}>
+                            <DialogTrigger asChild>
+                              <div className="flex items-center space-x-3 p-2 bg-gray-800 rounded-lg hover:bg-gray-750 transition-all duration-200 cursor-pointer">
+                                <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-green-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <CheckCircle className="w-4 h-4 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-gray-100 truncate">{booking.service?.name || 'Service'}</p>
+                                  <p className="text-xs text-gray-400">{new Date(booking.scheduledDate).toLocaleDateString()}</p>
+                                  <Badge className="text-xs mt-1 inline-block bg-green-900/50 text-green-400 border-green-800/50">
+                                    Completed
+                                  </Badge>
                                 </div>
                               </div>
-                            </div>
-                            <div className="mt-3 pt-3 border-t border-gray-100">
-                              <Button 
-                                size="sm" 
-                                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  window.location.href = `/book-service?service=${service.id}`
-                                }}
-                              >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Book Now
-                              </Button>
-                            </div>
-                          </div>
-                        )
-                      })
-                    ) : (
-                      <div className="col-span-2 text-center py-8">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Search className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Services Available</h3>
-                        <p className="text-gray-600">
-                          There are currently no active service providers in your area.
-                        </p>
+                            </DialogTrigger>
+                            <DialogContent className="bg-gray-900 border-gray-800 text-gray-100 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                              <DialogHeader className="flex-shrink-0">
+                                <DialogTitle className="text-xl font-semibold text-gray-100">
+                                  {booking.service?.name || 'Service Details'}
+                                </DialogTitle>
+                                <DialogDescription className="text-gray-400">
+                                  Booking details and information
+                                </DialogDescription>
+                              </DialogHeader>
+                              
+                              <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                                {/* Service Info */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Service</h4>
+                                    <p className="text-sm text-gray-100">{booking.service?.name || 'N/A'}</p>
+                                    <p className="text-xs text-gray-400">{booking.service?.category || 'N/A'}</p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Status</h4>
+                                    <Badge className={`text-xs ${
+                                      booking.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border-green-800/50' :
+                                      booking.status === 'CONFIRMED' ? 'bg-blue-900/50 text-blue-400 border-blue-800/50' :
+                                      booking.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50' :
+                                      booking.status === 'PENDING_EXECUTION' ? 'bg-purple-900/50 text-purple-400 border-purple-800/50' :
+                                      'bg-gray-800 text-gray-400 border-gray-700'
+                                    }`}>
+                                      {booking.status.replace('_', ' ')}
+                                    </Badge>
+                                  </div>
+                                </div>
+
+                                {/* Date & Time */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Date</h4>
+                                    <div className="flex items-center space-x-2">
+                                      <Calendar className="w-4 h-4 text-gray-400" />
+                                      <span className="text-sm text-gray-100">
+                                        {new Date(booking.scheduledDate).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Time</h4>
+                                    <div className="flex items-center space-x-2">
+                                      <Clock className="w-4 h-4 text-gray-400" />
+                                      <span className="text-sm text-gray-100">
+                                        {new Date(booking.scheduledDate).toLocaleTimeString([], { 
+                                          hour: '2-digit', 
+                                          minute: '2-digit' 
+                                        })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Address */}
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-300 mb-2">Address</h4>
+                                  <div className="flex items-start space-x-2">
+                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                                    <span className="text-sm text-gray-100">{booking.address}</span>
+                                  </div>
+                                </div>
+
+                                {/* Amount */}
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-300 mb-2">Amount</h4>
+                                  <div className="flex items-center space-x-2">
+                                    <DollarSign className="w-4 h-4 text-gray-400" />
+                                    <span className="text-lg font-semibold text-gray-100">
+                                      R{booking.totalAmount?.toFixed(2) || '0.00'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Provider Info */}
+                                {booking.provider && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Provider</h4>
+                                    <div className="bg-gray-800 rounded-lg p-3">
+                                      <p className="text-sm font-medium text-gray-100">{booking.provider.user.name}</p>
+                                      <p className="text-xs text-gray-400">{booking.provider.businessName}</p>
+                                      {booking.provider.user.phone && (
+                                        <div className="flex items-center space-x-2 mt-2">
+                                          <Phone className="w-4 h-4 text-gray-400" />
+                                          <span className="text-xs text-gray-300">{booking.provider.user.phone}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Description */}
+                                {booking.description && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Notes</h4>
+                                    <p className="text-sm text-gray-100 bg-gray-800 rounded-lg p-3">
+                                      {booking.description}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Payment Info */}
+                                {booking.payment && (
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Payment</h4>
+                                    <div className="bg-gray-800 rounded-lg p-3">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-100">Amount: R{booking.payment.amount?.toFixed(2)}</span>
+                                        <Badge className={`text-xs ${
+                                          booking.payment.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border-green-800/50' :
+                                          booking.payment.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50' :
+                                          'bg-gray-800 text-gray-400 border-gray-700'
+                                        }`}>
+                                          {booking.payment.status}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              <DialogFooter>
+                                <Button 
+                                  variant="outline" 
+                                  className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
+                                  asChild
+                                >
+                                  <a href="/bookings">View All Bookings</a>
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        ))}
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <Button asChild className="w-full justify-start" variant="outline">
-                      <a href="/book-service">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Book New Service
-                      </a>
-                    </Button>
-                    <Button asChild className="w-full justify-start" variant="outline">
-                      <a href="/bookings">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        View All Bookings
-                      </a>
-                    </Button>
-                    <Button asChild className="w-full justify-start" variant="outline">
-                      <a href="/analytics">
-                        <BarChart3 className="w-4 h-4 mr-2" />
-                        Analytics
-                      </a>
-                    </Button>
-                    <Button asChild className="w-full justify-start" variant="outline">
-                      <a href="/reviews">
-                        <Star className="w-4 h-4 mr-2" />
-                        My Reviews
-                      </a>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Booking Management */}
-              {bookings.length > 0 && (
-                <BookingManagement
-                  booking={bookings[0]} // Show management for the most recent booking
-                  onUpdate={(bookingId, updates) => {
-                    // This functionality is now handled by useBookingData
-                  }}
-                />
-              )}
-
-              {/* Account Status */}
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg">Account Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Email Verified</span>
-                      <Badge className="bg-green-100 text-green-800">Verified</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Total Bookings</span>
-                      <span className="font-semibold">{totalBookings}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Completed Jobs</span>
-                      <span className="font-semibold">{completedBookings}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Total Spent</span>
-                      <span className="font-semibold">R{totalSpent.toFixed(2)}</span>
-                    </div>
-                    {averageRating > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Avg Rating</span>
-                        <div className="flex items-center space-x-1">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="font-semibold">{averageRating.toFixed(1)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Performance Monitor */}
-              <PerformanceMonitor />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
-        </div>
+        </main>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <DialogContent className="bg-gray-900 border-gray-800 text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-100 flex items-center">
+              <LogOut className="w-5 h-5 mr-2 text-red-400" />
+              Confirm Logout
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Are you sure you want to logout? You will need to sign in again to access your dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowLogoutConfirm(false)}
+              className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setShowLogoutConfirm(false)
+                handleLogout()
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
-} 
+}

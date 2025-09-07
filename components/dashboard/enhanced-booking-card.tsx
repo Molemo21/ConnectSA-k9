@@ -29,6 +29,7 @@ interface Booking {
     }
   } | null
   scheduledDate: Date
+  duration: number
   totalAmount: number
   status: string
   address: string
@@ -157,6 +158,21 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
+  const [isFlipping, setIsFlipping] = useState(false)
+  const [previousStatus, setPreviousStatus] = useState(booking.status)
+
+  // Detect status changes and trigger flip animation
+  useEffect(() => {
+    if (previousStatus !== booking.status) {
+      setIsFlipping(true)
+      setPreviousStatus(booking.status)
+      
+      // Reset flip animation after completion
+      setTimeout(() => {
+        setIsFlipping(false)
+      }, 800) // Slightly longer than the CSS animation duration
+    }
+  }, [booking.status, previousStatus])
 
   // Check if booking is recent (created within last 24 hours)
   const isRecent = () => {
@@ -167,7 +183,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return hoursDiff < 24
   }
 
-  const timelineSteps = getTimelineSteps(booking.status, booking.payment)
+  const timelineSteps = getTimelineSteps(booking.status, Boolean(booking.payment))
   
   // Enhanced payment status checking with better logic
   const hasPayment = booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(booking.payment.status)
@@ -292,7 +308,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   }
 
 
-
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
   const canPay = (booking.status === "CONFIRMED") && !booking.payment
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
@@ -330,15 +345,45 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     setShowActionsModal(true)
   }
 
+  // Normalize booking for BookingActionsModal expected shape
+  const modalBooking = {
+    id: booking.id,
+    service: booking.service,
+    provider: booking.provider
+      ? {
+          businessName: booking.provider.businessName,
+          user: {
+            name: booking.provider.user.name,
+            phone: booking.provider.user.phone ?? "",
+          },
+        }
+      : undefined,
+    scheduledDate: new Date(booking.scheduledDate).toISOString(),
+    duration: booking.duration,
+    totalAmount: booking.totalAmount,
+    status: booking.status,
+    address: booking.address,
+    description: booking.description ?? "",
+    payment: booking.payment
+      ? { status: booking.payment.status, amount: booking.payment.amount }
+      : undefined,
+  }
+
   return (
     <>
-      <Card className="max-w-sm mx-auto hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500" data-booking-id={booking.id}>
-        <CardContent className="p-4">
-          {/* Header - Compact */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2 flex-1 min-w-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-4 h-4 text-blue-600" />
+      <div className="relative perspective-1000">
+        <Card 
+          className={`hover:shadow-lg transition-all duration-700 border-l-4 border-l-blue-500 transform-style-preserve-3d ${
+            isFlipping ? 'animate-flip-page' : ''
+          }`} 
+          data-booking-id={booking.id}
+        >
+          <CardContent className="p-6">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-blue-600" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-1">
@@ -359,30 +404,48 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             />
           </div>
 
-          {/* Timeline - Compact */}
-          <div className="mb-3">
-            <div className="flex items-center space-x-1 mb-2">
-              <Clock className="w-3 h-3 text-gray-500" />
-              <span className="text-xs font-medium text-gray-700">Progress</span>
+          {/* Timeline with Flipping Cards */}
+          <div className="mb-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <Clock className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Booking Timeline</span>
             </div>
-            <div className="flex items-center space-x-1 overflow-x-auto">
+            <div className="flex items-center space-x-3 overflow-x-auto pb-2">
               {timelineSteps.map((step, index) => (
                 <div key={step.id} className="flex items-center flex-shrink-0">
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-medium ${
-                    step.completed 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-gray-200 text-gray-500'
-                  }`}>
-                    {step.completed ? '✓' : index + 1}
+                  {/* Flipping Card */}
+                  <div className="relative w-16 h-16 perspective-1000">
+                    <div 
+                      className={`absolute inset-0 w-full h-full transition-transform duration-700 transform-style-preserve-3d ${
+                        step.completed ? 'rotate-y-180' : ''
+                      }`}
+                    >
+                      {/* Front of card (incomplete state) */}
+                      <div className="absolute inset-0 w-full h-full backface-hidden rounded-lg bg-gray-100 border-2 border-gray-200 flex flex-col items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold mb-1">
+                          {index + 1}
+                        </div>
+                        <span className="text-xs text-gray-500 text-center leading-tight px-1">
+                          {step.label.split(' ').slice(0, 2).join(' ')}
+                        </span>
+                      </div>
+                      
+                      {/* Back of card (completed state) */}
+                      <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-lg bg-gradient-to-br from-green-400 to-green-600 border-2 border-green-500 flex flex-col items-center justify-center shadow-lg">
+                        <div className="w-6 h-6 rounded-full bg-white text-green-600 flex items-center justify-center text-xs font-bold mb-1">
+                          ✓
+                        </div>
+                        <span className="text-xs text-white text-center leading-tight px-1 font-medium">
+                          {step.label.split(' ').slice(0, 2).join(' ')}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className={`text-xs ml-1 whitespace-nowrap ${
-                    step.completed ? 'text-green-600 font-medium' : 'text-gray-500'
-                  }`}>
-                    {step.label}
-                  </span>
+                  
+                  {/* Connector Line */}
                   {index < timelineSteps.length - 1 && (
-                    <div className={`w-4 h-0.5 mx-1 ${
-                      timelineSteps[index + 1].completed ? 'bg-green-500' : 'bg-gray-200'
+                    <div className={`w-8 h-0.5 mx-2 transition-colors duration-500 ${
+                      timelineSteps[index + 1].completed ? 'bg-green-500' : 'bg-gray-300'
                     }`} />
                   )}
                 </div>
@@ -392,7 +455,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
           {/* Payment Status Display */}
           <PaymentStatusDisplay
-            payment={booking.payment}
+            payment={(booking.payment ?? null) as any}
             isProcessing={isProcessingPayment}
             onCheckStatus={handleCheckStatus}
           />
@@ -459,7 +522,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   variant="outline"
                   className="text-green-600 border-green-200 hover:bg-green-50"
                   onClick={() => {
-                    window.open(`tel:${booking.provider.user.phone}`, '_blank')
+                    window.open(`tel:${booking.provider?.user.phone}`, '_blank')
                   }}
                 >
                   <Phone className="w-4 h-4 mr-1" />
@@ -563,10 +626,10 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 <div>
                   <span className="text-sm font-medium text-gray-700">Provider Details:</span>
                   <div className="mt-1 text-sm text-gray-600">
-                    <p>Name: {booking.provider.user.name}</p>
-                    <p>Business: {booking.provider.businessName}</p>
-                    {booking.provider.user.phone && (
-                      <p>Phone: {booking.provider.user.phone}</p>
+                    <p>Name: {booking.provider?.user.name}</p>
+                    <p>Business: {booking.provider?.businessName}</p>
+                    {booking.provider?.user.phone && (
+                      <p>Phone: {booking.provider?.user.phone}</p>
                     )}
                   </div>
                 </div>
@@ -589,16 +652,17 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             <div className="mt-4 pt-4 border-t border-gray-100">
               <ReviewSection
                 bookingId={booking.id}
-                existingReview={booking.review}
+                existingReview={booking.review ? { ...booking.review, createdAt: new Date(booking.createdAt) } as any : null}
               />
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      </div>
       
       {/* Booking Actions Modal */}
       <BookingActionsModal
-        booking={booking}
+        booking={modalBooking as any}
         isOpen={showActionsModal}
         onClose={() => setShowActionsModal(false)}
         onUpdate={(bookingId, updates) => {
