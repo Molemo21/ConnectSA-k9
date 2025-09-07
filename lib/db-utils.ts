@@ -107,7 +107,8 @@ const createDbWrapper = () => {
         findFirst: () => Promise.resolve(null), 
         findMany: () => Promise.resolve([]), 
         findUnique: () => Promise.resolve(null), 
-        count: () => Promise.resolve(0) 
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
       },
       booking: { 
         findFirst: () => Promise.resolve(null), 
@@ -150,6 +151,15 @@ const createDbWrapper = () => {
         count: () => Promise.resolve(0),
         create: () => Promise.resolve(null)
       },
+      verificationToken: {
+        findFirst: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        deleteMany: () => Promise.resolve({ count: 0 }),
+      },
     };
   }
 
@@ -172,6 +182,7 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.provider.findMany(args), 'provider.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.provider.findUnique(args), 'provider.findUnique'),
       count: (args: any) => withRetry(() => prisma.provider.count(args), 'provider.count'),
+      create: (args: any) => withRetry(() => prisma.provider.create(args), 'provider.create'),
     },
     
     // Booking operations
@@ -225,6 +236,17 @@ const createDbWrapper = () => {
       findUnique: (args: any) => withRetry(() => prisma.adminAuditLog.findUnique(args), 'adminAuditLog.findUnique'),
       count: (args: any) => withRetry(() => prisma.adminAuditLog.count(args), 'adminAuditLog.count'),
       create: (args: any) => withRetry(() => prisma.adminAuditLog.create(args), 'adminAuditLog.create'),
+    },
+
+    // VerificationToken operations
+    verificationToken: {
+      findFirst: (args: any) => withRetry(() => prisma.verificationToken.findFirst(args), 'verificationToken.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.verificationToken.findMany(args), 'verificationToken.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.verificationToken.findUnique(args), 'verificationToken.findUnique'),
+      count: (args: any) => withRetry(() => prisma.verificationToken.count(args), 'verificationToken.count'),
+      create: (args: any) => withRetry(() => prisma.verificationToken.create(args), 'verificationToken.create'),
+      delete: (args: any) => withRetry(() => prisma.verificationToken.delete(args), 'verificationToken.delete'),
+      deleteMany: (args: any) => withRetry(() => prisma.verificationToken.deleteMany(args), 'verificationToken.deleteMany'),
     },
   };
 };

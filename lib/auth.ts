@@ -136,6 +136,9 @@ export async function setAuthCookie(user: AuthUser) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
+    path: '/',
+    // Allow overriding cookie domain in production for subdomain consistency
+    domain: process.env.COOKIE_DOMAIN || undefined,
     maxAge: 60 * 60 * 24 * 7, // 7 days
   })
 }
