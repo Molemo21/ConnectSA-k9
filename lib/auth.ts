@@ -81,6 +81,15 @@ export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: s
   }
 }
 
+// Compatibility exports for existing imports in API routes
+export async function getCurrentUserSafe() {
+  return await getCurrentUser()
+}
+
+export async function generateToken(payload: Record<string, any>) {
+  return await signToken(payload)
+}
+
 export async function requireAdmin(): Promise<AuthUser | null> {
   const user = await getCurrentUser()
   if (!user || user.role !== 'ADMIN') return null

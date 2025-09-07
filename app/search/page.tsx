@@ -13,7 +13,9 @@ import { MobileCard, MobileServiceCard } from "@/components/ui/mobile-card"
 import { MobilePageWrapper, MobileHeader } from "@/components/ui/mobile-bottom-navigation"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 
-export default function SearchPage() {
+import { Suspense } from "react"
+
+function SearchPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [services, setServices] = useState<any[]>([])
@@ -241,5 +243,13 @@ export default function SearchPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading search...</div>}>
+      <SearchPageInner />
+    </Suspense>
   )
 }
