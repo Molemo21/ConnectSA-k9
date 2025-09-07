@@ -38,9 +38,9 @@ export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const photos = [
-    '/services/car m3.jpg',
-    '/services/Cleaner 2.jpg',
-    '/services/electrician 5.jpg',
+    '/services/car%20m3.jpg',
+    '/services/Cleaner%202.jpg',
+    '/services/electrician%205.jpg',
     '/services/electricity.jpg',
     '/services/hairdresser.webp',
     '/services/IMG-20250813-WA0039.jpg',
@@ -51,14 +51,14 @@ export default function HomePage() {
     '/services/IMG-20250813-WA0057.jpg',
     '/services/laundry.jpg',
     '/services/makeup.jpg',
-    '/services/Mobile carwash 6.jpg',
-    '/services/moving 3.jpg',
+    '/services/Mobile%20carwash%206.jpg',
+    '/services/moving%203.jpg',
     '/services/nails.jpg',
     '/services/paint.jpg',
     '/services/pest.jpg',
     '/services/plank.jpg',
-    '/services/Plumber 2.jpg',
-    '/services/security 3.jpg',
+    '/services/Plumber%202.jpg',
+    '/services/security%203.jpg',
   ]
 
   const collagePhotos = Array.from({ length: 100 }, (_, i) => photos[i % photos.length])
@@ -87,9 +87,9 @@ export default function HomePage() {
   }, [showSplash])
 
   const services = [
-    { name: "Plumbing", category: "Home Services", price: "From R300", icon: Wrench, color: "from-blue-500 to-blue-600", image: "/services/Plumber 2.jpg" },
+    { name: "Plumbing", category: "Home Services", price: "From R300", icon: Wrench, color: "from-blue-500 to-blue-600", image: "/services/Plumber%202.jpg" },
     { name: "Electrical Work", category: "Home Services", price: "From R400", icon: Zap, color: "from-yellow-500 to-yellow-600", image: "/services/electricity.jpg" },
-    { name: "House Cleaning", category: "Home Services", price: "From R250", icon: SprayCan, color: "from-green-500 to-green-600", image: "/services/Cleaner 2.jpg" },
+    { name: "House Cleaning", category: "Home Services", price: "From R250", icon: SprayCan, color: "from-green-500 to-green-600", image: "/services/Cleaner%202.jpg" },
     { name: "Carpentry", category: "Home Services", price: "From R350", icon: Hammer, color: "from-orange-500 to-orange-600", image: "/services/plank.jpg" },
     { name: "Painting", category: "Home Services", price: "From R350", icon: Paintbrush, color: "from-purple-500 to-purple-600", image: "/services/paint.jpg" },
     { name: "Garden Services", category: "Home Services", price: "From R200", icon: Flower, color: "from-green-500 to-green-600", image: "/services/skere.jpg" },
@@ -248,7 +248,7 @@ export default function HomePage() {
                 const Icon = service.icon
                 return (
                   <div key={index} className="min-w-[80vw] max-w-xs snap-center flex-shrink-0">
-                    <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gray-700/50 backdrop-blur-sm border border-gray-600/30 h-full">
+                    <Card className="group hover:shadow-xl transition-all duration-300 bg-gray-700/50 backdrop-blur-sm border border-gray-600/30 h-full">
                       <div className="relative h-48 overflow-hidden rounded-t-lg">
                         <img src={service.image} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       </div>
@@ -292,7 +292,7 @@ export default function HomePage() {
                 const Icon = service.icon
                 return (
                   <div key={index} className="min-w-[320px] flex-shrink-0">
-                    <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gray-700/50 backdrop-blur-sm border border-gray-600/30 h-full">
+                    <Card className="group hover:shadow-xl transition-all duration-300 bg-gray-700/50 backdrop-blur-sm border border-gray-600/30 h-full">
                       <div className="relative h-48 overflow-hidden rounded-t-lg">
                         <img src={service.image} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       </div>
@@ -430,7 +430,7 @@ export default function HomePage() {
                 </span>
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">The smart way to link professionals and clients.</p>
-              <img src="/images/handshake.png" alt="Handshake" className="mt-4 h-10 w-auto" />
+              <img src="/handshake.png" alt="Handshake" className="mt-4 h-10 w-auto" />
             </div>
             <div>
               <h3 className="text-lg font-bold">Quick Links</h3>

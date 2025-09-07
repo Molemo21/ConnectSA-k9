@@ -131,7 +131,8 @@ export function ProviderBookingCard({
   showReview = false
 }: ProviderBookingCardProps) {
   const [showDetails, setShowDetails] = useState(false)
-  const statusInfo = getStatusInfo(booking.status, booking.payment)
+  const hasPaymentInEscrowOrBeyond = !!booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(booking.payment.status)
+  const statusInfo = getStatusInfo(booking.status, hasPaymentInEscrowOrBeyond)
   const StatusIcon = statusInfo.icon
 
   return (
@@ -219,7 +220,7 @@ export function ProviderBookingCard({
               <span className="text-gray-600">Amount:</span>
               <span className="font-semibold text-gray-900">R{booking.totalAmount.toFixed(2)}</span>
             </div>
-            {booking.payment && (
+            {hasPaymentInEscrowOrBeyond && (
               <div className="flex items-center space-x-2 text-sm">
                 <CheckCircle className="w-4 h-4 text-green-500" />
                 <span className="text-green-600 font-medium">Payment Received</span>

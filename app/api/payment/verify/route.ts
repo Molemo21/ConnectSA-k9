@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { paystackClient } from "@/lib/paystack";
@@ -25,10 +26,18 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Verifying payment with reference: ${reference}`);
 
-    // Find payment in database
+    // Find payment in database with required relations
     const payment = await db.payment.findUnique({
       where: { paystackRef: reference },
-      include: { booking: true }
+      include: {
+        booking: {
+          include: {
+            client: true,
+            provider: { include: { user: true } },
+            service: true,
+          }
+        }
+      }
     });
 
     if (!payment) {
@@ -127,7 +136,7 @@ export async function POST(request: NextRequest) {
           // Create notification for provider
           await db.notification.create({
             data: {
-              userId: payment.booking.providerId,
+              userId: payment.booking.provider.user.id,
               type: 'PAYMENT_RECEIVED',
               title: 'Payment Received',
               content: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
