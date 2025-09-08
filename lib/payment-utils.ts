@@ -103,56 +103,40 @@ export function handlePaymentResult(result: PaymentResult, onStatusChange?: (boo
         onStatusChange(bookingId, "CONFIRMED") // Keep as CONFIRMED until payment completes
       }
       
-      // IMPROVED REDIRECT MECHANISM
+      // IMPROVED REDIRECT MECHANISM (no delay)
       console.log('🔄 Redirecting to payment gateway NOW...')
-      
-      // Method 1: Direct redirect (most reliable)
-      setTimeout(() => {
+      try {
+        // Method 1: Direct redirect (most reliable)
+        if (result.authorizationUrl) {
+          window.location.href = result.authorizationUrl
+        }
+      } catch (redirectError) {
+        console.log('⚠️ Direct redirect failed, trying fallback...')
         try {
-          console.log('🔄 Attempting direct redirect...')
-          
-          // Use the most reliable redirect method
-          console.log('🔄 Using window.location.href for redirect...')
-          if (result.authorizationUrl) {
-            window.location.href = result.authorizationUrl
-          }
-          
-        } catch (redirectError) {
-          console.log('⚠️ Direct redirect failed, trying fallback...')
-          
           // Method 2: Try window.location.replace
+          if (result.authorizationUrl) {
+            window.location.replace(result.authorizationUrl)
+          }
+        } catch (replaceError) {
+          console.log('⚠️ Replace redirect failed, trying new tab...')
           try {
-            console.log('🔄 Trying window.location.replace...')
-            if (result.authorizationUrl) {
-              window.location.replace(result.authorizationUrl)
-            }
-          } catch (replaceError) {
-            console.log('⚠️ Replace redirect failed, trying new tab...')
-            
             // Method 3: Open in new tab with focus
-            try {
-              console.log('🔄 Opening payment gateway in new tab...')
-              if (result.authorizationUrl) {
-                const newWindow = window.open(result.authorizationUrl, '_blank', 'noopener,noreferrer')
-                if (newWindow) {
-                  console.log('✅ Payment gateway opened in new tab')
-                  newWindow.focus()
-                  
-                  // Show clear instruction to user
-                  showToast.success("Payment gateway opened in new tab. Please complete your payment there.")
-                } else {
-                  throw new Error('Popup blocked')
-                }
+            if (result.authorizationUrl) {
+              const newWindow = window.open(result.authorizationUrl, '_blank', 'noopener,noreferrer')
+              if (newWindow) {
+                console.log('✅ Payment gateway opened in new tab')
+                newWindow.focus()
+                showToast.success("Payment gateway opened in new tab. Please complete your payment there.")
+              } else {
+                throw new Error('Popup blocked')
               }
-            } catch (newTabError) {
-              console.log('⚠️ New tab failed, showing manual option...')
-              
-              // Method 4: Show manual link with copy functionality
-              showToast.error("Redirect failed. Please manually navigate to the payment gateway.")
             }
+          } catch (newTabError) {
+            console.log('⚠️ New tab failed, showing manual option...')
+            showToast.error("Redirect failed. Please manually navigate to the payment gateway.")
           }
         }
-      }, 1000)
+      }
       
     } else {
       // Regular success case (no redirect needed)

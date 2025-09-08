@@ -73,7 +73,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   const isPaymentInEscrow = booking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)
 
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
-  const canPay = (booking.status === "CONFIRMED") && !booking.payment
+  const canPay = (booking.status === "CONFIRMED") && (!booking.payment || booking.payment.status === 'PENDING' || booking.payment.status === 'FAILED')
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
   const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
   const canDispute = ["COMPLETED", "CANCELLED"].includes(booking.status) && !booking.review
@@ -227,6 +227,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
             payment={booking.payment}
             isProcessing={isProcessingPayment}
             onCheckStatus={handleCheckStatus}
+            allowContinue={booking.status === 'CONFIRMED'}
           />
           
           {/* Details - Enhanced Grid for Large Screens */}
