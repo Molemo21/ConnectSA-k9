@@ -143,7 +143,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
 
   const handleConfirmCompletion = async () => {
     try {
-      const response = await fetch(`/api/book-service/${booking.id}/confirm-completion`, {
+      const response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
