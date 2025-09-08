@@ -164,6 +164,11 @@ function toast({ ...props }: Toast) {
     },
   })
 
+  // Auto-dismiss after TOAST_REMOVE_DELAY so the toast doesn't linger visually
+  setTimeout(() => {
+    dispatch({ type: "DISMISS_TOAST", toastId: id })
+  }, TOAST_REMOVE_DELAY)
+
   return {
     id: id,
     dismiss,
