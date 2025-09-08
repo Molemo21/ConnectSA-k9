@@ -78,7 +78,10 @@ export function MobileClientDashboard() {
     const bookingId = searchParams.get('booking')
     
     if (paymentSuccess === 'success' && bookingId) {
-      showToast.success('Payment completed successfully! Refreshing booking status...')
+      if (sessionStorage.getItem('payment_callback_any') !== '1') {
+        showToast.success('Payment completed successfully! Refreshing booking status...')
+        sessionStorage.setItem('payment_callback_any', '1')
+      }
       
       if (refreshBooking) {
         refreshBooking(bookingId)

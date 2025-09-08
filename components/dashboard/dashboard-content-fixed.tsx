@@ -63,7 +63,10 @@ export function DashboardContent() {
       console.log('🎉 Payment success callback detected:', { paymentSuccess, bookingId, trxref, reference })
       
       // Show success message
-      showToast.success('Payment completed successfully! Refreshing booking status...')
+      if (sessionStorage.getItem('payment_callback_any') !== '1') {
+        showToast.success('Payment completed successfully! Refreshing booking status...')
+        sessionStorage.setItem('payment_callback_any', '1')
+      }
       
       // Refresh the specific booking to get updated status
       if (refreshBooking) {
