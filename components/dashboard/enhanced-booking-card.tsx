@@ -294,13 +294,37 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
           window.location.reload()
         }
       } else {
-        // Payment failed
+        // Payment failed – attempt recovery by checking current payment status for an authorization URL
+        try {
+          const statusRes = await fetch(`/api/book-service/${booking.id}/payment-status`)
+          if (statusRes.ok) {
+            const statusData = await statusRes.json()
+            const payment = statusData?.payment
+            if (payment?.status === 'PENDING' && payment?.authorizationUrl) {
+              // Continue existing Paystack session
+              window.location.href = payment.authorizationUrl
+              return
+            }
+          }
+        } catch {}
         showToast.error(result.message || "Payment failed. Please try again.")
         setPaymentStatus('FAILED')
         setIsProcessingPayment(false)
       }
     } catch (error) {
       console.error("Payment error:", error)
+      // Attempt recovery via existing payment session
+      try {
+        const statusRes = await fetch(`/api/book-service/${booking.id}/payment-status`)
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          const payment = statusData?.payment
+          if (payment?.status === 'PENDING' && payment?.authorizationUrl) {
+            window.location.href = payment.authorizationUrl
+            return
+          }
+        }
+      } catch {}
       showToast.error("Network error. Please try again.")
       setPaymentStatus('FAILED')
       setIsProcessingPayment(false)

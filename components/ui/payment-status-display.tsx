@@ -111,22 +111,15 @@ export function PaymentStatusDisplay({
     )
   }
 
-  // Normal processing
+  // Normal/active pending (non-stuck, non-delayed): show status + actions and optional Continue Payment
   if (payment.status === 'PENDING') {
-    return (
-      <div className="flex items-center space-x-2 text-sm">
-        <Clock className="w-4 h-4 text-yellow-500" />
-        <span className="text-yellow-600 font-medium">Awaiting Payment Confirmation</span>
-      </div>
-    )
-  }
-
-  // Pending payment – offer continue payment if we have an authorization URL
-  if (payment.status === 'PENDING') {
-    const url = (payment as any).authorizationUrl;
+    const url = (payment as any).authorizationUrl
     return (
       <div className="flex items-center justify-between w-full">
-        <StatusBadge status="PENDING" type="payment" size="sm" />
+        <div className="flex items-center space-x-2 text-sm">
+          <Clock className="w-4 h-4 text-yellow-500" />
+          <span className="text-yellow-600 font-medium">Awaiting Payment Confirmation</span>
+        </div>
         <div className="flex items-center gap-2">
           {onCheckStatus && (
             <button onClick={onCheckStatus} className="text-xs underline">Check Status</button>
