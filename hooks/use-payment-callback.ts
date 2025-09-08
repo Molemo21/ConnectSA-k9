@@ -18,8 +18,12 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
     const trxref = url.searchParams.get('trxref')
     const reference = url.searchParams.get('reference')
 
-    if (!handledRef.current && payment === 'success' && bookingId) {
+    const debounceKey = bookingId ? `payment_callback_${bookingId}` : null
+    const alreadyHandled = debounceKey ? sessionStorage.getItem(debounceKey) === '1' : false
+
+    if (!handledRef.current && !alreadyHandled && payment === 'success' && bookingId) {
       handledRef.current = true
+      if (debounceKey) sessionStorage.setItem(debounceKey, '1')
       showToast.success('Payment completed successfully! Refreshing booking status...')
 
       ;(async () => {
