@@ -19,27 +19,35 @@ import {
   DollarSign
 } from "lucide-react"
 import { BrandHeader } from "@/components/ui/brand-header"
+import { useBookingData } from "@/hooks/use-booking-data"
+import { usePaymentCallback } from "@/hooks/use-payment-callback"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<any[]>([])
+  const [initialBookings, setInitialBookings] = useState<any[]>([])
   const [filteredBookings, setFilteredBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [sortBy, setSortBy] = useState("created") // Changed from "date" to "created"
+  const [sortBy, setSortBy] = useState("created")
+
+  const { bookings, refreshAllBookings, refreshBooking, isLoading } = useBookingData(initialBookings)
+
+  // Payment callback handling
+  usePaymentCallback({
+    onRefreshBooking: refreshBooking,
+    onRefreshAll: refreshAllBookings,
+  })
 
   useEffect(() => {
     async function fetchBookings() {
       try {
         setLoading(true)
-        const response = await fetch('/api/bookings/my-bookings', {
-          credentials: 'include'
-        })
+        const response = await fetch('/api/bookings/my-bookings', { credentials: 'include' })
         if (response.ok) {
           const data = await response.json()
-          setBookings(data.bookings)
-          setFilteredBookings(data.bookings)
+          setInitialBookings(data.bookings || [])
+          setFilteredBookings(data.bookings || [])
         }
       } catch (error) {
         console.error('Failed to fetch bookings:', error)

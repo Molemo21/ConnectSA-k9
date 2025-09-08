@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { usePaymentCallback } from "@/hooks/use-payment-callback"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -62,57 +63,14 @@ export function DashboardContent() {
     error: refreshError 
   } = useBookingData(initialBookings)
 
-  // Handle payment success callback (guarded to run once)
-  const handledPaymentCallbackRef = useRef(false)
-  useEffect(() => {
-    const paymentSuccess = searchParams.get('payment')
-    const bookingId = searchParams.get('booking')
-    const trxref = searchParams.get('trxref')
-    const reference = searchParams.get('reference')
-
-    if (
-      !handledPaymentCallbackRef.current &&
-      paymentSuccess === 'success' &&
-      bookingId
-    ) {
-      handledPaymentCallbackRef.current = true
-      console.log('🎉 Payment success callback detected:', { paymentSuccess, bookingId, trxref, reference })
-
-      // Show success message
-      showToast.success('Payment completed successfully! Refreshing booking status...')
-
-      ;(async () => {
-        try {
-          // Refresh the specific booking first
-          if (refreshBooking) {
-            await refreshBooking(bookingId)
-          }
-        } catch (e) {
-          console.error('Refresh booking after payment error:', e)
-        } finally {
-          // Also refresh all bookings to ensure consistency
-          try {
-            if (refreshAllBookings) {
-              await refreshAllBookings()
-              setLastRefresh(new Date())
-            }
-          } catch (e2) {
-            console.error('Refresh all after payment error:', e2)
-          }
-        }
-
-        // Clean up URL params (after refresh attempts)
-        try {
-          const url = new URL(window.location.href)
-          url.searchParams.delete('payment')
-          url.searchParams.delete('booking')
-          url.searchParams.delete('trxref')
-          url.searchParams.delete('reference')
-          window.history.replaceState({}, '', url.toString())
-        } catch {}
-      })()
+  // Handle payment success callback via shared hook
+  usePaymentCallback({
+    onRefreshBooking: refreshBooking,
+    onRefreshAll: async () => {
+      await refreshAllBookings()
+      setLastRefresh(new Date())
     }
-  }, [searchParams, refreshBooking, refreshAllBookings])
+  })
 
   // Manual refresh function with proper error handling
   const handleManualRefresh = async () => {

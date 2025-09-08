@@ -81,8 +81,8 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   const handlePay = async () => {
     // Prevent duplicate clicks
     if (isPaymentInProgress) return
-    setIsPaymentInProgress(true)
-    try {
+      setIsPaymentInProgress(true)
+      try {
       const result = await processPayment(booking.id)
 
       if (result.success && result.shouldRedirect && result.authorizationUrl) {
@@ -121,7 +121,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
         }
       } catch {}
       showToast.error(result.message || 'Payment failed. Please try again.')
-    } catch (error) {
+      } catch (error) {
       console.error('Payment error:', error)
       // Attempt recovery
       try {
@@ -136,8 +136,8 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
         }
       } catch {}
       showToast.error('Network error. Please try again.')
-    } finally {
-      setIsPaymentInProgress(false)
+      } finally {
+        setIsPaymentInProgress(false)
     }
   }
 
