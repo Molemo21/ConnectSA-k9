@@ -42,10 +42,37 @@ export async function processPayment(bookingId: string): Promise<PaymentResult> 
       const errorData = await response.json()
       
       if (errorData.error === "Payment already exists for this booking") {
+        // Fetch current payment status to determine next action (continue vs already completed)
+        try {
+          const statusRes = await fetch(`/api/book-service/${bookingId}/payment-status`, { method: 'GET' })
+          if (statusRes.ok) {
+            const statusData = await statusRes.json()
+            const payment = statusData?.payment
+            if (payment?.status === 'PENDING' && payment?.authorizationUrl) {
+              return {
+                success: true,
+                message: "Payment is in progress. Redirecting to continue...",
+                bookingStatus: "CONFIRMED",
+                authorizationUrl: payment.authorizationUrl,
+                shouldRedirect: true
+              }
+            }
+
+            if (payment?.status === 'ESCROW' || payment?.status === 'HELD_IN_ESCROW' || payment?.status === 'RELEASED' || payment?.status === 'COMPLETED') {
+              return {
+                success: true,
+                message: "Payment already completed.",
+                bookingStatus: "PENDING_EXECUTION"
+              }
+            }
+          }
+        } catch (e) {
+          // Fall through to default handling
+        }
         return {
-          success: true,
-          message: "Payment has already been processed for this booking",
-          bookingStatus: "PENDING_EXECUTION"
+          success: false,
+          message: "Payment already exists and could not be continued. Please use 'Check Status' or try again shortly.",
+          error: "PAYMENT_ALREADY_EXISTS"
         }
       } else {
         return {
