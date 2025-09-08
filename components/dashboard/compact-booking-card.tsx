@@ -495,10 +495,15 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
         cancelText="Keep Booking"
       />
 
-      {booking.review && (
+      {(booking.status === 'COMPLETED' || booking.status === 'AWAITING_CONFIRMATION') && (
         <ReviewSection
-          review={booking.review}
-          onUpdate={onUpdate}
+          bookingId={booking.id}
+          existingReview={booking.review ? {
+            id: booking.review.id,
+            rating: booking.review.rating,
+            comment: booking.review.comment,
+            createdAt: new Date(booking.createdAt)
+          } as any : null}
         />
       )}
     </>
