@@ -120,6 +120,24 @@ export function PaymentStatusDisplay({
     )
   }
 
+  // Pending payment – offer continue payment if we have an authorization URL
+  if (payment.status === 'PENDING') {
+    const url = (payment as any).authorizationUrl;
+    return (
+      <div className="flex items-center justify-between w-full">
+        <StatusBadge status="PENDING" type="payment" size="sm" />
+        <div className="flex items-center gap-2">
+          {onCheckStatus && (
+            <button onClick={onCheckStatus} className="text-xs underline">Check Status</button>
+          )}
+          {url && (
+            <a href={url} target="_self" className="text-xs text-blue-600 underline">Continue Payment</a>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // Failed payment
   if (payment.status === 'FAILED') {
     return (

@@ -309,7 +309,8 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
 
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
-  const canPay = (booking.status === "CONFIRMED") && !booking.payment
+  // If booking is confirmed and no completed/escrowed payment, allow pay/continue
+  const canPay = (booking.status === "CONFIRMED") && (!booking.payment || booking.payment.status === 'PENDING' || booking.payment.status === 'FAILED')
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
   const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
   const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)

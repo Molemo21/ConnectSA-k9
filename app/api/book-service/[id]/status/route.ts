@@ -82,6 +82,8 @@ export async function GET(
         escrowAmount: booking.payment.escrowAmount,
         platformFee: booking.payment.platformFee,
         currency: booking.payment.currency,
+        authorizationUrl: (booking.payment as any).authorizationUrl,
+        accessCode: (booking.payment as any).accessCode,
         paidAt: booking.payment.paidAt,
         createdAt: booking.payment.createdAt,
         updatedAt: booking.payment.updatedAt
