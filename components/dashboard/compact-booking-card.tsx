@@ -79,17 +79,65 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   const canDispute = ["COMPLETED", "CANCELLED"].includes(booking.status) && !booking.review
 
   const handlePay = async () => {
-    if (!booking.payment) {
-      setIsPaymentInProgress(true)
-      try {
-        const result = await processPayment(booking.id, booking.totalAmount)
-        await handlePaymentResult(result, booking.id, onUpdate)
-      } catch (error) {
-        console.error("Payment error:", error)
-        showToast.error("Payment failed. Please try again.")
-      } finally {
-        setIsPaymentInProgress(false)
+    // Prevent duplicate clicks
+    if (isPaymentInProgress) return
+    setIsPaymentInProgress(true)
+    try {
+      const result = await processPayment(booking.id)
+
+      if (result.success && result.shouldRedirect && result.authorizationUrl) {
+        // Immediate redirect
+        try {
+          window.location.href = result.authorizationUrl
+          return
+        } catch {
+          try {
+            window.location.replace(result.authorizationUrl)
+            return
+          } catch {
+            const w = window.open(result.authorizationUrl, '_blank', 'noopener,noreferrer')
+            if (!w) {
+              showToast.error('Redirect blocked. Please allow popups or use Continue Payment link.')
+            }
+          }
+        }
       }
+
+      if (result.success) {
+        handlePaymentResult(result)
+        return
+      }
+
+      // Failure: try recovery by checking current payment
+      try {
+        const statusRes = await fetch(`/api/book-service/${booking.id}/payment-status`)
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          const payment = statusData?.payment
+          if (payment?.status === 'PENDING' && payment?.authorizationUrl) {
+            window.location.href = payment.authorizationUrl
+            return
+          }
+        }
+      } catch {}
+      showToast.error(result.message || 'Payment failed. Please try again.')
+    } catch (error) {
+      console.error('Payment error:', error)
+      // Attempt recovery
+      try {
+        const statusRes = await fetch(`/api/book-service/${booking.id}/payment-status`)
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          const payment = statusData?.payment
+          if (payment?.status === 'PENDING' && payment?.authorizationUrl) {
+            window.location.href = payment.authorizationUrl
+            return
+          }
+        }
+      } catch {}
+      showToast.error('Network error. Please try again.')
+    } finally {
+      setIsPaymentInProgress(false)
     }
   }
 
