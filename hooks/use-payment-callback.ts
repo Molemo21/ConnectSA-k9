@@ -10,6 +10,12 @@ interface PaymentCallbackOptions {
 
 export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
   const handledRef = useRef(false)
+  const optionsRef = useRef<PaymentCallbackOptions>(options)
+
+  // Keep latest callbacks without retriggering main effect
+  useEffect(() => {
+    optionsRef.current = options
+  }, [options])
 
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -23,7 +29,9 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
     const refKey = reference || trxref || ''
     const lastRefKey = sessionStorage.getItem(`${debounceKey}_ref`)
 
-    if (!handledRef.current && !alreadyHandled && payment === 'success' && bookingId) {
+    const globalHandled = (window as any).__PAYMENT_CALLBACK_HANDLED === true
+
+    if (!handledRef.current && !alreadyHandled && !globalHandled && payment === 'success' && bookingId) {
       handledRef.current = true
 
       // Immediately clean URL to avoid re-trigger on tab switches/rerenders
@@ -38,26 +46,29 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
       // Mark handled for this booking (and reference if present)
       sessionStorage.setItem(debounceKey, '1')
       if (refKey) sessionStorage.setItem(`${debounceKey}_ref`, refKey)
+      // Also mark a global session key and window flag to guard across components
+      sessionStorage.setItem('payment_callback_any', '1')
+      ;(window as any).__PAYMENT_CALLBACK_HANDLED = true
 
       showToast.success('Payment completed successfully! Refreshing booking status...')
 
       ;(async () => {
         try {
-          if (options.onRefreshBooking) {
-            await options.onRefreshBooking(bookingId)
+          if (optionsRef.current.onRefreshBooking) {
+            await optionsRef.current.onRefreshBooking(bookingId)
           }
         } catch {}
 
         try {
-          if (options.onRefreshAll) {
-            await options.onRefreshAll()
+          if (optionsRef.current.onRefreshAll) {
+            await optionsRef.current.onRefreshAll()
           }
         } catch {}
 
         // URL already cleaned above
       })()
     }
-  }, [options])
+  }, [])
 }
 
 
