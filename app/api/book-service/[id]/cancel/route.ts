@@ -56,21 +56,39 @@ export async function POST(request: NextRequest) {
       cancellationFee = booking.totalAmount * 0.25; // 25% fee for < 48 hours
     }
 
-    // Update booking status
-    const updatedBooking = await prisma.booking.update({
-      where: { id: bookingId },
-      data: { 
-        status: "CANCELLED",
-        // Add cancellation details if needed
-      },
-    });
+    // Update booking status and fail any pending payment atomically
+    const updated = await prisma.$transaction(async (tx) => {
+      // Update booking
+      const updatedBooking = await tx.booking.update({
+        where: { id: bookingId },
+        data: { status: "CANCELLED" },
+      })
+
+      // If there's a pending payment, mark it as FAILED and clear auth data
+      const existingPayment = await tx.payment.findUnique({ where: { bookingId } })
+      let updatedPayment: any = null
+      if (existingPayment && existingPayment.status === 'PENDING') {
+        updatedPayment = await tx.payment.update({
+          where: { id: existingPayment.id },
+          data: {
+            status: 'FAILED',
+            authorizationUrl: null as any,
+            accessCode: null as any,
+            updatedAt: new Date(),
+          },
+        })
+      }
+
+      return { updatedBooking, updatedPayment }
+    })
 
     // TODO: Handle refund logic if payment was made
     // TODO: Notify provider about cancellation
     // TODO: Send cancellation email to client
 
     return NextResponse.json({ 
-      booking: updatedBooking,
+      booking: updated.updatedBooking,
+      payment: updated.updatedPayment,
       cancellationFee,
       message: "Booking cancelled successfully"
     });

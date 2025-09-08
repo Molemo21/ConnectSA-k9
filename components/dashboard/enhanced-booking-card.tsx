@@ -459,6 +459,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             payment={(booking.payment ?? null) as any}
             isProcessing={isProcessingPayment}
             onCheckStatus={handleCheckStatus}
+            allowContinue={booking.status === 'CONFIRMED'}
           />
           
           {/* Details - Compact Grid */}

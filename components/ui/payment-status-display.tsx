@@ -27,8 +27,9 @@ export function PaymentStatusDisplay({
   payment, 
   isProcessing = false, 
   onCheckStatus,
-  className 
-}: PaymentStatusDisplayProps) {
+  className,
+  allowContinue = false,
+}: PaymentStatusDisplayProps & { allowContinue?: boolean }) {
   if (!payment) return null
 
   const isPaymentProcessing = payment.status === 'PENDING' && isProcessing
@@ -130,8 +131,11 @@ export function PaymentStatusDisplay({
           {onCheckStatus && (
             <button onClick={onCheckStatus} className="text-xs underline">Check Status</button>
           )}
-          {url && (
+          {url && allowContinue && (
             <a href={url} target="_self" className="text-xs text-blue-600 underline">Continue Payment</a>
+          )}
+          {url && !allowContinue && (
+            <span className="text-xs text-gray-500">Payment link disabled</span>
           )}
         </div>
       </div>

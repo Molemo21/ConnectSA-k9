@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { paystackClient } from "@/lib/paystack";
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +26,7 @@ export async function GET(
     }
 
     // Get the booking with payment details
-    const booking = await prisma.booking.findUnique({
+    let booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
         payment: true,
@@ -62,6 +63,48 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Auto-verify pending payments to advance state when Paystack has completed
+    if (
+      booking.payment &&
+      booking.payment.status === 'PENDING' &&
+      booking.status === 'CONFIRMED'
+    ) {
+      try {
+        const verification = await paystackClient.verifyPayment(booking.payment.paystackRef);
+        if (verification.status && verification.data.status === 'success') {
+          // Update payment and booking atomically
+          const result = await prisma.$transaction(async (tx) => {
+            const updatedPayment = await tx.payment.update({
+              where: { id: booking!.payment!.id },
+              data: {
+                status: 'ESCROW',
+                paidAt: new Date(),
+                transactionId: verification.data.id?.toString() || null,
+                updatedAt: new Date(),
+              }
+            });
+            const updatedBooking = await tx.booking.update({
+              where: { id: booking!.id },
+              data: { status: 'PENDING_EXECUTION' }
+            });
+            return { updatedPayment, updatedBooking };
+          });
+
+          // Refresh local variable for response
+          booking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            include: {
+              payment: true,
+              provider: { include: { user: { select: { name: true, email: true, phone: true } } } },
+              service: { select: { name: true, category: true } },
+            }
+          });
+        }
+      } catch (e) {
+        // Swallow verification errors; client can retry or webhook will update
+      }
+    }
+
     return NextResponse.json({
       success: true,
       booking: {
@@ -82,8 +125,9 @@ export async function GET(
         escrowAmount: booking.payment.escrowAmount,
         platformFee: booking.payment.platformFee,
         currency: booking.payment.currency,
-        authorizationUrl: (booking.payment as any).authorizationUrl,
-        accessCode: (booking.payment as any).accessCode,
+        // Hide authorization data if booking is not CONFIRMED
+        authorizationUrl: (booking.status === 'CONFIRMED') ? (booking.payment as any).authorizationUrl : null,
+        accessCode: (booking.status === 'CONFIRMED') ? (booking.payment as any).accessCode : null,
         paidAt: booking.payment.paidAt,
         createdAt: booking.payment.createdAt,
         updatedAt: booking.payment.updatedAt
