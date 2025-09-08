@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -62,39 +62,55 @@ export function DashboardContent() {
     error: refreshError 
   } = useBookingData(initialBookings)
 
-  // Handle payment success callback
+  // Handle payment success callback (guarded to run once)
+  const handledPaymentCallbackRef = useRef(false)
   useEffect(() => {
     const paymentSuccess = searchParams.get('payment')
     const bookingId = searchParams.get('booking')
     const trxref = searchParams.get('trxref')
     const reference = searchParams.get('reference')
-    
-    if (paymentSuccess === 'success' && bookingId) {
+
+    if (
+      !handledPaymentCallbackRef.current &&
+      paymentSuccess === 'success' &&
+      bookingId
+    ) {
+      handledPaymentCallbackRef.current = true
       console.log('🎉 Payment success callback detected:', { paymentSuccess, bookingId, trxref, reference })
-      
+
       // Show success message
       showToast.success('Payment completed successfully! Refreshing booking status...')
-      
-      // Refresh the specific booking to get updated status
-      if (refreshBooking) {
-        refreshBooking(bookingId)
-      }
-      
-      // Also refresh all bookings to ensure consistency
-      setTimeout(() => {
-        if (refreshAllBookings) {
-          refreshAllBookings()
-          setLastRefresh(new Date())
+
+      ;(async () => {
+        try {
+          // Refresh the specific booking first
+          if (refreshBooking) {
+            await refreshBooking(bookingId)
+          }
+        } catch (e) {
+          console.error('Refresh booking after payment error:', e)
+        } finally {
+          // Also refresh all bookings to ensure consistency
+          try {
+            if (refreshAllBookings) {
+              await refreshAllBookings()
+              setLastRefresh(new Date())
+            }
+          } catch (e2) {
+            console.error('Refresh all after payment error:', e2)
+          }
         }
-      }, 1000)
-      
-      // Clean up URL params
-      const url = new URL(window.location.href)
-      url.searchParams.delete('payment')
-      url.searchParams.delete('booking')
-      url.searchParams.delete('trxref')
-      url.searchParams.delete('reference')
-      window.history.replaceState({}, '', url.toString())
+
+        // Clean up URL params (after refresh attempts)
+        try {
+          const url = new URL(window.location.href)
+          url.searchParams.delete('payment')
+          url.searchParams.delete('booking')
+          url.searchParams.delete('trxref')
+          url.searchParams.delete('reference')
+          window.history.replaceState({}, '', url.toString())
+        } catch {}
+      })()
     }
   }, [searchParams, refreshBooking, refreshAllBookings])
 
