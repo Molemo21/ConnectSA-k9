@@ -18,12 +18,27 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
     const trxref = url.searchParams.get('trxref')
     const reference = url.searchParams.get('reference')
 
-    const debounceKey = bookingId ? `payment_callback_${bookingId}` : null
-    const alreadyHandled = debounceKey ? sessionStorage.getItem(debounceKey) === '1' : false
+    const debounceKey = bookingId ? `payment_callback_${bookingId}` : 'payment_callback_generic'
+    const alreadyHandled = sessionStorage.getItem(debounceKey) === '1'
+    const refKey = reference || trxref || ''
+    const lastRefKey = sessionStorage.getItem(`${debounceKey}_ref`)
 
     if (!handledRef.current && !alreadyHandled && payment === 'success' && bookingId) {
       handledRef.current = true
-      if (debounceKey) sessionStorage.setItem(debounceKey, '1')
+
+      // Immediately clean URL to avoid re-trigger on tab switches/rerenders
+      try {
+        url.searchParams.delete('payment')
+        url.searchParams.delete('booking')
+        url.searchParams.delete('trxref')
+        url.searchParams.delete('reference')
+        window.history.replaceState({}, '', url.toString())
+      } catch {}
+
+      // Mark handled for this booking (and reference if present)
+      sessionStorage.setItem(debounceKey, '1')
+      if (refKey) sessionStorage.setItem(`${debounceKey}_ref`, refKey)
+
       showToast.success('Payment completed successfully! Refreshing booking status...')
 
       ;(async () => {
@@ -39,14 +54,7 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
           }
         } catch {}
 
-        // Clean URL
-        try {
-          url.searchParams.delete('payment')
-          url.searchParams.delete('booking')
-          url.searchParams.delete('trxref')
-          url.searchParams.delete('reference')
-          window.history.replaceState({}, '', url.toString())
-        } catch {}
+        // URL already cleaned above
       })()
     }
   }, [options])
