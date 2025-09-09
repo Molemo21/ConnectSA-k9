@@ -43,6 +43,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
+    // Require verified email before issuing session
+    if (!user.emailVerified) {
+      return NextResponse.json({ error: "Please verify your email before logging in." }, { status: 403 })
+    }
+
     // Check if user is active
     if (!user.isActive) {
       return NextResponse.json({ error: "Account has been deactivated" }, { status: 401 })
