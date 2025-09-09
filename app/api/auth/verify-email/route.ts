@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     if (!verificationToken) {
       console.log(`❌ Token not found in database: ${token.substring(0, 8)}...`)
       
-      // Check if there are any tokens for debugging and if user might already be verified
+      // Debug context (dev only)
       try {
         const allTokens = await db.verificationToken.findMany({
           take: 5,
@@ -77,23 +77,6 @@ export async function GET(request: NextRequest) {
         allTokens.forEach(t => {
           console.log(`  - Token: ${t.token.substring(0, 8)}..., User: ${t.user.email}, Verified: ${t.user.emailVerified}`)
         })
-        
-        // Check if any user might already be verified (this could happen if token was deleted after verification)
-        const recentUsers = await db.user.findMany({
-          where: { 
-            emailVerified: true,
-            updatedAt: { gte: new Date(Date.now() - 10 * 60 * 1000) } // Users verified in last 10 minutes
-          },
-          select: { email: true, emailVerified: true, updatedAt: true }
-        })
-        
-        if (recentUsers.length > 0) {
-          console.log(`🔍 Found ${recentUsers.length} recently verified users`)
-          recentUsers.forEach(u => {
-            console.log(`  - User: ${u.email}, Verified: ${u.emailVerified}, Updated: ${u.updatedAt}`)
-          })
-        }
-        
       } catch (debugError) {
         console.warn("⚠️ Could not fetch tokens for debugging:", debugError)
       }
@@ -123,9 +106,22 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // If already verified, clean up token and return a helpful message
+    if (verificationToken.user.emailVerified) {
+      try {
+        await db.verificationToken.delete({ where: { token } })
+      } catch (cleanupError) {
+        console.warn('⚠️ Failed to delete token for already-verified user:', cleanupError)
+      }
+      return NextResponse.json({ 
+        message: "Email already verified. You can log in now.",
+        user: { email: verificationToken.user.email, emailVerified: true }
+      })
+    }
+
     console.log(`✅ Token is valid, updating user emailVerified status`)
 
-    // Update user's emailVerified
+    // Update user's emailVerified (idempotent)
     try {
       await db.user.update({
         where: { id: verificationToken.userId },
@@ -135,6 +131,21 @@ export async function GET(request: NextRequest) {
     } catch (updateError) {
       console.error("❌ Failed to update user verification status:", updateError)
       throw new Error(`Failed to update user verification status: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`)
+    }
+
+    // Attempt to record an audit log (best-effort)
+    try {
+      await db.adminAuditLog.create({
+        data: {
+          adminId: verificationToken.userId, // self-action for audit trace
+          action: 'USER_ROLE_CHANGED', // closest enum available; adjust if a VERIFY action exists
+          targetType: 'USER',
+          targetId: verificationToken.userId,
+          details: { event: 'EMAIL_VERIFIED', method: 'TOKEN', ip: clientIP },
+        },
+      })
+    } catch (auditError) {
+      console.warn('⚠️ Failed to write audit log for verification:', auditError)
     }
 
     // Delete the token after use
@@ -157,7 +168,7 @@ export async function GET(request: NextRequest) {
     console.error("❌ Error during email verification:", error)
     return NextResponse.json({ 
       error: "Internal server error during verification",
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as any).message : undefined
     }, { status: 500 })
   }
 }
