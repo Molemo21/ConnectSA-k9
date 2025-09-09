@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     if (user.emailVerified) {
       console.log(`📧 Resend verification: User ${email} already verified`)
-      return NextResponse.json({ error: "Email already verified" }, { status: 400 })
+      return NextResponse.json({ message: "Email is already verified. You can log in now." })
     }
 
     console.log(`📧 Resend verification: Processing for user ${email} (ID: ${user.id})`)
