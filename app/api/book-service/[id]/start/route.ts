@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
 export async function POST(request: NextRequest) {
   // Skip during build time
@@ -50,17 +51,20 @@ export async function POST(request: NextRequest) {
       data: { status: "IN_PROGRESS" },
     });
 
-    // TODO: Create notification for client that job has started (when Notification table is available)
-    // await prisma.notification.create({
-    //   data: {
-    //     userId: booking.clientId,
-    //     type: 'JOB_STARTED',
-    //     content: `Your ${booking.service?.name || 'service'} has started! Provider is now working on your booking #${booking.id}.`,
-    //     read: false,
-    //   }
-    // });
-
-    // TODO: Notify client (in-app/email) that job has started
+    // Create notification for client that job has started
+    try {
+      const notificationData = NotificationTemplates.JOB_STARTED(booking);
+      await createNotification({
+        userId: booking.clientId,
+        type: notificationData.type,
+        title: notificationData.title,
+        content: notificationData.content
+      });
+      console.log(`🔔 Job started notification sent to client: ${booking.client?.email || 'unknown'}`);
+    } catch (notificationError) {
+      console.error('❌ Failed to create job started notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({ 
       success: true, 

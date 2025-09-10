@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { z } from "zod";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
 const bookingSchema = z.object({
   serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
@@ -89,7 +90,46 @@ export async function POST(request: NextRequest) {
 
     console.log(`Booking created successfully: ${booking.id} with provider ${assignedProvider.id}`);
 
-    // TODO: Send notifications to provider and client (in-app/email)
+    // Create notifications for both client and provider
+    try {
+      // Get the full booking data with relations for notifications
+      const fullBooking = await db.booking.findUnique({
+        where: { id: booking.id },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+          provider: { 
+            include: { 
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+          service: { select: { name: true, category: true } }
+        }
+      });
+
+      if (fullBooking) {
+        // Notify provider about new booking
+        const providerNotification = NotificationTemplates.BOOKING_CREATED(fullBooking);
+        await createNotification({
+          userId: fullBooking.provider.user.id,
+          type: providerNotification.type,
+          title: providerNotification.title,
+          content: providerNotification.content
+        });
+
+        // Notify client about booking creation
+        await createNotification({
+          userId: fullBooking.client.id,
+          type: 'BOOKING_CREATED',
+          title: 'Booking Request Sent',
+          content: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent to ${fullBooking.provider?.businessName || 'the provider'}. You'll be notified when they respond.`
+        });
+
+        console.log(`🔔 Notifications sent: Provider (${fullBooking.provider.user.email}) and Client (${fullBooking.client.email})`);
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to create booking notifications:', notificationError);
+      // Don't fail the request if notifications fail
+    }
 
     return NextResponse.json({ booking });
   } catch (error) {

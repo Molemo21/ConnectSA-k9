@@ -21,7 +21,9 @@ import { DashboardLoadingScreen } from "@/components/dashboard/dashboard-loading
 import { PaymentsDashboard } from "@/components/dashboard/payments-dashboard"
 import { showToast, handleApiError } from "@/lib/toast"
 import { LoadingCard } from "@/components/ui/loading-spinner"
-import { useBookingData } from "@/hooks/use-booking-data"
+import { useSmartBooking } from "@/hooks/use-smart-booking"
+import { SafeDateDisplay, SafeTimeOnlyDisplay } from "@/components/ui/safe-time-display"
+import { NotificationBell } from "@/components/ui/notification-bell"
 
 // Helper function to get service icon
 function getServiceIcon(serviceName: string) {
@@ -54,14 +56,16 @@ export function DashboardContent() {
   // Get search params to detect payment success callback
   const searchParams = useSearchParams()
 
-  // Use the optimized booking data hook
+  // Use the smart booking hook with real-time updates
   const { 
     bookings, 
     refreshBooking, 
     refreshAllBookings, 
     isLoading: isRefreshing, 
-    error: refreshError 
-  } = useBookingData(initialBookings)
+    error: refreshError,
+    isConnected,
+    optimisticUpdate
+  } = useSmartBooking(initialBookings)
 
   // Handle payment success callback via shared hook
   usePaymentCallback({
@@ -82,10 +86,10 @@ export function DashboardContent() {
     try {
       await refreshAllBookings()
       setLastRefresh(new Date())
-      showToast.success("Payment statuses refreshed successfully!")
+      showToast.success("Booking statuses refreshed successfully!")
     } catch (error) {
       console.error('Manual refresh error:', error)
-      showToast.error("Failed to refresh payment statuses. Please try again.")
+      showToast.error("Failed to refresh booking statuses. Please try again.")
     }
   }
 
@@ -510,30 +514,31 @@ export function DashboardContent() {
 
             {/* Right side */}
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleManualRefresh}
-                disabled={isRefreshing}
-                className="text-gray-400 hover:text-gray-100 hover:bg-gray-800"
-              >
-                {isRefreshing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
-                )}
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleManualRefresh}
+                  disabled={isRefreshing}
+                  className="text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+                >
+                  {isRefreshing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                </Button>
+                
+                {/* Connection Status Indicator */}
+                <div className="flex items-center space-x-1">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <span className="text-xs text-gray-400">
+                    {isConnected ? 'Live' : 'Offline'}
+                  </span>
+                </div>
+              </div>
               
-              <Button
-                variant="ghost"
-                size="sm"
-                className="relative text-gray-400 hover:text-gray-100 hover:bg-gray-800"
-              >
-                <Bell className="w-5 h-5" />
-                {bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status)) && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-purple-600 rounded-full animate-pulse"></span>
-                )}
-              </Button>
+              <NotificationBell />
               
               <Avatar className="w-8 h-8 cursor-pointer">
                 <AvatarImage src={user.avatar} />
@@ -744,7 +749,9 @@ export function DashboardContent() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-xs font-medium text-gray-100 truncate">{booking.service?.name || 'Service'}</p>
-                                  <p className="text-xs text-gray-400">{new Date(booking.scheduledDate).toLocaleDateString()}</p>
+                                  <p className="text-xs text-gray-400">
+                                    <SafeDateDisplay date={booking.scheduledDate} />
+                                  </p>
                                   <Badge className="text-xs mt-1 inline-block bg-green-900/50 text-green-400 border-green-800/50">
                                     Completed
                                   </Badge>
@@ -790,7 +797,7 @@ export function DashboardContent() {
                                     <div className="flex items-center space-x-2">
                                       <Calendar className="w-4 h-4 text-gray-400" />
                                       <span className="text-sm text-gray-100">
-                                        {new Date(booking.scheduledDate).toLocaleDateString()}
+                                        <SafeDateDisplay date={booking.scheduledDate} />
                                       </span>
                                     </div>
                                   </div>
@@ -799,10 +806,7 @@ export function DashboardContent() {
                                     <div className="flex items-center space-x-2">
                                       <Clock className="w-4 h-4 text-gray-400" />
                                       <span className="text-sm text-gray-100">
-                                        {new Date(booking.scheduledDate).toLocaleTimeString([], { 
-                                          hour: '2-digit', 
-                                          minute: '2-digit' 
-                                        })}
+                                        <SafeTimeOnlyDisplay date={booking.scheduledDate} />
                                       </span>
                                     </div>
                                   </div>
@@ -933,4 +937,938 @@ export function DashboardContent() {
       </Dialog>
     </div>
   )
+}
+
+                  {user.email}
+
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        )}
+
+      </aside>
+
+
+
+      {/* Main Content */}
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        
+
+        {/* Header */}
+
+        <header className="bg-gray-950/80 backdrop-blur border-b border-gray-800 flex-shrink-0 z-30">
+
+          <div className="flex items-center justify-between h-16 px-4 lg:px-6">
+
+            
+
+            {/* Left side */}
+
+            <div className="flex items-center space-x-4">
+
+              <Button
+
+                variant="ghost"
+
+                size="sm"
+
+                onClick={() => setSidebarOpen(true)}
+
+                className="lg:hidden text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+
+              >
+
+                <Menu className="w-5 h-5" />
+
+              </Button>
+
+              
+
+              <Button
+
+                variant="ghost"
+
+                size="sm"
+
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+
+                className="hidden lg:flex text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+
+              >
+
+                <Menu className="w-5 h-5" />
+
+              </Button>
+
+              
+
+              <div>
+
+                <h2 className="text-xl font-bold text-gray-100">Dashboard</h2>
+
+                <p className="text-sm text-gray-400">Welcome back, {user.name || user.email}</p>
+
+              </div>
+
+            </div>
+
+
+
+            {/* Right side */}
+
+            <div className="flex items-center space-x-4">
+
+              <Button
+
+                variant="ghost"
+
+                size="sm"
+
+                onClick={handleManualRefresh}
+
+                disabled={isRefreshing}
+
+                className="text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+
+              >
+
+                {isRefreshing ? (
+
+                  <Loader2 className="w-4 h-4 animate-spin" />
+
+                ) : (
+
+                  <RefreshCw className="w-4 h-4" />
+
+                )}
+
+              </Button>
+
+              
+
+              <Button
+
+                variant="ghost"
+
+                size="sm"
+
+                className="relative text-gray-400 hover:text-gray-100 hover:bg-gray-800"
+
+              >
+
+                <Bell className="w-5 h-5" />
+
+                {bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status)) && (
+
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-purple-600 rounded-full animate-pulse"></span>
+
+                )}
+
+              </Button>
+
+              
+
+              <Avatar className="w-8 h-8 cursor-pointer">
+
+                <AvatarImage src={user.avatar} />
+
+                <AvatarFallback className="bg-purple-900/50 text-purple-400">
+
+                  {user.name?.charAt(0) || user.email?.charAt(0) || 'U'}
+
+                </AvatarFallback>
+
+              </Avatar>
+
+            </div>
+
+          </div>
+
+        </header>
+
+
+
+        {/* Main Content Area */}
+
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+
+          <div className="max-w-7xl mx-auto space-y-8">
+
+            
+
+            
+
+            {/* Quick Actions */}
+
+            <div className="flex flex-wrap gap-3">
+
+              <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white transition-all duration-200 hover:scale-105" asChild>
+
+                <a href="/book-service">
+
+                  <Plus className="w-4 h-4 mr-2" />
+
+                  New Booking
+
+                </a>
+
+              </Button>
+
+              <Button className="bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-200 border border-gray-700" asChild>
+
+                <a href="/payments">
+
+                  <CreditCard className="w-4 h-4 mr-2" />
+
+                  Payments
+
+                </a>
+
+              </Button>
+
+              <Button className="bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-200 border border-gray-700" asChild>
+
+                <a href="/support">
+
+                  <MessageSquare className="w-4 h-4 mr-2" />
+
+                  Support
+
+                </a>
+
+              </Button>
+
+            </div>
+
+
+
+            {/* Current Active Booking Section OR Expanded Payments Dashboard */}
+
+            {isPaymentsDashboardExpanded ? (
+
+              <PaymentsDashboard
+
+                bookings={bookings}
+
+                isExpanded={true}
+
+                selectedPayment={selectedPayment}
+
+                onPaymentSelect={setSelectedPayment}
+
+                onExpandToggle={() => {
+
+                  setIsPaymentsDashboardExpanded(false)
+
+                  setSelectedPayment(null)
+
+                }}
+
+              />
+
+            ) : activeBooking ? (
+
+              <Card className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+
+                <CardHeader className="pb-4">
+
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+                    <div className="flex items-center space-x-3">
+
+                      <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center flex-shrink-0">
+
+                        <Activity className="w-5 h-5 text-white animate-pulse" />
+
+                      </div>
+
+                      <div className="min-w-0">
+
+                        <CardTitle className="text-lg font-semibold text-gray-100">Current Active Booking</CardTitle>
+
+                        <p className="text-sm text-gray-400">Your ongoing service booking</p>
+
+                      </div>
+
+                    </div>
+
+                    <Button 
+
+                      variant="ghost" 
+
+                      size="sm"
+
+                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 self-start sm:self-auto"
+
+                      asChild
+
+                    >
+
+                      <a href="/bookings">View All</a>
+
+                    </Button>
+
+                  </div>
+
+                </CardHeader>
+
+                <CardContent className="pt-0">
+
+                  <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+
+                    <EnhancedBookingCard
+
+                      booking={activeBooking}
+
+                      onStatusChange={(bookingId, newStatus) => {
+
+                        // Update the booking status in the local state
+
+                        setInitialBookings(prev => prev.map(b => 
+
+                          b.id === bookingId ? { ...b, status: newStatus } : b
+
+                        ))
+
+                      }}
+
+                      onRefresh={refreshBooking}
+
+                    />
+
+                  </div>
+
+                </CardContent>
+
+              </Card>
+
+            ) : null}
+
+
+
+            {/* Stats Grid */}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+              {[
+
+                {
+
+                  title: "Total Bookings",
+
+                  value: totalBookings,
+
+                  change: `${bookingGrowth >= 0 ? '+' : ''}${bookingGrowth}%`,
+
+                  trend: bookingGrowth >= 0 ? "up" : "down",
+
+                  icon: Calendar,
+
+                  color: "text-blue-400"
+
+                },
+
+                {
+
+                  title: "Completed Jobs",
+
+                  value: completedBookingsCount,
+
+                  change: `${totalBookings > 0 ? Math.round((completedBookingsCount / totalBookings) * 100) : 0}%`,
+
+                  trend: "up",
+
+                  icon: CheckCircle,
+
+                  color: "text-green-400"
+
+                },
+
+                {
+
+                  title: "Active Bookings",
+
+                  value: pendingBookings + confirmedBookings + inProgressBookings,
+
+                  change: "Active",
+
+                  trend: "neutral",
+
+                  icon: Clock,
+
+                  color: "text-orange-400"
+
+                },
+
+                {
+
+                  title: "Total Spent",
+
+                  value: `R${totalSpent.toFixed(2)}`,
+
+                  change: "+25%",
+
+                  trend: "up",
+
+                  icon: DollarSign,
+
+                  color: "text-emerald-400"
+
+                }
+
+              ].map((stat, index) => {
+
+                const Icon = stat.icon
+
+                const TrendIcon = stat.trend === 'up' ? ArrowUpRight : stat.trend === 'down' ? ArrowDownRight : Clock
+
+                return (
+
+                  <Card key={index} className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+
+                    <CardContent className="p-6">
+
+                      <div className="flex items-center justify-between">
+
+                        <div>
+
+                          <p className="text-sm font-medium text-gray-400">{stat.title}</p>
+
+                          <p className="text-2xl font-bold text-gray-100 mt-1">{stat.value}</p>
+
+                          <div className="flex items-center mt-2">
+
+                            <TrendIcon className={`w-4 h-4 mr-1 ${
+
+                              stat.trend === 'up' ? 'text-green-400' : 
+
+                              stat.trend === 'down' ? 'text-red-400' : 'text-gray-400'
+
+                            }`} />
+
+                            <span className={`text-sm ${
+
+                              stat.trend === 'up' ? 'text-green-400' : 
+
+                              stat.trend === 'down' ? 'text-red-400' : 'text-gray-400'
+
+                            }`}>
+
+                              {stat.change}
+
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-gray-800">
+
+                          <Icon className={`w-6 h-6 ${stat.color}`} />
+
+                        </div>
+
+                      </div>
+
+                    </CardContent>
+
+                  </Card>
+
+                )
+
+              })}
+
+            </div>
+
+
+
+            {/* Main Content Grid with Timeline */}
+
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+
+              
+
+              {/* Booking Timeline - Takes 3 columns on xl - Shows only incomplete bookings */}
+
+              <div className="xl:col-span-3">
+
+                <BookingTimeline 
+
+                  bookings={incompleteBookings} 
+
+                  maxItems={3}
+
+                  showViewAll={true}
+
+                  onBookingClick={(booking) => setSelectedActiveBooking(booking)}
+
+                />
+
+              </div>
+
+
+
+              {/* Recent Completed Jobs - Takes 1 column on far right */}
+
+              <div className="xl:col-span-1">
+
+                <Card className="bg-gray-900 border-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+
+                  <CardHeader className="pb-4">
+
+                    <div className="flex items-center justify-between">
+
+                      <CardTitle className="text-sm font-semibold text-gray-100">Completed</CardTitle>
+
+                      <Button 
+
+                        variant="ghost" 
+
+                        size="sm"
+
+                        className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 text-xs"
+
+                        asChild
+
+                      >
+
+                        <a href="/bookings">All</a>
+
+                      </Button>
+
+                    </div>
+
+                  </CardHeader>
+
+                  <CardContent className="pt-0">
+
+                    {completedBookings.length === 0 ? (
+
+                      <div className="text-center py-8">
+
+                        <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+
+                          <CheckCircle className="w-6 h-6 text-gray-400" />
+
+                        </div>
+
+                        <h3 className="text-sm font-medium text-gray-100 mb-2">No completed jobs</h3>
+
+                        <p className="text-xs text-gray-400 mb-4">Complete your first booking</p>
+
+                        <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-xs" asChild>
+
+                          <a href="/book-service">Book Now</a>
+
+                        </Button>
+
+                      </div>
+
+                    ) : (
+
+                      <div className="space-y-2">
+
+                        {completedBookings.slice(0, 4).map((booking) => (
+
+                          <Dialog key={booking.id}>
+
+                            <DialogTrigger asChild>
+
+                              <div className="flex items-center space-x-3 p-2 bg-gray-800 rounded-lg hover:bg-gray-750 transition-all duration-200 cursor-pointer">
+
+                                <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-green-800 rounded-lg flex items-center justify-center flex-shrink-0">
+
+                                  <CheckCircle className="w-4 h-4 text-white" />
+
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+
+                                  <p className="text-xs font-medium text-gray-100 truncate">{booking.service?.name || 'Service'}</p>
+
+                                  <p className="text-xs text-gray-400">{new Date(booking.scheduledDate).toLocaleDateString()}</p>
+
+                                  <Badge className="text-xs mt-1 inline-block bg-green-900/50 text-green-400 border-green-800/50">
+
+                                    Completed
+
+                                  </Badge>
+
+                                </div>
+
+                              </div>
+
+                            </DialogTrigger>
+
+                            <DialogContent className="bg-gray-900 border-gray-800 text-gray-100 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+
+                              <DialogHeader className="flex-shrink-0">
+
+                                <DialogTitle className="text-xl font-semibold text-gray-100">
+
+                                  {booking.service?.name || 'Service Details'}
+
+                                </DialogTitle>
+
+                                <DialogDescription className="text-gray-400">
+
+                                  Booking details and information
+
+                                </DialogDescription>
+
+                              </DialogHeader>
+
+                              
+
+                              <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+
+                                {/* Service Info */}
+
+                                <div className="grid grid-cols-2 gap-4">
+
+                                  <div>
+
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Service</h4>
+
+                                    <p className="text-sm text-gray-100">{booking.service?.name || 'N/A'}</p>
+
+                                    <p className="text-xs text-gray-400">{booking.service?.category || 'N/A'}</p>
+
+                                  </div>
+
+                                  <div>
+
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Status</h4>
+
+                                    <Badge className={`text-xs ${
+
+                                      booking.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border-green-800/50' :
+
+                                      booking.status === 'CONFIRMED' ? 'bg-blue-900/50 text-blue-400 border-blue-800/50' :
+
+                                      booking.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50' :
+
+                                      booking.status === 'PENDING_EXECUTION' ? 'bg-purple-900/50 text-purple-400 border-purple-800/50' :
+
+                                      'bg-gray-800 text-gray-400 border-gray-700'
+
+                                    }`}>
+
+                                      {booking.status.replace('_', ' ')}
+
+                                    </Badge>
+
+                                  </div>
+
+                                </div>
+
+
+
+                                {/* Date & Time */}
+
+                                <div className="grid grid-cols-2 gap-4">
+
+                                  <div>
+
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Date</h4>
+
+                                    <div className="flex items-center space-x-2">
+
+                                      <Calendar className="w-4 h-4 text-gray-400" />
+
+                                      <span className="text-sm text-gray-100">
+
+                                        {new Date(booking.scheduledDate).toLocaleDateString()}
+
+                                      </span>
+
+                                    </div>
+
+                                  </div>
+
+                                  <div>
+
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Time</h4>
+
+                                    <div className="flex items-center space-x-2">
+
+                                      <Clock className="w-4 h-4 text-gray-400" />
+
+                                      <span className="text-sm text-gray-100">
+
+                                        {new Date(booking.scheduledDate).toLocaleTimeString([], { 
+
+                                          hour: '2-digit', 
+
+                                          minute: '2-digit' 
+
+                                        })}
+
+                                      </span>
+
+                                    </div>
+
+                                  </div>
+
+                                </div>
+
+
+
+                                {/* Address */}
+
+                                <div>
+
+                                  <h4 className="text-sm font-medium text-gray-300 mb-2">Address</h4>
+
+                                  <div className="flex items-start space-x-2">
+
+                                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+
+                                    <span className="text-sm text-gray-100">{booking.address}</span>
+
+                                  </div>
+
+                                </div>
+
+
+
+                                {/* Amount */}
+
+                                <div>
+
+                                  <h4 className="text-sm font-medium text-gray-300 mb-2">Amount</h4>
+
+                                  <div className="flex items-center space-x-2">
+
+                                    <DollarSign className="w-4 h-4 text-gray-400" />
+
+                                    <span className="text-lg font-semibold text-gray-100">
+
+                                      R{booking.totalAmount?.toFixed(2) || '0.00'}
+
+                                    </span>
+
+                                  </div>
+
+                                </div>
+
+
+
+                                {/* Provider Info */}
+
+                                {booking.provider && (
+
+                                  <div>
+
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Provider</h4>
+
+                                    <div className="bg-gray-800 rounded-lg p-3">
+
+                                      <p className="text-sm font-medium text-gray-100">{booking.provider.user.name}</p>
+
+                                      <p className="text-xs text-gray-400">{booking.provider.businessName}</p>
+
+                                      {booking.provider.user.phone && (
+
+                                        <div className="flex items-center space-x-2 mt-2">
+
+                                          <Phone className="w-4 h-4 text-gray-400" />
+
+                                          <span className="text-xs text-gray-300">{booking.provider.user.phone}</span>
+
+                                        </div>
+
+                                      )}
+
+                                    </div>
+
+                                  </div>
+
+                                )}
+
+
+
+                                {/* Description */}
+
+                                {booking.description && (
+
+                                  <div>
+
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Notes</h4>
+
+                                    <p className="text-sm text-gray-100 bg-gray-800 rounded-lg p-3">
+
+                                      {booking.description}
+
+                                    </p>
+
+                                  </div>
+
+                                )}
+
+
+
+                                {/* Payment Info */}
+
+                                {booking.payment && (
+
+                                  <div>
+
+                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Payment</h4>
+
+                                    <div className="bg-gray-800 rounded-lg p-3">
+
+                                      <div className="flex items-center justify-between">
+
+                                        <span className="text-sm text-gray-100">Amount: R{booking.payment.amount?.toFixed(2)}</span>
+
+                                        <Badge className={`text-xs ${
+
+                                          booking.payment.status === 'COMPLETED' ? 'bg-green-900/50 text-green-400 border-green-800/50' :
+
+                                          booking.payment.status === 'PENDING' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50' :
+
+                                          'bg-gray-800 text-gray-400 border-gray-700'
+
+                                        }`}>
+
+                                          {booking.payment.status}
+
+                                        </Badge>
+
+                                      </div>
+
+                                    </div>
+
+                                  </div>
+
+                                )}
+
+                              </div>
+
+
+
+                              <DialogFooter>
+
+                                <Button 
+
+                                  variant="outline" 
+
+                                  className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
+
+                                  asChild
+
+                                >
+
+                                  <a href="/bookings">View All Bookings</a>
+
+                                </Button>
+
+                              </DialogFooter>
+
+                            </DialogContent>
+
+                          </Dialog>
+
+                        ))}
+
+                      </div>
+
+                    )}
+
+                  </CardContent>
+
+                </Card>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </main>
+
+      </div>
+
+
+
+      {/* Logout Confirmation Dialog */}
+
+      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+
+        <DialogContent className="bg-gray-900 border-gray-800 text-gray-100">
+
+          <DialogHeader>
+
+            <DialogTitle className="text-xl font-semibold text-gray-100 flex items-center">
+
+              <LogOut className="w-5 h-5 mr-2 text-red-400" />
+
+              Confirm Logout
+
+            </DialogTitle>
+
+            <DialogDescription className="text-gray-400">
+
+              Are you sure you want to logout? You will need to sign in again to access your dashboard.
+
+            </DialogDescription>
+
+          </DialogHeader>
+
+          
+
+          <DialogFooter className="flex gap-3">
+
+            <Button 
+
+              variant="outline" 
+
+              onClick={() => setShowLogoutConfirm(false)}
+
+              className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
+
+            >
+
+              Cancel
+
+            </Button>
+
+            <Button 
+
+              onClick={() => {
+
+                setShowLogoutConfirm(false)
+
+                handleLogout()
+
+              }}
+
+              className="bg-red-600 hover:bg-red-700 text-white"
+
+            >
+
+              <LogOut className="w-4 h-4 mr-2" />
+
+              Logout
+
+            </Button>
+
+          </DialogFooter>
+
+        </DialogContent>
+
+      </Dialog>
+
+    </div>
+
+  )
+
 }

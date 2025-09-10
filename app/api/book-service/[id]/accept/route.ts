@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { sendBookingConfirmationEmail } from "@/lib/email";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
 export async function POST(request: NextRequest) {
   // Skip during build time
@@ -54,6 +55,21 @@ export async function POST(request: NextRequest) {
       where: { id: bookingId },
       data: { status: "CONFIRMED" },
     });
+
+    // Create notification for client
+    try {
+      const notificationData = NotificationTemplates.BOOKING_ACCEPTED(booking);
+      await createNotification({
+        userId: booking.client.id,
+        type: notificationData.type,
+        title: notificationData.title,
+        content: notificationData.content
+      });
+      console.log(`🔔 Booking acceptance notification sent to client: ${booking.client.email}`);
+    } catch (notificationError) {
+      console.error('❌ Failed to create booking acceptance notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     // Send booking confirmation email to client
     try {

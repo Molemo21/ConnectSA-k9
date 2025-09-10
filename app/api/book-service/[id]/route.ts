@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   let dbQueryTime = 0
   
   try {
-    console.time('🔍 GET /api/book-service/[id] - Total')
+    // console.time('🔍 GET /api/book-service/[id] - Total')
     
     const user = await getCurrentUser();
     if (!user) {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    console.time('💾 Database Query')
+    // console.time('💾 Database Query')
     // Get booking with optimized includes - only fetch what's needed
     const booking = await db.booking.findUnique({
       where: { id: bookingId },
@@ -89,22 +89,22 @@ export async function GET(request: NextRequest) {
         }
       }
     });
-    console.timeEnd('💾 Database Query')
+    // console.timeEnd('💾 Database Query')
     dbQueryTime = Date.now() - startTime
 
     if (!booking) {
-      console.timeEnd('🔍 GET /api/book-service/[id] - Total')
+      // console.timeEnd('🔍 GET /api/book-service/[id] - Total')
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
     // Check if user has access to this booking
     if (user.role === "CLIENT" && booking.client.id !== user.id) {
-      console.timeEnd('🔍 GET /api/book-service/[id] - Total')
+      // console.timeEnd('🔍 GET /api/book-service/[id] - Total')
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (user.role === "PROVIDER" && booking.provider?.id !== user.id) {
-      console.timeEnd('🔍 GET /api/book-service/[id] - Total')
+      // console.timeEnd('🔍 GET /api/book-service/[id] - Total')
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -125,13 +125,13 @@ export async function GET(request: NextRequest) {
     response.headers.set('X-DB-Query-Time', `${dbQueryTime}ms`)
     response.headers.set('Cache-Control', 'private, max-age=30') // Cache for 30 seconds
 
-    console.timeEnd('🔍 GET /api/book-service/[id] - Total')
+    // console.timeEnd('🔍 GET /api/book-service/[id] - Total')
     return response
 
   } catch (error) {
     const totalTime = Date.now() - startTime
     console.error(`❌ GET /api/book-service/[id] - Error after ${totalTime}ms:`, error)
-    console.timeEnd('🔍 GET /api/book-service/[id] - Total')
+    // console.timeEnd('🔍 GET /api/book-service/[id] - Total')
     
     return NextResponse.json(
       { error: "Failed to fetch booking" },

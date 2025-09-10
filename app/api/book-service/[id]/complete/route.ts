@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { PAYMENT_CONSTANTS } from "@/lib/paystack";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
 const completionSchema = z.object({
   photos: z.array(z.string().url()).optional(),
@@ -88,18 +89,20 @@ export async function POST(request: NextRequest) {
       return { booking: updatedBooking };
     });
 
-    // TODO: Send notification to client about job completion
-    // TODO: Send email notification
-
-    // TODO: Create notification for client when Notification table is available
-    // await prisma.notification.create({
-    //   data: {
-    //     userId: result.booking.client.id,
-    //     type: 'JOB_COMPLETED',
-    //     content: `Your ${result.booking.service?.name || 'service'} has been completed! Please review the work and confirm completion to release payment.`,
-    //     read: false,
-    //   }
-    // });
+    // Create notification for client about job completion
+    try {
+      const notificationData = NotificationTemplates.JOB_COMPLETED(result.booking);
+      await createNotification({
+        userId: result.booking.client.id,
+        type: notificationData.type,
+        title: notificationData.title,
+        content: notificationData.content
+      });
+      console.log(`🔔 Job completion notification sent to client: ${result.booking.client.email}`);
+    } catch (notificationError) {
+      console.error('❌ Failed to create job completion notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     console.log(`Job completion proof submitted for booking ${bookingId}`);
 

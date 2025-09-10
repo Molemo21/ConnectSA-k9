@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSafeTime } from "@/hooks/use-safe-time"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -153,6 +154,8 @@ const getTimelineSteps = (status: string, hasPayment?: boolean) => {
 }
 
 export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: EnhancedBookingCardProps) {
+  const formattedDate = useSafeTime(booking.scheduledDate, 'date')
+  const formattedTime = useSafeTime(booking.scheduledDate, 'time')
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [showActionsModal, setShowActionsModal] = useState(false)
@@ -492,16 +495,13 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
               <div className="flex items-center space-x-1 text-xs">
                 <Calendar className="w-3 h-3 text-gray-500 flex-shrink-0" />
                 <span className="text-gray-700 truncate">
-                  {new Date(booking.scheduledDate).toLocaleDateString()}
+                  {formattedDate}
                 </span>
               </div>
               <div className="flex items-center space-x-1 text-xs">
                 <Clock className="w-3 h-3 text-gray-500 flex-shrink-0" />
                 <span className="text-gray-700">
-                  {new Date(booking.scheduledDate).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                  {formattedTime}
                 </span>
               </div>
             </div>

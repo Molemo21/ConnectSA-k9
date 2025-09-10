@@ -19,7 +19,7 @@ import {
   DollarSign
 } from "lucide-react"
 import { BrandHeader } from "@/components/ui/brand-header"
-import { useBookingData } from "@/hooks/use-booking-data"
+import { useSmartBooking } from "@/hooks/use-smart-booking"
 import { usePaymentCallback } from "@/hooks/use-payment-callback"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
 
@@ -31,7 +31,7 @@ export default function BookingsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [sortBy, setSortBy] = useState("created")
 
-  const { bookings, refreshAllBookings, refreshBooking, isLoading } = useBookingData(initialBookings)
+  const { bookings, refreshAllBookings, refreshBooking, isLoading, isConnected, optimisticUpdate } = useSmartBooking(initialBookings)
 
   // Payment callback handling
   usePaymentCallback({
