@@ -1,180 +1,242 @@
-import { redirect } from "next/navigation"
-import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+"use client"
+
+import React, { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { BrandHeaderClient } from "@/components/ui/brand-header-client"
+import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
+import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
+import { CheckCircle, Clock, FileText, AlertCircle, RefreshCw, ArrowRight, Mail, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Clock, CheckCircle, AlertCircle, Mail, Phone } from "lucide-react"
-import Link from "next/link"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default async function ProviderPendingPage() {
-  const user = await getCurrentUser()
+export default function ProviderPendingPage() {
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [timeElapsed, setTimeElapsed] = useState(0)
 
-  if (!user) {
-    redirect("/login")
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => setIsLoading(false), 2000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    // Update time elapsed every minute
+    const interval = setInterval(() => {
+      setTimeElapsed(prev => prev + 1)
+    }, 60000) // 1 minute
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const formatTimeElapsed = (minutes: number) => {
+    if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''}`
+    const hours = Math.floor(minutes / 60)
+    const remainingMinutes = minutes % 60
+    return `${hours}h ${remainingMinutes}m`
   }
-
-  if (user.role !== "PROVIDER") {
-    redirect("/dashboard")
-  }
-
-  const provider = await prisma.provider.findUnique({ where: { userId: user.id } })
-
-  if (!provider) {
-    redirect("/provider/onboarding")
-  }
-
-  if (provider.status === "INCOMPLETE" || provider.status === "REJECTED") {
-    redirect("/provider/onboarding")
-  }
-
-  if (provider.status === "APPROVED") {
-    redirect("/provider/dashboard")
-  }
-
-  if (!["PENDING", "REJECTED", "SUSPENDED"].includes(provider.status)) {
-    redirect("/provider/onboarding")
-  }
-
-  const getStatusInfo = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return {
-          icon: Clock,
-          color: "bg-yellow-100 text-yellow-800",
-          title: "Under Review",
-          description: "Your profile is being reviewed by our team",
-        }
-      case "REJECTED":
-        return {
-          icon: AlertCircle,
-          color: "bg-red-100 text-red-800",
-          title: "Needs Attention",
-          description: "Your profile needs some updates",
-        }
-      default:
-        return {
-          icon: Clock,
-          color: "bg-gray-100 text-gray-800",
-          title: status,
-          description: "Status unknown",
-        }
-    }
-  }
-
-  const statusInfo = getStatusInfo(provider.status)
-  const StatusIcon = statusInfo.icon
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center space-x-2 mb-6">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-xl">S</span>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background Image with Overlay */}
+      <div className="absolute inset-0">
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: "url('/pending.jpg')"
+          }}
+        />
+        {/* Dim overlay for better text visibility */}
+        <div className="absolute inset-0 bg-black/40"></div>
+        {/* Subtle gradient overlay for depth */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/30 via-purple-900/30 to-slate-900/30"></div>
+      </div>
+
+      {/* Floating Particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(25)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 bg-white rounded-full opacity-30 animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${3 + Math.random() * 4}s`
+            }}
+          />
+        ))}
+      </div>
+
+      <BrandHeaderClient />
+      
+      <div className="container mx-auto px-4 py-12 relative z-10">
+        <div className="max-w-4xl mx-auto">
+          {/* Main Content */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-full mb-8 shadow-2xl shadow-yellow-500/25 animate-pulse">
+              <Clock className="w-12 h-12 text-white" />
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6 bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent drop-shadow-2xl">
+              Application Under Review
+            </h1>
+            
+            <p className="text-xl text-white max-w-2xl mx-auto mb-8 drop-shadow-lg font-medium">
+              Thank you for submitting your provider application! Our team is carefully reviewing your information.
+            </p>
+
+            {timeElapsed > 0 && (
+              <div className="inline-flex items-center gap-2 bg-black/30 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-white shadow-lg">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm font-bold">
+                  Review time: {formatTimeElapsed(timeElapsed)}
+                </span>
               </div>
-              <span className="text-2xl font-bold text-gray-900">Proliink Connect</span>
-            </Link>
+            )}
           </div>
 
-          <Card className="shadow-xl border-0">
-            <CardHeader className="text-center pb-6">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <StatusIcon className="w-8 h-8 text-yellow-600" />
-              </div>
-              <CardTitle className="text-2xl">Profile {statusInfo.title}</CardTitle>
-              <CardDescription className="text-base">{statusInfo.description}</CardDescription>
-              <Badge className={statusInfo.color}>{provider.status}</Badge>
+          {/* Status Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <Card className="border-0 shadow-2xl bg-black/20 backdrop-blur-md border-white/30 hover:bg-black/30 transition-all duration-300 transform hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 drop-shadow-lg">Document Review</h3>
+                <p className="text-white/90 text-sm drop-shadow-md">Verifying your credentials and documents</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-2xl bg-black/20 backdrop-blur-md border-white/30 hover:bg-black/30 transition-all duration-300 transform hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 drop-shadow-lg">Background Check</h3>
+                <p className="text-white/90 text-sm drop-shadow-md">Validating your business information</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-2xl bg-black/20 backdrop-blur-md border-white/30 hover:bg-black/30 transition-all duration-300 transform hover:scale-105">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 drop-shadow-lg">Final Approval</h3>
+                <p className="text-white/90 text-sm drop-shadow-md">Admin review and approval process</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* What Happens Next */}
+          <Card className="border-0 shadow-2xl bg-black/20 backdrop-blur-md border-white/30 mb-8">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-2xl font-bold text-white text-center drop-shadow-lg">
+                What Happens Next?
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {provider.status === "PENDING" && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-blue-800">
-                      <p className="font-medium mb-2">What's happening now?</p>
-                      <ul className="space-y-1">
-                        <li>✓ Your profile has been submitted</li>
-                        <li>⏳ Our team is reviewing your information</li>
-                        <li>⏳ We're verifying your documents</li>
-                        <li>⏳ Background check in progress</li>
-                      </ul>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-start gap-4 p-4 bg-black/10 rounded-xl hover:bg-black/20 transition-all duration-300">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <span className="text-white font-bold text-sm">1</span>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-2 drop-shadow-lg">Email Notification</h4>
+                    <p className="text-white/90 drop-shadow-md">You'll receive an email within 2-3 business days with the review results.</p>
                   </div>
                 </div>
-              )}
 
-              {(provider.status as string) === "REJECTED" && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-red-800">
-                      <p className="font-medium mb-2">Action Required</p>
-                      <p>
-                        Your profile needs some updates before we can approve it. Please check your email for specific
-                        feedback and resubmit your application.
-                      </p>
-                    </div>
+                <div className="flex items-start gap-4 p-4 bg-black/10 rounded-xl hover:bg-black/20 transition-all duration-300">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <span className="text-white font-bold text-sm">2</span>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-2 drop-shadow-lg">Profile Activation</h4>
+                    <p className="text-white/90 drop-shadow-md">Once approved, your profile will be live and visible to clients.</p>
                   </div>
                 </div>
-              )}
 
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">Expected Timeline</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Profile submitted</span>
+                <div className="flex items-start gap-4 p-4 bg-black/10 rounded-xl hover:bg-black/20 transition-all duration-300">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <span className="text-white font-bold text-sm">3</span>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Review in progress (1-2 days)</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Background verification (2-3 days)</span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Final approval & activation</span>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-2 drop-shadow-lg">Start Earning</h4>
+                    <p className="text-white/90 drop-shadow-md">Begin receiving booking requests and grow your business.</p>
                   </div>
                 </div>
-              </div>
 
-              <div className="space-y-3">
-                {(provider.status as string) === "REJECTED" ? (
-                  <Button asChild className="w-full" size="lg">
-                    <Link href="/provider/onboarding">Update Profile</Link>
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full" size="lg">
-                    Waiting for Approval
-                  </Button>
-                )}
-
-                <Button variant="outline" asChild className="w-full bg-transparent">
-                  <Link href="/provider/profile">View Profile</Link>
-                </Button>
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="font-semibold text-gray-900 mb-3">Need Help?</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Mail className="w-4 h-4" />
-                    <span>support@proliinkconnect.com</span>
+                <div className="flex items-start gap-4 p-4 bg-black/10 rounded-xl hover:bg-black/20 transition-all duration-300">
+                  <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-600 rounded-full flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <span className="text-white font-bold text-sm">4</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Phone className="w-4 h-4" />
-                    <span>+27 11 123 4567</span>
+                  <div>
+                    <h4 className="text-lg font-bold text-white mb-2 drop-shadow-lg">Support Available</h4>
+                    <p className="text-white/90 drop-shadow-md">Our team is here to help you succeed on the platform.</p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Contact Information */}
+          <Card className="border-0 shadow-2xl bg-black/20 backdrop-blur-md border-white/30 mb-8">
+            <CardHeader className="pb-6">
+              <CardTitle className="text-xl font-bold text-white text-center drop-shadow-lg">
+                Need Help?
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center gap-4 p-6 bg-black/10 rounded-xl hover:bg-black/20 transition-all duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full flex items-center justify-center shadow-lg">
+                    <Mail className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white drop-shadow-lg">Email Support</h4>
+                    <p className="text-white/90 drop-shadow-md">support@proliinkconnect.co.za</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-6 bg-black/10 rounded-xl hover:bg-black/20 transition-all duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
+                    <Phone className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white drop-shadow-lg">Phone Support</h4>
+                    <p className="text-white/90 drop-shadow-md">+27 11 123 4567</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-black/30 border-white/40 text-white hover:bg-black/40 hover:border-white/50 transition-all duration-300 backdrop-blur-sm px-8 py-4 h-14 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <RefreshCw className="w-5 h-5 mr-3" />
+              <span className="font-semibold">Refresh Status</span>
+            </Button>
+            
+            <Button
+              onClick={() => router.push('/dashboard')}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 transform hover:scale-105 px-8 py-4 h-14"
+            >
+              <ArrowRight className="w-5 h-5 mr-3" />
+              <span className="font-semibold">Go to Dashboard</span>
+            </Button>
+          </div>
         </div>
       </div>
+      
+      {/* Mobile Navigation */}
+      <MobileBottomNav userRole="PROVIDER" />
+      <MobileFloatingActionButton userRole="PROVIDER" />
     </div>
   )
 }

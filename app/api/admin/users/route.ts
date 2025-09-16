@@ -1,8 +1,6 @@
-export const runtime = 'nodejs'
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db-utils'
-import { getCurrentUser } from '@/lib/auth'
-import { UserRole } from '@prisma/client'
+import { NextRequest, NextResponse } from "next/server"
+import { db } from "@/lib/db-utils"
+import { getCurrentUser } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,62 +11,101 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const role = searchParams.get('role') as UserRole | null
-    const search = searchParams.get('search')
-    const isActive = searchParams.get('isActive')
+    const search = searchParams.get("search") || ""
+    const role = searchParams.get("role") || "all"
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "10")
 
+    // Build where clause
     const where: any = {}
     
-    if (role) where.role = role
-    if (isActive !== null) where.isActive = isActive === 'true'
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } }
       ]
     }
+    
+    if (role !== "all") {
+      where.role = role
+    }
 
-    const [users, total] = await Promise.all([
+    // Get users with pagination
+    const [users, totalCount] = await Promise.all([
       db.user.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          emailVerified: true,
+          createdAt: true,
+          updatedAt: true,
           provider: {
             select: {
-              id: true,
-              status: true,
-              businessName: true,
-            },
+              status: true
+            }
           },
-          _count: {
+          bookings: {
             select: {
-              clientBookings: true,
-              messages: true,
-            },
+              id: true,
+              status: true
+            }
           },
+          reviews: {
+            select: {
+              rating: true
+            }
+          }
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
-        take: limit,
+        take: limit
       }),
-      db.user.count({ where }),
+      db.user.count({ where })
     ])
 
+    // Transform users data
+    const transformedUsers = users.map(user => {
+      const bookings = user.bookings || []
+      const reviews = user.reviews || []
+      
+      const completedBookings = bookings.filter(b => b.status === "COMPLETED").length
+      const averageRating = reviews.length > 0 
+        ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+        : 0
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        status: user.emailVerified ? "ACTIVE" : "INACTIVE",
+        joinDate: user.createdAt.toISOString().split('T')[0],
+        lastActive: user.updatedAt.toISOString().split('T')[0],
+        bookings: completedBookings,
+        rating: Math.round(averageRating * 10) / 10,
+        providerStatus: user.provider?.status || null
+      }
+    })
+
     return NextResponse.json({
-      users,
+      users: transformedUsers,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit)
+      }
     })
   } catch (error) {
-    console.error('Error fetching users:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error("Error fetching users:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
   }
 }

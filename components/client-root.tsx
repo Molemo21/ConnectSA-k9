@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode, useEffect } from 'react';
+import { CurrencyProvider } from '@/contexts/currency-context';
 
 // Client logger utility
 const logToServer = async (level: 'error' | 'info', message: string, data?: any) => {
@@ -121,7 +122,9 @@ export function ClientRoot({ children }: ClientRootProps) {
   return (
     <ClientErrorBoundary>
       <HydrationProbe />
-      {children}
+      <CurrencyProvider>
+        {children}
+      </CurrencyProvider>
     </ClientErrorBoundary>
   );
 }

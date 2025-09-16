@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, ArrowRight, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
 import { ProviderCard } from "./provider-card"
+import { ProviderDetailsModal } from "./provider-details-modal"
+import { BookingLoginModal } from "@/components/ui/booking-login-modal"
 import { showToast, handleApiError } from "@/lib/toast"
 
 interface Provider {
@@ -51,6 +53,7 @@ interface ProviderDiscoveryProps {
   notes?: string
   onProviderSelected: (providerId: string) => void
   onBack: () => void
+  onLoginSuccess?: () => void
 }
 
 export function ProviderDiscovery({ 
@@ -60,7 +63,8 @@ export function ProviderDiscovery({
   address, 
   notes, 
   onProviderSelected, 
-  onBack 
+  onBack,
+  onLoginSuccess
 }: ProviderDiscoveryProps) {
   const [providers, setProviders] = useState<Provider[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -70,6 +74,15 @@ export function ProviderDiscovery({
   const [isProcessing, setIsProcessing] = useState(false)
   const [alternativeTimes, setAlternativeTimes] = useState<Array<{time: string, available: boolean}>>([])
   const [lastError, setLastError] = useState<string | null>(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [isUnauthorized, setIsUnauthorized] = useState(false)
+
+  // Debug modal state changes
+  useEffect(() => {
+    console.log('🔍 [ProviderDiscovery] Modal state changed:', { showLoginModal, isUnauthorized })
+  }, [showLoginModal, isUnauthorized])
 
   useEffect(() => {
     discoverProviders()
@@ -79,6 +92,12 @@ export function ProviderDiscovery({
     try {
       setLoading(true)
       setError(null)
+      
+      console.log('🔍 [ProviderDiscovery] Starting provider discovery...')
+      console.log('🔍 [ProviderDiscovery] ServiceId:', serviceId)
+      console.log('🔍 [ProviderDiscovery] Date:', date)
+      console.log('🔍 [ProviderDiscovery] Time:', time)
+      console.log('🔍 [ProviderDiscovery] Address:', address)
       
       // Validate required fields before making API call
       if (!serviceId || !date || !time || !address) {
@@ -115,7 +134,18 @@ export function ProviderDiscovery({
       if (!response.ok) {
         const errorData = await response.json()
         const errorMessage = errorData.error || 'Failed to discover providers'
-        console.error('Provider discovery API error:', errorData);
+        console.error('❌ [ProviderDiscovery] API error:', errorData);
+        console.log('❌ [ProviderDiscovery] Response status:', response.status);
+        console.log('❌ [ProviderDiscovery] Error message:', errorMessage);
+        
+        // Check if it's an unauthorized error
+        if (response.status === 401 && errorMessage === 'Unauthorized') {
+          console.log('🔐 [ProviderDiscovery] Unauthorized detected - showing login modal');
+          setIsUnauthorized(true)
+          setShowLoginModal(true)
+          return
+        }
+        
         setError(errorMessage)
         showToast.error(errorMessage)
         return
@@ -133,7 +163,12 @@ export function ProviderDiscovery({
       setCurrentIndex(0)
       setDeclinedProviders([])
       
-      showToast.success(`Found ${data.totalCount} available providers!`)
+      // Different success messages based on context
+      if (isUnauthorized) {
+        showToast.success(`Great! Found ${data.totalCount} available providers for your booking!`)
+      } else {
+        showToast.success(`Found ${data.totalCount} available providers!`)
+      }
     } catch (error) {
       console.error('Provider discovery error:', error)
       setError('Failed to load providers. Please try again.')
@@ -260,8 +295,13 @@ export function ProviderDiscovery({
   }
 
   const handleViewDetails = (provider: Provider) => {
-    // TODO: Implement detailed provider view modal
-    showToast.info('Detailed provider view coming soon!')
+    setSelectedProvider(provider)
+    setShowDetailsModal(true)
+  }
+
+  const handleCloseDetailsModal = () => {
+    setShowDetailsModal(false)
+    setSelectedProvider(null)
   }
 
   const goToNextProvider = () => {
@@ -299,30 +339,49 @@ export function ProviderDiscovery({
     }
   }
 
+  const handleLoginSuccess = () => {
+    setShowLoginModal(false)
+    setIsUnauthorized(false)
+    setError(null)
+    setLoading(true) // Show loading state while retrying
+    
+    // Retry provider discovery after successful login
+    console.log('🔄 [ProviderDiscovery] Retrying provider discovery after successful login...')
+    discoverProviders()
+    onLoginSuccess?.()
+    showToast.success("Welcome back! Finding available providers for your booking...")
+  }
+
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false)
+    // If user closes modal without logging in, go back to previous step
+    onBack()
+  }
+
   if (loading) {
     return (
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+      <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
         <CardContent className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Discovering available providers...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4"></div>
+          <p className="text-white">Discovering available providers...</p>
         </CardContent>
       </Card>
     )
   }
 
-  if (error) {
+  if (error && !isUnauthorized) {
     return (
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+      <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
         <CardContent className="p-8 text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Provider Discovery Failed</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">Provider Discovery Failed</h3>
+          <p className="text-white/70 mb-4">{error}</p>
           <div className="space-x-2">
-            <Button onClick={onBack} variant="outline">
+            <Button onClick={onBack} variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Go Back
             </Button>
-            <Button onClick={discoverProviders}>
+            <Button onClick={discoverProviders} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
               <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
             </Button>
@@ -334,19 +393,19 @@ export function ProviderDiscovery({
 
   if (!providers || providers.length === 0) {
     return (
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+      <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
         <CardContent className="p-8 text-center">
-          <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Providers Available</h3>
-          <p className="text-gray-600 mb-4">
+          <AlertCircle className="w-16 h-16 text-orange-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">No Providers Available</h3>
+          <p className="text-white/70 mb-4">
             No providers are currently available for this service at the requested time.
           </p>
           <div className="space-x-2">
-            <Button onClick={onBack} variant="outline">
+            <Button onClick={onBack} variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Go Back
             </Button>
-            <Button onClick={discoverProviders}>
+            <Button onClick={discoverProviders} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
               <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
             </Button>
@@ -361,33 +420,48 @@ export function ProviderDiscovery({
   const hasDeclinedProviders = declinedProviders.length > 0
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+    <>
+      {/* Login Modal */}
+      <BookingLoginModal
+        isOpen={showLoginModal}
+        onClose={handleCloseLoginModal}
+        onLoginSuccess={handleLoginSuccess}
+        bookingData={{
+          serviceId,
+          date,
+          time,
+          address,
+          notes
+        }}
+      />
+
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-2xl text-gray-900">Choose Your Provider</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-2xl text-white">Choose Your Provider</CardTitle>
+              <CardDescription className="text-white/80">
                 Review and select from available providers for your service
               </CardDescription>
             </div>
-            <Button onClick={onBack} variant="outline">
+            <Button onClick={onBack} variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between text-sm text-gray-600">
+          <div className="flex items-center justify-between text-sm text-white/70">
             <span>
               Provider {currentIndex + 1} of {providers.length}
             </span>
             <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
                 {currentProvider.service.name}
               </Badge>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
+              <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30">
                 {currentProvider.service.category}
               </Badge>
             </div>
@@ -405,21 +479,21 @@ export function ProviderDiscovery({
 
       {/* Alternative Times Display */}
       {alternativeTimes.length > 0 && lastError && (
-        <Card className="shadow-lg border-0 bg-orange-50 border-orange-200">
+        <Card className="shadow-xl border-0 bg-orange-500/10 border-orange-500/30 animate-slide-in-up">
           <CardContent className="p-4">
             <div className="flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <h4 className="font-medium text-orange-800 mb-2">Time Conflict Detected</h4>
-                <p className="text-sm text-orange-700 mb-3">{lastError}</p>
-                <div className="bg-white rounded-lg p-3 border border-orange-200">
-                  <p className="text-sm font-medium text-orange-800 mb-2">Alternative Available Times:</p>
+                <h4 className="font-medium text-orange-300 mb-2">Time Conflict Detected</h4>
+                <p className="text-sm text-orange-200 mb-3">{lastError}</p>
+                <div className="bg-black/20 rounded-lg p-3 border border-orange-500/30">
+                  <p className="text-sm font-medium text-orange-300 mb-2">Alternative Available Times:</p>
                   <div className="flex flex-wrap gap-2">
                     {alternativeTimes.map((timeSlot, index) => (
                       <Badge 
                         key={index} 
                         variant="outline" 
-                        className="bg-white text-orange-700 border-orange-300 hover:bg-orange-50 cursor-pointer"
+                        className="bg-orange-500/20 text-orange-200 border-orange-400/50 hover:bg-orange-500/30 cursor-pointer"
                         onClick={() => {
                           // Update the time and retry
                           const newTime = timeSlot.time;
@@ -432,7 +506,7 @@ export function ProviderDiscovery({
                     ))}
                   </div>
                 </div>
-                <p className="text-xs text-orange-600 mt-2">
+                <p className="text-xs text-orange-300 mt-2">
                   Click on a time to select it, or try a different provider
                 </p>
               </div>
@@ -442,13 +516,14 @@ export function ProviderDiscovery({
       )}
 
       {/* Navigation */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+      <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <Button
               onClick={goToPreviousProvider}
               disabled={currentIndex === 0 || isProcessing}
               variant="outline"
+              className="border-gray-600 text-white hover:bg-gray-800 disabled:opacity-50"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Previous
@@ -459,7 +534,7 @@ export function ProviderDiscovery({
                 <Button
                   onClick={retryDeclinedProviders}
                   variant="outline"
-                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                  className="text-orange-400 border-orange-500/50 hover:bg-orange-500/20"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Retry Declined ({declinedProviders.length})
@@ -471,6 +546,7 @@ export function ProviderDiscovery({
               onClick={goToNextProvider}
               disabled={isLastProvider || isProcessing}
               variant="outline"
+              className="border-gray-600 text-white hover:bg-gray-800 disabled:opacity-50"
             >
               Next
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -481,36 +557,48 @@ export function ProviderDiscovery({
 
       {/* Processing State */}
       {isProcessing && (
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
           <CardContent className="p-4 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
-            <p className="text-gray-600">Sending job offer...</p>
-            <p className="text-sm text-gray-500 mt-1">Please wait while we process your request</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mx-auto mb-2"></div>
+            <p className="text-white">Sending job offer...</p>
+            <p className="text-sm text-white/70 mt-1">Please wait while we process your request</p>
           </CardContent>
         </Card>
       )}
 
       {/* Provider Count and Progress */}
       {providers.length > 0 && (
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center justify-between text-sm text-white/70">
               <span>
                 Provider {currentIndex + 1} of {providers.length}
               </span>
-              <span className="text-purple-600 font-medium">
+              <span className="text-purple-400 font-medium">
                 {Math.round(((currentIndex + 1) / providers.length) * 100)}% Complete
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
               <div 
-                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${((currentIndex + 1) / providers.length) * 100}%` }}
               ></div>
             </div>
           </CardContent>
         </Card>
       )}
-    </div>
+
+      {/* Provider Details Modal */}
+      {selectedProvider && (
+        <ProviderDetailsModal
+          provider={selectedProvider}
+          isOpen={showDetailsModal}
+          onClose={handleCloseDetailsModal}
+          onAccept={handleAcceptProvider}
+          onDecline={handleDeclineProvider}
+        />
+      )}
+      </div>
+    </>
   )
 } 

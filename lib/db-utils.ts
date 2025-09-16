@@ -109,6 +109,9 @@ const createDbWrapper = () => {
         findUnique: () => Promise.resolve(null), 
         count: () => Promise.resolve(0),
         create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        upsert: () => Promise.resolve(null),
       },
       booking: { 
         findFirst: () => Promise.resolve(null), 
@@ -143,6 +146,17 @@ const createDbWrapper = () => {
         findMany: () => Promise.resolve([]), 
         findUnique: () => Promise.resolve(null), 
         count: () => Promise.resolve(0) 
+      },
+      providerService: { 
+        findFirst: () => Promise.resolve(null), 
+        findMany: () => Promise.resolve([]), 
+        findUnique: () => Promise.resolve(null), 
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        createMany: () => Promise.resolve({ count: 0 }),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        deleteMany: () => Promise.resolve({ count: 0 })
       },
       adminAuditLog: { 
         findFirst: () => Promise.resolve(null), 
@@ -183,6 +197,9 @@ const createDbWrapper = () => {
       findUnique: (args: any) => withRetry(() => prisma.provider.findUnique(args), 'provider.findUnique'),
       count: (args: any) => withRetry(() => prisma.provider.count(args), 'provider.count'),
       create: (args: any) => withRetry(() => prisma.provider.create(args), 'provider.create'),
+      update: (args: any) => withRetry(() => prisma.provider.update(args), 'provider.update'),
+      delete: (args: any) => withRetry(() => prisma.provider.delete(args), 'provider.delete'),
+      upsert: (args: any) => withRetry(() => prisma.provider.upsert(args), 'provider.upsert'),
     },
     
     // Booking operations
@@ -227,6 +244,19 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.service.findMany(args), 'service.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.service.findUnique(args), 'service.findUnique'),
       count: (args: any) => withRetry(() => prisma.service.count(args), 'service.count'),
+    },
+
+    // ProviderService operations
+    providerService: {
+      findFirst: (args: any) => withRetry(() => prisma.providerService.findFirst(args), 'providerService.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.providerService.findMany(args), 'providerService.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.providerService.findUnique(args), 'providerService.findUnique'),
+      count: (args: any) => withRetry(() => prisma.providerService.count(args), 'providerService.count'),
+      create: (args: any) => withRetry(() => prisma.providerService.create(args), 'providerService.create'),
+      createMany: (args: any) => withRetry(() => prisma.providerService.createMany(args), 'providerService.createMany'),
+      update: (args: any) => withRetry(() => prisma.providerService.update(args), 'providerService.update'),
+      delete: (args: any) => withRetry(() => prisma.providerService.delete(args), 'providerService.delete'),
+      deleteMany: (args: any) => withRetry(() => prisma.providerService.deleteMany(args), 'providerService.deleteMany'),
     },
     
     // AdminAuditLog operations

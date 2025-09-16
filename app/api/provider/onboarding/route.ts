@@ -1,96 +1,84 @@
-import { type NextRequest, NextResponse } from "next/server"
-export const runtime = 'nodejs'
+import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { db } from "@/lib/db-utils"
 import { z } from "zod"
 
 const onboardingSchema = z.object({
+  // Personal Info
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
   experience: z.number().min(0, "Experience must be 0 or greater"),
-  hourlyRate: z.number().min(1, "Hourly rate must be greater than 0"),
-  location: z.string().min(1, "Location is required"),
+  hourlyRate: z.number().min(1, "Hourly rate must be at least 1"),
+  location: z.string().min(2, "Location must be at least 2 characters"),
+  
+  // Services
   selectedServices: z.array(z.string()).min(1, "At least one service must be selected"),
-  // Document uploads
-  idDocument: z.string().optional(),
-  proofOfAddress: z.string().optional(),
+  
+  // Documents
+  idDocument: z.string().min(1, "ID document is required"),
+  proofOfAddress: z.string().min(1, "Proof of address is required"),
   certifications: z.array(z.string()).optional().default([]),
   profileImages: z.array(z.string()).optional().default([]),
-  // Bank details
-  bankName: z.string().optional(),
-  bankCode: z.string().optional(),
-  accountNumber: z.string().optional(),
-  accountName: z.string().optional(),
-  isDraft: z.boolean().optional().default(false), // Add draft support
+  
+  // Banking
+  bankName: z.string().min(1, "Bank name is required"),
+  bankCode: z.string().min(1, "Bank code is required"),
+  accountNumber: z.string().min(8, "Account number must be at least 8 characters"),
+  accountName: z.string().min(1, "Account name is required"),
 })
 
 export async function POST(request: NextRequest) {
-  // Skip during build time
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
-    return NextResponse.json({
-      error: "Service temporarily unavailable during deployment"
-    }, { status: 503 });
-  }
-
+  console.log("🚀 Provider onboarding API called")
+  console.log("🍪 Request cookies:", request.cookies.getAll())
+  console.log("📋 Request headers:", Object.fromEntries(request.headers.entries()))
+  
   try {
+    console.log("🔍 Getting current user...")
     const user = await getCurrentUser()
-
-    if (!user || user.role !== "PROVIDER") {
+    console.log("👤 User:", user ? { id: user.id, email: user.email, role: user.role, emailVerified: user.emailVerified } : "null")
+    
+    if (!user) {
+      console.log("❌ No user found")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    if (user.role !== "PROVIDER") {
+      console.log("❌ User is not a provider:", user.role)
+      return NextResponse.json({ error: "Only providers can access this endpoint" }, { status: 403 })
+    }
+
+    if (!user.emailVerified) {
+      console.log("❌ Email not verified")
+      return NextResponse.json({ error: "Email must be verified" }, { status: 403 })
+    }
+
+    console.log("📝 Parsing request body...")
     const body = await request.json()
+    console.log("📋 Request body keys:", Object.keys(body))
+    
+    console.log("✅ Validating data...")
     const validatedData = onboardingSchema.parse(body)
+    console.log("✅ Data validation successful")
 
-    // Check if all required fields are filled
-    const isComplete = (
-      validatedData.businessName &&
-      validatedData.description &&
-      validatedData.experience > 0 &&
-      validatedData.hourlyRate > 0 &&
-      validatedData.location &&
-      validatedData.selectedServices && validatedData.selectedServices.length > 0 &&
-      validatedData.idDocument &&
-      validatedData.proofOfAddress &&
-      validatedData.bankName &&
-      validatedData.bankCode &&
-      validatedData.accountNumber &&
-      validatedData.accountName
-    )
+    // Check if provider already exists
+    console.log("🔍 Checking for existing provider...")
+    const existingProvider = await db.provider.findUnique({
+      where: { userId: user.id }
+    })
+    console.log("📊 Existing provider:", existingProvider ? { id: existingProvider.id, status: existingProvider.status } : "none")
 
-    // Get current provider status
-    let provider = await prisma.provider.findUnique({ where: { userId: user.id } })
-    if (!provider) {
-      // Create a new provider record for this user
-      provider = await prisma.provider.create({
-        data: {
-          userId: user.id,
-          businessName: validatedData.businessName,
-          description: validatedData.description,
-          experience: validatedData.experience,
-          hourlyRate: validatedData.hourlyRate,
-          location: validatedData.location,
-          status: validatedData.isDraft ? "INCOMPLETE" : (isComplete ? "PENDING" : "INCOMPLETE"),
-        },
-      });
+    if (existingProvider && existingProvider.status === "APPROVED") {
+      console.log("❌ Provider already approved")
+      return NextResponse.json({ error: "Provider is already approved" }, { status: 400 })
     }
 
-    let newStatus = provider.status;
-    if (validatedData.isDraft) {
-      // For drafts, keep current status or set to INCOMPLETE
-      newStatus = provider.status === "PENDING" ? "PENDING" : "INCOMPLETE";
-    } else if (provider.status === "REJECTED") {
-      newStatus = isComplete ? "PENDING" : "INCOMPLETE";
-    } else if (isComplete) {
-      newStatus = "PENDING";
-    } else {
-      newStatus = "INCOMPLETE";
-    }
-
-    // Atomic update: provider profile and services
-    await prisma.$transaction(async (tx) => {
-      // Update provider profile
-      await tx.provider.update({
+    // Create or update provider
+    console.log("💾 Creating/updating provider...")
+    let provider
+    if (existingProvider) {
+      console.log("🔄 Updating existing provider...")
+      // Update existing provider
+      provider = await db.provider.update({
         where: { userId: user.id },
         data: {
           businessName: validatedData.businessName,
@@ -98,44 +86,117 @@ export async function POST(request: NextRequest) {
           experience: validatedData.experience,
           hourlyRate: validatedData.hourlyRate,
           location: validatedData.location,
-          status: newStatus,
-          // Document uploads
+          status: "PENDING",
+          // Document fields
           idDocument: validatedData.idDocument,
           proofOfAddress: validatedData.proofOfAddress,
           certifications: validatedData.certifications,
           profileImages: validatedData.profileImages,
-          // Bank details
+          // Banking fields
           bankName: validatedData.bankName,
           bankCode: validatedData.bankCode,
           accountNumber: validatedData.accountNumber,
           accountName: validatedData.accountName,
-        },
-      });
-
-      // Remove all existing ProviderService records for this provider
-      await tx.providerService.deleteMany({ where: { providerId: provider.id } });
-
-      // Add new ProviderService records for selected services
-      const newServices = validatedData.selectedServices.map((serviceId: string) => ({
-        providerId: provider.id,
-        serviceId,
-      }));
-      if (newServices.length > 0) {
-        await tx.providerService.createMany({ data: newServices });
-      }
-    });
-
-    return NextResponse.json({ 
-      message: validatedData.isDraft ? "Draft saved successfully" : "Profile submitted successfully",
-      isDraft: validatedData.isDraft,
-      status: newStatus
-    })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0]?.message || "Invalid input" }, { status: 400 })
+        }
+      })
+      console.log("✅ Provider updated:", provider.id)
+    } else {
+      console.log("🆕 Creating new provider...")
+      // Create new provider
+      provider = await db.provider.create({
+        data: {
+          userId: user.id,
+          businessName: validatedData.businessName,
+          description: validatedData.description,
+          experience: validatedData.experience,
+          hourlyRate: validatedData.hourlyRate,
+          location: validatedData.location,
+          status: "PENDING",
+          // Document fields
+          idDocument: validatedData.idDocument,
+          proofOfAddress: validatedData.proofOfAddress,
+          certifications: validatedData.certifications,
+          profileImages: validatedData.profileImages,
+          // Banking fields
+          bankName: validatedData.bankName,
+          bankCode: validatedData.bankCode,
+          accountNumber: validatedData.accountNumber,
+          accountName: validatedData.accountName,
+        }
+      })
+      console.log("✅ Provider created:", provider.id)
     }
 
-    console.error("Onboarding error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    // Update provider services
+    console.log("🔧 Updating provider services...")
+    if (validatedData.selectedServices.length > 0) {
+      console.log("🗑️ Removing existing services...")
+      // Remove existing services
+      await db.providerService.deleteMany({
+        where: { providerId: provider.id }
+      })
+
+      console.log("➕ Adding new services:", validatedData.selectedServices)
+      // Add new services
+      await db.providerService.createMany({
+        data: validatedData.selectedServices.map(serviceId => ({
+          providerId: provider.id,
+          serviceId: serviceId
+        }))
+      })
+      console.log("✅ Services updated successfully")
+    } else {
+      console.log("⚠️ No services selected")
+    }
+
+    // Create audit log
+    console.log("📝 Creating audit log...")
+    await db.adminAuditLog.create({
+      data: {
+        adminId: user.id,
+        action: 'SYSTEM_MAINTENANCE' as any, // Using existing enum value
+        targetType: 'PROVIDER',
+        targetId: provider.id,
+        details: {
+          businessName: validatedData.businessName,
+          location: validatedData.location,
+          servicesCount: validatedData.selectedServices.length,
+          action: 'PROVIDER_ONBOARDING_SUBMITTED'
+        },
+        ipAddress: request.headers.get('x-forwarded-for') || request.ip || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+      }
+    })
+    console.log("✅ Audit log created successfully")
+
+    return NextResponse.json({
+      success: true,
+      message: "Provider onboarding submitted successfully",
+      providerId: provider.id
+    })
+
+  } catch (error) {
+    console.error("❌ Provider onboarding error:", error)
+    
+    if (error instanceof z.ZodError) {
+      console.error("❌ Validation errors:", error.errors)
+      return NextResponse.json({
+        error: "Validation failed",
+        details: error.errors
+      }, { status: 400 })
+    }
+
+    // Log more specific error information
+    if (error instanceof Error) {
+      console.error("❌ Error message:", error.message)
+      console.error("❌ Error stack:", error.stack)
+    }
+
+    console.error("❌ Returning 500 error response")
+    return NextResponse.json({
+      error: "Internal server error",
+      message: "Failed to submit provider onboarding",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
   }
 }

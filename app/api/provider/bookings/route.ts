@@ -11,17 +11,30 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    console.log('Provider bookings API: Starting request')
+    
     const user = await getCurrentUser()
-    if (!user || user.role !== "PROVIDER") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    console.log('Provider bookings API: User fetched:', { user: user ? { id: user.id, role: user.role } : null })
+    
+    if (!user) {
+      console.log('Provider bookings API: No user found')
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+    
+    if (user.role !== "PROVIDER") {
+      console.log('Provider bookings API: User is not a provider:', user.role)
+      return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 })
     }
 
     const provider = await db.provider.findUnique({
       where: { userId: user.id },
     })
 
+    console.log('Provider bookings API: Provider found:', { provider: provider ? { id: provider.id } : null })
+
     if (!provider) {
-      return NextResponse.json({ error: "Provider not found" }, { status: 404 })
+      console.log('Provider bookings API: Provider record not found for user:', user.id)
+      return NextResponse.json({ error: "Provider profile not found" }, { status: 404 })
     }
 
     // Fetch all bookings for this provider

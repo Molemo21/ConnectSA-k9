@@ -2,6 +2,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { UserMenu } from "@/components/ui/user-menu"
 import { MobileNavigation } from "./mobile-navigation.tsx"
+import { RegionSwitcher } from "./region-switcher"
+import { Mail, Phone, MapPin, Clock, Globe } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 
 interface BrandHeaderProps {
   showAuth?: boolean
@@ -17,54 +20,236 @@ interface BrandHeaderProps {
 }
 
 export function BrandHeader({ showAuth = true, showUserMenu = false, className = "", user = null }: BrandHeaderProps) {
+  const [isExploreOpen, setIsExploreOpen] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [isContactOpen, setIsContactOpen] = useState(false)
+  const [isContactAnimating, setIsContactAnimating] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const contactRef = useRef<HTMLDivElement>(null)
+
+  const handleExploreClick = () => {
+    if (isAnimating) return
+    
+    setIsAnimating(true)
+    if (isExploreOpen) {
+      // Closing animation
+      setIsExploreOpen(false)
+      setTimeout(() => setIsAnimating(false), 300)
+    } else {
+      // Opening animation
+      setIsExploreOpen(true)
+      setTimeout(() => setIsAnimating(false), 100)
+    }
+  }
+
+  const handleContactClick = () => {
+    if (isContactAnimating) return
+    
+    setIsContactAnimating(true)
+    if (isContactOpen) {
+      // Closing animation
+      setIsContactOpen(false)
+      setTimeout(() => setIsContactAnimating(false), 300)
+    } else {
+      // Opening animation
+      setIsContactOpen(true)
+      setTimeout(() => setIsContactAnimating(false), 100)
+    }
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        if (isExploreOpen) {
+          setIsAnimating(true)
+          setIsExploreOpen(false)
+          setTimeout(() => setIsAnimating(false), 300)
+        }
+      }
+      if (contactRef.current && !contactRef.current.contains(event.target as Node)) {
+        if (isContactOpen) {
+          setIsContactAnimating(true)
+          setIsContactOpen(false)
+          setTimeout(() => setIsContactAnimating(false), 300)
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isExploreOpen, isContactOpen])
+
   return (
-    <header className={`border-b border-gray-800 bg-black/95 backdrop-blur-sm sticky top-0 z-50 ${className}`}>
-      <div className="container mx-auto px-4 py-3 sm:py-4">
+    <>
+      <header className={`border-b border-gray-800/30 bg-transparent backdrop-blur-sm sticky top-0 z-50 ${className}`}>
+      <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:py-3 md:py-4">
         <div className="flex items-center justify-between">
-          {/* Brand - Mobile Optimized */}
+          {/* Brand - Mobile First */}
           <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
             <img 
               src="/handshake.png" 
               alt="ProLiink Connect Logo" 
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
+              className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
             />
             <div className="flex flex-col">
-              <span className="text-lg sm:text-xl font-bold text-white leading-tight">ProL<span className="text-blue-400">ii</span>nk Connect</span>
-              <span className="text-xs text-gray-300 leading-tight hidden xs:block">Trusted Services</span>
+              <span className="text-base xs:text-lg sm:text-xl font-bold text-white leading-tight">ProL<span className="text-blue-400">ii</span>nk</span>
+              <span className="text-xs text-gray-300 leading-tight hidden xs:block">Connect</span>
             </div>
           </Link>
 
           {/* Navigation - Desktop Only */}
           <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <div className="relative group">
-              <button className="text-gray-200 hover:text-blue-400 transition-colors font-medium text-sm lg:text-base focus:outline-none">
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={handleExploreClick}
+                className={`text-gray-200 hover:text-blue-400 transition-all duration-200 font-medium text-sm lg:text-base focus:outline-none ${
+                  isAnimating ? 'scale-110' : 'scale-100'
+                }`}
+                style={{
+                  transform: isAnimating ? 'scale(1.1)' : 'scale(1)',
+                  transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              >
                 Explore
               </button>
-              <div className="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-lg py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Link href="#services" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+              
+              {/* Dropdown Menu */}
+              <div 
+                className={`absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-lg py-2 overflow-hidden ${
+                  isExploreOpen 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 -translate-y-2 pointer-events-none'
+                } transition-all duration-300 ease-out`}
+                style={{
+                  transform: isExploreOpen ? 'translateY(0)' : 'translateY(-8px)',
+                  transition: 'opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              >
+                <Link 
+                  href="/services" 
+                  className={`block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-opacity duration-200 ${
+                    isExploreOpen ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  style={{
+                    transitionDelay: isExploreOpen ? '0.1s' : '0s'
+                  }}
+                >
                   Services
                 </Link>
-                <Link href="#how-it-works" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                <Link 
+                  href="#how-it-works" 
+                  className={`block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-opacity duration-200 ${
+                    isExploreOpen ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  style={{
+                    transitionDelay: isExploreOpen ? '0.2s' : '0s'
+                  }}
+                >
                   How it Works
                 </Link>
-                <Link href="#about-us" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                <Link 
+                  href="/about" 
+                  className={`block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-opacity duration-200 ${
+                    isExploreOpen ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  style={{
+                    transitionDelay: isExploreOpen ? '0.3s' : '0s'
+                  }}
+                >
                   About Us
                 </Link>
               </div>
             </div>
           </nav>
 
-          {/* Auth/User Menu - Desktop */}
-          <div className="hidden md:flex items-center space-x-3">
+          {/* Auth/User Menu - Mobile First */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Region Switcher */}
+            <RegionSwitcher 
+              onRegionChange={(region) => {
+                console.log('Region changed to:', region)
+                // You can add your region change logic here
+              }}
+            />
+            
             {showUserMenu && user ? (
               <UserMenu user={user} />
             ) : showAuth ? (
-              <div className="flex items-center space-x-3">
-                <Button variant="ghost" asChild className="text-sm lg:text-base text-gray-200 hover:text-white hover:border-purple-500 hover:shadow-xl">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                {/* Contact Button with Popup */}
+                <div className="relative" ref={contactRef}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleContactClick}
+                    className={`text-gray-200 hover:text-blue-400 hover:bg-white/10 p-1.5 sm:p-2 ${
+                      isContactAnimating ? 'scale-105' : 'scale-100'
+                    }`}
+                    style={{
+                      transform: isContactAnimating ? 'scale(1.05)' : 'scale(1)',
+                      transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}
+                  >
+                    <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </Button>
+                  
+                  {/* Contact Popup */}
+                  <div 
+                    className={`absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-xl py-3 overflow-hidden z-50 ${
+                      isContactOpen 
+                        ? 'opacity-100 translate-y-0' 
+                        : 'opacity-0 -translate-y-2 pointer-events-none'
+                    } transition-all duration-300 ease-out`}
+                    style={{
+                      transform: isContactOpen ? 'translateY(0)' : 'translateY(-8px)',
+                      transition: 'opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}
+                  >
+                    <div className="px-4 py-2">
+                      <h3 className="font-semibold text-gray-900 text-sm mb-3">Contact Us</h3>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3">
+                          <MapPin className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <div className="text-xs text-gray-600">
+                            <div className="font-medium">Address</div>
+                            <div>49 Leeds Street, Mthatha, EC 5099</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <Phone className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <div className="text-xs text-gray-600">
+                            <div className="font-medium">Phone</div>
+                            <div>+27 78 128 3697</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <Mail className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                          <div className="text-xs text-gray-600">
+                            <div className="font-medium">Email</div>
+                            <div>support@proliinkconnect.co.za</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <Clock className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                          <div className="text-xs text-gray-600">
+                            <div className="font-medium">Hours</div>
+                            <div>Mon-Fri: 8AM-6PM</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-xs sm:text-sm lg:text-base text-white px-3 sm:px-4 py-1.5 sm:py-2">
                   <Link href="/login">Sign In</Link>
-                </Button>
-                <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm lg:text-base text-white">
-                  <Link href="/signup">Get Started</Link>
                 </Button>
               </div>
             ) : null}
@@ -79,5 +264,6 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
         </div>
       </div>
     </header>
+    </>
   )
 }

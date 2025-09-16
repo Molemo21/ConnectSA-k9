@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import Paystack from 'paystack-sdk';
 
 // Environment variables validation - only validate at runtime, not during build
 const requiredEnvVars = {
@@ -188,27 +189,21 @@ class PaystackClient {
     callback_url: string;
     metadata?: Record<string, any>;
   }): Promise<PaystackPaymentResponse> {
-    const response = await this.makeRequest<PaystackPaymentResponse>(
-      '/transaction/initialize',
-      'POST',
-      {
-        amount: params.amount * 100, // Convert to cents (smallest currency unit)
-        email: params.email,
-        reference: params.reference,
-        callback_url: params.callback_url,
-        metadata: params.metadata,
-        currency: 'ZAR',
-      }
-    );
+    const response = await paystack.transaction.initialize({
+      amount: params.amount * 100, // Convert to kobo
+      email: params.email,
+      reference: params.reference,
+      callback_url: params.callback_url,
+      metadata: params.metadata,
+      currency: 'ZAR',
+    });
 
     return PaystackPaymentResponseSchema.parse(response);
   }
 
   // Verify payment transaction
   async verifyPayment(reference: string): Promise<PaystackChargeResponse> {
-    const response = await this.makeRequest<PaystackChargeResponse>(
-      `/transaction/verify/${reference}`
-    );
+    const response = await paystack.transaction.verify(reference);
 
     return PaystackChargeResponseSchema.parse(response);
   }

@@ -46,9 +46,9 @@ export async function verifyToken(token: string) {
 
 export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: string } }) | null> {
   try {
-    // Check if we're in a browser/Edge runtime environment
-    if (typeof window !== 'undefined' || process.env.NEXT_RUNTIME === 'edge') {
-      console.log('Skipping getCurrentUser in browser/Edge runtime')
+    // Skip during build time
+    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      console.log('Skipping getCurrentUser during build time');
       return null;
     }
 

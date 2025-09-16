@@ -300,6 +300,36 @@ export function MobileNavigation({ user, showAuth = true, showUserMenu = false }
                 </div>
               </div>
 
+              {/* Main Action Buttons */}
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4">
+                  Quick Actions
+                </div>
+                <div className="space-y-3">
+                  <Button
+                    className="w-full justify-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
+                    asChild
+                    onClick={closeMenu}
+                  >
+                    <Link href="/book-service">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Book a Service
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-center border-blue-200 text-blue-600 hover:bg-blue-50 transition-all duration-300 transform hover:scale-105"
+                    asChild
+                    onClick={closeMenu}
+                  >
+                    <Link href="/services">
+                      <Search className="w-4 h-4 mr-2" />
+                      Browse Services
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
               {/* Footer Actions */}
               <div className="p-4 border-t border-gray-200 bg-gray-50">
                 {user ? (

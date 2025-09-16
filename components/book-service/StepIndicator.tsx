@@ -19,7 +19,7 @@ export function StepIndicator({ step }: { step: Step }) {
         const isCompleted = idx < currentIndex
         const isActive = idx === currentIndex
         const dotClass = isActive || isCompleted ? 'bg-indigo-600 text-white' : 'bg-slate-300 text-slate-600'
-        const labelClass = isActive ? 'text-slate-900 font-semibold' : isCompleted ? 'text-slate-700' : 'text-white/80'
+        const labelClass = isActive ? 'text-white font-semibold' : isCompleted ? 'text-white/90' : 'text-white/70'
         const connectorClass = idx < currentIndex ? 'bg-indigo-600' : 'bg-slate-300'
         return (
           <div key={s.id} className="flex items-center flex-shrink-0">

@@ -12,11 +12,12 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2, ArrowLeft, AlertTriangle } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { ProviderDiscovery } from "@/components/provider-discovery/provider-discovery"
+import { BookingLoginModal } from "@/components/ui/booking-login-modal"
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
 import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
 import { z } from "zod"
 import { StepIndicator as Stepper } from "@/components/book-service/StepIndicator"
-import { BookingForm as BookingFormPanel } from "@/components/book-service/BookingForm"
+import { ModernBookingForm as BookingFormPanel } from "@/components/book-service/ModernBookingForm"
 import { BookingSummary as SummaryPanel } from "@/components/book-service/BookingSummary"
 import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel"
 import { ConfirmPanel } from "@/components/book-service/ConfirmPanel"
@@ -145,6 +146,12 @@ function BookServiceContent() {
     time: "",
     address: "",
     notes: "",
+  } as {
+    serviceId: string;
+    date: string;
+    time: string;
+    address: string;
+    notes?: string;
   });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
   const [submitting, setSubmitting] = useState(false);
@@ -154,12 +161,39 @@ function BookServiceContent() {
   const [showProviderDiscovery, setShowProviderDiscovery] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<'FORM' | 'REVIEW' | 'DISCOVERY' | 'CONFIRM'>('FORM')
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = checking, true = logged in, false = not logged in
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   // Debug logging function
   const addDebugInfo = (message: string) => {
     console.log(`🔍 [BookService] ${message}`);
     setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
   };
+
+  // Check authentication status on page load
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        addDebugInfo("Checking authentication status...");
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          setIsAuthenticated(true);
+          addDebugInfo("User is authenticated");
+        } else {
+          setIsAuthenticated(false);
+          addDebugInfo("User is not authenticated");
+          // Don't show login prompt immediately - let user fill form first
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setIsAuthenticated(false);
+        // Don't show login prompt immediately - let user fill form first
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   // Check for sessionStorage booking data after login
   useEffect(() => {
@@ -182,13 +216,31 @@ function BookServiceContent() {
     async function fetchServices() {
       try {
         addDebugInfo('Setting loading state to true');
-      setLoadingServices(true);
-      setServicesError(null);
+        setLoadingServices(true);
+        setServicesError(null);
+        
+        // Check if we have cached services
+        const cachedServices = localStorage.getItem('cached_services');
+        const cacheTimestamp = localStorage.getItem('services_cache_timestamp');
+        const now = Date.now();
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+        
+        if (cachedServices && cacheTimestamp && (now - parseInt(cacheTimestamp)) < CACHE_DURATION) {
+          addDebugInfo('Using cached services');
+          setServices(JSON.parse(cachedServices));
+          setLoadingServices(false);
+          return;
+        }
         
         addDebugInfo('Making fetch request to /api/services');
         if (abortRef.current) abortRef.current.abort()
         abortRef.current = new AbortController()
-        const res = await fetch("/api/services", { signal: abortRef.current.signal });
+        const res = await fetch("/api/services", { 
+          signal: abortRef.current.signal,
+          headers: {
+            'Cache-Control': 'max-age=300', // 5 minutes cache
+          }
+        });
         addDebugInfo(`Fetch response status: ${res.status}, ok: ${res.ok}`);
         
         if (!res.ok) {
@@ -213,7 +265,12 @@ function BookServiceContent() {
         
         addDebugInfo('Setting services state');
         setServices(data);
-        addDebugInfo('Services state set successfully');
+        
+        // Cache the services
+        localStorage.setItem('cached_services', JSON.stringify(data));
+        localStorage.setItem('services_cache_timestamp', now.toString());
+        
+        addDebugInfo('Services state set successfully and cached');
         
       } catch (err: any) {
         // Ignore abort errors caused by fast re-renders or navigation
@@ -263,39 +320,28 @@ function BookServiceContent() {
       return
     }
     
-    addDebugInfo("Validation passed, checking authentication...");
+    addDebugInfo("Validation passed, showing review step...");
     setSubmitting(true);
     setSubmitError(null);
     setConfirmation(null);
-    try {
-      // Check if logged in
-      const res = await fetch("/api/auth/me");
-      addDebugInfo(`Auth check response: ${res.status}`);
-      if (!res.ok) {
-        // Not logged in: save form data and redirect to login
-        addDebugInfo("User not authenticated, redirecting to login...");
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("bookingDetails", JSON.stringify(form));
-        }
-        router.push("/login?intent=booking");
-        return;
-      }
-      // If logged in, show review step before final submission
-      addDebugInfo("User authenticated, showing review step...");
-      setShowReview(true);
-      setActiveStep('REVIEW')
-    } catch (err: any) {
-      addDebugInfo(`Auth check error: ${err.message}`);
-      console.error("Auth check error:", err);
-      setSubmitError("Could not check authentication. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+    
+    // Show review step for all users (authenticated or not)
+    addDebugInfo("Showing review step...");
+    setShowReview(true);
+    setActiveStep('REVIEW');
+    setSubmitting(false);
   };
 
   // Show provider discovery after review
   const handleShowProviderDiscovery = () => {
     addDebugInfo('Starting provider discovery with form data');
+    
+    // Check if user is authenticated before proceeding to provider discovery
+    if (!isAuthenticated) {
+      addDebugInfo("User not authenticated, showing sign-in popup...");
+      setShowLoginPrompt(true);
+      return;
+    }
     
     // Validate serviceId format (Prisma custom ID format)
     const cuidLike = /^[a-z0-9]{25}$/i;
@@ -333,6 +379,38 @@ function BookServiceContent() {
     }
   };
 
+  // Handle login success from prompt
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    setShowLoginPrompt(false);
+    setShowLoginModal(false);
+    addDebugInfo("User successfully logged in, continuing with booking");
+    
+    // Automatically proceed to provider discovery after successful login
+    if (showReview) {
+      setShowProviderDiscovery(true);
+      setActiveStep('DISCOVERY');
+      addDebugInfo("Proceeding to provider discovery after login");
+    }
+  };
+
+  // Handle closing login prompt
+  const handleCloseLoginPrompt = () => {
+    setShowLoginPrompt(false);
+    setShowLoginModal(false);
+    // Redirect to home page if user closes without logging in
+    router.push("/");
+  };
+
+  // Handle closing login modal
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+    // Don't show the popup again if user is authenticated
+    if (!isAuthenticated) {
+      setShowLoginPrompt(true);
+    }
+  };
+
   const selectedService = services.find(s => s.id === form.serviceId);
 
   // Debug info display
@@ -340,23 +418,57 @@ function BookServiceContent() {
 
   if (loadingServices) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <BrandHeaderClient showAuth={false} showUserMenu={true} />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="h-40 rounded-xl bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 animate-pulse mb-6" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="h-36 bg-gray-100 rounded-lg animate-pulse" />
-                <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
-                <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+      <div className="min-h-screen relative overflow-hidden animate-fade-in">
+        {/* Background image */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat animate-zoom-in"
+          style={{ backgroundImage: "url('/booker.jpg')" }}
+        />
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/50" />
+        
+        <div className="relative z-10">
+          <BrandHeaderClient showAuth={false} showUserMenu={true} />
+          <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 animate-slide-in-up">
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
               </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Loading Services...</h2>
+              <p className="text-white/80">Please wait while we prepare your booking options</p>
+            </div>
+            
+            {/* Enhanced loading skeleton */}
+            <div className="space-y-6">
+              {/* Search bar skeleton */}
+              <div className="h-14 bg-white/10 rounded-xl animate-pulse" />
+              
+              {/* Service cards skeleton */}
               <div className="space-y-4">
-                <div className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-white/5 rounded-xl p-4 animate-pulse">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-white/10 rounded w-3/4" />
+                        <div className="h-3 bg-white/5 rounded w-1/2" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Progress indicator */}
+              <div className="flex justify-center space-x-2 mt-8">
+                <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 bg-white/30 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
               </div>
             </div>
             {debugInfoDisplay}
           </div>
+        </div>
         </div>
       </div>
     );
@@ -364,13 +476,22 @@ function BookServiceContent() {
 
   if (servicesError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <BrandHeaderClient showAuth={false} showUserMenu={true} />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <AlertTriangle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-red-900 mb-4">Failed to Load Services</h2>
-            <p className="text-red-600 mb-6">{servicesError}</p>
+      <div className="min-h-screen relative overflow-hidden animate-fade-in">
+        {/* Background image */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat animate-zoom-in"
+          style={{ backgroundImage: "url('/booker.jpg')" }}
+        />
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/50" />
+        
+        <div className="relative z-10">
+          <BrandHeaderClient showAuth={false} showUserMenu={true} />
+          <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 animate-slide-in-up">
+          <div className="max-w-2xl mx-auto text-center">
+            <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-4">Failed to Load Services</h2>
+            <p className="text-red-200 mb-6">{servicesError}</p>
             <div className="space-y-4">
               <Button onClick={() => window.location.reload()} className="w-full">
               Try Again
@@ -382,15 +503,25 @@ function BookServiceContent() {
             {debugInfoDisplay}
           </div>
         </div>
+        </div>
       </div>
     );
   }
 
   if (confirmation) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <BrandHeaderClient showAuth={false} showUserMenu={true} />
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen relative overflow-hidden animate-fade-in">
+        {/* Background image */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat animate-zoom-in"
+          style={{ backgroundImage: "url('/booker.jpg')" }}
+        />
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/50" />
+        
+        <div className="relative z-10">
+          <BrandHeaderClient showAuth={false} showUserMenu={true} />
+          <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 animate-slide-in-up">
           <div className="max-w-2xl mx-auto text-center">
             <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
               <CardContent className="p-8">
@@ -413,108 +544,180 @@ function BookServiceContent() {
             </Card>
           </div>
         </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while checking authentication
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen relative overflow-hidden animate-fade-in">
+        {/* Background image */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat animate-zoom-in"
+          style={{ backgroundImage: "url('/booker.jpg')" }}
+        />
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/50" />
+        
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-white" />
+            <p className="text-white">Checking authentication...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <BrandHeaderClient showAuth={false} showUserMenu={true} />
+    <div className="min-h-screen relative overflow-hidden animate-fade-in">
+      {/* Background image */}
+      <div 
+        className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat animate-zoom-in"
+        style={{ backgroundImage: "url('/booker.jpg')" }}
+      />
+      {/* Overlay for better text readability */}
+      <div className="absolute inset-0 bg-black/50" />
       
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
-        <div className="max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-5xl mx-auto">
-          {/* Hero */}
-          <div className="relative overflow-hidden rounded-2xl p-5 sm:p-6 mb-4 sm:mb-6 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"/>
-            <h1 className="text-white text-2xl sm:text-3xl lg:text-4xl font-bold">Book a Service</h1>
-            <p className="text-white/80 mt-2 max-w-2xl">Tell us what you need and we’ll connect you with trusted professionals nearby.</p>
-            <div className="mt-4">
-              <Stepper step={activeStep} />
-            </div>
-            {(form.serviceId || form.date || form.time || form.address) && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedService?.name && (
-                  <span className="px-2 py-1 rounded-full text-xs bg-white/15 text-white/90">{selectedService.name}</span>
-                )}
-                {selectedService?.category && (
-                  <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80">{selectedService.category}</span>
-                )}
-                {form.date && form.time && (
-                  <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80">{form.date} • {form.time}</span>
-                )}
-                {form.address && (
-                  <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/80 max-w-[60%] truncate" title={form.address}>{form.address}</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            {/* Main Form */}
-            <div className="md:col-span-2">
-              {showProviderDiscovery ? (
-                <ProviderDiscoveryPanel
-                  form={form}
-                  onProviderSelected={handleProviderSelected}
-                  onBack={() => { setShowProviderDiscovery(false); setActiveStep('REVIEW') }}
-                />
-              ) : showReview ? (
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                  <CardHeader className="pb-4 sm:pb-6">
-                    <CardTitle className="text-lg sm:text-xl">Review Booking</CardTitle>
-                    <CardDescription>Please review your booking details before confirming</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">Selected Service</Label>
-                        <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                          <span className="font-medium text-sm sm:text-base">{selectedService?.name}</span>
-                          <Badge variant="secondary" className="ml-2 text-xs">{selectedService?.category}</Badge>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">Date & Time</Label>
-                        <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                          <div className="text-sm sm:text-base">{form.date} • {form.time}</div>
-                        </div>
-                      </div>
+      <div className="relative z-10">
+        <BrandHeaderClient showAuth={false} showUserMenu={true} />
+        
+        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 animate-slide-in-up">
+        <div className="max-w-2xl mx-auto">
+          {showProviderDiscovery ? (
+            <ProviderDiscoveryPanel
+              form={form}
+              onProviderSelected={handleProviderSelected}
+              onBack={() => { setShowProviderDiscovery(false); setActiveStep('REVIEW') }}
+              onLoginSuccess={() => {
+                // User successfully logged in, continue with booking
+                console.log('User logged in successfully, continuing booking flow')
+              }}
+            />
+          ) : showReview ? (
+            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <CardHeader className="pb-4 sm:pb-6">
+                <CardTitle className="text-lg sm:text-xl">Review Booking</CardTitle>
+                <CardDescription>Please review your booking details before confirming</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Selected Service</Label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium text-sm sm:text-base">{selectedService?.name}</span>
+                      <Badge variant="secondary" className="ml-2 text-xs">{selectedService?.category}</Badge>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
-                      <Button type="button" variant="outline" onClick={() => { setShowReview(false); setActiveStep('FORM') }} className="flex-1 h-12 sm:h-11 order-2 sm:order-1">
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Edit Details
-                      </Button>
-                      <Button onClick={handleShowProviderDiscovery} disabled={submitting} className="flex-1 h-12 sm:h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 order-1 sm:order-2">
-                        <div className="flex items-center space-x-2">
-                          <span>Choose Provider</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </div>
-                      </Button>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">Date & Time</Label>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-lg">
+                      <div className="text-sm sm:text-base">{form.date} • {form.time}</div>
                     </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <BookingFormPanel
-                  value={form}
-                  onChange={setForm}
-                  onNext={(/* unused e */) => handleSubmit({ preventDefault: () => {} } as any)}
-                />
-              )}
-            </div>
-
-            {/* Sidebar */}
-            <SummaryPanel service={selectedService} date={form.date} time={form.time} address={form.address} />
-          </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
+                  <Button type="button" variant="outline" onClick={() => { setShowReview(false); setActiveStep('FORM') }} className="flex-1 h-12 sm:h-11 order-2 sm:order-1">
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Edit Details
+                  </Button>
+                  <Button onClick={handleShowProviderDiscovery} disabled={submitting} className="flex-1 h-12 sm:h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 order-1 sm:order-2">
+                    <div className="flex items-center space-x-2">
+                      <span>Choose Provider</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <BookingFormPanel
+              value={form}
+              onChange={(next) => {
+                setForm({
+                  serviceId: next.serviceId,
+                  date: next.date,
+                  time: next.time,
+                  address: next.address,
+                  notes: next.notes || "",
+                });
+              }}
+              onNext={() => {
+                // When the modern form completes all steps, proceed to review
+                setShowReview(true);
+                setActiveStep('REVIEW');
+              }}
+              submitting={submitting}
+            />
+          )}
         </div>
       </div>
       
-      {/* Mobile Navigation */}
-      <MobileBottomNav userRole="CLIENT" />
-      <MobileFloatingActionButton userRole="CLIENT" />
-      
-      {/* Debug info overlay */}
-      {debugInfoDisplay}
+        {/* Mobile Navigation */}
+        <MobileBottomNav userRole="CLIENT" />
+        <MobileFloatingActionButton userRole="CLIENT" />
+        
+        {/* Sign-in Required Popup */}
+        {showLoginPrompt && !isAuthenticated && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Background overlay */}
+            <div className="absolute inset-0 bg-black/50" />
+            
+            {/* Popup Card */}
+            <Card className="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl">
+              <CardContent className="p-8 text-center">
+                <div className="mb-6">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In Required</h2>
+                  <p className="text-gray-600">
+                    Please sign in to your account to continue with your booking
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <Button 
+                    onClick={() => {
+                      setShowLoginPrompt(false);
+                      setShowLoginModal(true);
+                    }}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  >
+                    Sign In
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCloseLoginPrompt}
+                    className="w-full"
+                  >
+                    Go Back Home
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Login Modal */}
+        <BookingLoginModal
+          isOpen={showLoginModal}
+          onClose={handleCloseLoginModal}
+          onLoginSuccess={handleLoginSuccess}
+          bookingData={{
+            serviceId: form.serviceId || "",
+            date: form.date || "",
+            time: form.time || "",
+            address: form.address || "",
+            notes: form.notes || ""
+          }}
+        />
+        
+        {/* Debug info overlay */}
+        {debugInfoDisplay}
+      </div>
     </div>
   );
 }
@@ -523,10 +726,10 @@ export default function BookServicePage() {
   return (
     <ErrorBoundary>
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p>Loading booking service...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-white" />
+          <p className="text-white">Loading booking service...</p>
         </div>
       </div>
     }>

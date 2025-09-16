@@ -84,27 +84,27 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
   }
 
   return (
-    <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+    <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 animate-slide-in-up">
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-4">
-            <Avatar className="w-16 h-16">
+            <Avatar className="w-16 h-16 ring-2 ring-purple-500/30">
               <AvatarImage src={provider.user.avatar} alt={provider.user.name} />
               <AvatarFallback className="text-lg font-semibold bg-gradient-to-br from-purple-500 to-blue-600 text-white">
                 {provider.user.name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-xl text-gray-900">
+              <CardTitle className="text-xl text-white">
                 {provider.businessName || provider.user.name}
               </CardTitle>
-              <CardDescription className="text-gray-600">
+              <CardDescription className="text-white/70">
                 {provider.service.name} • {provider.service.category}
               </CardDescription>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
+            <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30">
               <CheckCircle className="w-3 h-3 mr-1" />
               Available
             </Badge>
@@ -115,20 +115,20 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
       <CardContent className="space-y-4">
         {/* Provider Info */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <MapPin className="w-4 h-4 text-purple-500" />
+          <div className="flex items-center space-x-2 text-sm text-white/70">
+            <MapPin className="w-4 h-4 text-purple-400" />
             <span>{provider.location || "Location not specified"}</span>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Clock className="w-4 h-4 text-blue-500" />
+          <div className="flex items-center space-x-2 text-sm text-white/70">
+            <Clock className="w-4 h-4 text-blue-400" />
             <span>{formatExperience(provider.experience)} experience</span>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <DollarSign className="w-4 h-4 text-green-500" />
+          <div className="flex items-center space-x-2 text-sm text-white/70">
+            <DollarSign className="w-4 h-4 text-green-400" />
             <span>${provider.hourlyRate}/hr</span>
           </div>
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Star className="w-4 h-4 text-yellow-500" />
+          <div className="flex items-center space-x-2 text-sm text-white/70">
+            <Star className="w-4 h-4 text-yellow-400" />
             <span>{provider.averageRating}</span>
             <span>({provider.totalReviews} reviews)</span>
           </div>
@@ -136,24 +136,24 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
 
         {/* Description */}
         {provider.description && (
-          <p className="text-gray-700 text-sm leading-relaxed">
+          <p className="text-white/80 text-sm leading-relaxed">
             {provider.description}
           </p>
         )}
 
         {/* Stats */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
           <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900">{provider.completedJobs}</div>
-            <span className="text-xs text-gray-600">Jobs Completed</span>
+            <div className="text-lg font-semibold text-white">{provider.completedJobs}</div>
+            <span className="text-xs text-white/60">Jobs Completed</span>
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900">{provider.averageRating}</div>
-            <span className="text-xs text-gray-600">Average Rating</span>
+            <div className="text-lg font-semibold text-white">{provider.averageRating}</div>
+            <span className="text-xs text-white/60">Average Rating</span>
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900">{provider.totalReviews}</div>
-            <span className="text-xs text-gray-600">Total Reviews</span>
+            <div className="text-lg font-semibold text-white">{provider.totalReviews}</div>
+            <span className="text-xs text-white/60">Total Reviews</span>
           </div>
         </div>
 
@@ -161,12 +161,12 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
         {provider.recentReviews.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-gray-900">Recent Reviews</h4>
+              <h4 className="font-medium text-white">Recent Reviews</h4>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowReviews(!showReviews)}
-                className="text-purple-600 hover:text-purple-700"
+                className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
               >
                 {showReviews ? "Hide" : "Show"} Reviews
               </Button>
@@ -175,7 +175,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
             {showReviews && (
               <div className="space-y-3 max-h-48 overflow-y-auto">
                 {provider.recentReviews.map((review) => (
-                  <div key={review.id} className="p-3 bg-white rounded-lg border border-gray-200">
+                  <div key={review.id} className="p-3 bg-white/5 rounded-lg border border-white/10">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <div className="flex items-center space-x-1">
@@ -185,21 +185,21 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
                               aria-label={i < review.rating ? 'star-filled' : 'star-empty'}
                               key={i}
                               className={`w-3 h-3 ${
-                                i < review.rating ? "text-yellow-500 fill-current" : "text-gray-300"
+                                i < review.rating ? "text-yellow-400 fill-current" : "text-gray-500"
                               }`}
                             />
                           ))}
                         </div>
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-white">
                           {review.client?.name || review.booking?.client?.name || 'Anonymous'}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-white/60">
                         {formatDate(review.createdAt)}
                       </span>
                     </div>
                     {review.comment && (
-                      <p className="text-sm text-gray-700">{review.comment}</p>
+                      <p className="text-sm text-white/80">{review.comment}</p>
                     )}
                   </div>
                 ))}
@@ -209,12 +209,12 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-4 border-t border-white/10">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onViewDetails(provider)}
-            className="text-purple-600 border-purple-200 hover:bg-purple-50"
+            className="text-purple-400 border-purple-500/50 hover:bg-purple-500/20 hover:border-purple-400"
           >
             <Eye className="w-4 h-4 mr-1" />
             View Details
@@ -226,7 +226,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
               variant="outline"
               onClick={handleDecline}
               disabled={isProcessing}
-              className="border-red-200 text-red-600 hover:bg-red-50"
+              className="border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400"
             >
               <XCircle className="w-4 h-4 mr-1" />
               Decline
@@ -235,7 +235,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
               size="sm"
               onClick={handleAccept}
               disabled={isProcessing}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
             >
               <CheckCircle className="w-4 h-4 mr-1" />
               Accept

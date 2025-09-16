@@ -1,0 +1,1504 @@
+<testsuites id="" name="" tests="40" failures="40" skipped="0" errors="0" time="727.6975309999999">
+<testsuite name="client-journey\01-discovery-signup.spec.ts" timestamp="2025-09-15T13:41:11.649Z" hostname="chromium" tests="8" failures="8" skipped="0" time="271.508" errors="0">
+<testcase name="Client Journey - Discovery &amp; Sign Up › should display landing page with services and featured providers" classname="client-journey\01-discovery-signup.spec.ts" time="26.081">
+<failure message="01-discovery-signup.spec.ts:8:7 should display landing page with services and featured providers" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:8:7 › Client Journey - Discovery & Sign Up › should display landing page with services and featured providers 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /ConnectSA/
+    Received string:  ""
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        8 × unexpected value ""
+
+
+       8 |   test('should display landing page with services and featured providers', async ({ page }) => {
+       9 |     // Check if landing page loads
+    > 10 |     await expect(page).toHaveTitle(/ConnectSA/);
+         |                        ^
+      11 |     
+      12 |     // Check for hero section
+      13 |     await expect(page.locator('h1')).toContainText(/Find Reliable Service Providers/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:10:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to sign up page" classname="client-journey\01-discovery-signup.spec.ts" time="9.736">
+<failure message="01-discovery-signup.spec.ts:28:7 should navigate to sign up page" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:28:7 › Client Journey - Discovery & Sign Up › should navigate to sign up page 
+
+    Error: page.goto: Target page, context or browser has been closed
+    Call log:
+      - navigating to "http://localhost:3000/", waiting until "load"
+
+
+      3 | test.describe('Client Journey - Discovery & Sign Up', () => {
+      4 |   test.beforeEach(async ({ page }) => {
+    > 5 |     await page.goto('/');
+        |                ^
+      6 |   });
+      7 |
+      8 |   test('should display landing page with services and featured providers', async ({ page }) => {
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:5:16
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete client registration successfully" classname="client-journey\01-discovery-signup.spec.ts" time="37.733">
+<failure message="01-discovery-signup.spec.ts:37:7 should complete client registration successfully" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:37:7 › Client Journey - Discovery & Sign Up › should complete client registration successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      40 |     
+      41 |     // Fill out registration form
+    > 42 |     await page.fill('input[name="name"]', 'John Doe');
+         |                ^
+      43 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+      44 |     await page.fill('input[name="password"]', 'password123');
+      45 |     await page.fill('input[name="phone"]', '+27123456789');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:42:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should validate form inputs" classname="client-journey\01-discovery-signup.spec.ts" time="39.271">
+<failure message="01-discovery-signup.spec.ts:60:7 should validate form inputs" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:60:7 › Client Journey - Discovery & Sign Up › should validate form inputs 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('button[type="submit"]')
+
+
+      62 |     
+      63 |     // Try to submit empty form
+    > 64 |     await page.click('button[type="submit"]');
+         |                ^
+      65 |     
+      66 |     // Should show validation errors
+      67 |     await expect(page.locator('text=Name must be at least 2 characters')).toBeVisible();
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:64:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle duplicate email registration" classname="client-journey\01-discovery-signup.spec.ts" time="39.375">
+<failure message="01-discovery-signup.spec.ts:72:7 should handle duplicate email registration" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:72:7 › Client Journey - Discovery & Sign Up › should handle duplicate email registration 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      74 |     
+      75 |     // Fill form with existing email
+    > 76 |     await page.fill('input[name="name"]', 'Jane Doe');
+         |                ^
+      77 |     await page.fill('input[name="email"]', 'existing@example.com');
+      78 |     await page.fill('input[name="password"]', 'password123');
+      79 |     await page.check('input[value="CLIENT"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:76:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to login page" classname="client-journey\01-discovery-signup.spec.ts" time="41.355">
+<failure message="01-discovery-signup.spec.ts:87:7 should navigate to login page" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:87:7 › Client Journey - Discovery & Sign Up › should navigate to login page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Sign In')
+
+
+      87 |   test('should navigate to login page', async ({ page }) => {
+      88 |     // Click on login link
+    > 89 |     await page.click('text=Sign In');
+         |                ^
+      90 |     
+      91 |     // Should navigate to login page
+      92 |     await expect(page).toHaveURL(/.*login/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete login successfully" classname="client-journey\01-discovery-signup.spec.ts" time="35.25">
+<failure message="01-discovery-signup.spec.ts:96:7 should complete login successfully" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:96:7 › Client Journey - Discovery & Sign Up › should complete login successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+       98 |     
+       99 |     // Fill login form
+    > 100 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+          |                ^
+      101 |     await page.fill('input[name="password"]', 'password123');
+      102 |     
+      103 |     // Submit form
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:100:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle invalid login credentials" classname="client-journey\01-discovery-signup.spec.ts" time="42.707">
+<failure message="01-discovery-signup.spec.ts:111:7 should handle invalid login credentials" type="FAILURE">
+<![CDATA[  [chromium] › client-journey\01-discovery-signup.spec.ts:111:7 › Client Journey - Discovery & Sign Up › should handle invalid login credentials 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+      113 |     
+      114 |     // Fill with invalid credentials
+    > 115 |     await page.fill('input[name="email"]', 'invalid@example.com');
+          |                ^
+      116 |     await page.fill('input[name="password"]', 'wrongpassword');
+      117 |     
+      118 |     await page.click('button[type="submit"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:115:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-chromium\video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="client-journey\01-discovery-signup.spec.ts" timestamp="2025-09-15T13:41:11.649Z" hostname="firefox" tests="8" failures="8" skipped="0" time="230.865" errors="0">
+<testcase name="Client Journey - Discovery &amp; Sign Up › should display landing page with services and featured providers" classname="client-journey\01-discovery-signup.spec.ts" time="15.927">
+<failure message="01-discovery-signup.spec.ts:8:7 should display landing page with services and featured providers" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:8:7 › Client Journey - Discovery & Sign Up › should display landing page with services and featured providers 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /ConnectSA/
+    Received string:  ""
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        8 × unexpected value ""
+
+
+       8 |   test('should display landing page with services and featured providers', async ({ page }) => {
+       9 |     // Check if landing page loads
+    > 10 |     await expect(page).toHaveTitle(/ConnectSA/);
+         |                        ^
+      11 |     
+      12 |     // Check for hero section
+      13 |     await expect(page.locator('h1')).toContainText(/Find Reliable Service Providers/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:10:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to sign up page" classname="client-journey\01-discovery-signup.spec.ts" time="30.795">
+<failure message="01-discovery-signup.spec.ts:28:7 should navigate to sign up page" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:28:7 › Client Journey - Discovery & Sign Up › should navigate to sign up page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Get Started')
+
+
+      28 |   test('should navigate to sign up page', async ({ page }) => {
+      29 |     // Click on Get Started button
+    > 30 |     await page.click('text=Get Started');
+         |                ^
+      31 |     
+      32 |     // Should navigate to signup page
+      33 |     await expect(page).toHaveURL(/.*signup/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:30:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete client registration successfully" classname="client-journey\01-discovery-signup.spec.ts" time="30.331">
+<failure message="01-discovery-signup.spec.ts:37:7 should complete client registration successfully" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:37:7 › Client Journey - Discovery & Sign Up › should complete client registration successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      40 |     
+      41 |     // Fill out registration form
+    > 42 |     await page.fill('input[name="name"]', 'John Doe');
+         |                ^
+      43 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+      44 |     await page.fill('input[name="password"]', 'password123');
+      45 |     await page.fill('input[name="phone"]', '+27123456789');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:42:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should validate form inputs" classname="client-journey\01-discovery-signup.spec.ts" time="30.395">
+<failure message="01-discovery-signup.spec.ts:60:7 should validate form inputs" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:60:7 › Client Journey - Discovery & Sign Up › should validate form inputs 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('button[type="submit"]')
+
+
+      62 |     
+      63 |     // Try to submit empty form
+    > 64 |     await page.click('button[type="submit"]');
+         |                ^
+      65 |     
+      66 |     // Should show validation errors
+      67 |     await expect(page.locator('text=Name must be at least 2 characters')).toBeVisible();
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:64:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle duplicate email registration" classname="client-journey\01-discovery-signup.spec.ts" time="30.422">
+<failure message="01-discovery-signup.spec.ts:72:7 should handle duplicate email registration" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:72:7 › Client Journey - Discovery & Sign Up › should handle duplicate email registration 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      74 |     
+      75 |     // Fill form with existing email
+    > 76 |     await page.fill('input[name="name"]', 'Jane Doe');
+         |                ^
+      77 |     await page.fill('input[name="email"]', 'existing@example.com');
+      78 |     await page.fill('input[name="password"]', 'password123');
+      79 |     await page.check('input[value="CLIENT"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:76:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to login page" classname="client-journey\01-discovery-signup.spec.ts" time="32.2">
+<failure message="01-discovery-signup.spec.ts:87:7 should navigate to login page" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:87:7 › Client Journey - Discovery & Sign Up › should navigate to login page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Sign In')
+
+
+      87 |   test('should navigate to login page', async ({ page }) => {
+      88 |     // Click on login link
+    > 89 |     await page.click('text=Sign In');
+         |                ^
+      90 |     
+      91 |     // Should navigate to login page
+      92 |     await expect(page).toHaveURL(/.*login/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete login successfully" classname="client-journey\01-discovery-signup.spec.ts" time="30.404">
+<failure message="01-discovery-signup.spec.ts:96:7 should complete login successfully" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:96:7 › Client Journey - Discovery & Sign Up › should complete login successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+       98 |     
+       99 |     // Fill login form
+    > 100 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+          |                ^
+      101 |     await page.fill('input[name="password"]', 'password123');
+      102 |     
+      103 |     // Submit form
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:100:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle invalid login credentials" classname="client-journey\01-discovery-signup.spec.ts" time="30.391">
+<failure message="01-discovery-signup.spec.ts:111:7 should handle invalid login credentials" type="FAILURE">
+<![CDATA[  [firefox] › client-journey\01-discovery-signup.spec.ts:111:7 › Client Journey - Discovery & Sign Up › should handle invalid login credentials 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+      113 |     
+      114 |     // Fill with invalid credentials
+    > 115 |     await page.fill('input[name="email"]', 'invalid@example.com');
+          |                ^
+      116 |     await page.fill('input[name="password"]', 'wrongpassword');
+      117 |     
+      118 |     await page.click('button[type="submit"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:115:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-firefox\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-firefox\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-firefox\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-firefox\video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="client-journey\01-discovery-signup.spec.ts" timestamp="2025-09-15T13:41:11.649Z" hostname="webkit" tests="8" failures="8" skipped="0" time="233.169" errors="0">
+<testcase name="Client Journey - Discovery &amp; Sign Up › should display landing page with services and featured providers" classname="client-journey\01-discovery-signup.spec.ts" time="8.454">
+<failure message="01-discovery-signup.spec.ts:8:7 should display landing page with services and featured providers" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:8:7 › Client Journey - Discovery & Sign Up › should display landing page with services and featured providers 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /ConnectSA/
+    Received string:  ""
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        8 × unexpected value ""
+
+
+       8 |   test('should display landing page with services and featured providers', async ({ page }) => {
+       9 |     // Check if landing page loads
+    > 10 |     await expect(page).toHaveTitle(/ConnectSA/);
+         |                        ^
+      11 |     
+      12 |     // Check for hero section
+      13 |     await expect(page.locator('h1')).toContainText(/Find Reliable Service Providers/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:10:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to sign up page" classname="client-journey\01-discovery-signup.spec.ts" time="30.493">
+<failure message="01-discovery-signup.spec.ts:28:7 should navigate to sign up page" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:28:7 › Client Journey - Discovery & Sign Up › should navigate to sign up page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Get Started')
+
+
+      28 |   test('should navigate to sign up page', async ({ page }) => {
+      29 |     // Click on Get Started button
+    > 30 |     await page.click('text=Get Started');
+         |                ^
+      31 |     
+      32 |     // Should navigate to signup page
+      33 |     await expect(page).toHaveURL(/.*signup/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:30:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete client registration successfully" classname="client-journey\01-discovery-signup.spec.ts" time="31.56">
+<failure message="01-discovery-signup.spec.ts:37:7 should complete client registration successfully" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:37:7 › Client Journey - Discovery & Sign Up › should complete client registration successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      40 |     
+      41 |     // Fill out registration form
+    > 42 |     await page.fill('input[name="name"]', 'John Doe');
+         |                ^
+      43 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+      44 |     await page.fill('input[name="password"]', 'password123');
+      45 |     await page.fill('input[name="phone"]', '+27123456789');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:42:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should validate form inputs" classname="client-journey\01-discovery-signup.spec.ts" time="37.162">
+<failure message="01-discovery-signup.spec.ts:60:7 should validate form inputs" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:60:7 › Client Journey - Discovery & Sign Up › should validate form inputs 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('button[type="submit"]')
+
+
+      62 |     
+      63 |     // Try to submit empty form
+    > 64 |     await page.click('button[type="submit"]');
+         |                ^
+      65 |     
+      66 |     // Should show validation errors
+      67 |     await expect(page.locator('text=Name must be at least 2 characters')).toBeVisible();
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:64:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle duplicate email registration" classname="client-journey\01-discovery-signup.spec.ts" time="30.646">
+<failure message="01-discovery-signup.spec.ts:72:7 should handle duplicate email registration" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:72:7 › Client Journey - Discovery & Sign Up › should handle duplicate email registration 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      74 |     
+      75 |     // Fill form with existing email
+    > 76 |     await page.fill('input[name="name"]', 'Jane Doe');
+         |                ^
+      77 |     await page.fill('input[name="email"]', 'existing@example.com');
+      78 |     await page.fill('input[name="password"]', 'password123');
+      79 |     await page.check('input[value="CLIENT"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:76:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to login page" classname="client-journey\01-discovery-signup.spec.ts" time="30.676">
+<failure message="01-discovery-signup.spec.ts:87:7 should navigate to login page" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:87:7 › Client Journey - Discovery & Sign Up › should navigate to login page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Sign In')
+
+
+      87 |   test('should navigate to login page', async ({ page }) => {
+      88 |     // Click on login link
+    > 89 |     await page.click('text=Sign In');
+         |                ^
+      90 |     
+      91 |     // Should navigate to login page
+      92 |     await expect(page).toHaveURL(/.*login/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete login successfully" classname="client-journey\01-discovery-signup.spec.ts" time="33.505">
+<failure message="01-discovery-signup.spec.ts:96:7 should complete login successfully" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:96:7 › Client Journey - Discovery & Sign Up › should complete login successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+       98 |     
+       99 |     // Fill login form
+    > 100 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+          |                ^
+      101 |     await page.fill('input[name="password"]', 'password123');
+      102 |     
+      103 |     // Submit form
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:100:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle invalid login credentials" classname="client-journey\01-discovery-signup.spec.ts" time="30.673">
+<failure message="01-discovery-signup.spec.ts:111:7 should handle invalid login credentials" type="FAILURE">
+<![CDATA[  [webkit] › client-journey\01-discovery-signup.spec.ts:111:7 › Client Journey - Discovery & Sign Up › should handle invalid login credentials 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+      113 |     
+      114 |     // Fill with invalid credentials
+    > 115 |     await page.fill('input[name="email"]', 'invalid@example.com');
+          |                ^
+      116 |     await page.fill('input[name="password"]', 'wrongpassword');
+      117 |     
+      118 |     await page.click('button[type="submit"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:115:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-webkit\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-webkit\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-webkit\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-webkit\video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="client-journey\01-discovery-signup.spec.ts" timestamp="2025-09-15T13:41:11.649Z" hostname="Mobile Chrome" tests="8" failures="8" skipped="0" time="263.333" errors="0">
+<testcase name="Client Journey - Discovery &amp; Sign Up › should display landing page with services and featured providers" classname="client-journey\01-discovery-signup.spec.ts" time="8.732">
+<failure message="01-discovery-signup.spec.ts:8:7 should display landing page with services and featured providers" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:8:7 › Client Journey - Discovery & Sign Up › should display landing page with services and featured providers 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /ConnectSA/
+    Received string:  ""
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        8 × unexpected value ""
+
+
+       8 |   test('should display landing page with services and featured providers', async ({ page }) => {
+       9 |     // Check if landing page loads
+    > 10 |     await expect(page).toHaveTitle(/ConnectSA/);
+         |                        ^
+      11 |     
+      12 |     // Check for hero section
+      13 |     await expect(page.locator('h1')).toContainText(/Find Reliable Service Providers/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:10:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to sign up page" classname="client-journey\01-discovery-signup.spec.ts" time="34.666">
+<failure message="01-discovery-signup.spec.ts:28:7 should navigate to sign up page" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:28:7 › Client Journey - Discovery & Sign Up › should navigate to sign up page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Get Started')
+
+
+      28 |   test('should navigate to sign up page', async ({ page }) => {
+      29 |     // Click on Get Started button
+    > 30 |     await page.click('text=Get Started');
+         |                ^
+      31 |     
+      32 |     // Should navigate to signup page
+      33 |     await expect(page).toHaveURL(/.*signup/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:30:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete client registration successfully" classname="client-journey\01-discovery-signup.spec.ts" time="39.855">
+<failure message="01-discovery-signup.spec.ts:37:7 should complete client registration successfully" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:37:7 › Client Journey - Discovery & Sign Up › should complete client registration successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      40 |     
+      41 |     // Fill out registration form
+    > 42 |     await page.fill('input[name="name"]', 'John Doe');
+         |                ^
+      43 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+      44 |     await page.fill('input[name="password"]', 'password123');
+      45 |     await page.fill('input[name="phone"]', '+27123456789');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:42:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should validate form inputs" classname="client-journey\01-discovery-signup.spec.ts" time="35.16">
+<failure message="01-discovery-signup.spec.ts:60:7 should validate form inputs" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:60:7 › Client Journey - Discovery & Sign Up › should validate form inputs 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('button[type="submit"]')
+
+
+      62 |     
+      63 |     // Try to submit empty form
+    > 64 |     await page.click('button[type="submit"]');
+         |                ^
+      65 |     
+      66 |     // Should show validation errors
+      67 |     await expect(page.locator('text=Name must be at least 2 characters')).toBeVisible();
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:64:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle duplicate email registration" classname="client-journey\01-discovery-signup.spec.ts" time="37.106">
+<failure message="01-discovery-signup.spec.ts:72:7 should handle duplicate email registration" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:72:7 › Client Journey - Discovery & Sign Up › should handle duplicate email registration 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      74 |     
+      75 |     // Fill form with existing email
+    > 76 |     await page.fill('input[name="name"]', 'Jane Doe');
+         |                ^
+      77 |     await page.fill('input[name="email"]', 'existing@example.com');
+      78 |     await page.fill('input[name="password"]', 'password123');
+      79 |     await page.check('input[value="CLIENT"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:76:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to login page" classname="client-journey\01-discovery-signup.spec.ts" time="35.983">
+<failure message="01-discovery-signup.spec.ts:87:7 should navigate to login page" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:87:7 › Client Journey - Discovery & Sign Up › should navigate to login page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Sign In')
+
+
+      87 |   test('should navigate to login page', async ({ page }) => {
+      88 |     // Click on login link
+    > 89 |     await page.click('text=Sign In');
+         |                ^
+      90 |     
+      91 |     // Should navigate to login page
+      92 |     await expect(page).toHaveURL(/.*login/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete login successfully" classname="client-journey\01-discovery-signup.spec.ts" time="35.722">
+<failure message="01-discovery-signup.spec.ts:96:7 should complete login successfully" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:96:7 › Client Journey - Discovery & Sign Up › should complete login successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+       98 |     
+       99 |     // Fill login form
+    > 100 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+          |                ^
+      101 |     await page.fill('input[name="password"]', 'password123');
+      102 |     
+      103 |     // Submit form
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:100:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle invalid login credentials" classname="client-journey\01-discovery-signup.spec.ts" time="36.109">
+<failure message="01-discovery-signup.spec.ts:111:7 should handle invalid login credentials" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › client-journey\01-discovery-signup.spec.ts:111:7 › Client Journey - Discovery & Sign Up › should handle invalid login credentials 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+      113 |     
+      114 |     // Fill with invalid credentials
+    > 115 |     await page.fill('input[name="email"]', 'invalid@example.com');
+          |                ^
+      116 |     await page.fill('input[name="password"]', 'wrongpassword');
+      117 |     
+      118 |     await page.click('button[type="submit"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:115:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Chrome\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Chrome\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Chrome\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Chrome\video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+<testsuite name="client-journey\01-discovery-signup.spec.ts" timestamp="2025-09-15T13:41:11.649Z" hostname="Mobile Safari" tests="8" failures="8" skipped="0" time="219.361" errors="0">
+<testcase name="Client Journey - Discovery &amp; Sign Up › should display landing page with services and featured providers" classname="client-journey\01-discovery-signup.spec.ts" time="6.625">
+<failure message="01-discovery-signup.spec.ts:8:7 should display landing page with services and featured providers" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:8:7 › Client Journey - Discovery & Sign Up › should display landing page with services and featured providers 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /ConnectSA/
+    Received string:  ""
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        8 × unexpected value ""
+
+
+       8 |   test('should display landing page with services and featured providers', async ({ page }) => {
+       9 |     // Check if landing page loads
+    > 10 |     await expect(page).toHaveTitle(/ConnectSA/);
+         |                        ^
+      11 |     
+      12 |     // Check for hero section
+      13 |     await expect(page.locator('h1')).toContainText(/Find Reliable Service Providers/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:10:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to sign up page" classname="client-journey\01-discovery-signup.spec.ts" time="30.42">
+<failure message="01-discovery-signup.spec.ts:28:7 should navigate to sign up page" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:28:7 › Client Journey - Discovery & Sign Up › should navigate to sign up page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Get Started')
+
+
+      28 |   test('should navigate to sign up page', async ({ page }) => {
+      29 |     // Click on Get Started button
+    > 30 |     await page.click('text=Get Started');
+         |                ^
+      31 |     
+      32 |     // Should navigate to signup page
+      33 |     await expect(page).toHaveURL(/.*signup/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:30:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete client registration successfully" classname="client-journey\01-discovery-signup.spec.ts" time="30.316">
+<failure message="01-discovery-signup.spec.ts:37:7 should complete client registration successfully" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:37:7 › Client Journey - Discovery & Sign Up › should complete client registration successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      40 |     
+      41 |     // Fill out registration form
+    > 42 |     await page.fill('input[name="name"]', 'John Doe');
+         |                ^
+      43 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+      44 |     await page.fill('input[name="password"]', 'password123');
+      45 |     await page.fill('input[name="phone"]', '+27123456789');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:42:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should validate form inputs" classname="client-journey\01-discovery-signup.spec.ts" time="30.438">
+<failure message="01-discovery-signup.spec.ts:60:7 should validate form inputs" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:60:7 › Client Journey - Discovery & Sign Up › should validate form inputs 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('button[type="submit"]')
+
+
+      62 |     
+      63 |     // Try to submit empty form
+    > 64 |     await page.click('button[type="submit"]');
+         |                ^
+      65 |     
+      66 |     // Should show validation errors
+      67 |     await expect(page.locator('text=Name must be at least 2 characters')).toBeVisible();
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:64:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle duplicate email registration" classname="client-journey\01-discovery-signup.spec.ts" time="30.36">
+<failure message="01-discovery-signup.spec.ts:72:7 should handle duplicate email registration" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:72:7 › Client Journey - Discovery & Sign Up › should handle duplicate email registration 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="name"]')
+
+
+      74 |     
+      75 |     // Fill form with existing email
+    > 76 |     await page.fill('input[name="name"]', 'Jane Doe');
+         |                ^
+      77 |     await page.fill('input[name="email"]', 'existing@example.com');
+      78 |     await page.fill('input[name="password"]', 'password123');
+      79 |     await page.check('input[value="CLIENT"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:76:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should navigate to login page" classname="client-journey\01-discovery-signup.spec.ts" time="30.542">
+<failure message="01-discovery-signup.spec.ts:87:7 should navigate to login page" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:87:7 › Client Journey - Discovery & Sign Up › should navigate to login page 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('text=Sign In')
+
+
+      87 |   test('should navigate to login page', async ({ page }) => {
+      88 |     // Click on login link
+    > 89 |     await page.click('text=Sign In');
+         |                ^
+      90 |     
+      91 |     // Should navigate to login page
+      92 |     await expect(page).toHaveURL(/.*login/);
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should complete login successfully" classname="client-journey\01-discovery-signup.spec.ts" time="30.341">
+<failure message="01-discovery-signup.spec.ts:96:7 should complete login successfully" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:96:7 › Client Journey - Discovery & Sign Up › should complete login successfully 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+       98 |     
+       99 |     // Fill login form
+    > 100 |     await page.fill('input[name="email"]', 'john.doe@example.com');
+          |                ^
+      101 |     await page.fill('input[name="password"]', 'password123');
+      102 |     
+      103 |     // Submit form
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:100:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Client Journey - Discovery &amp; Sign Up › should handle invalid login credentials" classname="client-journey\01-discovery-signup.spec.ts" time="30.319">
+<failure message="01-discovery-signup.spec.ts:111:7 should handle invalid login credentials" type="FAILURE">
+<![CDATA[  [Mobile Safari] › client-journey\01-discovery-signup.spec.ts:111:7 › Client Journey - Discovery & Sign Up › should handle invalid login credentials 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for locator('input[name="email"]')
+
+
+      113 |     
+      114 |     // Fill with invalid credentials
+    > 115 |     await page.fill('input[name="email"]', 'invalid@example.com');
+          |                ^
+      116 |     await page.fill('input[name="password"]', 'wrongpassword');
+      117 |     
+      118 |     await page.click('button[type="submit"]');
+        at C:\Users\liqui\OneDrive\Desktop\ConnectSA\ConnectSA-k9\tests\e2e\client-journey\01-discovery-signup.spec.ts:115:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Safari\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Safari\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Safari\test-failed-1.png]]
+
+[[ATTACHMENT|client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Safari\video.webm]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

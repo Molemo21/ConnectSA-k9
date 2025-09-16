@@ -1,0 +1,736 @@
+"use client"
+
+import React, { useState, useEffect } from "react"
+import useSWR from "swr"
+import { z } from "zod"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { 
+  Loader2, 
+  FileText, 
+  MapPin, 
+  ArrowRight, 
+  ArrowLeft, 
+  Search, 
+  CalendarDays, 
+  Clock,
+  CheckCircle,
+  ChevronRight,
+  ChevronLeft
+} from "lucide-react"
+
+const bookingFormSchema = z.object({
+  serviceId: z.string().min(1, 'Please select a service'),
+  date: z.string().min(1, 'Select a date'),
+  time: z.string().min(1, 'Select a time'),
+  address: z.string().min(3, 'Address is required'),
+  notes: z.string().optional(),
+})
+
+const fetcher = (url: string, signal?: AbortSignal) => fetch(url, { signal }).then(r => {
+  if (!r.ok) throw new Error(`${r.status}`)
+  return r.json()
+})
+
+interface ModernBookingFormProps {
+  value: { serviceId: string; date: string; time: string; address: string; notes?: string }
+  onChange: (next: ModernBookingFormProps["value"]) => void
+  onNext: () => void
+  onBack?: () => void
+  submitting?: boolean
+}
+
+const steps = [
+  { id: 'service', title: 'Service Type', icon: FileText },
+  { id: 'datetime', title: 'Date & Time', icon: CalendarDays },
+  { id: 'address', title: 'Address', icon: MapPin },
+  { id: 'notes', title: 'Notes', icon: FileText },
+  { id: 'confirm', title: 'Confirm', icon: CheckCircle },
+]
+
+export function ModernBookingForm({ value, onChange, onNext, onBack, submitting }: ModernBookingFormProps) {
+  const [currentStep, setCurrentStep] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [errors, setErrors] = useState<Partial<Record<keyof typeof value, string>>>({})
+  const [serviceQuery, setServiceQuery] = useState("")
+  const [recentServiceIds, setRecentServiceIds] = useState<string[]>([])
+  const [notesCount, setNotesCount] = useState(value.notes?.length || 0)
+  const [showRecentServices, setShowRecentServices] = useState(true)
+  const [addressPlaceholder, setAddressPlaceholder] = useState("")
+  const NOTES_MAX = 500
+
+  // Address placeholder examples
+  const addressExamples = [
+    "123 Main Street, Cape Town, 8001",
+    "45 Oak Avenue, Johannesburg, 2000", 
+    "78 Pine Road, Durban, 4000",
+    "12 Elm Street, Port Elizabeth, 6001",
+    "90 Maple Drive, Pretoria, 0001"
+  ]
+
+  // Service-specific suggestions
+  const getServiceSuggestions = (service: any) => {
+    if (!service) return ['Parking info', 'Gate/Access code', 'Pet on premises', 'Preferred time window']
+    
+    const serviceName = service.name.toLowerCase()
+    const category = service.category.toLowerCase()
+    
+    // Common suggestions for all services
+    const commonSuggestions = ['Parking info', 'Gate/Access code', 'Pet on premises', 'Preferred time window']
+    
+    // Service-specific suggestions
+    if (serviceName.includes('plumb') || category.includes('plumb')) {
+      return [
+        'Water shut-off location',
+        'Previous plumbing issues',
+        'Access to water meter',
+        'Emergency contact available',
+        'Gate/Access code',
+        'Parking info'
+      ]
+    } else if (serviceName.includes('electr') || category.includes('electr')) {
+      return [
+        'Fuse box location',
+        'Previous electrical issues',
+        'Power outage history',
+        'Emergency contact available',
+        'Gate/Access code',
+        'Parking info'
+      ]
+    } else if (serviceName.includes('clean') || category.includes('clean')) {
+      return [
+        'Cleaning supplies provided',
+        'Specific areas to focus on',
+        'Pet hair concerns',
+        'Allergies to cleaning products',
+        'Gate/Access code',
+        'Parking info'
+      ]
+    } else if (serviceName.includes('paint') || category.includes('paint')) {
+      return [
+        'Color preferences',
+        'Surface preparation needed',
+        'Furniture to be moved',
+        'Ventilation requirements',
+        'Gate/Access code',
+        'Parking info'
+      ]
+    } else if (serviceName.includes('garden') || category.includes('garden')) {
+      return [
+        'Plant care instructions',
+        'Watering schedule',
+        'Pest control needs',
+        'Garden tools available',
+        'Gate/Access code',
+        'Parking info'
+      ]
+    } else if (serviceName.includes('hair') || serviceName.includes('beauty') || category.includes('beauty')) {
+      return [
+        'Hair type and length',
+        'Previous color treatments',
+        'Allergies to products',
+        'Desired style reference',
+        'Emergency contact available',
+        'Parking info'
+      ]
+    } else if (serviceName.includes('move') || serviceName.includes('relocat') || category.includes('move')) {
+      return [
+        'Fragile items list',
+        'Stairs or elevator access',
+        'Parking restrictions',
+        'Moving date flexibility',
+        'Gate/Access code',
+        'Emergency contact available'
+      ]
+    } else if (serviceName.includes('security') || category.includes('security')) {
+      return [
+        'Security system details',
+        'Key locations',
+        'Emergency procedures',
+        'Access codes',
+        'Previous security issues',
+        'Parking info'
+      ]
+    } else if (serviceName.includes('carpent') || category.includes('carpent')) {
+      return [
+        'Wood type preferences',
+        'Existing damage',
+        'Measurements provided',
+        'Tools available on site',
+        'Gate/Access code',
+        'Parking info'
+      ]
+    }
+    
+    return commonSuggestions
+  }
+
+  const { data: services, error, isLoading } = useSWR('/api/services', (url) => {
+    const ctrl = new AbortController()
+    const p = fetcher(url, ctrl.signal)
+    ;(p as any).cancel = () => ctrl.abort()
+    return p
+  })
+
+  useEffect(() => {
+    const recents = (typeof window !== 'undefined' && localStorage.getItem('recentServices')) || '[]'
+    try { setRecentServiceIds(JSON.parse(recents)) } catch { setRecentServiceIds([]) }
+  }, [])
+
+  // Cycle through address placeholders when on address step
+  useEffect(() => {
+    if (currentStep === 2 && !value.address) {
+      let index = 0
+      const interval = setInterval(() => {
+        setAddressPlaceholder(addressExamples[index])
+        index = (index + 1) % addressExamples.length
+      }, 2000)
+      return () => clearInterval(interval)
+    } else {
+      setAddressPlaceholder("")
+    }
+  }, [currentStep, value.address])
+
+  const selectedService = React.useMemo(() => services?.find((s: any) => s.id === value.serviceId), [services, value.serviceId])
+
+  const handleFieldChange = (name: keyof typeof value, val: string) => {
+    const next = { ...value, [name]: val }
+    onChange(next)
+    const res = bookingFormSchema.safeParse(next)
+    if (!res.success) {
+      const issue = res.error.issues[0]
+      if (issue?.path[0]) setErrors(prev => ({ ...prev, [issue.path[0] as keyof typeof value]: issue.message }))
+    } else {
+      setErrors({})
+    }
+    if (name === 'serviceId') {
+      if (typeof window !== 'undefined') {
+        const nextRecents = [val, ...recentServiceIds.filter(id => id !== val)].slice(0, 5)
+        setRecentServiceIds(nextRecents)
+        localStorage.setItem('recentServices', JSON.stringify(nextRecents))
+      }
+      // Hide recent services tab after selection
+      setShowRecentServices(false)
+    }
+    if (name === 'notes') setNotesCount(val.length)
+  }
+
+  const handleNext = async () => {
+    // Validate current step
+    const stepValidations = {
+      0: () => value.serviceId,
+      1: () => value.date && value.time,
+      2: () => value.address,
+      3: () => true, // Notes are optional
+      4: () => true, // Confirmation step
+    }
+
+    if (!stepValidations[currentStep]()) {
+      setErrors({ [currentStep === 0 ? 'serviceId' : currentStep === 1 ? 'date' : 'address']: 'This field is required' })
+      return
+    }
+
+    if (currentStep < steps.length - 1) {
+      setIsTransitioning(true)
+      // Enhanced transition timing for smoother effect
+      setTimeout(() => {
+        setCurrentStep(prev => prev + 1)
+        // Add a small delay before showing new content for smoother transition
+        setTimeout(() => {
+          setIsTransitioning(false)
+        }, 50)
+      }, 300)
+    } else {
+      onNext()
+    }
+  }
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setIsTransitioning(true)
+      // Enhanced transition timing for smoother effect
+      setTimeout(() => {
+        setCurrentStep(prev => prev - 1)
+        // Add a small delay before showing new content for smoother transition
+        setTimeout(() => {
+          setIsTransitioning(false)
+        }, 50)
+      }, 300)
+    } else if (onBack) {
+      onBack()
+    }
+  }
+
+  const filteredServices = React.useMemo(() => {
+    if (!services) return []
+    const q = serviceQuery.trim().toLowerCase()
+    if (!q) return services
+    return services.filter((s: any) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+  }, [services, serviceQuery])
+
+  const timeSlots = React.useMemo(() => {
+    const slots: string[] = []
+    for (let h = 8; h <= 20; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const hh = String(h).padStart(2, '0')
+        const mm = String(m).padStart(2, '0')
+        slots.push(`${hh}:${mm}`)
+      }
+    }
+    return slots
+  }, [])
+
+  const isValid = bookingFormSchema.safeParse(value).success
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 0: // Service Type
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">What service do you need?</h3>
+              <p className="text-sm sm:text-base text-white/80">Choose from our verified service providers</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="relative animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl text-base sm:text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="Search services..."
+                  value={serviceQuery}
+                  onChange={(e) => setServiceQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="max-h-64 sm:max-h-80 overflow-y-auto space-y-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                {/* Show selected service prominently */}
+                {value.serviceId && selectedService && (
+                  <div className="px-2 py-1 text-xs uppercase tracking-wide text-green-600 font-medium">Selected Service</div>
+                )}
+                {value.serviceId && selectedService && (
+                  <div className="w-full text-left p-3 sm:p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all duration-200">
+                    <div className="font-medium text-gray-900 text-sm sm:text-base flex items-center">
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                      {selectedService.name}
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-500 ml-6">{selectedService.category}</div>
+                    <button
+                      onClick={() => {
+                        handleFieldChange('serviceId', '')
+                        setShowRecentServices(true)
+                        setServiceQuery('')
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 ml-6 mt-1 underline"
+                    >
+                      Change selection
+                    </button>
+                  </div>
+                )}
+
+                {/* Show recent services only if no service selected and recent tab is enabled */}
+                {!value.serviceId && showRecentServices && recentServiceIds.length > 0 && (
+                  <div className="px-2 py-1 text-xs uppercase tracking-wide text-gray-500 font-medium">Recent</div>
+                )}
+                {!value.serviceId && showRecentServices && recentServiceIds.map((id) => {
+                  const s = services?.find((x: any) => x.id === id)
+                  if (!s) return null
+                  return (
+                    <button
+                      key={`recent-${id}`}
+                      onClick={() => handleFieldChange('serviceId', id)}
+                      className="w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 border-gray-600 hover:border-gray-500 hover:bg-gray-700/50"
+                    >
+                      <div className="font-medium text-white text-sm sm:text-base">{s.name}</div>
+                      <div className="text-xs sm:text-sm text-gray-300">{s.category}</div>
+                    </button>
+                  )
+                })}
+                
+                {/* Show all services only if no service selected */}
+                {!value.serviceId && filteredServices && filteredServices.length > 0 && (
+                  <>
+                    {!serviceQuery && (
+                      <div className="px-2 py-1 text-xs uppercase tracking-wide text-white/70 font-medium">All Services</div>
+                    )}
+                    {filteredServices.map((service: any) => (
+                      <button
+                        key={service.id}
+                        onClick={() => handleFieldChange('serviceId', service.id)}
+                        className="w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 border-gray-600 hover:border-gray-500 hover:bg-gray-700/50"
+                      >
+                        <div className="font-medium text-white text-sm sm:text-base">{service.name}</div>
+                        <div className="text-xs sm:text-sm text-gray-300">{service.category}</div>
+                      </button>
+                    ))}
+                  </>
+                )}
+                
+                {!value.serviceId && (!filteredServices || filteredServices.length === 0) && (
+                  <div className="text-center py-6 sm:py-8 text-gray-500 text-sm sm:text-base">No services found</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 1: // Date & Time
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">When do you need this service?</h3>
+              <p className="text-sm sm:text-base text-white/80">Select your preferred date and time</p>
+            </div>
+            
+            <div className="space-y-4 sm:space-y-6">
+              <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <Label className="text-sm sm:text-base font-medium text-white">Date</Label>
+                <div className="relative">
+                  <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                  <Input
+                    type="date"
+                    value={value.date}
+                    onChange={(e) => handleFieldChange('date', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                {errors.date && <p className="text-xs sm:text-sm text-red-400">{errors.date}</p>}
+              </div>
+
+              <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
+                <Label className="text-sm sm:text-base font-medium text-white">Time</Label>
+                <div className="relative">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                  <Input
+                    type="time"
+                    value={value.time}
+                    onChange={(e) => handleFieldChange('time', e.target.value)}
+                    className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                {value.date && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                    {timeSlots.slice(0, 6).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => handleFieldChange('time', t)}
+                        className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
+                          value.time === t
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-700 text-white hover:bg-gray-600'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {errors.time && <p className="text-xs sm:text-sm text-red-600">{errors.time}</p>}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 2: // Address
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Where should we come?</h3>
+              <p className="text-sm sm:text-base text-white/80">Enter the service address</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <Label className="text-sm sm:text-base font-medium text-white">Service Address</Label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                  <Input
+                    value={value.address}
+                    onChange={(e) => handleFieldChange('address', e.target.value)}
+                    placeholder={addressPlaceholder || "Enter your full address"}
+                    className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    autoComplete="street-address"
+                  />
+                </div>
+                
+                {/* Address format guidance */}
+                <div className="text-xs sm:text-sm text-white/70 bg-gray-800/50 p-3 rounded-lg animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                  <p className="font-medium mb-1">Address format example:</p>
+                  <p>Street number + Street name, City, Postal code</p>
+                  <p className="text-white/60 mt-1">e.g., 123 Main Street, Cape Town, 8001</p>
+                </div>
+                
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full text-sm sm:text-base animate-slide-in-up"
+                  style={{ animationDelay: '0.3s' }}
+                  onClick={() => {
+                    if (navigator.geolocation) {
+                      navigator.geolocation.getCurrentPosition((pos) => {
+                        const coords = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`
+                        handleFieldChange('address', `My location (${coords})`)
+                      })
+                    }
+                  }}
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Use my current location
+                </Button>
+                {errors.address && <p className="text-xs sm:text-sm text-red-600">{errors.address}</p>}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 3: // Notes
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Any special requirements?</h3>
+              <p className="text-sm sm:text-base text-white/80">Add any additional details (optional)</p>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Service-specific suggestions */}
+              <div className="bg-blue-900/30 p-3 rounded-lg animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <p className="text-xs sm:text-sm text-blue-200 font-medium mb-2">
+                  {selectedService ? `Suggestions for ${selectedService.name}:` : 'Common requirements:'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {getServiceSuggestions(selectedService).map((chip) => (
+                    <button
+                      key={chip}
+                      onClick={() => handleFieldChange('notes', `${(value.notes || '').trim()}${value.notes ? '\n' : ''}${chip}: `)}
+                      className="px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm border border-blue-400 text-blue-200 hover:bg-blue-800/50 hover:border-blue-300 transition-colors"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+                {!selectedService && (
+                  <p className="text-xs text-blue-600 mt-2">
+                    💡 Select a service above to see specific suggestions
+                  </p>
+                )}
+              </div>
+              
+              <div className="space-y-2 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
+                <Label className="text-sm sm:text-base font-medium text-white">Additional Notes</Label>
+                <Textarea
+                  value={value.notes || ''}
+                  onChange={(e) => handleFieldChange('notes', e.target.value)}
+                  placeholder="Any specific requirements or details..."
+                  rows={4}
+                  className="text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  maxLength={NOTES_MAX}
+                />
+                <div className="text-xs sm:text-sm text-white/70 text-right">{notesCount}/{NOTES_MAX} characters</div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 4: // Confirm
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Review your booking</h3>
+              <p className="text-sm sm:text-base text-white/80">Please confirm your service details</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-gray-800/50 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                  <span className="font-medium text-white text-sm sm:text-base">Service</span>
+                  <span className="text-white/80 text-sm sm:text-base">{selectedService?.name || 'Not selected'}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                  <span className="font-medium text-white text-sm sm:text-base">Category</span>
+                  <span className="text-white/80 text-sm sm:text-base">{selectedService?.category || 'N/A'}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                  <span className="font-medium text-white text-sm sm:text-base">Date</span>
+                  <span className="text-white/80 text-sm sm:text-base">{value.date || 'Not selected'}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                  <span className="font-medium text-white text-sm sm:text-base">Time</span>
+                  <span className="text-white/80 text-sm sm:text-base">{value.time || 'Not selected'}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-1 sm:space-y-0">
+                  <span className="font-medium text-white text-sm sm:text-base">Address</span>
+                  <span className="text-white/80 text-sm sm:text-base text-right max-w-xs break-words">{value.address || 'Not provided'}</span>
+                </div>
+                {value.notes && (
+                  <div className="pt-2 border-t border-gray-600">
+                    <span className="font-medium text-white block mb-1 text-sm sm:text-base">Notes</span>
+                    <span className="text-white/80 text-xs sm:text-sm whitespace-pre-line">{value.notes}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-400" />
+          <p className="text-white/80">Loading services...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 sm:px-0 animate-fade-in">
+      {/* Progress Bar - Mobile Optimized */}
+      <div className={`mb-6 sm:mb-8 transition-all duration-300 ${
+        isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
+      }`}>
+        {/* Mobile Progress - Horizontal Scroll */}
+        <div className="sm:hidden overflow-x-auto pb-2">
+          <div className="flex items-center space-x-4 min-w-max">
+            {steps.map((step, index) => {
+              const Icon = step.icon
+              const isActive = index === currentStep
+              const isCompleted = index < currentStep
+              
+              return (
+                <div key={step.id} className="flex flex-col items-center space-y-2 min-w-[60px]">
+                  <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-500 ${
+                    isCompleted 
+                      ? 'bg-green-500 border-green-500 text-white scale-110' 
+                      : isActive 
+                      ? 'bg-blue-500 border-blue-500 text-white scale-110 animate-pulse' 
+                      : 'bg-white border-gray-300 text-gray-400 scale-100'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <Icon className="w-4 h-4" />
+                    )}
+                  </div>
+                  <span className={`text-xs font-medium text-center ${
+                    isActive ? 'text-white' : isCompleted ? 'text-green-300' : 'text-white/70'
+                  }`}>
+                    {step.title}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Desktop Progress - Full Width */}
+        <div className="hidden sm:block">
+          <div className="flex items-center justify-between mb-4">
+            {steps.map((step, index) => {
+              const Icon = step.icon
+              const isActive = index === currentStep
+              const isCompleted = index < currentStep
+              
+              return (
+                <div key={step.id} className="flex items-center">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-500 ${
+                    isCompleted 
+                      ? 'bg-green-500 border-green-500 text-white scale-110' 
+                      : isActive 
+                      ? 'bg-blue-500 border-blue-500 text-white scale-110 animate-pulse' 
+                      : 'bg-white border-gray-300 text-gray-400 scale-100'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      <Icon className="w-5 h-5" />
+                    )}
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className={`w-12 h-0.5 mx-2 transition-all duration-300 ${
+                      isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                    }`} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        
+        <div className={`text-center transition-all duration-300 ${
+          isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
+        }`}>
+          <p className="text-sm font-medium text-white">
+            Step {currentStep + 1} of {steps.length}: {steps[currentStep].title}
+          </p>
+        </div>
+      </div>
+
+      {/* Main Card - Mobile Optimized */}
+      <Card className={`shadow-xl border-0 bg-black/90 backdrop-blur-sm transition-all duration-500 animate-slide-in-up ${
+        isTransitioning ? 'opacity-0 scale-95 translate-y-4' : 'opacity-100 scale-100 translate-y-0'
+      }`}>
+        <CardContent className="p-4 sm:p-6 lg:p-8 relative">
+          {/* Transition overlay */}
+          {isTransitioning && (
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+              <div className="flex items-center space-x-2 text-white">
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <span className="text-sm">Loading...</span>
+              </div>
+            </div>
+          )}
+          <div className={`transition-all duration-300 ${
+            isTransitioning ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
+          }`}>
+            {renderStepContent()}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Navigation - Mobile Optimized */}
+      <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 sm:mt-8 space-y-3 sm:space-y-0 transition-all duration-300 ${
+        isTransitioning ? 'opacity-50 translate-y-2' : 'opacity-100 translate-y-0'
+      }`}>
+        <Button
+          variant="outline"
+          onClick={handleBack}
+          className="flex items-center px-4 sm:px-6 py-3 w-full sm:w-auto order-2 sm:order-1"
+        >
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          {currentStep === 0 ? 'Back' : 'Previous'}
+        </Button>
+
+        <Button
+          onClick={handleNext}
+          disabled={submitting}
+          className="flex items-center px-6 sm:px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base sm:text-lg shadow-lg w-full sm:w-auto order-1 sm:order-2"
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : currentStep === steps.length - 1 ? (
+            'Complete Booking'
+          ) : (
+            <>
+              Continue
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+}
