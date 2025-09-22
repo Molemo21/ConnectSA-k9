@@ -284,7 +284,17 @@ export function EnhancedProviderDashboard({ initialUser }: EnhancedProviderDashb
       })
 
       setBookings(data.bookings || [])
-      setStats(data.stats || stats)
+      setStats(data.stats || {
+        pendingJobs: 0,
+        confirmedJobs: 0,
+        pendingExecutionJobs: 0,
+        inProgressJobs: 0,
+        completedJobs: 0,
+        totalEarnings: 0,
+        thisMonthEarnings: 0,
+        averageRating: 0,
+        totalReviews: 0
+      })
       setError(null)
       setLastRefresh(new Date())
 
@@ -300,7 +310,7 @@ export function EnhancedProviderDashboard({ initialUser }: EnhancedProviderDashb
     } finally {
       setLoading(false)
     }
-  }, [authState.isAuthenticated, checkAuthentication, stats])
+  }, [authState.isAuthenticated, checkAuthentication])
 
   // Check bank details
   const checkBankDetails = useCallback(async (providerId: string) => {
@@ -322,7 +332,12 @@ export function EnhancedProviderDashboard({ initialUser }: EnhancedProviderDashb
 
   // Initial load effect
   useEffect(() => {
+    let isInitialized = false
+    
     const initializeDashboard = async () => {
+      if (isInitialized) return
+      isInitialized = true
+      
       console.log('Initializing provider dashboard...')
       const authSuccess = await checkAuthentication()
       if (authSuccess) {
@@ -331,22 +346,26 @@ export function EnhancedProviderDashboard({ initialUser }: EnhancedProviderDashb
     }
 
     initializeDashboard()
-  }, [checkAuthentication, fetchProviderData])
+  }, []) // Empty dependency array to run only once
 
   // Auto-refresh effect
   useEffect(() => {
-    if (!authState.isAuthenticated || !bookings.length) return
+    if (!authState.isAuthenticated) return
 
     const pollInterval = setInterval(async () => {
       try {
-        await fetchProviderData()
+        // Only refresh if we have bookings or if it's been a while since last refresh
+        const timeSinceLastRefresh = Date.now() - lastRefresh.getTime()
+        if (bookings.length > 0 || timeSinceLastRefresh > 60000) { // 1 minute
+          await fetchProviderData()
+        }
       } catch (error) {
         console.error('Auto-refresh error:', error)
       }
     }, 30000) // Refresh every 30 seconds
 
     return () => clearInterval(pollInterval)
-  }, [authState.isAuthenticated, bookings.length, fetchProviderData])
+  }, [authState.isAuthenticated, bookings.length, lastRefresh]) // Remove fetchProviderData dependency
 
   // Loading state
   if (authState.isLoading || loading) {
