@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { SimpleProviderDashboard } from "@/components/provider/provider-dashboard-simple"
+import { UnifiedProviderDashboard } from "@/components/provider/provider-dashboard-unified"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = "force-dynamic"
@@ -38,12 +38,12 @@ export default async function ProviderDashboardPage() {
       redirect("/provider/pending")
     }
 
-    // Pass user data to the client component
-    return <SimpleProviderDashboard initialUser={user} />
+    // Pass user data to the unified client component with matching client dashboard design
+    return <UnifiedProviderDashboard initialUser={user} />
   } catch (error) {
     console.error('Provider dashboard page error:', error)
     // If there's an error during server-side rendering, 
     // let the client component handle authentication
-    return <SimpleProviderDashboard />
+    return <UnifiedProviderDashboard />
   }
 } 
