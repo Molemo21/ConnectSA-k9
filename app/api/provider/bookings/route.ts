@@ -2,42 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// Structured logging utility
-const createLogger = (context: string) => ({
-  info: (message: string, data?: any) => {
-    console.log(JSON.stringify({
-      level: 'info',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  error: (message: string, error?: any, data?: any) => {
-    console.error(JSON.stringify({
-      level: 'error',
-      context,
-      message,
-      error: error?.message || error,
-      stack: error?.stack,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  warn: (message: string, data?: any) => {
-    console.warn(JSON.stringify({
-      level: 'warn',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  }
-});
-
 export async function GET(request: NextRequest) {
-  const logger = createLogger('ProviderBookingsAPI');
-  
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
     return NextResponse.json({
@@ -46,22 +11,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    logger.info('Starting provider bookings request');
+    console.log('Provider bookings API: Starting request');
     
     const user = await getCurrentUser();
-    logger.info('User fetched', { 
+    console.log('Provider bookings API: User fetched:', { 
       userId: user?.id, 
       userRole: user?.role,
       userEmail: user?.email 
     });
     
     if (!user) {
-      logger.warn('No user found');
+      console.log('Provider bookings API: No user found');
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
     
     if (user.role !== "PROVIDER") {
-      logger.warn('User is not a provider', { userRole: user.role });
+      console.log('Provider bookings API: User is not a provider:', user.role);
       return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 });
     }
 
@@ -69,14 +34,14 @@ export async function GET(request: NextRequest) {
       where: { userId: user.id },
     });
 
-    logger.info('Provider lookup result', { 
+    console.log('Provider bookings API: Provider found:', { 
       providerId: provider?.id,
       businessName: provider?.businessName,
       status: provider?.status 
     });
 
     if (!provider) {
-      logger.warn('Provider profile not found', { userId: user.id });
+      console.log('Provider bookings API: Provider profile not found for user:', user.id);
       return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
     }
 
@@ -102,7 +67,12 @@ export async function GET(request: NextRequest) {
         review: true,
       },
       orderBy: { scheduledDate: "asc" },
-    })
+    });
+
+    console.log('Provider bookings API: Bookings fetched:', { 
+      providerId: provider.id, 
+      bookingCount: bookings.length 
+    });
 
     // Calculate stats
     const pendingJobs = bookings.filter(b => b.status === "PENDING").length
@@ -143,12 +113,7 @@ export async function GET(request: NextRequest) {
       totalReviews: reviews.length
     }
 
-    logger.info('Provider bookings API success', {
-      providerId: provider.id,
-      bookingCount: bookings.length,
-      statsCalculated: !!stats,
-      hasBookings: bookings.length > 0
-    });
+    console.log('Provider bookings API: Stats calculated:', stats);
 
     // Always return success response, even with empty bookings
     return NextResponse.json({ 
@@ -162,7 +127,10 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    logger.error('Provider bookings API error', error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Provider bookings API error:", error);
+    return NextResponse.json({ 
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 });
   }
-} 
+}
