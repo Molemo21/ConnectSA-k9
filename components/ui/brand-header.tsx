@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { UserMenu } from "@/components/ui/user-menu"
-import { MobileNavigation } from "./mobile-navigation.tsx"
 import { RegionSwitcher } from "./region-switcher"
 import { Mail, Phone, MapPin, Clock, Globe } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
@@ -17,9 +16,15 @@ interface BrandHeaderProps {
     role?: string | null
     avatar?: string | null
   } | null
+  userStats?: {
+    totalBookings?: number
+    pendingBookings?: number
+    completedBookings?: number
+    rating?: number
+  }
 }
 
-export function BrandHeader({ showAuth = true, showUserMenu = false, className = "", user = null }: BrandHeaderProps) {
+export function BrandHeader({ showAuth = true, showUserMenu = false, className = "", user = null, userStats }: BrandHeaderProps) {
   const [isExploreOpen, setIsExploreOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [isContactOpen, setIsContactOpen] = useState(false)
@@ -167,20 +172,23 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
 
           {/* Auth/User Menu - Mobile First */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Region Switcher */}
-            <RegionSwitcher 
-              onRegionChange={(region) => {
-                console.log('Region changed to:', region)
-                // You can add your region change logic here
-              }}
-            />
+            {/* Region Switcher - Desktop Only */}
+            <div className="hidden md:block">
+              <RegionSwitcher 
+                onRegionChange={(region) => {
+                  console.log('Region changed to:', region)
+                  // You can add your region change logic here
+                }}
+              />
+            </div>
             
-            {showUserMenu && user ? (
-              <UserMenu user={user} />
+            {/* User Menu - Show for authenticated users on all devices */}
+            {user ? (
+              <UserMenu user={user} userStats={userStats} />
             ) : showAuth ? (
               <div className="flex items-center space-x-2 sm:space-x-3">
-                {/* Contact Button with Popup */}
-                <div className="relative" ref={contactRef}>
+                {/* Contact Button with Popup - Desktop Only */}
+                <div className="relative hidden md:block" ref={contactRef}>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -255,12 +263,6 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
             ) : null}
           </div>
 
-          {/* Mobile Navigation */}
-          <MobileNavigation 
-            user={user} 
-            showAuth={showAuth} 
-            showUserMenu={showUserMenu} 
-          />
         </div>
       </div>
     </header>

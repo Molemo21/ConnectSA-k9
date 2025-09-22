@@ -7,12 +7,19 @@ interface BrandHeaderClientProps {
   showAuth?: boolean
   showUserMenu?: boolean
   className?: string
+  userStats?: {
+    totalBookings?: number
+    pendingBookings?: number
+    completedBookings?: number
+    rating?: number
+  }
 }
 
 export function BrandHeaderClient({ 
   showAuth = true, 
   showUserMenu = false, 
-  className = "" 
+  className = "",
+  userStats
 }: BrandHeaderClientProps) {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -54,6 +61,7 @@ export function BrandHeaderClient({
       showUserMenu={user ? true : showUserMenu} 
       className={className}
       user={user}
+      userStats={userStats}
     />
   )
 } 

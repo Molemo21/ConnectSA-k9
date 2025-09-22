@@ -136,7 +136,7 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
 
   return (
     <nav className={cn(
-      "fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-50",
+      "fixed bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm border-t border-white/20 px-2 py-2 z-50",
       "sm:hidden", // Only show on mobile
       className
     )}>
@@ -159,7 +159,7 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
                     : "text-blue-600 bg-blue-50"
                   : isPrimary
                     ? "text-blue-600 bg-blue-50 hover:bg-blue-100" // Primary action when inactive
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                    : "text-white/60 hover:text-white hover:bg-white/10"
               )}
             >
               <Icon className={cn(

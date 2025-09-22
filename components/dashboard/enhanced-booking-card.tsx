@@ -124,7 +124,7 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
     default:
       return {
         label: status.replace("_", " "),
-        color: "bg-gray-100 text-gray-800 border-gray-200",
+        color: "bg-gray-500/20 text-gray-300 border-gray-500/50",
         icon: AlertCircle,
         description: "Unknown status"
       }
@@ -399,46 +399,77 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
   return (
     <>
-      <div className="relative perspective-1000">
+      <div className="relative perspective-1000 group">
+        {/* Animated Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/5 via-purple-500/3 to-blue-400/5 rounded-3xl animate-pulse opacity-30 group-hover:opacity-50 transition-opacity duration-1000"></div>
+        
         <Card 
-          className={`hover:shadow-lg transition-all duration-700 border-l-4 border-l-blue-500 transform-style-preserve-3d ${
+          className={`relative bg-black/90 backdrop-blur-xl shadow-2xl rounded-3xl border border-blue-400/20 hover:border-blue-400/40 transition-all duration-700 border-l-4 border-l-blue-400 transform-style-preserve-3d group-hover:shadow-blue-400/20 hover:shadow-2xl overflow-hidden ${
             isFlipping ? 'animate-flip-page' : ''
           }`} 
           data-booking-id={booking.id}
         >
-          <CardContent className="p-6">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-blue-600" />
+          {/* Subtle Floating Elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-4 right-6 w-1.5 h-1.5 bg-blue-400/30 rounded-full animate-pulse delay-300"></div>
+            <div className="absolute bottom-6 left-4 w-1 h-1 bg-blue-300/40 rounded-full animate-bounce delay-700"></div>
+            <div className="absolute top-1/2 right-4 w-2 h-2 bg-blue-500/20 rounded-full animate-pulse delay-1000"></div>
+          </div>
+          
+          <CardContent className="p-6 relative z-10">
+          {/* Enhanced Header */}
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              {/* Premium Service Icon */}
+              <div className="relative">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/30 group-hover:shadow-blue-400/50 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                  <Calendar className="w-7 h-7 text-white group-hover:scale-110 transition-transform duration-300" />
+                </div>
+                {/* Glowing Ring */}
+                <div className="absolute inset-0 rounded-2xl border-2 border-blue-400/30 group-hover:border-blue-300/50 transition-colors duration-500"></div>
+                {/* Pulse Effect */}
+                <div className="absolute inset-0 rounded-2xl bg-blue-400/20 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-blue-500 rounded-2xl opacity-20 group-hover:opacity-40 blur-sm transition-opacity duration-500"></div>
               </div>
+              
               <div className="min-w-0 flex-1">
-                <div className="flex items-center space-x-1">
-                  <h3 className="font-semibold text-gray-900 text-sm truncate">{booking.service.name}</h3>
+                <div className="flex items-center space-x-3 mb-2">
+                  <h3 className="text-xl sm:text-2xl font-bold text-transparent bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text truncate tracking-tight">{booking.service.name}</h3>
                   {isRecent() && (
-                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs px-1 py-0">
-                      New
-                    </Badge>
+                    <div className="relative">
+                      <Badge className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-300 border border-emerald-400/40 text-sm px-3 py-1 rounded-full font-semibold shadow-lg shadow-emerald-500/20 animate-pulse">
+                        New
+                      </Badge>
+                      <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-md animate-pulse"></div>
+                    </div>
                   )}
                 </div>
-                <p className="text-xs text-gray-600 truncate">{booking.service.category}</p>
+                <p className="text-base text-gray-300 truncate font-medium flex items-center space-x-2">
+                  <span>{booking.service.category}</span>
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
+                </p>
               </div>
             </div>
-            <StatusBadge 
-              status={booking.status} 
-              type="booking" 
-              size="sm"
-            />
+            <div className="flex-shrink-0">
+              <StatusBadge 
+                status={booking.status} 
+                type="booking" 
+                size="md"
+                className="shadow-lg hover:scale-105 transition-transform duration-300"
+              />
+            </div>
           </div>
 
-          {/* Timeline with Flipping Cards */}
-          <div className="mb-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Booking Timeline</span>
+          {/* Enhanced Timeline with Flipping Cards */}
+          <div className="mb-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-6 h-6 bg-gradient-to-br from-blue-400/20 to-blue-500/20 rounded-lg flex items-center justify-center">
+                <Clock className="w-4 h-4 text-blue-400" />
+              </div>
+              <span className="text-base font-semibold text-transparent bg-gradient-to-r from-gray-200 to-white bg-clip-text">Booking Timeline</span>
+              <div className="flex-1 h-px bg-gradient-to-r from-blue-400/30 to-transparent"></div>
             </div>
-            <div className="flex items-center space-x-3 overflow-x-auto pb-2">
+            <div className="flex items-center space-x-4 overflow-x-auto pb-3">
               {timelineSteps.map((step, index) => (
                 <div key={step.id} className="flex items-center flex-shrink-0">
                   {/* Flipping Card */}
@@ -449,18 +480,18 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                       }`}
                     >
                       {/* Front of card (incomplete state) */}
-                      <div className="absolute inset-0 w-full h-full backface-hidden rounded-lg bg-gray-100 border-2 border-gray-200 flex flex-col items-center justify-center">
-                        <div className="w-6 h-6 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center text-xs font-bold mb-1">
+                      <div className="absolute inset-0 w-full h-full backface-hidden rounded-lg bg-white/10 backdrop-blur-sm border-2 border-gray-300/20 flex flex-col items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-gray-600 text-white flex items-center justify-center text-xs font-bold mb-1">
                           {index + 1}
                         </div>
-                        <span className="text-xs text-gray-500 text-center leading-tight px-1">
+                        <span className="text-xs text-gray-300 text-center leading-tight px-1">
                           {step.label.split(' ').slice(0, 2).join(' ')}
                         </span>
                       </div>
                       
                       {/* Back of card (completed state) */}
-                      <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-lg bg-gradient-to-br from-green-400 to-green-600 border-2 border-green-500 flex flex-col items-center justify-center shadow-lg">
-                        <div className="w-6 h-6 rounded-full bg-white text-green-600 flex items-center justify-center text-xs font-bold mb-1">
+                      <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-lg bg-gradient-to-br from-blue-400 to-blue-500 border-2 border-blue-400 flex flex-col items-center justify-center shadow-lg">
+                        <div className="w-6 h-6 rounded-full bg-white text-blue-600 flex items-center justify-center text-xs font-bold mb-1">
                           ✓
                         </div>
                         <span className="text-xs text-white text-center leading-tight px-1 font-medium">
@@ -473,7 +504,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   {/* Connector Line */}
                   {index < timelineSteps.length - 1 && (
                     <div className={`w-8 h-0.5 mx-2 transition-colors duration-500 ${
-                      timelineSteps[index + 1].completed ? 'bg-green-500' : 'bg-gray-300'
+                      timelineSteps[index + 1].completed ? 'bg-blue-400' : 'bg-gray-300/30'
                     }`} />
                   )}
                 </div>
@@ -489,70 +520,98 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             allowContinue={booking.status === 'CONFIRMED'}
           />
           
-          {/* Details - Compact Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="space-y-1">
-              <div className="flex items-center space-x-1 text-xs">
-                <Calendar className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-700 truncate">
-                  {formattedDate}
-                </span>
+          {/* Premium Details Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div className="space-y-2">
+              {/* Date Card */}
+              <div className="relative group/detail overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 -translate-x-full group-hover/detail:translate-x-full transition-transform duration-1000 ease-out"></div>
+                <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-blue-400/10 via-blue-500/5 to-blue-400/10 backdrop-blur-sm rounded-xl border border-blue-400/20 hover:border-blue-400/40 transition-all duration-500 group-hover/detail:shadow-lg group-hover/detail:shadow-blue-400/20">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400/20 to-blue-500/20 rounded-lg flex items-center justify-center group-hover/detail:scale-110 transition-transform duration-300">
+                    <Calendar className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <span className="text-white font-medium text-sm">
+                    {formattedDate}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center space-x-1 text-xs">
-                <Clock className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-700">
-                  {formattedTime}
-                </span>
+              
+              {/* Time Card */}
+              <div className="relative group/detail overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 -translate-x-full group-hover/detail:translate-x-full transition-transform duration-1000 ease-out"></div>
+                <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-blue-400/10 via-blue-500/5 to-blue-400/10 backdrop-blur-sm rounded-xl border border-blue-400/20 hover:border-blue-400/40 transition-all duration-500 group-hover/detail:shadow-lg group-hover/detail:shadow-blue-400/20">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400/20 to-blue-500/20 rounded-lg flex items-center justify-center group-hover/detail:scale-110 transition-transform duration-300">
+                    <Clock className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <span className="text-white font-medium text-sm">
+                    {formattedTime}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center space-x-1 text-xs">
-                <MapPin className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-700 truncate">{booking.address}</span>
+            
+            <div className="space-y-2">
+              {/* Location Card */}
+              <div className="relative group/detail overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 -translate-x-full group-hover/detail:translate-x-full transition-transform duration-1000 ease-out"></div>
+                <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-blue-400/10 via-blue-500/5 to-blue-400/10 backdrop-blur-sm rounded-xl border border-blue-400/20 hover:border-blue-400/40 transition-all duration-500 group-hover/detail:shadow-lg group-hover/detail:shadow-blue-400/20">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400/20 to-blue-500/20 rounded-lg flex items-center justify-center group-hover/detail:scale-110 transition-transform duration-300">
+                    <MapPin className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <span className="text-white font-medium text-sm truncate">{booking.address}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">Amount:</span>
-                <span className="font-semibold text-gray-900">R{booking.totalAmount.toFixed(2)}</span>
+              
+              {/* Amount Card */}
+              <div className="relative group/detail overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent -skew-x-12 -translate-x-full group-hover/detail:translate-x-full transition-transform duration-1000 ease-out"></div>
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 backdrop-blur-sm rounded-xl border border-emerald-400/30 hover:border-emerald-400/50 transition-all duration-500 group-hover/detail:shadow-lg group-hover/detail:shadow-emerald-400/20">
+                  <span className="text-emerald-300 font-medium text-sm">Total Amount</span>
+                  <span className="font-bold text-lg text-transparent bg-gradient-to-r from-emerald-300 via-green-300 to-emerald-300 bg-clip-text">R{booking.totalAmount.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-            <div className="flex items-center space-x-2">
+          {/* Enhanced Action Buttons */}
+          <div className="flex items-center justify-between pt-6 border-t border-blue-400/20">
+            <div className="flex items-center space-x-3">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setShowActionsModal(true)}
-                className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                className="relative overflow-hidden bg-blue-400/10 border-blue-400/40 text-blue-300 hover:text-white hover:bg-blue-400/20 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-400/25 px-4 py-2 rounded-xl font-semibold group/btn"
               >
-                <Edit className="w-4 h-4 mr-1" />
-                Actions
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
+                <Edit className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300 relative z-10" />
+                <span className="relative z-10">Actions</span>
               </Button>
               {canMessage && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  className="relative overflow-hidden bg-blue-400/10 border-blue-400/40 text-blue-300 hover:text-white hover:bg-blue-400/20 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-400/25 px-4 py-2 rounded-xl font-semibold group/btn"
                   onClick={() => {
                     showToast.info('Messaging feature coming soon! You can contact your provider directly.')
                   }}
                 >
-                  <MessageCircle className="w-4 h-4 mr-1" />
-                  Message
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
+                  <MessageCircle className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300 relative z-10" />
+                  <span className="relative z-10">Message</span>
                 </Button>
               )}
               {booking.provider?.user.phone && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-green-600 border-green-200 hover:bg-green-50"
+                  className="relative overflow-hidden bg-emerald-500/10 border-emerald-400/40 text-emerald-300 hover:text-white hover:bg-emerald-500/20 hover:border-emerald-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-emerald-400/25 px-4 py-2 rounded-xl font-semibold group/btn"
                   onClick={() => {
                     window.open(`tel:${booking.provider?.user.phone}`, '_blank')
                   }}
                 >
-                  <Phone className="w-4 h-4 mr-1" />
-                  Call
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
+                  <Phone className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300 relative z-10" />
+                  <span className="relative z-10">Call</span>
                 </Button>
               )}
             </div>
@@ -562,7 +621,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 <Button 
                   size="sm" 
                   onClick={handlePay} 
-                  className="bg-green-600 hover:bg-green-700 pay-button"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 pay-button"
                   disabled={isPaymentInProgress}
                 >
                   {isPaymentInProgress ? (
@@ -578,7 +637,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 <Button 
                   size="sm" 
                   onClick={handleConfirmCompletion} 
-                  className="bg-orange-600 hover:bg-orange-700"
+                  className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
                 >
                   <CheckCircle className="w-4 h-4 mr-1" />
                   Confirm Completion
@@ -590,7 +649,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   size="sm" 
                   variant="outline" 
                   onClick={handleDispute}
-                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  className="text-red-400 border-red-500/50 hover:bg-red-500/20"
                 >
                   <AlertTriangle className="w-4 h-4 mr-1" />
                   Dispute
@@ -640,18 +699,18 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
           {/* Expandable Details */}
           {showDetails && (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+            <div className="mt-4 pt-4 border-t border-white/20 space-y-3">
               {booking.description && (
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Notes:</span>
-                  <p className="text-sm text-gray-600 mt-1">{booking.description}</p>
+                  <span className="text-sm font-medium text-white/60">Notes:</span>
+                  <p className="text-sm text-white/60 mt-1">{booking.description}</p>
                 </div>
               )}
               
               {booking.provider && (
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Provider Details:</span>
-                  <div className="mt-1 text-sm text-gray-600">
+                  <span className="text-sm font-medium text-white/60">Provider Details:</span>
+                  <div className="mt-1 text-sm text-white/60">
                     <p>Name: {booking.provider?.user.name}</p>
                     <p>Business: {booking.provider?.businessName}</p>
                     {booking.provider?.user.phone && (
@@ -663,8 +722,8 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
               
               {booking.payment && (
                 <div>
-                  <span className="text-sm font-medium text-gray-700">Payment Details:</span>
-                  <div className="mt-1 text-sm text-gray-600">
+                  <span className="text-sm font-medium text-white/60">Payment Details:</span>
+                  <div className="mt-1 text-sm text-white/60">
                     <p>Amount: R{booking.payment.amount.toFixed(2)}</p>
                     <p>Status: {booking.payment.status}</p>
                   </div>
@@ -675,7 +734,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
           {/* Review Section for completed bookings */}
           {(booking.status === "COMPLETED" || booking.status === "AWAITING_CONFIRMATION") && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-white/20">
               <ReviewSection
                 bookingId={booking.id}
                 existingReview={booking.review ? { ...booking.review, createdAt: new Date(booking.createdAt) } as any : null}

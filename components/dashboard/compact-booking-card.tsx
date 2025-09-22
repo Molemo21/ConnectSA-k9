@@ -212,38 +212,67 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
 
   return (
     <>
-      <Card className="w-full max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500" data-booking-id={booking.id}>
-        <CardContent className="p-3 sm:p-4 md:p-6 lg:p-8">
-          {/* Header - Enhanced for Large Screens */}
-          <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
-            <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-1 min-w-0">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600" />
+      <div className="relative group w-full max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto">
+        {/* Animated Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/5 via-purple-500/3 to-blue-400/5 rounded-3xl animate-pulse opacity-30 group-hover:opacity-50 transition-opacity duration-1000"></div>
+        
+        <Card className="relative bg-black/90 backdrop-blur-xl shadow-2xl rounded-3xl border border-blue-400/20 hover:border-blue-400/40 transition-all duration-700 border-l-4 border-l-blue-400 group-hover:shadow-blue-400/20 hover:shadow-2xl overflow-hidden group-hover:scale-[1.01]" data-booking-id={booking.id}>
+          {/* Subtle Floating Elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-4 right-6 w-1.5 h-1.5 bg-blue-400/30 rounded-full animate-pulse delay-300"></div>
+            <div className="absolute bottom-6 left-4 w-1 h-1 bg-blue-300/40 rounded-full animate-bounce delay-700"></div>
+            <div className="absolute top-1/2 right-4 w-2 h-2 bg-blue-500/20 rounded-full animate-pulse delay-1000"></div>
+          </div>
+          
+          <CardContent className="p-3 sm:p-4 md:p-6 lg:p-8 relative z-10">
+          {/* Premium Header */}
+          <div className="flex items-center justify-between mb-4 sm:mb-6 md:mb-8">
+            <div className="flex items-center space-x-3 sm:space-x-4 md:space-x-6 flex-1 min-w-0">
+              {/* Enhanced Service Icon */}
+              <div className="relative">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/30 group-hover:shadow-blue-400/50 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white group-hover:scale-110 transition-transform duration-300" />
+                </div>
+                {/* Glowing Ring */}
+                <div className="absolute inset-0 rounded-2xl border-2 border-blue-400/30 group-hover:border-blue-300/50 transition-colors duration-500"></div>
+                {/* Pulse Effect */}
+                <div className="absolute inset-0 rounded-2xl bg-blue-400/20 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-blue-500 rounded-2xl opacity-20 group-hover:opacity-40 blur-sm transition-opacity duration-500"></div>
               </div>
+              
               <div className="min-w-0 flex-1">
-                <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3">
-                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base md:text-lg lg:text-xl truncate">{booking.service.name}</h3>
+                <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 mb-2">
+                  <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-transparent bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text truncate tracking-tight">{booking.service.name}</h3>
                   {isRecent() && (
-                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs px-1 py-0 sm:px-2 sm:py-1 md:px-3 md:py-1">
-                      New
-                    </Badge>
+                    <div className="relative">
+                      <Badge className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-300 border border-emerald-400/40 text-sm px-3 py-1 rounded-full font-semibold shadow-lg shadow-emerald-500/20 animate-pulse">
+                        New
+                      </Badge>
+                      <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-md animate-pulse"></div>
+                    </div>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm md:text-base text-gray-600 truncate">{booking.service.category}</p>
+                <p className="text-sm sm:text-base md:text-lg text-gray-300 truncate font-medium flex items-center space-x-2">
+                  <span>{booking.service.category}</span>
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
+                </p>
               </div>
             </div>
-            <StatusBadge 
-              status={booking.status} 
-              type="booking" 
-              size="sm"
-            />
+            <div className="flex-shrink-0">
+              <StatusBadge 
+                status={booking.status} 
+                type="booking" 
+                size="md"
+                className="shadow-lg hover:scale-105 transition-transform duration-300"
+              />
+            </div>
           </div>
 
           {/* Timeline - Enhanced for Large Screens */}
           <div className="mb-3 sm:mb-4 md:mb-6">
             <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 mb-2 md:mb-3">
               <Clock className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-500" />
-              <span className="text-xs sm:text-sm md:text-base font-medium text-gray-700">Progress</span>
+              <span className="text-xs sm:text-sm md:text-base font-medium text-white/20">Progress</span>
             </div>
             <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-4 overflow-x-auto">
               {timelineSteps.map((step, index) => (
@@ -283,13 +312,13 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
             <div className="space-y-1 sm:space-y-2 md:space-y-3">
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 text-xs sm:text-sm md:text-base">
                 <Calendar className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-700 truncate">
+                <span className="text-white/20 truncate">
                   {new Date(booking.scheduledDate).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 text-xs sm:text-sm md:text-base">
                 <Clock className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-700">
+                <span className="text-white/20">
                   {new Date(booking.scheduledDate).toLocaleTimeString([], { 
                     hour: '2-digit', 
                     minute: '2-digit' 
@@ -300,24 +329,24 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
             <div className="space-y-1 sm:space-y-2 md:space-y-3">
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 text-xs sm:text-sm md:text-base">
                 <MapPin className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-700 truncate">{booking.address}</span>
+                <span className="text-white/20 truncate">{booking.address}</span>
               </div>
               <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
-                <span className="text-gray-600">Amount:</span>
-                <span className="font-semibold text-gray-900">R{booking.totalAmount.toFixed(2)}</span>
+                <span className="text-white/20">Amount:</span>
+                <span className="font-semibold text-white">R{booking.totalAmount.toFixed(2)}</span>
               </div>
             </div>
             {/* Additional info column for large screens */}
             <div className="hidden lg:block space-y-1 md:space-y-3">
               {booking.provider && (
                 <div className="flex items-center space-x-1 md:space-x-3 text-xs sm:text-sm md:text-base">
-                  <span className="text-gray-600">Provider:</span>
-                  <span className="text-gray-700 truncate">{booking.provider.businessName}</span>
+                  <span className="text-white/20">Provider:</span>
+                  <span className="text-white/20 truncate">{booking.provider.businessName}</span>
                 </div>
               )}
               <div className="flex items-center space-x-1 md:space-x-3 text-xs sm:text-sm md:text-base">
-                <span className="text-gray-600">Created:</span>
-                <span className="text-gray-700">
+                <span className="text-white/20">Created:</span>
+                <span className="text-white/20">
                   {new Date(booking.createdAt).toLocaleDateString()}
                 </span>
               </div>
@@ -325,7 +354,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
           </div>
 
           {/* Action Buttons - Enhanced for Large Screens */}
-          <div className="pt-3 sm:pt-4 md:pt-6 border-t border-gray-100">
+            <div className="pt-3 sm:pt-4 md:pt-6 border-t border-white/20">
             {/* Primary Actions Row */}
             <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3">
@@ -413,7 +442,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                   size="sm" 
                   variant="ghost" 
                   onClick={() => setShowDetails(!showDetails)}
-                  className="text-gray-500 hover:text-gray-700 h-8 sm:h-9 md:h-10 px-2 sm:px-3 md:px-4"
+                  className="text-white/20 hover:text-white h-8 sm:h-9 md:h-10 px-2 sm:px-3 md:px-4"
                 >
                   <span className="text-xs sm:text-sm md:text-base">
                     {showDetails ? 'Hide' : 'Details'}
@@ -454,8 +483,8 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
 
           {/* Expandable Details - Enhanced for Large Screens */}
           {showDetails && (
-            <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-100">
-              <div className="space-y-2 sm:space-y-3 md:space-y-4 text-xs sm:text-sm md:text-base text-gray-600">
+            <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-white/20">
+              <div className="space-y-2 sm:space-y-3 md:space-y-4 text-xs sm:text-sm md:text-base text-white/20">
                 <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 flex-shrink-0" />
                   <span>Created: {new Date(booking.createdAt).toLocaleDateString()} at{' '}
@@ -476,6 +505,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
           )}
         </CardContent>
       </Card>
+    </div>
 
       {/* Modals */}
       <BookingActionsModal
@@ -522,3 +552,5 @@ function getTimelineSteps(status: string, payment: any) {
   
   return steps
 }
+
+
