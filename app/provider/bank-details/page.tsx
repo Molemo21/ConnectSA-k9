@@ -3,6 +3,10 @@ import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { ProviderBankDetailsContent } from "@/components/provider/provider-bank-details-content"
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = "force-dynamic"
+
+
 export default async function ProviderBankDetailsPage() {
   const user = await getCurrentUser()
 

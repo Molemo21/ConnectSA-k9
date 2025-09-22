@@ -3,6 +3,10 @@ import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { MobileProviderDashboardV2 } from "@/components/provider/mobile-provider-dashboard-v2"
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = "force-dynamic"
+
+
 export default async function ProviderDashboardPage() {
   const user = await getCurrentUser()
 

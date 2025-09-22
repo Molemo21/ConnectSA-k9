@@ -23,6 +23,10 @@ import { useSmartBooking } from "@/hooks/use-smart-booking"
 import { usePaymentCallback } from "@/hooks/use-payment-callback"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = "force-dynamic"
+
+
 export default function BookingsPage() {
   const [user, setUser] = useState<any>(null)
   const [initialBookings, setInitialBookings] = useState<any[]>([])

@@ -12,6 +12,10 @@ import { MainContentAdmin } from "@/components/admin/main-content-admin"
 import { RefreshCw, Loader2 } from "lucide-react"
 import { showToast } from "@/lib/toast"
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = "force-dynamic"
+
+
 interface AdminStats {
   totalUsers: number
   totalProviders: number

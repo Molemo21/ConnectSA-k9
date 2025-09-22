@@ -5,6 +5,10 @@ import { BrandHeaderClient } from '@/components/ui/brand-header-client'
 import { MobileBottomNav } from '@/components/ui/mobile-bottom-nav'
 import { MobileFloatingActionButton } from '@/components/ui/mobile-floating-action-button'
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = "force-dynamic"
+
+
 export default async function AdminUsersPage() {
   const user = await getCurrentUser()
   
