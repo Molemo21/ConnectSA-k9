@@ -1,9 +1,10 @@
-export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db-utils'
 import { getCurrentUser } from '@/lib/auth'
 
+// Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 
 export async function GET() {

@@ -1,11 +1,14 @@
-export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { z } from "zod";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
+// Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+
 
 
 const bookingSchema = z.object({

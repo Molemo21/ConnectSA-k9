@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { 
-
-export const dynamic = 'force-dynamic'
-
   sendEmail, 
   sendVerificationEmail, 
   sendPasswordResetEmail, 
   sendBookingConfirmationEmail 
 } from "@/lib/email";
+
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
