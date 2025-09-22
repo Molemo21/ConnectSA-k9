@@ -1,42 +1,49 @@
 import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { MobileProviderDashboardV2 } from "@/components/provider/mobile-provider-dashboard-v2"
+import { EnhancedProviderDashboard } from "@/components/provider/provider-dashboard-enhanced"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = "force-dynamic"
 
-
 export default async function ProviderDashboardPage() {
-  const user = await getCurrentUser()
+  try {
+    const user = await getCurrentUser()
 
-  if (!user) {
-    redirect("/login")
+    if (!user) {
+      redirect("/login")
+    }
+
+    if (user.role !== "PROVIDER") {
+      redirect("/dashboard")
+    }
+
+    if (!user.emailVerified) {
+      redirect("/verify-email")
+    }
+
+    const provider = await prisma.provider.findUnique({
+      where: { userId: user.id },
+    })
+
+    if (!provider) {
+      redirect("/provider/onboarding")
+    }
+
+    if (provider.status === "INCOMPLETE" || provider.status === "REJECTED") {
+      redirect("/provider/onboarding")
+    }
+
+    if (provider.status === "PENDING") {
+      redirect("/provider/pending")
+    }
+
+    // Pass user data to the client component for better error handling
+    return <EnhancedProviderDashboard initialUser={user} />
+  } catch (error) {
+    console.error('Provider dashboard page error:', error)
+    // If there's an error during server-side rendering, 
+    // let the client component handle authentication
+    return <EnhancedProviderDashboard />
   }
-
-  if (user.role !== "PROVIDER") {
-    redirect("/dashboard")
-  }
-
-  if (!user.emailVerified) {
-    redirect("/verify-email")
-  }
-
-  const provider = await prisma.provider.findUnique({
-    where: { userId: user.id },
-  })
-
-  if (!provider) {
-    redirect("/provider/onboarding")
-  }
-
-  if (provider.status === "INCOMPLETE" || provider.status === "REJECTED") {
-    redirect("/provider/onboarding")
-  }
-
-  if (provider.status === "PENDING") {
-    redirect("/provider/pending")
-  }
-
-  return <MobileProviderDashboardV2 />
 } 
