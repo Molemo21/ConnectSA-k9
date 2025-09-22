@@ -208,8 +208,17 @@ export function MobileProviderDashboard() {
       const response = await fetch("/api/provider/bookings")
       if (response.ok) {
         const data = await response.json()
-        setBookings(data.bookings)
-        setStats(data.stats)
+        setBookings(data.bookings || [])
+        setStats(data.stats || {})
+        setError(null) // Clear any previous errors
+        
+        // Log the response for debugging
+        console.log('Provider bookings API response:', {
+          success: data.success,
+          bookingCount: data.bookings?.length || 0,
+          hasBookings: (data.bookings?.length || 0) > 0,
+          message: data.message
+        });
       } else {
         await handleApiError(response, "Failed to fetch bookings")
         setError("Failed to load bookings")
@@ -767,7 +776,7 @@ export function MobileProviderDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen gradient-bg-light">
       <BrandHeaderClient showAuth={false} showUserMenu={true} />
       
       <div className="container mx-auto px-4 py-6 pb-20">
@@ -782,7 +791,7 @@ export function MobileProviderDashboard() {
           <MobileTabbedSection
             tabs={tabs}
             defaultTab="overview"
-            className="bg-white rounded-xl shadow-sm border border-gray-200"
+            className="card-elevated rounded-xl"
           />
         </div>
       </div>

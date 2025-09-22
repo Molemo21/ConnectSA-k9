@@ -146,10 +146,20 @@ export async function GET(request: NextRequest) {
     logger.info('Provider bookings API success', {
       providerId: provider.id,
       bookingCount: bookings.length,
-      statsCalculated: !!stats
+      statsCalculated: !!stats,
+      hasBookings: bookings.length > 0
     });
 
-    return NextResponse.json({ bookings, stats, providerId: provider.id });
+    // Always return success response, even with empty bookings
+    return NextResponse.json({ 
+      success: true,
+      bookings, 
+      stats, 
+      providerId: provider.id,
+      message: bookings.length === 0 
+        ? "No active bookings found. Your bookings will appear here when clients book your services."
+        : `Found ${bookings.length} active bookings`
+    });
     
   } catch (error) {
     logger.error('Provider bookings API error', error);
