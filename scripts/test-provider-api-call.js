@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Test script to simulate the actual API call that the frontend makes
+ * Test the provider bookings API directly to see what's happening
  */
 
-const { PrismaClient } = require('@prisma/client');
+const https = require('https');
+const http = require('http');
 
 // Structured logging utility
 const createLogger = (context) => ({
@@ -39,241 +40,187 @@ const createLogger = (context) => ({
   }
 });
 
-const logger = createLogger('ProviderAPICallTest');
+const logger = createLogger('ProviderAPITest');
 
-async function simulateProviderAPICall() {
-  const prisma = new PrismaClient();
+function makeRequest(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const isHttps = url.startsWith('https://');
+    const client = isHttps ? https : http;
+    
+    const request = client.request(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    }, (response) => {
+      let data = '';
+      
+      response.on('data', (chunk) => {
+        data += chunk;
+      });
+      
+      response.on('end', () => {
+        try {
+          const jsonData = data ? JSON.parse(data) : {};
+          resolve({
+            status: response.statusCode,
+            statusText: response.statusMessage,
+            headers: response.headers,
+            data: jsonData
+          });
+        } catch (error) {
+          resolve({
+            status: response.statusCode,
+            statusText: response.statusMessage,
+            headers: response.headers,
+            data: data
+          });
+        }
+      });
+    });
+    
+    request.on('error', (error) => {
+      reject(error);
+    });
+    
+    request.setTimeout(10000, () => {
+      request.destroy();
+      reject(new Error('Request timeout'));
+    });
+    
+    request.end();
+  });
+}
+
+async function testProviderAPI() {
+  const baseUrl = 'https://app.proliinkconnect.co.za';
+  const apiUrl = `${baseUrl}/api/provider/bookings`;
+  
+  logger.info('Testing provider bookings API', { url: apiUrl });
   
   try {
-    await prisma.$connect();
-    logger.info('Simulating provider API call');
-
-    // Step 1: Get a provider user (simulating authentication)
-    const providerUser = await prisma.user.findFirst({
-      where: { 
-        role: 'PROVIDER',
-        provider: {
-          isNot: null
-        }
-      },
-      include: {
-        provider: true
-      }
-    });
-
-    if (!providerUser) {
-      logger.warn('No provider user found');
-      return;
-    }
-
-    logger.info('Found provider user', {
-      userId: providerUser.id,
-      userEmail: providerUser.email,
-      userRole: providerUser.role,
-      providerId: providerUser.provider?.id,
-      businessName: providerUser.provider?.businessName
-    });
-
-    // Step 2: Simulate the exact API logic from /api/provider/bookings/route.ts
-    logger.info('Simulating API logic');
-
-    // Check if user is provider
-    if (providerUser.role !== "PROVIDER") {
-      logger.error('User is not a provider', { userRole: providerUser.role });
-      return;
-    }
-
-    const provider = providerUser.provider;
-    if (!provider) {
-      logger.error('Provider profile not found', { userId: providerUser.id });
-      return;
-    }
-
-    // Fetch bookings with the exact query from the API
-    const bookings = await prisma.booking.findMany({
-      where: {
-        providerId: provider.id,
-        status: {
-          in: ["PENDING", "CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "COMPLETED"]
-        },
-      },
-      include: {
-        service: true,
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          }
-        },
-        payment: true,
-        review: true,
-      },
-      orderBy: { scheduledDate: "asc" },
-    });
-
-    logger.info('Bookings fetched successfully', {
-      providerId: provider.id,
-      bookingCount: bookings.length,
-      bookings: bookings.map(b => ({
-        id: b.id,
-        status: b.status,
-        serviceName: b.service?.name,
-        clientName: b.client?.name
-      }))
-    });
-
-    // Calculate stats
-    const pendingJobs = bookings.filter(b => b.status === "PENDING").length
-    const confirmedJobs = bookings.filter(b => b.status === "CONFIRMED").length
-    const pendingExecutionJobs = bookings.filter(b => b.status === "PENDING_EXECUTION").length
-    const inProgressJobs = bookings.filter(b => b.status === "IN_PROGRESS").length
-    const completedJobs = bookings.filter(b => b.status === "COMPLETED").length
-
-    const totalEarnings = bookings
-      .filter(b => b.payment && b.status === "COMPLETED")
-      .reduce((sum, b) => sum + (b.payment?.amount || 0), 0)
+    console.log('🔍 Testing Provider Bookings API');
+    console.log('================================');
+    console.log(`URL: ${apiUrl}`);
+    console.log('');
     
-    const thisMonthEarnings = bookings
-      .filter(b => {
-        const bookingDate = new Date(b.scheduledDate)
-        const now = new Date()
-        return b.payment && 
-               b.status === "COMPLETED" &&
-               bookingDate.getMonth() === now.getMonth() &&
-               bookingDate.getFullYear() === now.getFullYear()
-      })
-      .reduce((sum, b) => sum + (b.payment?.amount || 0), 0)
-
-    const reviews = bookings.filter(b => b.review)
-    const averageRating = reviews.length > 0 
-      ? reviews.reduce((sum, b) => sum + (b.review?.rating || 0), 0) / reviews.length 
-      : 0
-
-    const stats = {
-      pendingJobs,
-      confirmedJobs,
-      pendingExecutionJobs,
-      inProgressJobs,
-      completedJobs,
-      totalEarnings,
-      thisMonthEarnings,
-      averageRating,
-      totalReviews: reviews.length
-    };
-
-    logger.info('Stats calculated', { stats });
-
-    // Simulate the API response
-    const apiResponse = {
-      bookings,
-      stats,
-      providerId: provider.id
-    };
-
-    logger.info('API response would be successful', {
-      hasBookings: bookings.length > 0,
-      hasStats: !!stats,
-      hasProviderId: !!provider.id,
-      responseSize: JSON.stringify(apiResponse).length
+    const response = await makeRequest(apiUrl);
+    
+    console.log('📊 API Response:');
+    console.log(`Status: ${response.status} ${response.statusText}`);
+    console.log(`Headers:`, JSON.stringify(response.headers, null, 2));
+    console.log(`Data:`, JSON.stringify(response.data, null, 2));
+    
+    if (response.status === 401) {
+      console.log('\n🔐 Authentication Issue:');
+      console.log('- The API is returning 401 Unauthorized');
+      console.log('- This means the user is not properly authenticated');
+      console.log('- Check if the user is logged in correctly');
+      console.log('- Verify session cookies are being sent');
+    } else if (response.status === 403) {
+      console.log('\n🚫 Authorization Issue:');
+      console.log('- The API is returning 403 Forbidden');
+      console.log('- This means the user is authenticated but not a provider');
+      console.log('- Check if the user has the PROVIDER role');
+    } else if (response.status === 404) {
+      console.log('\n❌ Not Found Issue:');
+      console.log('- The API is returning 404 Not Found');
+      console.log('- This means no provider profile was found for the user');
+      console.log('- Check if the user has a provider record in the database');
+    } else if (response.status === 500) {
+      console.log('\n💥 Server Error:');
+      console.log('- The API is returning 500 Internal Server Error');
+      console.log('- This indicates a server-side issue');
+      console.log('- Check server logs for detailed error information');
+    } else if (response.status === 200) {
+      console.log('\n✅ Success:');
+      console.log('- The API is working correctly');
+      console.log('- Check if the frontend is handling the response properly');
+    } else {
+      console.log(`\n⚠️  Unexpected Status: ${response.status}`);
+      console.log('- This is an unexpected response status');
+      console.log('- Check the API implementation');
+    }
+    
+    logger.info('Provider API test completed', {
+      status: response.status,
+      statusText: response.statusText,
+      hasData: !!response.data,
+      dataKeys: response.data ? Object.keys(response.data) : []
     });
-
-    await prisma.$disconnect();
     
   } catch (error) {
-    logger.error('Error simulating provider API call', error);
-    await prisma.$disconnect();
+    logger.error('Error testing provider API', error);
+    console.log('\n❌ Request Failed:');
+    console.log(`Error: ${error.message}`);
+    
+    if (error.code === 'ENOTFOUND') {
+      console.log('- DNS resolution failed - check if the domain is correct');
+    } else if (error.code === 'ECONNREFUSED') {
+      console.log('- Connection refused - check if the server is running');
+    } else if (error.code === 'ETIMEDOUT') {
+      console.log('- Request timeout - server might be slow or overloaded');
+    }
   }
 }
 
-async function testAuthenticationFlow() {
-  const prisma = new PrismaClient();
+async function testHealthEndpoint() {
+  const baseUrl = 'https://app.proliinkconnect.co.za';
+  const healthUrl = `${baseUrl}/api/health`;
+  
+  logger.info('Testing health endpoint', { url: healthUrl });
   
   try {
-    await prisma.$connect();
-    logger.info('Testing authentication flow');
-
-    // Test 1: Find users with different roles
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        provider: {
-          select: {
-            id: true,
-            businessName: true,
-            status: true
-          }
-        }
-      },
-      take: 5
-    });
-
-    logger.info('Sample users', {
-      users: users.map(u => ({
-        id: u.id,
-        email: u.email,
-        role: u.role,
-        hasProvider: !!u.provider,
-        providerId: u.provider?.id,
-        businessName: u.provider?.businessName,
-        providerStatus: u.provider?.status
-      }))
-    });
-
-    // Test 2: Find providers with different statuses
-    const providers = await prisma.provider.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true
-          }
-        }
-      },
-      take: 5
-    });
-
-    logger.info('Sample providers', {
-      providers: providers.map(p => ({
-        id: p.id,
-        businessName: p.businessName,
-        status: p.status,
-        userEmail: p.user.email,
-        userRole: p.user.role
-      }))
-    });
-
-    await prisma.$disconnect();
+    console.log('\n🏥 Testing Health Endpoint');
+    console.log('==========================');
+    console.log(`URL: ${healthUrl}`);
+    console.log('');
+    
+    const response = await makeRequest(healthUrl);
+    
+    console.log('📊 Health Response:');
+    console.log(`Status: ${response.status} ${response.statusText}`);
+    console.log(`Data:`, JSON.stringify(response.data, null, 2));
+    
+    if (response.status === 200) {
+      console.log('\n✅ Server is healthy and responding');
+    } else {
+      console.log('\n⚠️  Server health check failed');
+    }
     
   } catch (error) {
-    logger.error('Error testing authentication flow', error);
-    await prisma.$disconnect();
+    logger.error('Error testing health endpoint', error);
+    console.log('\n❌ Health check failed:');
+    console.log(`Error: ${error.message}`);
   }
 }
 
 async function runTests() {
-  console.log('🧪 PROVIDER API CALL SIMULATION');
-  console.log('=================================');
+  console.log('🧪 PROVIDER DASHBOARD API DIAGNOSTICS');
+  console.log('=====================================');
   
   try {
-    // Test 1: Authentication flow
-    console.log('\n🔐 Testing Authentication Flow...');
-    await testAuthenticationFlow();
+    await testHealthEndpoint();
+    await testProviderAPI();
     
-    // Test 2: Provider API call simulation
-    console.log('\n📞 Simulating Provider API Call...');
-    await simulateProviderAPICall();
-    
-    console.log('\n✅ SIMULATION COMPLETE');
-    console.log('========================');
+    console.log('\n📋 DIAGNOSTIC SUMMARY');
+    console.log('=====================');
+    console.log('1. Health endpoint test - Check if server is running');
+    console.log('2. Provider API test - Check authentication and data');
+    console.log('');
+    console.log('🔧 NEXT STEPS:');
+    console.log('- If health check fails: Server deployment issue');
+    console.log('- If provider API returns 401: Authentication issue');
+    console.log('- If provider API returns 403: Role authorization issue');
+    console.log('- If provider API returns 404: Provider profile missing');
+    console.log('- If provider API returns 500: Server-side error');
+    console.log('- If provider API returns 200: Frontend handling issue');
     
   } catch (error) {
     logger.error('Test execution failed', error);
-    console.error('❌ Simulation failed:', error.message);
+    console.error('❌ Tests failed:', error.message);
     process.exit(1);
   }
 }
@@ -281,14 +228,14 @@ async function runTests() {
 // Handle script execution
 if (require.main === module) {
   runTests().catch((error) => {
-    logger.error('Test execution failed', error);
+    logger.error('Script execution failed', error);
     console.error('❌ Tests failed:', error.message);
     process.exit(1);
   });
 }
 
 module.exports = {
-  simulateProviderAPICall,
-  testAuthenticationFlow,
+  testProviderAPI,
+  testHealthEndpoint,
   runTests
 };
