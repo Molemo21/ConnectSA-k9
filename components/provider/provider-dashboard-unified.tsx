@@ -838,26 +838,38 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [router])
 
-  // Stable provider data fetch function
-  const fetchProviderData = useCallback(async () => {
+  // Stable provider data fetch function with retry logic
+  const fetchProviderData = useCallback(async (retryCount = 0) => {
+    const maxRetries = 3;
+    
     if (!dashboardState.auth.isAuthenticated) {
       console.log('Not authenticated, skipping provider data fetch')
       return
     }
 
     try {
+      console.log(`Fetching provider data (attempt ${retryCount + 1}/${maxRetries + 1})`);
+      
       setDashboardState(prev => ({
         ...prev,
         ui: { ...prev.ui, loading: true, error: null }
       }))
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       const response = await fetch('/api/provider/bookings', {
         method: 'GET',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
-      })
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
 
       if (response.status === 401) {
         const authSuccess = await checkAuthentication()
@@ -898,14 +910,25 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       }
 
     } catch (error) {
-      console.error('Error fetching provider data:', error)
-      setDashboardState(prev => ({
-        ...prev,
-        ui: {
-          ...prev.ui,
-          error: error instanceof Error ? error.message : 'Failed to load provider data'
-        }
-      }))
+      console.error('Error fetching provider data:', error);
+      
+      if (error.name === 'AbortError') {
+        console.log('Request timed out');
+      }
+      
+      if (retryCount < maxRetries) {
+        console.log(`Retrying in ${(retryCount + 1) * 2} seconds...`);
+        setTimeout(() => fetchProviderData(retryCount + 1), (retryCount + 1) * 2000);
+      } else {
+        setDashboardState(prev => ({
+          ...prev,
+          ui: {
+            ...prev.ui,
+            loading: false,
+            error: `Failed to load provider data after ${maxRetries + 1} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`
+          }
+        }))
+      }
     } finally {
       setDashboardState(prev => ({
         ...prev,

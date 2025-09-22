@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   // Skip during build time
@@ -14,10 +15,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log('Provider bookings API: Starting request');
+    console.log('=== PROVIDER BOOKINGS API START ===');
+    console.log('Request headers:', Object.fromEntries(request.headers.entries()));
+    console.log('Request URL:', request.url);
+    console.log('Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      cookieDomain: process.env.COOKIE_DOMAIN
+    });
     
     const user = await getCurrentUser();
-    console.log('Provider bookings API: User fetched:', { 
+    console.log('User authenticated:', !!user, { 
       userId: user?.id, 
       userRole: user?.role,
       userEmail: user?.email 
@@ -48,33 +57,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
     }
 
-    // Fetch all bookings for this provider
-    const bookings = await prisma.booking.findMany({
-      where: {
-        providerId: provider.id,
-        status: {
-          in: ["PENDING", "CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "COMPLETED"]
+    // Fetch all bookings for this provider with timeout
+    console.log('Fetching bookings for provider:', provider.id);
+    
+    const bookings = await Promise.race([
+      prisma.booking.findMany({
+        where: {
+          providerId: provider.id,
+          status: {
+            in: ["PENDING", "CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "COMPLETED"]
+          },
         },
-      },
-      include: {
-        service: true,
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          }
+        include: {
+          service: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            }
+          },
+          payment: true,
+          review: true,
         },
-        payment: true,
-        review: true,
-      },
-      orderBy: { scheduledDate: "asc" },
-    });
+        orderBy: { scheduledDate: "desc" },
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database query timeout after 15 seconds')), 15000)
+      )
+    ]);
 
-    console.log('Provider bookings API: Bookings fetched:', { 
+    console.log('Bookings fetched successfully:', { 
       providerId: provider.id, 
-      bookingCount: bookings.length 
+      bookingCount: bookings.length,
+      bookingStatuses: bookings.map(b => b.status)
     });
 
     // Calculate stats
@@ -116,24 +133,42 @@ export async function GET(request: NextRequest) {
       totalReviews: reviews.length
     }
 
-    console.log('Provider bookings API: Stats calculated:', stats);
+    console.log('Stats calculated successfully:', stats);
 
-    // Always return success response, even with empty bookings
-    return NextResponse.json({ 
+    // Create response with cache-busting headers
+    const response = NextResponse.json({ 
       success: true,
       bookings, 
       stats, 
       providerId: provider.id,
       message: bookings.length === 0 
         ? "No active bookings found. Your bookings will appear here when clients book your services."
-        : `Found ${bookings.length} active bookings`
+        : `Found ${bookings.length} active bookings`,
+      timestamp: new Date().toISOString()
     });
+
+    // Add cache-busting headers
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+
+    console.log('=== PROVIDER BOOKINGS API SUCCESS ===');
+    return response;
     
   } catch (error) {
-    console.error("Provider bookings API error:", error);
-    return NextResponse.json({ 
+    console.error("=== PROVIDER BOOKINGS API ERROR ===", error);
+    
+    const errorResponse = NextResponse.json({ 
       error: "Internal server error",
-      details: error instanceof Error ? error.message : "Unknown error"
+      details: error instanceof Error ? error.message : "Unknown error",
+      timestamp: new Date().toISOString()
     }, { status: 500 });
+    
+    // Add cache-busting headers to error response too
+    errorResponse.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    errorResponse.headers.set('Pragma', 'no-cache');
+    errorResponse.headers.set('Expires', '0');
+    
+    return errorResponse;
   }
 }

@@ -784,7 +784,12 @@ export function MobileProviderDashboardV2() {
         const userData = await userRes.json()
         setUser(userData.user)
 
-        const bookingsRes = await fetch('/api/provider/bookings')
+        const bookingsRes = await fetch('/api/provider/bookings', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
         if (bookingsRes.ok) {
           const bookingsData = await bookingsRes.json()
           setBookings(bookingsData.bookings || [])
@@ -825,7 +830,12 @@ export function MobileProviderDashboardV2() {
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch('/api/provider/bookings')
+        const response = await fetch('/api/provider/bookings', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
         if (response.ok) {
           const data = await response.json()
           setBookings(data.bookings || [])
