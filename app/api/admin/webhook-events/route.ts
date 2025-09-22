@@ -3,6 +3,9 @@ export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic'
+
+
 export async function GET(request: NextRequest) {
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {

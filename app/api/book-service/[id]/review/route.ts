@@ -4,6 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const reviewSchema = z.object({
   rating: z.number().min(1).max(5),
   comment: z.string().optional(),

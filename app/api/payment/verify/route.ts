@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { paystackClient } from "@/lib/paystack";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const verifyPaymentSchema = z.object({
   reference: z.string().min(1, "Payment reference is required"),
 });

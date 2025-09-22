@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { paystackClient } from "@/lib/paystack";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const releaseEscrowSchema = z.object({
   reason: z.string().min(1, "Release reason is required"),
   notes: z.string().optional(),

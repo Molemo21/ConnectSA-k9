@@ -4,6 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const sendOfferSchema = z.object({
   providerId: z.string().min(1), // Accept any non-empty string, not just UUIDs
   serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),

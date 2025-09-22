@@ -5,6 +5,9 @@ import { z } from "zod";
 import { PAYMENT_CONSTANTS } from "@/lib/paystack";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
+export const dynamic = 'force-dynamic'
+
+
 const completionSchema = z.object({
   photos: z.array(z.string().url()).optional(),
   notes: z.string().optional(),

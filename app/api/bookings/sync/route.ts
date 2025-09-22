@@ -16,6 +16,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 
+export const dynamic = 'force-dynamic'
+
+
 export const runtime = 'nodejs';
 
 // Cache control headers for different data types

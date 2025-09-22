@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { markNotificationAsRead } from "@/lib/notification-service"
 
+export const dynamic = 'force-dynamic'
+
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }

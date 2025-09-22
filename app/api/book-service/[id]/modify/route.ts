@@ -3,6 +3,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const modifyBookingSchema = z.object({
   address: z.string().min(1, "Address is required"),
   description: z.string().optional(),

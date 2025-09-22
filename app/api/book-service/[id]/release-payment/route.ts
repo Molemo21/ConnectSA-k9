@@ -3,6 +3,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor } from "@/lib/paystack";
 
+export const dynamic = 'force-dynamic'
+
+
 // Types for better type safety
 interface TransferRecipientData {
   type: 'nuban';

@@ -5,6 +5,9 @@ import { db } from "@/lib/db-utils";
 import { z } from "zod";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
+export const dynamic = 'force-dynamic'
+
+
 const bookingSchema = z.object({
   serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
   date: z.string(), // ISO date string

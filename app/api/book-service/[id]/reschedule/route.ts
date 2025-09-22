@@ -4,6 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const rescheduleBookingSchema = z.object({
   scheduledDate: z.string().datetime("Invalid date format"),
 });

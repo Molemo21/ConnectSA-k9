@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor, PAYMENT_CONSTANTS } from "@/lib/paystack";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const paymentSchema = z.object({
   callbackUrl: z.string().url("Valid callback URL is required"),
 });

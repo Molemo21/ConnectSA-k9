@@ -3,6 +3,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
+export const dynamic = 'force-dynamic'
+
+
 const disputeSchema = z.object({
   reason: z.enum(['service_not_provided', 'poor_quality', 'wrong_time', 'damage', 'other']),
   description: z.string().min(10, "Description must be at least 10 characters"),
