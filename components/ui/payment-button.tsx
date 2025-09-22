@@ -12,12 +12,46 @@ interface PaymentButtonProps {
   onError?: (error: string) => void;
 }
 
+// Structured logging utility for frontend
+const createLogger = (context: string) => ({
+  info: (message: string, data?: any) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  error: (message: string, error?: any, data?: any) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      context,
+      message,
+      error: error?.message || error,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  }
+});
+
 export function PaymentButton({ bookingId, amount, onSuccess, onError }: PaymentButtonProps) {
+  const logger = createLogger('PaymentButton');
   const [isLoading, setIsLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const handlePaymentClick = () => {
+    logger.info('Payment button clicked', { bookingId, amount });
     setShowConfirmation(true);
   };
 
@@ -27,7 +61,7 @@ export function PaymentButton({ bookingId, amount, onSuccess, onError }: Payment
     setRedirecting(false);
     
     try {
-      console.log('🚀 Starting payment process for booking:', bookingId);
+      logger.info('Starting payment process', { bookingId, amount });
       
       const response = await fetch(`/api/book-service/${bookingId}/pay`, {
         method: 'POST',
@@ -40,21 +74,38 @@ export function PaymentButton({ bookingId, amount, onSuccess, onError }: Payment
       });
 
       const data = await response.json();
-      console.log('📡 Payment API response:', data);
+      logger.info('Payment API response received', { 
+        bookingId, 
+        status: response.status, 
+        success: data.success,
+        hasAuthorizationUrl: !!data.authorizationUrl 
+      });
 
       if (!response.ok) {
-        throw new Error(data.error || 'Payment initialization failed');
+        const errorMessage = data.error || data.message || 'Payment initialization failed';
+        logger.error('Payment API error', { bookingId, status: response.status, error: errorMessage });
+        throw new Error(errorMessage);
+      }
+
+      // Validate response data
+      if (!data.success) {
+        const errorMessage = data.message || 'Payment initialization failed';
+        logger.error('Payment initialization failed', { bookingId, error: errorMessage });
+        throw new Error(errorMessage);
       }
 
       // Check if we got the authorization URL
       if (!data.authorizationUrl) {
-        console.error('❌ No authorization URL received from API');
+        logger.error('No authorization URL received', { bookingId, responseData: data });
         throw new Error('No payment URL received from payment service');
       }
 
-      console.log('✅ Payment initialized successfully, redirecting to:', data.authorizationUrl);
+      logger.info('Payment initialized successfully, preparing redirect', { 
+        bookingId, 
+        authorizationUrl: data.authorizationUrl 
+      });
       
-      // Show success toast and update UI
+      // Show success toast
       toast({
         title: "Payment Gateway Ready",
         description: "Redirecting to Paystack payment gateway...",
@@ -63,224 +114,219 @@ export function PaymentButton({ bookingId, amount, onSuccess, onError }: Payment
       // Call onSuccess callback
       onSuccess?.();
 
-      // IMPROVED REDIRECT MECHANISM
-      console.log('🔄 Redirecting to payment gateway NOW...');
+      // Redirect to payment gateway
+      logger.info('Redirecting to payment gateway', { bookingId });
+      setRedirecting(true);
       
-      // Method 1: Direct redirect (most reliable)
+      // Multiple redirect methods for reliability
       try {
-        // Small delay to ensure toast is shown and state is updated
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        console.log('🔄 Attempting direct redirect...');
-        
-        // Set redirecting state for better UX
-        setRedirecting(true);
-        
-        // Use the most reliable redirect method
-        console.log('🔄 Using window.location.href for redirect...');
+        // Method 1: Direct redirect (most reliable)
         window.location.href = data.authorizationUrl;
-        
-        // If we reach here, redirect didn't work (shouldn't happen)
-        console.log('⚠️ Redirect didn\'t work as expected, trying fallback...');
-        throw new Error('Redirect failed');
-        
       } catch (redirectError) {
-        console.log('⚠️ Direct redirect failed, trying fallback...');
+        logger.warn('Direct redirect failed, trying alternative methods', { 
+          bookingId, 
+          error: redirectError instanceof Error ? redirectError.message : 'Unknown error'
+        });
         
-        // Method 2: Try window.location.replace
         try {
-          console.log('🔄 Trying window.location.replace...');
+          // Method 2: Location replace
           window.location.replace(data.authorizationUrl);
         } catch (replaceError) {
-          console.log('⚠️ Replace redirect failed, trying new tab...');
-          
-          // Method 3: Open in new tab with focus
-          try {
-            console.log('🔄 Opening payment gateway in new tab...');
-            const newWindow = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
-            if (newWindow) {
-              console.log('✅ Payment gateway opened in new tab');
-              newWindow.focus();
-              
-              // Show clear instruction to user
-              toast({
-                title: "Payment Gateway Opened",
-                description: "Payment gateway opened in new tab. Please complete your payment there.",
-                action: {
-                  label: "Switch to Payment Tab",
-                  onClick: () => {
-                    newWindow.focus();
-                  }
-                }
-              });
-              
-              // Reset button state since we're using new tab
-              setRedirecting(false);
-              setIsLoading(false);
-              return;
-            } else {
-              throw new Error('Popup blocked');
-            }
-          } catch (newTabError) {
-            console.log('⚠️ New tab failed, showing manual option...');
-            
-            // Method 4: Show manual link with copy functionality
-            toast({
-              title: "Manual Payment Required",
-              description: "Please click the button below to complete payment",
-              action: {
-                label: "Open Payment Gateway",
-                onClick: () => {
-                  try {
-                    window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
-                  } catch (error) {
-                    console.error('Manual redirect failed:', error);
-                    // Last resort: copy URL to clipboard
-                    navigator.clipboard.writeText(data.authorizationUrl).then(() => {
-                      toast({
-                        title: "URL Copied",
-                        description: "Payment URL copied to clipboard. Please paste it in a new tab.",
-                      });
-                    });
-                  }
-                }
-              }
-            });
-            
-            // Reset button state
-            setRedirecting(false);
-            setIsLoading(false);
-          }
-        }
-      }
-      
-      // Method 5: Force redirect using form submission (most aggressive)
-      if (!redirecting) {
-        console.log('🔄 Trying force redirect using form submission...');
-        try {
-          const form = document.createElement('form');
-          form.method = 'GET';
-          form.action = data.authorizationUrl;
-          form.target = '_self';
-          document.body.appendChild(form);
-          form.submit();
-          document.body.removeChild(form);
-          
-          // Reset button state
-          setRedirecting(false);
-          setIsLoading(false);
-          return;
-        } catch (forceError) {
-          console.log('⚠️ Force redirect also failed:', forceError);
-          
-          // Final fallback: show manual option
-          toast({
-            title: "Redirect Failed",
-            description: "Please manually navigate to the payment gateway",
-            action: {
-              label: "Copy Payment URL",
-              onClick: () => {
-                navigator.clipboard.writeText(data.authorizationUrl).then(() => {
-                  toast({
-                    title: "URL Copied",
-                    description: "Payment URL copied to clipboard. Please paste it in a new tab.",
-                  });
-                });
-              }
-            }
+          logger.warn('Location replace failed, trying window.open', { 
+            bookingId, 
+            error: replaceError instanceof Error ? replaceError.message : 'Unknown error'
           });
           
-          // Reset button state
-          setRedirecting(false);
-          setIsLoading(false);
+          // Method 3: Window open (fallback)
+          const paymentWindow = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
+          if (!paymentWindow) {
+            logger.error('All redirect methods failed', { bookingId });
+            throw new Error('Unable to redirect to payment gateway. Please allow popups or try again.');
+          }
+          
+          // Show instruction toast
+          toast({
+            title: "Payment Window Opened",
+            description: "Complete payment in the new window, then return to this page.",
+            variant: "default",
+          });
         }
       }
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Payment failed';
-      console.error('❌ Payment error:', error);
+      logger.error('Payment process failed', error, { bookingId });
       
+      const errorMessage = error instanceof Error ? error.message : 'Payment failed. Please try again.';
+      
+      // Show error toast
       toast({
-        title: "Payment Error",
+        title: "Payment Failed",
         description: errorMessage,
         variant: "destructive",
       });
 
+      // Call onError callback
       onError?.(errorMessage);
+      
     } finally {
       setIsLoading(false);
       setRedirecting(false);
     }
   };
 
-  const handlePaymentCancel = () => {
+  const handleCancel = () => {
+    logger.info('Payment cancelled by user', { bookingId });
     setShowConfirmation(false);
   };
 
+  // Render confirmation dialog
   if (showConfirmation) {
     return (
-      <div className="space-y-3">
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-2 text-blue-800">
-            <AlertCircle className="h-5 w-5" />
-            <span className="font-medium">Payment Confirmation</span>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <CreditCard className="h-6 w-6 text-blue-600 mr-2" />
+            <h3 className="text-lg font-semibold">Confirm Payment</h3>
           </div>
-          <p className="text-blue-700 mt-2 text-sm">
-            You will be redirected to Paystack's secure payment gateway to complete your payment of <strong>R{amount.toFixed(2)}</strong>.
-          </p>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            onClick={handlePaymentConfirm}
-            disabled={isLoading}
-            className="flex-1"
-            size="lg"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Initializing Payment...
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 h-4 w-4" />
-                Proceed to Payment
-              </>
-            )}
-          </Button>
           
-          <Button
-            onClick={handlePaymentCancel}
-            variant="outline"
-            disabled={isLoading}
-            size="lg"
-          >
-            Cancel
-          </Button>
+          <div className="mb-4">
+            <p className="text-gray-600 mb-2">
+              You are about to pay <strong>R{amount.toFixed(2)}</strong> for this booking.
+            </p>
+            <p className="text-sm text-gray-500">
+              You will be redirected to Paystack to complete the payment securely.
+            </p>
+          </div>
+          
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              className="flex-1"
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePaymentConfirm}
+              disabled={isLoading}
+              className="flex-1"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pay Now
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // Render main payment button
   return (
     <Button
       onClick={handlePaymentClick}
       disabled={isLoading || redirecting}
       className="w-full"
-      size="lg"
     >
-      {redirecting ? (
+      {isLoading ? (
         <>
-          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-          Redirecting to Payment Gateway...
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          {redirecting ? 'Redirecting...' : 'Processing...'}
+        </>
+      ) : redirecting ? (
+        <>
+          <ExternalLink className="h-4 w-4 animate-pulse mr-2" />
+          Redirecting to Payment...
         </>
       ) : (
         <>
-          <CreditCard className="mr-2 h-4 w-4" />
+          <CreditCard className="h-4 w-4 mr-2" />
           Pay R{amount.toFixed(2)}
         </>
       )}
     </Button>
+  );
+}
+
+// Additional utility component for payment status display
+interface PaymentStatusProps {
+  status: 'PENDING' | 'ESCROW' | 'RELEASED' | 'FAILED';
+  amount: number;
+  paidAt?: Date;
+  className?: string;
+}
+
+export function PaymentStatus({ status, amount, paidAt, className = '' }: PaymentStatusProps) {
+  const logger = createLogger('PaymentStatus');
+  
+  const getStatusInfo = () => {
+    switch (status) {
+      case 'PENDING':
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          text: 'Payment Pending',
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-50',
+          description: 'Waiting for payment confirmation'
+        };
+      case 'ESCROW':
+        return {
+          icon: <CheckCircle className="h-4 w-4" />,
+          text: 'Payment Received',
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+          description: `R${amount.toFixed(2)} held in escrow`
+        };
+      case 'RELEASED':
+        return {
+          icon: <CheckCircle className="h-4 w-4" />,
+          text: 'Payment Released',
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+          description: `R${amount.toFixed(2)} released to provider`
+        };
+      case 'FAILED':
+        return {
+          icon: <AlertCircle className="h-4 w-4" />,
+          text: 'Payment Failed',
+          color: 'text-red-600',
+          bgColor: 'bg-red-50',
+          description: 'Payment could not be processed'
+        };
+      default:
+        return {
+          icon: <AlertCircle className="h-4 w-4" />,
+          text: 'Unknown Status',
+          color: 'text-gray-600',
+          bgColor: 'bg-gray-50',
+          description: 'Payment status unknown'
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
+  
+  logger.info('Rendering payment status', { status, amount, paidAt });
+
+  return (
+    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${statusInfo.bgColor} ${statusInfo.color} ${className}`}>
+      {statusInfo.icon}
+      <span className="ml-2 font-medium">{statusInfo.text}</span>
+      <span className="ml-2 text-xs opacity-75">({statusInfo.description})</span>
+      {paidAt && (
+        <span className="ml-2 text-xs opacity-50">
+          {new Date(paidAt).toLocaleDateString()}
+        </span>
+      )}
+    </div>
   );
 }

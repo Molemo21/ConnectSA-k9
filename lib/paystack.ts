@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import Paystack from 'paystack-sdk';
 
-// Environment variables validation - only validate at runtime, not during build
+// Environment variables validation
 const requiredEnvVars = {
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
   PAYSTACK_PUBLIC_KEY: process.env.PAYSTACK_PUBLIC_KEY,
@@ -35,15 +35,15 @@ const PaystackChargeResponseSchema = z.object({
     status: z.string(),
     reference: z.string(),
     tx_ref: z.string().optional(),
-    source: z.string().nullable().optional(), // Allow null values
+    source: z.string().nullable().optional(),
     amount_settled: z.number().optional(),
     customer: z.object({
       id: z.number(),
-      first_name: z.string().nullable().optional(), // Allow null values
-      last_name: z.string().nullable().optional(), // Allow null values
+      first_name: z.string().nullable().optional(),
+      last_name: z.string().nullable().optional(),
       email: z.string(),
       customer_code: z.string(),
-      phone: z.string().nullable().optional(), // Allow null values
+      phone: z.string().nullable().optional(),
       metadata: z.any().optional(),
       risk_action: z.string().optional(),
     }).optional(),
@@ -62,7 +62,7 @@ const PaystackChargeResponseSchema = z.object({
       signature: z.string().optional(),
     }).optional(),
     created_at: z.string(),
-    updated_at: z.string().optional(), // Make this optional since Paystack sometimes doesn't provide it
+    updated_at: z.string().optional(),
   }),
 });
 
@@ -137,22 +137,76 @@ export type PaystackPaymentResponse = z.infer<typeof PaystackPaymentResponseSche
 export type PaystackTransferResponse = z.infer<typeof PaystackTransferResponseSchema>;
 export type PaystackRefundResponse = z.infer<typeof PaystackRefundResponseSchema>;
 
-// Paystack API client
+// Structured logging utility
+const createLogger = (context: string) => ({
+  info: (message: string, data?: any) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  error: (message: string, error?: any, data?: any) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      context,
+      message,
+      error: error?.message || error,
+      stack: error?.stack,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  }
+});
+
+// Paystack API client - Singleton pattern
 class PaystackClient {
+  private static instance: PaystackClient;
   private secretKey: string;
   private publicKey: string;
+  private paystackSDK: Paystack;
+  private logger = createLogger('PaystackClient');
 
-  constructor() {
+  private constructor() {
     // Skip initialization during build time
     if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
       this.secretKey = 'dummy-key';
       this.publicKey = 'dummy-key';
+      this.paystackSDK = {} as Paystack;
       return;
     }
     
-    validateEnvVars();
-    this.secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY!;
-    this.publicKey = requiredEnvVars.PAYSTACK_PUBLIC_KEY!;
+    try {
+      validateEnvVars();
+      this.secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY!;
+      this.publicKey = requiredEnvVars.PAYSTACK_PUBLIC_KEY!;
+      
+      // Initialize Paystack SDK
+      this.paystackSDK = new Paystack(this.secretKey);
+      
+      this.logger.info('Paystack client initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize Paystack client', error);
+      throw new Error(`Paystack client initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  public static getInstance(): PaystackClient {
+    if (!PaystackClient.instance) {
+      PaystackClient.instance = new PaystackClient();
+    }
+    return PaystackClient.instance;
   }
 
   private async makeRequest<T>(
@@ -166,19 +220,24 @@ class PaystackClient {
       'Content-Type': 'application/json',
     };
 
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Paystack API error: ${response.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Paystack API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      return data as T;
+    } catch (error) {
+      this.logger.error(`Paystack API request failed: ${method} ${endpoint}`, error, { endpoint, method });
+      throw error;
     }
-
-    const data = await response.json();
-    return data as T;
   }
 
   // Initialize payment transaction
@@ -189,60 +248,95 @@ class PaystackClient {
     callback_url: string;
     metadata?: Record<string, any>;
   }): Promise<PaystackPaymentResponse> {
-    // Skip during build time
-    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
-      return {
-        status: true,
-        message: 'Payment initialized successfully',
-        data: {
-          authorization_url: 'https://checkout.paystack.com/dummy',
-          access_code: 'dummy_code',
-          reference: params.reference,
-        }
-      };
-    }
-
-    const paystack = new Paystack(this.secretKey);
-    const response = await paystack.transaction.initialize({
-      amount: params.amount * 100, // Convert to kobo
-      email: params.email,
+    const logData = {
       reference: params.reference,
-      callback_url: params.callback_url,
-      metadata: params.metadata,
-      currency: 'ZAR',
-    });
+      amount: params.amount,
+      email: params.email,
+      callback_url: params.callback_url
+    };
 
-    return PaystackPaymentResponseSchema.parse(response);
+    try {
+      this.logger.info('Initializing payment', logData);
+
+      // Skip during build time
+      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+        const dummyResponse = {
+          status: true,
+          message: 'Payment initialized successfully',
+          data: {
+            authorization_url: 'https://checkout.paystack.com/dummy',
+            access_code: 'dummy_code',
+            reference: params.reference,
+          }
+        };
+        this.logger.info('Using dummy response for build time', { reference: params.reference });
+        return dummyResponse;
+      }
+
+      const response = await this.paystackSDK.transaction.initialize({
+        amount: params.amount * 100, // Convert to kobo
+        email: params.email,
+        reference: params.reference,
+        callback_url: params.callback_url,
+        metadata: params.metadata,
+        currency: 'ZAR',
+      });
+
+      const validatedResponse = PaystackPaymentResponseSchema.parse(response);
+      this.logger.info('Payment initialized successfully', { 
+        reference: params.reference, 
+        authorization_url: validatedResponse.data.authorization_url 
+      });
+
+      return validatedResponse;
+    } catch (error) {
+      this.logger.error('Payment initialization failed', error, logData);
+      throw new Error(`Paystack payment initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // Verify payment transaction
   async verifyPayment(reference: string): Promise<PaystackChargeResponse> {
-    // Skip during build time
-    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
-      return {
-        status: true,
-        message: 'Transaction verified successfully',
-        data: {
-          id: 123456,
-          domain: 'test',
-          amount: 10000,
-          currency: 'ZAR',
-          status: 'success',
-          reference: reference,
-          created_at: new Date().toISOString(),
-          customer: {
-            id: 123,
-            email: 'test@example.com',
-            customer_code: 'CUS_test',
+    try {
+      this.logger.info('Verifying payment', { reference });
+
+      // Skip during build time
+      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+        const dummyResponse = {
+          status: true,
+          message: 'Transaction verified successfully',
+          data: {
+            id: 123456,
+            domain: 'test',
+            amount: 10000,
+            currency: 'ZAR',
+            status: 'success',
+            reference: reference,
+            created_at: new Date().toISOString(),
+            customer: {
+              id: 123,
+              email: 'test@example.com',
+              customer_code: 'CUS_test',
+            }
           }
-        }
-      };
+        };
+        this.logger.info('Using dummy response for build time', { reference });
+        return dummyResponse;
+      }
+
+      const response = await this.paystackSDK.transaction.verify(reference);
+      const validatedResponse = PaystackChargeResponseSchema.parse(response);
+      
+      this.logger.info('Payment verification completed', { 
+        reference, 
+        status: validatedResponse.data.status 
+      });
+
+      return validatedResponse;
+    } catch (error) {
+      this.logger.error('Payment verification failed', error, { reference });
+      throw new Error(`Paystack payment verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    const paystack = new Paystack(this.secretKey);
-    const response = await paystack.transaction.verify(reference);
-
-    return PaystackChargeResponseSchema.parse(response);
   }
 
   // Create transfer to provider (payout)
@@ -253,20 +347,39 @@ class PaystackClient {
     reason: string;
     reference: string;
   }): Promise<PaystackTransferResponse> {
-    const response = await this.makeRequest<PaystackTransferResponse>(
-      '/transfer',
-      'POST',
-      {
-        source: params.source,
-        amount: params.amount * 100, // Convert to cents
-        recipient: params.recipient,
-        reason: params.reason,
-        reference: params.reference,
-        currency: 'ZAR',
-      }
-    );
+    const logData = {
+      reference: params.reference,
+      amount: params.amount,
+      recipient: params.recipient
+    };
 
-    return PaystackTransferResponseSchema.parse(response);
+    try {
+      this.logger.info('Creating transfer', logData);
+
+      const response = await this.makeRequest<PaystackTransferResponse>(
+        '/transfer',
+        'POST',
+        {
+          source: params.source,
+          amount: params.amount * 100, // Convert to cents
+          recipient: params.recipient,
+          reason: params.reason,
+          reference: params.reference,
+          currency: 'ZAR',
+        }
+      );
+
+      const validatedResponse = PaystackTransferResponseSchema.parse(response);
+      this.logger.info('Transfer created successfully', { 
+        reference: params.reference, 
+        transfer_code: validatedResponse.data.transfer_code 
+      });
+
+      return validatedResponse;
+    } catch (error) {
+      this.logger.error('Transfer creation failed', error, logData);
+      throw new Error(`Paystack transfer creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // Create recipient for provider
@@ -276,7 +389,21 @@ class PaystackClient {
     account_number: string;
     bank_code: string;
   }): Promise<any> {
-    return this.makeRequest('/transferrecipient', 'POST', params);
+    const logData = {
+      type: params.type,
+      name: params.name,
+      bank_code: params.bank_code
+    };
+
+    try {
+      this.logger.info('Creating recipient', logData);
+      const response = await this.makeRequest('/transferrecipient', 'POST', params);
+      this.logger.info('Recipient created successfully', { name: params.name });
+      return response;
+    } catch (error) {
+      this.logger.error('Recipient creation failed', error, logData);
+      throw error;
+    }
   }
 
   // Process refund
@@ -285,31 +412,69 @@ class PaystackClient {
     amount: number;
     reason?: string;
   }): Promise<PaystackRefundResponse> {
-    const response = await this.makeRequest<PaystackRefundResponse>(
-      '/refund',
-      'POST',
-      {
-        transaction: params.transaction,
-        amount: params.amount * 100, // Convert to kobo
-        reason: params.reason || 'Customer request',
-      }
-    );
+    const logData = {
+      transaction: params.transaction,
+      amount: params.amount,
+      reason: params.reason
+    };
 
-    return PaystackRefundResponseSchema.parse(response);
+    try {
+      this.logger.info('Processing refund', logData);
+
+      const response = await this.makeRequest<PaystackRefundResponse>(
+        '/refund',
+        'POST',
+        {
+          transaction: params.transaction,
+          amount: params.amount * 100, // Convert to kobo
+          reason: params.reason || 'Customer request',
+        }
+      );
+
+      const validatedResponse = PaystackRefundResponseSchema.parse(response);
+      this.logger.info('Refund processed successfully', { 
+        transaction: params.transaction, 
+        refund_id: validatedResponse.data.id 
+      });
+
+      return validatedResponse;
+    } catch (error) {
+      this.logger.error('Refund processing failed', error, logData);
+      throw new Error(`Paystack refund processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   // Get public key for frontend
   getPublicKey(): string {
     return this.publicKey;
   }
+
+  // Health check method
+  async healthCheck(): Promise<boolean> {
+    try {
+      // Skip during build time
+      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+        return true;
+      }
+
+      // Make a simple API call to check connectivity
+      await this.makeRequest('/transaction/totals', 'GET');
+      this.logger.info('Paystack health check passed');
+      return true;
+    } catch (error) {
+      this.logger.error('Paystack health check failed', error);
+      return false;
+    }
+  }
 }
 
 // Export singleton instance
-export const paystackClient = new PaystackClient();
+export const paystackClient = PaystackClient.getInstance();
 
 // Utility functions for payment processing
 export class PaymentProcessor {
   private paystack: PaystackClient;
+  private logger = createLogger('PaymentProcessor');
 
   constructor() {
     this.paystack = paystackClient;
@@ -321,38 +486,51 @@ export class PaymentProcessor {
     const escrowAmount = serviceAmount - platformFee;
     const totalAmount = serviceAmount;
 
-    return {
+    const breakdown = {
       serviceAmount,
       platformFee: Math.round(platformFee * 100) / 100, // Round to 2 decimal places
       escrowAmount: Math.round(escrowAmount * 100) / 100,
       totalAmount: Math.round(totalAmount * 100) / 100,
     };
+
+    this.logger.info('Payment breakdown calculated', breakdown);
+    return breakdown;
   }
 
   // Generate unique reference for Paystack
   generateReference(prefix: string = 'CS'): string {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 15);
-    return `${prefix}_${timestamp}_${random}`.toUpperCase();
+    const reference = `${prefix}_${timestamp}_${random}`.toUpperCase();
+    
+    this.logger.info('Generated payment reference', { reference, prefix });
+    return reference;
   }
 
   // Validate Paystack webhook signature
   validateWebhookSignature(payload: string, signature: string): boolean {
-    // Skip validation during build time
-    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    try {
+      // Skip validation during build time
+      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+        return false;
+      }
+      
+      validateEnvVars();
+      const crypto = require('crypto');
+      const secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY!;
+      
+      const hash = crypto
+        .createHmac('sha512', secretKey)
+        .update(payload)
+        .digest('hex');
+      
+      const isValid = hash === signature;
+      this.logger.info('Webhook signature validation', { isValid });
+      return isValid;
+    } catch (error) {
+      this.logger.error('Webhook signature validation failed', error);
       return false;
     }
-    
-    validateEnvVars();
-    const crypto = require('crypto');
-    const secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY!;
-    
-    const hash = crypto
-      .createHmac('sha512', secretKey)
-      .update(payload)
-      .digest('hex');
-    
-    return hash === signature;
   }
 }
 

@@ -32,6 +32,7 @@ model User {
   disputes            Dispute[]            @relation("UserDisputes")
   adminDisputes       Dispute[]            @relation("AdminDisputes")
   adminAuditLogs      AdminAuditLog[]      @relation("AdminAuditLogs")
+  payments            Payment[]
 
   @@map("users")
 }
@@ -129,6 +130,7 @@ model Booking {
 model Payment {
   id              String        @id @default(cuid())
   bookingId       String        @unique
+  userId          String        @map("user_id")
   amount          Float
   paystackRef     String        @unique
   status          PaymentStatus
@@ -138,10 +140,13 @@ model Payment {
   transactionId   String?       @map("transaction_id")
   authorizationUrl String?      @map("authorization_url")
   accessCode      String?       @map("access_code")
+  errorMessage    String?       @map("error_message")
+  providerResponse Json?        @map("provider_response")
   paidAt          DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   booking         Booking       @relation(fields: [bookingId], references: [id])
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   payout          Payout?
 
   @@map("payments")

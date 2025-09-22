@@ -9,7 +9,42 @@ const paymentSchema = z.object({
   callbackUrl: z.string().url("Valid callback URL is required"),
 });
 
+// Structured logging utility
+const createLogger = (context: string) => ({
+  info: (message: string, data?: any) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  error: (message: string, error?: any, data?: any) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      context,
+      message,
+      error: error?.message || error,
+      stack: error?.stack,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  }
+});
+
 export async function POST(request: NextRequest) {
+  const logger = createLogger('PaymentInitialize');
+  
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
     return NextResponse.json({
@@ -17,42 +52,56 @@ export async function POST(request: NextRequest) {
     }, { status: 503 });
   }
 
+  let bookingId: string | null = null;
+  let userId: string | null = null;
+
   try {
+    // Authentication
     const user = await getCurrentUser();
     if (!user || user.role !== "CLIENT") {
+      logger.warn('Unauthorized payment attempt', { 
+        userId: user?.id, 
+        role: user?.role 
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    userId = user.id;
+
+    // Extract booking ID from URL
     const { pathname } = request.nextUrl;
     const match = pathname.match(/book-service\/([^/]+)\/pay/);
-    const bookingId = match ? match[1] : null;
+    bookingId = match ? match[1] : null;
+    
     if (!bookingId) {
+      logger.warn('Invalid booking ID in URL', { pathname, userId });
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    // Handle request body - provide default callback URL if none provided
-    let body;
+    // Parse and validate request body
     let validated;
-    
     try {
-      body = await request.json();
+      const body = await request.json();
       validated = paymentSchema.parse(body);
-      console.log('📋 Using provided callback URL:', validated.callbackUrl);
+      logger.info('Using provided callback URL', { 
+        bookingId, 
+        userId, 
+        callbackUrl: validated.callbackUrl 
+      });
     } catch (parseError) {
-      // If no body or invalid body, use default callback URL
-      console.log("No request body provided, using default callback URL");
+      // Provide default callback URL if none provided
+      logger.info('No request body provided, using default callback URL', { bookingId, userId });
       validated = {
-        callbackUrl: `${request.nextUrl.origin}/dashboard?payment=success`
+        callbackUrl: `${request.nextUrl.origin}/dashboard?payment=success&booking=${bookingId}`
       };
-      console.log('📋 Using default callback URL:', validated.callbackUrl);
     }
 
-    console.log(`🚀 Payment initialization started for booking ${bookingId}`);
+    logger.info('Payment initialization started', { bookingId, userId });
 
     // STEP 1: Pre-validation outside transaction (fast operations)
-    console.log('📋 Step 1: Pre-validation checks...');
+    logger.info('Step 1: Pre-validation checks', { bookingId, userId });
     
-    // Get booking with payment info
+    // Get booking with all required relations
     const booking = await prisma.booking.findUnique({ 
       where: { id: bookingId },
       include: { 
@@ -64,78 +113,128 @@ export async function POST(request: NextRequest) {
     });
     
     if (!booking) {
-      console.log(`❌ Booking not found: ${bookingId}`);
+      logger.warn('Booking not found', { bookingId, userId });
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Check if user is the client for this booking
-    if (booking.clientId !== user.id) {
-      console.log(`❌ Forbidden: User ${user.id} trying to pay for booking ${bookingId}`);
+    // Validate booking ownership
+    if (booking.clientId !== userId) {
+      logger.warn('Forbidden payment attempt', { 
+        bookingId, 
+        userId, 
+        bookingClientId: booking.clientId 
+      });
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Check if booking can be paid
-    if (!["CONFIRMED", "PENDING"].includes(booking.status)) {
-      console.log(`❌ Invalid booking status: ${booking.status} for booking ${bookingId}`);
-      return NextResponse.json({ error: "Payment can only be made for confirmed or pending bookings" }, { status: 400 });
+    // Validate booking status - should be ACCEPTED or CONFIRMED
+    if (!["CONFIRMED", "PENDING", "ACCEPTED"].includes(booking.status)) {
+      logger.warn('Invalid booking status for payment', { 
+        bookingId, 
+        userId, 
+        status: booking.status 
+      });
+      return NextResponse.json({ 
+        error: "Payment can only be made for confirmed, pending, or accepted bookings" 
+      }, { status: 400 });
+    }
+
+    // Validate booking amount
+    if (!booking.totalAmount || booking.totalAmount <= 0) {
+      logger.warn('Invalid booking amount', { 
+        bookingId, 
+        userId, 
+        totalAmount: booking.totalAmount 
+      });
+      return NextResponse.json({ error: "Invalid booking amount" }, { status: 400 });
+    }
+
+    // Validate client email
+    if (!booking.client?.email) {
+      logger.warn('Missing client email', { bookingId, userId });
+      return NextResponse.json({ error: "Client email is required for payment" }, { status: 400 });
     }
 
     // Check if payment already exists
     if (booking.payment) {
-      console.log(`❌ Payment already exists for booking ${bookingId}`);
+      logger.warn('Payment already exists', { 
+        bookingId, 
+        userId, 
+        existingPaymentId: booking.payment.id,
+        existingStatus: booking.payment.status
+      });
       return NextResponse.json({ error: "Payment already exists for this booking" }, { status: 400 });
     }
 
-    // Double-check if payment exists (race condition protection)
+    // Double-check for race conditions
     const existingPayment = await prisma.payment.findUnique({
       where: { bookingId: bookingId }
     });
 
     if (existingPayment) {
-      console.log(`❌ Payment already exists (race condition) for booking ${bookingId}`);
+      logger.warn('Payment already exists (race condition)', { 
+        bookingId, 
+        userId, 
+        existingPaymentId: existingPayment.id 
+      });
       return NextResponse.json({ error: "Payment already exists for this booking" }, { status: 400 });
     }
 
-    console.log('✅ Pre-validation completed successfully');
+    logger.info('Pre-validation completed successfully', { bookingId, userId });
 
-    // STEP 2: External API call outside transaction
-    console.log('🌐 Step 2: Initializing Paystack payment...');
+    // STEP 2: Calculate payment breakdown
+    logger.info('Step 2: Calculating payment breakdown', { bookingId, userId });
     
-    // Calculate payment breakdown
-    const serviceAmount = booking.totalAmount || 0;
+    const serviceAmount = booking.totalAmount;
     const breakdown = paymentProcessor.calculatePaymentBreakdown(
       serviceAmount, 
       PAYMENT_CONSTANTS.PLATFORM_FEE_PERCENTAGE
     );
 
-    console.log('💰 Payment breakdown:', breakdown);
+    logger.info('Payment breakdown calculated', { 
+      bookingId, 
+      userId, 
+      breakdown 
+    });
 
-    // Generate unique reference for Paystack
+    // STEP 3: Generate unique reference
     const reference = paymentProcessor.generateReference();
-    console.log('🔑 Generated Paystack reference:', reference);
+    logger.info('Generated payment reference', { 
+      bookingId, 
+      userId, 
+      reference 
+    });
 
-    // Initialize Paystack payment (external API call)
-    console.log('📡 Calling Paystack API with callback URL:', validated.callbackUrl);
+    // STEP 4: Initialize Paystack payment (external API call)
+    logger.info('Step 3: Initializing Paystack payment', { 
+      bookingId, 
+      userId, 
+      reference 
+    });
     
     const paystackResponse = await paystackClient.initializePayment({
       amount: breakdown.totalAmount,
-      email: user.email,
+      email: booking.client.email,
       reference: reference,
       callback_url: validated.callbackUrl,
       metadata: {
         bookingId: booking.id,
-        clientId: user.id,
+        clientId: userId,
         providerId: booking.providerId,
         serviceId: booking.serviceId,
         serviceName: booking.service?.name,
       },
     });
 
-    console.log('✅ Paystack payment initialized successfully');
-    console.log('🔗 Paystack authorization URL:', paystackResponse.data.authorization_url);
+    logger.info('Paystack payment initialized successfully', { 
+      bookingId, 
+      userId, 
+      reference,
+      authorizationUrl: paystackResponse.data.authorization_url 
+    });
 
-    // STEP 3: Critical database writes in short transaction
-    console.log('💾 Step 3: Creating payment record and updating booking...');
+    // STEP 5: Create payment record in database (critical transaction)
+    logger.info('Step 4: Creating payment record', { bookingId, userId, reference });
     
     const result = await prisma.$transaction(async (tx) => {
       // Final race condition check inside transaction
@@ -151,6 +250,7 @@ export async function POST(request: NextRequest) {
       const payment = await tx.payment.create({
         data: {
           bookingId: bookingId,
+          userId: userId,
           amount: breakdown.totalAmount,
           escrowAmount: breakdown.escrowAmount,
           platformFee: breakdown.platformFee,
@@ -159,11 +259,11 @@ export async function POST(request: NextRequest) {
           status: "PENDING",
           authorizationUrl: paystackResponse.data.authorization_url,
           accessCode: paystackResponse.data.access_code,
+          providerResponse: paystackResponse,
         },
       });
 
-      // IMPORTANT: Keep booking status as CONFIRMED until payment is actually completed
-      // The status will be updated to PENDING_EXECUTION when Paystack webhook confirms payment
+      // Get updated booking with payment
       const updatedBooking = await tx.booking.findUnique({
         where: { id: bookingId },
         include: { payment: true }
@@ -175,38 +275,47 @@ export async function POST(request: NextRequest) {
       maxWait: 5000,  // Max wait time for transaction to start
     });
 
-    console.log('✅ Database transaction completed successfully');
-
-    // STEP 4: Success response and logging
-    console.log(`🎉 Payment initialized for booking ${bookingId}:`, {
-      reference: result.payment.paystackRef,
-      amount: result.payment.amount,
-      escrowAmount: result.payment.escrowAmount,
-      platformFee: result.payment.platformFee,
-      paystackRef: reference,
-      authorizationUrl: result.paystackResponse.data.authorization_url,
+    logger.info('Database transaction completed successfully', { 
+      bookingId, 
+      userId, 
+      reference,
+      paymentId: result.payment.id 
     });
 
-    // IMPORTANT: Log the exact response being sent
+    // STEP 6: Success response
     const responseData = { 
       success: true,
-      payment: result.payment,
-      booking: result.booking,
+      payment: {
+        id: result.payment.id,
+        reference: result.payment.paystackRef,
+        amount: result.payment.amount,
+        status: result.payment.status,
+      },
+      booking: {
+        id: result.booking?.id,
+        status: result.booking?.status,
+      },
       authorizationUrl: result.paystackResponse.data.authorization_url,
       accessCode: result.paystackResponse.data.access_code,
       reference: result.payment.paystackRef,
       message: "Payment initialized successfully. Redirecting to payment gateway...",
-      redirectUrl: result.paystackResponse.data.authorization_url, // Explicit redirect URL
+      redirectUrl: result.paystackResponse.data.authorization_url,
     };
 
-    console.log('📤 Sending response to frontend:', responseData);
-    console.log('🔗 Authorization URL being sent:', result.paystackResponse.data.authorization_url);
+    logger.info('Payment initialization completed successfully', { 
+      bookingId, 
+      userId, 
+      reference,
+      authorizationUrl: result.paystackResponse.data.authorization_url 
+    });
 
-    // Return the response with all necessary data for the frontend
     return NextResponse.json(responseData);
 
   } catch (error) {
-    console.error("❌ Payment initialization error:", error);
+    logger.error('Payment initialization failed', error, { 
+      bookingId, 
+      userId 
+    });
     
     // Handle specific error types
     if (error instanceof Error) {
@@ -216,13 +325,13 @@ export async function POST(request: NextRequest) {
       if (error.message === "Forbidden") {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      if (error.message === "Payment can only be made for confirmed or pending bookings") {
-        return NextResponse.json({ error: "Payment can only be made for confirmed or pending bookings" }, { status: 400 });
+      if (error.message.includes("Payment can only be made")) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
       }
       if (error.message === "Payment already exists for this booking") {
         return NextResponse.json({ error: "Payment already exists for this booking" }, { status: 400 });
       }
-      if (error.message.includes("Paystack API error")) {
+      if (error.message.includes("Paystack")) {
         return NextResponse.json({ 
           error: "Payment service temporarily unavailable. Please try again later." 
         }, { status: 503 });
@@ -238,12 +347,16 @@ export async function POST(request: NextRequest) {
 
     // Handle Prisma transaction errors specifically
     if (error.code === 'P2028') {
-      console.error("🔄 Transaction timeout error - this should not happen with our refactored approach");
+      logger.error('Transaction timeout error', error, { bookingId, userId });
       return NextResponse.json({ 
         error: "Payment processing timeout. Please try again." 
       }, { status: 408 });
     }
 
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    // Log error details for debugging but don't expose sensitive info
+    return NextResponse.json({ 
+      error: "Internal server error",
+      message: "Payment initialization failed. Please try again."
+    }, { status: 500 });
   }
-} 
+}
