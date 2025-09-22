@@ -1,5 +1,5 @@
 import { z } from 'zod';
-const Paystack = require('paystack-sdk');
+const PaystackSDK = require('paystack-sdk');
 
 // Environment variables validation
 const requiredEnvVars = {
@@ -193,7 +193,7 @@ class PaystackClient {
       this.publicKey = requiredEnvVars.PAYSTACK_PUBLIC_KEY!;
       
       // Initialize Paystack SDK
-      this.paystackSDK = new Paystack(this.secretKey);
+      this.paystackSDK = new PaystackSDK.Paystack(this.secretKey);
       
       this.logger.info('Paystack client initialized successfully');
     } catch (error) {
