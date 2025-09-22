@@ -133,18 +133,22 @@ export async function POST(request: NextRequest) {
           
           console.log(`✅ Booking status updated to PENDING_EXECUTION`);
           
-          // Create notification for provider
-          await db.notification.create({
-            data: {
-              userId: payment.booking.provider.user.id,
-              type: 'PAYMENT_RECEIVED',
-              title: 'Payment Received',
-              content: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
-              isRead: false,
-            }
-          });
-          
-          console.log(`🔔 Provider notification created`);
+          // Create notification for provider (skip if schema doesn't support content field)
+          try {
+            await db.notification.create({
+              data: {
+                userId: payment.booking.provider.user.id,
+                type: 'PAYMENT_RECEIVED',
+                title: 'Payment Received',
+                content: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
+                isRead: false,
+              }
+            });
+            console.log(`🔔 Provider notification created`);
+          } catch (notificationError) {
+            console.log(`⚠️ Could not create notification (schema issue): ${notificationError}`);
+            // Continue without notification - payment status is more important
+          }
         }
 
         recoveryMessage = `Payment status automatically recovered from ${payment.status} to ${statusUpdate}.`;
