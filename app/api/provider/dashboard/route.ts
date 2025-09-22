@@ -36,7 +36,7 @@ const createLogger = (context: string) => ({
 });
 
 export async function GET(request: NextRequest) {
-  const logger = createLogger('ClientBookingsAPI');
+  const logger = createLogger('ProviderDashboardAPI');
   
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
@@ -46,30 +46,56 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    logger.info('Client bookings API: Starting request');
+    logger.info('Provider dashboard API: Starting request');
     
     // Get current user
     const user = await getCurrentUser();
-    logger.info('Client bookings API: User fetched', { 
+    logger.info('Provider dashboard API: User fetched', { 
       userId: user?.id, 
       userRole: user?.role,
       userEmail: user?.email 
     });
     
     if (!user) {
-      logger.warn('Client bookings API: No user found');
+      logger.warn('Provider dashboard API: No user found');
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
     
-    if (user.role !== "CLIENT") {
-      logger.warn('Client bookings API: User is not a client', { userRole: user.role });
-      return NextResponse.json({ error: "Unauthorized - Client role required" }, { status: 403 });
+    if (user.role !== "PROVIDER") {
+      logger.warn('Provider dashboard API: User is not a provider', { userRole: user.role });
+      return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 });
     }
 
-    // Fetch all bookings for this client
+    // Get provider profile
+    const provider = await prisma.provider.findUnique({
+      where: { userId: user.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        }
+      }
+    });
+
+    if (!provider) {
+      logger.warn('Provider dashboard API: Provider profile not found', { userId: user.id });
+      return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
+    }
+
+    logger.info('Provider dashboard API: Provider found', { 
+      providerId: provider.id,
+      businessName: provider.businessName,
+      status: provider.status 
+    });
+
+    // Fetch all bookings for this provider
     const bookings = await prisma.booking.findMany({
       where: {
-        clientId: user.id,
+        providerId: provider.id,
       },
       include: {
         service: {
@@ -81,19 +107,12 @@ export async function GET(request: NextRequest) {
             basePrice: true
           }
         },
-        provider: {
+        client: {
           select: {
             id: true,
-            businessName: true,
-            location: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            }
+            name: true,
+            email: true,
+            phone: true
           }
         },
         payment: {
@@ -120,10 +139,28 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    logger.info('Client bookings API: Bookings fetched', { 
-      userId: user.id, 
+    logger.info('Provider dashboard API: Bookings fetched', { 
+      providerId: provider.id, 
       bookingCount: bookings.length 
     });
+
+    // Calculate stats
+    const stats = {
+      totalBookings: bookings.length,
+      pendingBookings: bookings.filter(b => b.status === 'PENDING').length,
+      confirmedBookings: bookings.filter(b => b.status === 'CONFIRMED').length,
+      inProgressBookings: bookings.filter(b => b.status === 'IN_PROGRESS').length,
+      completedBookings: bookings.filter(b => b.status === 'COMPLETED').length,
+      totalEarnings: bookings
+        .filter(b => b.payment?.status === 'RELEASED')
+        .reduce((sum, b) => sum + (b.payment?.amount || 0), 0),
+      pendingEarnings: bookings
+        .filter(b => b.payment?.status === 'ESCROW')
+        .reduce((sum, b) => sum + (b.payment?.amount || 0), 0),
+      averageRating: bookings
+        .filter(b => b.review?.rating)
+        .reduce((sum, b, _, arr) => sum + (b.review?.rating || 0) / arr.length, 0)
+    };
 
     // Transform bookings for frontend
     const transformedBookings = bookings.map(booking => ({
@@ -138,23 +175,32 @@ export async function GET(request: NextRequest) {
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
       service: booking.service,
-      provider: booking.provider,
+      client: booking.client,
       payment: booking.payment,
       review: booking.review
     }));
 
     return NextResponse.json({
       success: true,
+      provider: {
+        id: provider.id,
+        businessName: provider.businessName,
+        description: provider.description,
+        location: provider.location,
+        status: provider.status,
+        user: provider.user
+      },
       bookings: transformedBookings,
+      stats: stats,
       count: transformedBookings.length
     });
 
   } catch (error) {
-    logger.error('Client bookings API: Error fetching bookings', error);
+    logger.error('Provider dashboard API: Error fetching data', error);
     
     return NextResponse.json({ 
       error: "Internal server error",
-      message: "Failed to fetch client bookings"
+      message: "Failed to fetch provider dashboard data"
     }, { status: 500 });
   }
 }
