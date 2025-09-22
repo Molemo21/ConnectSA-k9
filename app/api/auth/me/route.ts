@@ -2,6 +2,10 @@ export const runtime = 'nodejs'
 import { NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = 'force-dynamic'
+
+
 export async function GET() {
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {

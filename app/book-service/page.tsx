@@ -572,7 +572,7 @@ function BookServiceContent() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden animate-fade-in">
+    <div className="min-h-screen relative overflow-hidden animate-fade-in gradient-bg-dark">
       {/* Background image */}
       <div 
         className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat animate-zoom-in"

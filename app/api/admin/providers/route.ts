@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    console.log('Admin providers API: Starting request for user:', user.id)
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status") || "PENDING"
     const page = parseInt(searchParams.get("page") || "1")
@@ -29,8 +31,8 @@ export async function GET(request: NextRequest) {
               createdAt: true
             }
           },
-          providerServices: {
-            include: {
+          services: {
+            select: {
               service: {
                 select: {
                   name: true
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     // Transform providers data
     const transformedProviders = providers.map(provider => {
-      const services = provider.providerServices.map(ps => ps.service.name)
+      const services = provider.services.map(ps => ps.service.name)
       
       return {
         id: provider.id,
@@ -60,16 +62,22 @@ export async function GET(request: NextRequest) {
         services,
         location: provider.location || "Not specified",
         experience: provider.experience || "Not specified",
-        bio: provider.bio || "No bio provided",
+        bio: provider.description || "No bio provided",
         documents: {
-          idDocument: provider.idDocumentVerified ? "verified" : "pending",
-          businessLicense: provider.businessLicenseVerified ? "verified" : "pending",
-          insurance: provider.insuranceVerified ? "verified" : "pending",
-          references: provider.referencesVerified ? "verified" : "pending"
+          idDocument: provider.idDocument ? "verified" : "pending",
+          businessLicense: "pending", // This field doesn't exist in schema
+          insurance: "pending", // This field doesn't exist in schema
+          references: "pending" // This field doesn't exist in schema
         },
-        previousWork: provider.previousWork || [],
+        previousWork: [], // This field doesn't exist in schema
         rating: 0 // Will be calculated from reviews if needed
       }
+    })
+
+    console.log('Admin providers API: Successfully fetched providers:', {
+      count: transformedProviders.length,
+      total: totalCount,
+      status
     })
 
     return NextResponse.json({

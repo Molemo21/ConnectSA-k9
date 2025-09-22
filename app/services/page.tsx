@@ -342,7 +342,7 @@ export default function ServicesPage() {
     setTimeout(() => setContentReady(true), 10);
   }, []);
   return (
-    <div className={`flex min-h-screen flex-col bg-black text-white transition-all duration-700 ${contentReady ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}>
+    <div className={`flex min-h-screen flex-col gradient-bg-dark text-white transition-all duration-700 ${contentReady ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}>
       {/* Top right navigation buttons */}
       <div className="absolute top-6 right-6 z-20 flex gap-3">
         <Button variant="outline" onClick={() => router.back()} className="border border-white/30 bg-black/60 text-white hover:bg-blue-900/20">

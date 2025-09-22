@@ -490,13 +490,21 @@ export function DashboardContent() {
               <Card className="bg-blue-900/20 border-blue-800/50 rounded-xl">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <div className="relative">
+                      <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-pulse shadow-md"></div>
+                      <div className="absolute inset-0 w-3 h-3 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-ping opacity-30"></div>
+                    </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-300">
-                        {bookings.filter(b => b.payment && b.payment.status === 'PENDING').length} payment(s) processing
-                      </p>
-                      <p className="text-xs text-blue-400">
-                        Your payments are being processed. This usually takes 2-5 minutes.
+                      <div className="flex items-center space-x-2 mb-1">
+                        <h4 className="text-base font-bold text-black">
+                          {bookings.filter(b => b.payment && b.payment.status === 'PENDING').length}
+                        </h4>
+                        <span className="text-sm font-semibold text-black">
+                          Payment{bookings.filter(b => b.payment && b.payment.status === 'PENDING').length !== 1 ? 's' : ''} Processing
+                        </span>
+                      </div>
+                      <p className="text-xs text-black font-medium">
+                        ⏳ Your payments are being processed securely. This usually takes 2-5 minutes.
                       </p>
                     </div>
                     <Button 
@@ -504,7 +512,7 @@ export function DashboardContent() {
                       size="sm" 
                       onClick={handleManualRefresh} 
                       disabled={isRefreshing}
-                      className="bg-gray-800 text-gray-200 hover:bg-gray-700 border-gray-700"
+                      className="bg-gray-100 text-black hover:bg-gray-200 border-gray-300"
                     >
                       {isRefreshing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Check Status'}
                     </Button>

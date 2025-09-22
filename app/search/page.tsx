@@ -67,22 +67,22 @@ function SearchPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-black/90 backdrop-blur-sm">
       <BrandHeaderClient showAuth={false} showUserMenu={true} />
       
       <div className="container mx-auto px-4 py-4 sm:py-6">
         <div className="max-w-6xl mx-auto">
           {/* Header - Mobile First */}
           <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 sm:mb-4">Find Services</h1>
-            <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-4">Find Services</h1>
+            <p className="text-base sm:text-lg lg:text-xl text-white/80 max-w-2xl mx-auto">
               Discover trusted professionals in your area
             </p>
           </div>
 
           {/* Search and Filters */}
           <div className="mb-6 sm:mb-8">
-            <MobileCard className="bg-white">
+            <MobileCard className="bg-black/70 backdrop-blur-sm shadow-xl rounded-2xl border border-white/10">
               <div className="space-y-4">
                 {/* Search Bar */}
                 <div className="relative">
@@ -92,7 +92,7 @@ function SearchPageInner() {
                     placeholder="Search for services..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 sm:pl-12 h-12 text-base"
+                    className="pl-10 sm:pl-12 h-12 text-base bg-black/50 border-gray-600 text-white placeholder-gray-400"
                   />
                 </div>
 
@@ -101,24 +101,24 @@ function SearchPageInner() {
                   <Button
                     variant="outline"
                     onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center space-x-2 h-10"
+                    className="flex items-center space-x-2 h-10 border-gray-600 text-gray-300 hover:bg-white/10"
                   >
                     <Filter className="w-4 h-4" />
                     <span>Filters</span>
                   </Button>
                   
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-white/80">
                     {filteredServices.length} service{filteredServices.length !== 1 ? 's' : ''} found
                   </div>
                 </div>
 
                 {/* Filters */}
                 {showFilters && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-white/20">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Category</Label>
+                      <Label className="text-sm font-medium text-white/80">Category</Label>
                       <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger className="h-10">
+                        <SelectTrigger className="h-10 bg-black/50 border-gray-600 text-white">
                           <SelectValue placeholder="All categories" />
                         </SelectTrigger>
                         <SelectContent>
@@ -133,9 +133,9 @@ function SearchPageInner() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Location</Label>
+                      <Label className="text-sm font-medium text-white/80">Location</Label>
                       <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                        <SelectTrigger className="h-10">
+                        <SelectTrigger className="h-10 bg-black/50 border-gray-600 text-white">
                           <SelectValue placeholder="All locations" />
                         </SelectTrigger>
                         <SelectContent>
@@ -150,9 +150,9 @@ function SearchPageInner() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Price Range</Label>
+                      <Label className="text-sm font-medium text-white/80">Price Range</Label>
                       <Select value={priceRange} onValueChange={setPriceRange}>
-                        <SelectTrigger className="h-10">
+                        <SelectTrigger className="h-10 bg-black/50 border-gray-600 text-white">
                           <SelectValue placeholder="Any price" />
                         </SelectTrigger>
                         <SelectContent>
@@ -174,8 +174,8 @@ function SearchPageInner() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-                <p className="text-gray-600">Loading services...</p>
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-400" />
+                <p className="text-white/80">Loading services...</p>
               </div>
             </div>
           ) : filteredServices.length > 0 ? (
@@ -197,11 +197,11 @@ function SearchPageInner() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-gray-400" />
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No services found</h3>
-              <p className="text-gray-600 mb-4">
+              <h3 className="text-lg font-semibold text-white mb-2">No services found</h3>
+              <p className="text-white/80 mb-4">
                 Try adjusting your search criteria or browse all services
               </p>
               <Button
@@ -212,6 +212,7 @@ function SearchPageInner() {
                   setPriceRange("")
                 }}
                 variant="outline"
+                className="border-gray-600 text-gray-300 hover:bg-white/10"
               >
                 Clear filters
               </Button>
@@ -221,7 +222,7 @@ function SearchPageInner() {
           {/* Popular Categories */}
           {categories.length > 0 && (
             <div className="mt-12 sm:mt-16">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 text-center">Popular Categories</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 text-center">Popular Categories</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {categories.slice(0, 8).map((category) => (
                   <Button
@@ -230,8 +231,8 @@ function SearchPageInner() {
                     onClick={() => setSelectedCategory(category)}
                     className={`h-12 sm:h-14 text-sm sm:text-base ${
                       selectedCategory === category 
-                        ? 'bg-blue-50 border-blue-200 text-blue-700' 
-                        : 'hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white border-transparent' 
+                        : 'border-gray-600 text-gray-300 hover:bg-white/10'
                     }`}
                   >
                     {category}

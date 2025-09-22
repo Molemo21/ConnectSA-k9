@@ -124,7 +124,7 @@ export function ExampleDashboardCards() {
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Avg Response Time</span>
-              <span className="font-medium text-gray-900">< 2 hours</span>
+              <span className="font-medium text-gray-900">&lt; 2 hours</span>
             </div>
           </div>
           
@@ -267,7 +267,7 @@ export function SupportCard() {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">Avg Response Time</span>
-            <span className="font-medium text-gray-900">< 2 hours</span>
+            <span className="font-medium text-gray-900">&lt; 2 hours</span>
           </div>
         </div>
         

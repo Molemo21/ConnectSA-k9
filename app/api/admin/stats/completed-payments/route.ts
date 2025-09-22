@@ -3,6 +3,10 @@ import { db } from '@/lib/db-utils'
 import { getCurrentUser } from '@/lib/auth'
 import { PaymentStatus } from '@prisma/client'
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = 'force-dynamic'
+
+
 export async function GET(request: NextRequest) {
   try {
     // Check if user is admin

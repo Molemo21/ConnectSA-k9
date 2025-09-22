@@ -53,8 +53,8 @@ export function PaymentStatusDisplay({
   if (isPaymentProcessing) {
     return (
       <div className="flex items-center space-x-2 text-sm">
-        <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
-        <span className="text-orange-600 font-medium">Processing Payment...</span>
+        <Loader2 className="w-4 h-4 text-orange-400 animate-spin" />
+        <span className="text-orange-300 font-medium">Processing Payment...</span>
       </div>
     )
   }
@@ -62,9 +62,9 @@ export function PaymentStatusDisplay({
   // Stuck payment
   if (payment.status === 'PENDING' && isPaymentStuck()) {
     return (
-      <Alert className="border-amber-200 bg-amber-50">
-        <AlertTriangle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-800">
+      <Alert className="border-amber-500/50 bg-amber-500/10">
+        <AlertTriangle className="h-4 w-4 text-amber-400" />
+        <AlertDescription className="text-amber-300">
           <div className="flex items-start justify-between mb-2">
             <span className="font-medium">Payment Status Update Needed</span>
             {onCheckStatus && (
@@ -72,7 +72,7 @@ export function PaymentStatusDisplay({
                 size="sm"
                 variant="outline"
                 onClick={onCheckStatus}
-                className="text-xs h-6 px-2 border-amber-300 text-amber-700 hover:bg-amber-100"
+                className="text-xs h-6 px-2 border-amber-500/50 text-amber-300 hover:bg-amber-500/20"
               >
                 Check Status
               </Button>
@@ -94,9 +94,9 @@ export function PaymentStatusDisplay({
   // Delayed payment
   if (payment.status === 'PENDING' && isPaymentDelayed()) {
     return (
-      <Alert className="border-blue-200 bg-blue-50">
-        <Clock className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-800">
+      <Alert className="border-blue-500/50 bg-blue-500/10">
+        <Clock className="h-4 w-4 text-blue-400" />
+        <AlertDescription className="text-blue-300">
           <span className="font-medium mb-2 block">Payment Taking Longer Than Expected</span>
           <p className="text-xs mb-2">
             Your payment is still processing. This is normal and may take a few more minutes.

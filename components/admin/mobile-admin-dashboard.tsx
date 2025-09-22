@@ -583,7 +583,7 @@ export function MobileAdminDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen gradient-bg-light">
       <BrandHeaderClient showAuth={false} showUserMenu={true} />
       
       <div className="container mx-auto px-4 py-6 pb-20">
@@ -598,7 +598,7 @@ export function MobileAdminDashboard() {
           <MobileTabbedSection
             tabs={tabs}
             defaultTab="overview"
-            className="bg-white rounded-xl shadow-sm border border-gray-200"
+            className="card-elevated rounded-xl"
           />
         </div>
       </div>

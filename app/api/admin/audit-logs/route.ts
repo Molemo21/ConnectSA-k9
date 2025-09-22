@@ -3,6 +3,9 @@ import { getCurrentUser } from '@/lib/auth'
 import { getAuditLogs } from '@/lib/audit-logger'
 import { AuditAction } from '@prisma/client'
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser()

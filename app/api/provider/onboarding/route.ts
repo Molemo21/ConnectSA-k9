@@ -3,6 +3,10 @@ import { getCurrentUser } from "@/lib/auth"
 import { db } from "@/lib/db-utils"
 import { z } from "zod"
 
+// Force dynamic rendering to prevent build-time static generation
+export const dynamic = 'force-dynamic'
+
+
 const onboardingSchema = z.object({
   // Personal Info
   businessName: z.string().min(2, "Business name must be at least 2 characters"),

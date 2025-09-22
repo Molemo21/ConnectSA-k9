@@ -267,7 +267,7 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen gradient-bg-light">
       <BrandHeaderClient showAuth={false} showUserMenu={true} />
       
       <div className="container mx-auto px-4 py-8">

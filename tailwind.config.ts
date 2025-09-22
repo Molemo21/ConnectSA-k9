@@ -157,13 +157,31 @@ const config: Config = {
   				}
   			}
   		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out',
-  			'slide-in-from-top': 'slide-in-from-top 0.3s ease-out',
-  			'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
-  			'fade-in': 'fade-in 0.3s ease-out'
-  		}
+		animation: {
+			'accordion-down': 'accordion-down 0.2s ease-out',
+			'accordion-up': 'accordion-up 0.2s ease-out',
+			'slide-in-from-top': 'slide-in-from-top 0.3s ease-out',
+			'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
+			'fade-in': 'fade-in 0.3s ease-out',
+			'breathe': 'breathe 2s ease-in-out infinite',
+			'scroll-left': 'scroll-left 20s linear infinite',
+			'scroll-right': 'scroll-right 20s linear infinite',
+			'rotate-3d': 'rotate-3d 20s linear infinite',
+			'float': 'float 3s ease-in-out infinite',
+			'light-ray': 'light-ray 2s ease-in-out infinite',
+			'flip-page': 'flip-page 0.6s ease-in-out',
+			'slideInFromRight': 'slideInFromRight 0.5s ease-out',
+			'slideInFromLeft': 'slideInFromLeft 0.5s ease-out',
+			'fadeInScale': 'fadeInScale 0.5s ease-out',
+			'progressFill': 'progressFill 2s ease-out',
+			'fadeIn': 'fadeIn 0.5s ease-out',
+			'slideInUp': 'slideInUp 0.5s ease-out',
+			'slideInLeft': 'slideInLeft 0.5s ease-out',
+			'fadeInUp': 'fadeInUp 0.5s ease-out',
+			'scaleIn': 'scaleIn 0.5s ease-out',
+			'zoomIn': 'zoomIn 0.5s ease-out',
+			'l1': 'l1 1s linear infinite'
+		}
   	}
   },
   plugins: [require("tailwindcss-animate")],

@@ -1,0 +1,71 @@
+warning: in the working copy of 'app/about/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/admin/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/analytics/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/admin/providers/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/admin/stats/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/notifications/[id]/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/become-provider/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/book-service/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/bookings/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/globals.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/login/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/provider/dashboard/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/provider/onboarding/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/provider/pending/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/search/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/services/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/signup/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/verify-email/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/admin/mobile-admin-dashboard.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/provider/mobile-provider-dashboard.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/provider/provider-bank-details-content.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/ui/region-switcher-demo.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/notification-service.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tailwind.config.ts', LF will be replaced by CRLF the next time Git touches it
+CLIENT_JOURNEY_AUDIT_REPORT.md
+app/about/page.tsx
+app/admin/dashboard/page.tsx
+app/analytics/page.tsx
+app/api/admin/providers/route.ts
+app/api/admin/stats/route.ts
+app/api/provider/bookings/route.ts
+app/become-provider/page.tsx
+app/book-service/page.tsx
+app/bookings/page.tsx
+app/globals.css
+app/login/page.tsx
+app/page.tsx
+app/provider/dashboard/page.tsx
+app/provider/onboarding/page.tsx
+app/provider/pending/page.tsx
+app/search/page.tsx
+app/services/page.tsx
+app/signup/page.tsx
+components/admin/mobile-admin-dashboard.tsx
+components/dashboard/dark-cards.tsx
+components/dashboard/dashboard-content-fixed.tsx
+components/dashboard/dashboard-content-with-current-booking.tsx
+components/dashboard/dashboard-with-timeline.tsx
+components/dashboard/example-cards.tsx
+components/examples/loader-example.tsx
+components/provider-discovery/provider-details-modal.tsx
+components/provider/mobile-provider-dashboard.tsx
+components/provider/provider-bank-details-content.tsx
+components/ui/circular-loader.tsx
+components/ui/custom-spinner.tsx
+components/ui/loading-button-with-loader.tsx
+components/ui/payment-status-display.tsx
+components/ui/region-switcher-demo.tsx
+components/ui/status-badge.tsx
+tailwind.config.ts
+tests/README.md
+tests/e2e/client-journey/01-discovery-signup.spec.ts
+tests/e2e/client-journey/02-service-browsing.spec.ts
+tests/e2e/client-journey/03-booking-process.spec.ts
+tests/e2e/client-journey/04-provider-selection.spec.ts
+tests/e2e/client-journey/05-payment-processing.spec.ts
+tests/e2e/client-journey/06-service-execution.spec.ts
+tests/e2e/client-journey/07-post-service.spec.ts
+tests/e2e/client-journey/08-edge-cases.spec.ts
+tests/setup.ts

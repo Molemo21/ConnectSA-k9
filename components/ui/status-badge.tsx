@@ -39,53 +39,53 @@ export function StatusBadge({
   const getBookingStatusConfig = (status: string) => {
     const configs = {
       PENDING: { 
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+        color: "bg-yellow-500/20 text-yellow-300 border-yellow-500/50", 
         icon: Clock,
         label: "Waiting for Provider"
       },
       CONFIRMED: { 
-        color: "bg-blue-100 text-blue-800 border-blue-200", 
+        color: "bg-blue-500/20 text-blue-300 border-blue-500/50", 
         icon: CheckCircle,
         label: "Confirmed"
       },
       PENDING_EXECUTION: { 
-        color: "bg-green-100 text-green-800 border-green-200", 
+        color: "bg-green-500/20 text-green-300 border-green-500/50", 
         icon: CheckCircle,
         label: "Payment Received"
       },
       PAYMENT_PROCESSING: { 
-        color: "bg-orange-100 text-orange-800 border-orange-200", 
+        color: "bg-orange-500/20 text-orange-300 border-orange-500/50", 
         icon: Loader2,
         label: "Processing Payment"
       },
       IN_PROGRESS: { 
-        color: "bg-purple-100 text-purple-800 border-purple-200", 
+        color: "bg-purple-500/20 text-purple-300 border-purple-500/50", 
         icon: Loader2,
         label: "In Progress"
       },
       AWAITING_CONFIRMATION: { 
-        color: "bg-orange-100 text-orange-800 border-orange-200", 
+        color: "bg-orange-500/20 text-orange-300 border-orange-500/50", 
         icon: AlertCircle,
         label: "Awaiting Confirmation"
       },
       COMPLETED: { 
-        color: "bg-green-100 text-green-800 border-green-200", 
+        color: "bg-green-500/20 text-green-300 border-green-500/50", 
         icon: CheckCircle,
         label: "Completed"
       },
       CANCELLED: { 
-        color: "bg-red-100 text-red-800 border-red-200", 
+        color: "bg-red-500/20 text-red-300 border-red-500/50", 
         icon: XCircle,
         label: "Cancelled"
       },
       DISPUTED: { 
-        color: "bg-red-100 text-red-800 border-red-200", 
+        color: "bg-red-500/20 text-red-300 border-red-500/50", 
         icon: AlertTriangle,
         label: "Disputed"
       }
     }
     return configs[status as keyof typeof configs] || {
-      color: "bg-gray-100 text-gray-800 border-gray-200",
+      color: "bg-gray-500/20 text-gray-300 border-gray-500/50",
       icon: AlertCircle,
       label: status.replace("_", " ")
     }
@@ -94,48 +94,48 @@ export function StatusBadge({
   const getPaymentStatusConfig = (status: string) => {
     const configs = {
       PENDING: { 
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+        color: "bg-yellow-500/20 text-yellow-300 border-yellow-500/50", 
         icon: Clock,
         label: "Pending"
       },
       ESCROW: { 
-        color: "bg-blue-100 text-blue-800 border-blue-200", 
+        color: "bg-blue-500/20 text-blue-300 border-blue-500/50", 
         icon: Shield,
         label: "In Escrow"
       },
       HELD_IN_ESCROW: { 
-        color: "bg-blue-100 text-blue-800 border-blue-200", 
+        color: "bg-blue-500/20 text-blue-300 border-blue-500/50", 
         icon: Shield,
         label: "Held in Escrow"
       },
       PROCESSING_RELEASE: { 
-        color: "bg-orange-100 text-orange-800 border-orange-200", 
+        color: "bg-orange-500/20 text-orange-300 border-orange-500/50", 
         icon: Loader2,
         label: "Processing Release"
       },
       RELEASED: { 
-        color: "bg-green-100 text-green-800 border-green-200", 
+        color: "bg-green-500/20 text-green-300 border-green-500/50", 
         icon: CheckCircle,
         label: "Released"
       },
       COMPLETED: { 
-        color: "bg-green-100 text-green-800 border-green-200", 
+        color: "bg-green-500/20 text-green-300 border-green-500/50", 
         icon: CheckCircle,
         label: "Completed"
       },
       REFUNDED: { 
-        color: "bg-gray-100 text-gray-800 border-gray-200", 
+        color: "bg-gray-500/20 text-gray-300 border-gray-500/50", 
         icon: XCircle,
         label: "Refunded"
       },
       FAILED: { 
-        color: "bg-red-100 text-red-800 border-red-200", 
+        color: "bg-red-500/20 text-red-300 border-red-500/50", 
         icon: AlertTriangle,
         label: "Failed"
       }
     }
     return configs[status as keyof typeof configs] || {
-      color: "bg-gray-100 text-gray-800 border-gray-200",
+      color: "bg-gray-500/20 text-gray-300 border-gray-500/50",
       icon: AlertCircle,
       label: status.replace("_", " ")
     }

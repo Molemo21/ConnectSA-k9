@@ -64,7 +64,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="min-h-screen gradient-bg-light">
         <BrandHeader showAuth={false} showUserMenu={true} />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-7xl mx-auto">
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
     : thisMonthBookings > 0 ? 100 : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen gradient-bg-light">
       <BrandHeader showAuth={false} showUserMenu={true} />
 
       <div className="container mx-auto px-4 py-8">
@@ -155,7 +155,7 @@ export default function AnalyticsPage() {
 
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="card-elevated">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -173,7 +173,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="card-elevated">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="card-elevated">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
@@ -209,7 +209,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="card-elevated">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -250,7 +250,7 @@ export default function AnalyticsPage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="card-elevated">
                 <CardHeader>
                   <CardTitle>Booking Overview</CardTitle>
                   <CardDescription>
@@ -269,7 +269,7 @@ export default function AnalyticsPage() {
 
             <TabsContent value="trends" className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="card-elevated">
                   <CardHeader>
                     <CardTitle>Monthly Trends</CardTitle>
                     <CardDescription>
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="card-elevated">
                   <CardHeader>
                     <CardTitle>Spending Patterns</CardTitle>
                     <CardDescription>
@@ -301,7 +301,7 @@ export default function AnalyticsPage() {
 
             <TabsContent value="breakdown" className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="card-elevated">
                   <CardHeader>
                     <CardTitle>Service Distribution</CardTitle>
                     <CardDescription>
@@ -315,7 +315,7 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="card-elevated">
                   <CardHeader>
                     <CardTitle>Status Breakdown</CardTitle>
                     <CardDescription>
@@ -333,7 +333,7 @@ export default function AnalyticsPage() {
 
             <TabsContent value="insights" className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="card-elevated">
                   <CardHeader>
                     <CardTitle>Key Insights</CardTitle>
                     <CardDescription>
@@ -366,7 +366,7 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="card-elevated">
                   <CardHeader>
                     <CardTitle>Recommendations</CardTitle>
                     <CardDescription>

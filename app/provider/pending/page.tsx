@@ -37,7 +37,7 @@ export default function ProviderPendingPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden gradient-bg-dark">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0">
         <div 

@@ -38,7 +38,7 @@ export function RegionSwitcherDemo() {
           <h2 className="text-xl font-semibold mb-4">Responsive Behavior</h2>
           <div className="space-y-4">
             <div className="p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-medium mb-2">Mobile (< 640px)</h3>
+              <h3 className="font-medium mb-2">Mobile (&lt; 640px)</h3>
               <div className="flex items-center gap-2">
                 <div className="text-lg">🇿🇦</div>
                 <div className="text-lg">🌐</div>

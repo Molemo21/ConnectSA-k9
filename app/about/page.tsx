@@ -42,7 +42,7 @@ export default function AboutPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen gradient-bg-dark text-white">
       <BrandHeader showAuth={true} showUserMenu={false} />
       
       {/* Hero Section */}

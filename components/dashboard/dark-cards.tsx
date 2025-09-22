@@ -133,7 +133,7 @@ export function DarkExampleCards() {
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-400">Avg Response Time</span>
-              <span className="font-medium text-gray-100">< 2 hours</span>
+              <span className="font-medium text-gray-100">&lt; 2 hours</span>
             </div>
           </div>
           
@@ -303,7 +303,7 @@ export function DarkSupportCard() {
         
         <div className="flex items-center justify-between text-sm mb-4">
           <span className="text-gray-400">Avg Response Time</span>
-          <Badge className="bg-blue-900/50 text-blue-400 border-blue-800/50">< 2 hours</Badge>
+          <Badge className="bg-blue-900/50 text-blue-400 border-blue-800/50">&lt; 2 hours</Badge>
         </div>
         
         <Button className="w-full bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-200 hover:scale-105 border border-gray-700">

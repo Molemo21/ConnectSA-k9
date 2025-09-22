@@ -62,7 +62,7 @@ function LoginContent() {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden animate-fade-in gradient-bg-dark">
       {/* Background image with booking theme */}
       <div
         className="absolute inset-0 bg-cover bg-center scale-100 opacity-90 transition-all duration-700 animate-zoom-in"

@@ -1,0 +1,29 @@
+[33mcommit a2bb07f1012eeac15ce6e6c781dc66e8c3940239[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: Molemo21 <molemonakin21@gmail.com>
+Date:   Mon Sep 22 09:44:49 2025 +0200
+
+    feat(client-dashboard): enhance client dashboard with consistent UI/UX design
+    
+    - Update mobile client dashboard with improved dark theme and glass morphism
+    - Enhance desktop client dashboard with collapsible sidebar and responsive layout
+    - Add consolidated mobile header with consistent navigation patterns
+    - Improve brand header client component with user stats integration
+    - Update user menu with dark theme and improved mobile experience
+    - Add enhanced booking cards with better visual hierarchy
+    - Implement recent booking card component for activity feed
+    - Update mobile bottom navigation with consistent styling
+    - Fix TypeScript compilation errors and improve code quality
+    - Ensure responsive design works across all device sizes
+    - Maintain consistent design language with provider and admin dashboards
+
+components/dashboard/compact-booking-card.tsx
+components/dashboard/dashboard-content.tsx
+components/dashboard/desktop-client-dashboard.tsx
+components/dashboard/enhanced-booking-card.tsx
+components/dashboard/mobile-client-dashboard.tsx
+components/dashboard/recent-booking-card.tsx
+components/ui/brand-header-client.tsx
+components/ui/brand-header.tsx
+components/ui/consolidated-mobile-header.tsx
+components/ui/mobile-bottom-nav.tsx
+components/ui/user-menu.tsx
