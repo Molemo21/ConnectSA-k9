@@ -32,6 +32,27 @@ export async function POST(request: NextRequest) {
         expires: new Date(0),
         ...(domain ? { domain } : {}),
       });
+      
+      // Also clear other possible auth cookies
+      response.cookies.set('user-session', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+        expires: new Date(0),
+        ...(domain ? { domain } : {}),
+      });
+      
+      response.cookies.set('auth-session', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+        expires: new Date(0),
+        ...(domain ? { domain } : {}),
+      });
     };
 
     // Delete via cookies() API (current domain scope)
@@ -49,6 +70,14 @@ export async function POST(request: NextRequest) {
       if (!process.env.COOKIE_DOMAIN.startsWith('.')) {
         expireAuthCookie(`.${process.env.COOKIE_DOMAIN}`);
       }
+    }
+    
+    // Additional cleanup for production domain
+    if (process.env.NODE_ENV === 'production') {
+      // Try to clear cookies for the production domain
+      expireAuthCookie('app.proliinkconnect.co.za');
+      expireAuthCookie('.app.proliinkconnect.co.za');
+      expireAuthCookie('.proliinkconnect.co.za');
     }
 
     return response;
@@ -90,6 +119,27 @@ export async function GET(request: NextRequest) {
         expires: new Date(0),
         ...(domain ? { domain } : {}),
       });
+      
+      // Also clear other possible auth cookies
+      response.cookies.set('user-session', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+        expires: new Date(0),
+        ...(domain ? { domain } : {}),
+      });
+      
+      response.cookies.set('auth-session', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 0,
+        expires: new Date(0),
+        ...(domain ? { domain } : {}),
+      });
     };
 
     expireAuthCookie();
@@ -98,6 +148,14 @@ export async function GET(request: NextRequest) {
       if (!process.env.COOKIE_DOMAIN.startsWith('.')) {
         expireAuthCookie(`.${process.env.COOKIE_DOMAIN}`);
       }
+    }
+    
+    // Additional cleanup for production domain
+    if (process.env.NODE_ENV === 'production') {
+      // Try to clear cookies for the production domain
+      expireAuthCookie('app.proliinkconnect.co.za');
+      expireAuthCookie('.app.proliinkconnect.co.za');
+      expireAuthCookie('.proliinkconnect.co.za');
     }
 
     return response;
