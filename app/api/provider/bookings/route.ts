@@ -1,8 +1,43 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { db } from "@/lib/db-utils"
+import { prisma } from "@/lib/prisma"
+
+// Structured logging utility
+const createLogger = (context: string) => ({
+  info: (message: string, data?: any) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  error: (message: string, error?: any, data?: any) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      context,
+      message,
+      error: error?.message || error,
+      stack: error?.stack,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  },
+  warn: (message: string, data?: any) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      context,
+      message,
+      timestamp: new Date().toISOString(),
+      ...data
+    }));
+  }
+});
 
 export async function GET(request: NextRequest) {
+  const logger = createLogger('ProviderBookingsAPI');
+  
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
     return NextResponse.json({
@@ -11,34 +46,42 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log('Provider bookings API: Starting request')
+    logger.info('Starting provider bookings request');
     
-    const user = await getCurrentUser()
-    console.log('Provider bookings API: User fetched:', { user: user ? { id: user.id, role: user.role } : null })
+    const user = await getCurrentUser();
+    logger.info('User fetched', { 
+      userId: user?.id, 
+      userRole: user?.role,
+      userEmail: user?.email 
+    });
     
     if (!user) {
-      console.log('Provider bookings API: No user found')
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      logger.warn('No user found');
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
     
     if (user.role !== "PROVIDER") {
-      console.log('Provider bookings API: User is not a provider:', user.role)
-      return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 })
+      logger.warn('User is not a provider', { userRole: user.role });
+      return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 });
     }
 
-    const provider = await db.provider.findUnique({
+    const provider = await prisma.provider.findUnique({
       where: { userId: user.id },
-    })
+    });
 
-    console.log('Provider bookings API: Provider found:', { provider: provider ? { id: provider.id } : null })
+    logger.info('Provider lookup result', { 
+      providerId: provider?.id,
+      businessName: provider?.businessName,
+      status: provider?.status 
+    });
 
     if (!provider) {
-      console.log('Provider bookings API: Provider record not found for user:', user.id)
-      return NextResponse.json({ error: "Provider profile not found" }, { status: 404 })
+      logger.warn('Provider profile not found', { userId: user.id });
+      return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
     }
 
     // Fetch all bookings for this provider
-    const bookings = await db.booking.findMany({
+    const bookings = await prisma.booking.findMany({
       where: {
         providerId: provider.id,
         status: {
@@ -100,9 +143,16 @@ export async function GET(request: NextRequest) {
       totalReviews: reviews.length
     }
 
-    return NextResponse.json({ bookings, stats })
+    logger.info('Provider bookings API success', {
+      providerId: provider.id,
+      bookingCount: bookings.length,
+      statsCalculated: !!stats
+    });
+
+    return NextResponse.json({ bookings, stats, providerId: provider.id });
+    
   } catch (error) {
-    console.error("Provider bookings error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    logger.error('Provider bookings API error', error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 } 
