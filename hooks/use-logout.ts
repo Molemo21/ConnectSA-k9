@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { showToast } from "@/lib/toast"
 
 export function useLogout() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const router = useRouter()
 
   const logout = async () => {
     try {
       setIsLoggingOut(true)
+      console.log('Starting logout process...')
       
+      // Make logout request with credentials
       const response = await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
@@ -20,30 +20,57 @@ export function useLogout() {
         },
       })
 
+      console.log('Logout response:', response.status, response.statusText)
+
       if (response.ok) {
         showToast.success("Logged out successfully")
+        console.log('Logout successful, clearing client state...')
         
-        // Clear any client-side state
-        localStorage.removeItem("user")
-        localStorage.clear()
-        sessionStorage.clear()
-        
-        // Clear any cached data
-        if (typeof window !== 'undefined') {
-          // Force clear all cookies that might be accessible client-side
-          document.cookie.split(";").forEach((c) => {
-            const eqPos = c.indexOf("=")
-            const name = eqPos > -1 ? c.substr(0, eqPos) : c
-            document.cookie = `${name.trim()}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=.proliinkconnect.co.za`
-            document.cookie = `${name.trim()}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=app.proliinkconnect.co.za`
-            document.cookie = `${name.trim()}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
+        // Clear all possible client-side storage
+        try {
+          localStorage.clear()
+          sessionStorage.clear()
+          
+          // Clear any possible auth-related items
+          const keysToRemove = ['user', 'auth', 'token', 'session', 'login']
+          keysToRemove.forEach(key => {
+            localStorage.removeItem(key)
+            sessionStorage.removeItem(key)
           })
+          
+          // Clear any cookies that might be accessible client-side
+          if (typeof window !== 'undefined') {
+            const cookieNames = [
+              'auth-token', 'user-session', 'auth-session', 'session', 'token', 
+              'jwt', 'user', 'auth', 'login', 'sessionid', 'session_id'
+            ]
+            
+            cookieNames.forEach(cookieName => {
+              // Clear with different domain and path combinations
+              const domains = ['', '.proliinkconnect.co.za', 'app.proliinkconnect.co.za', '.app.proliinkconnect.co.za']
+              const paths = ['/', '/api', '/dashboard', '/provider']
+              
+              domains.forEach(domain => {
+                paths.forEach(path => {
+                  document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=${path}${domain ? `;domain=${domain}` : ''}`
+                })
+              })
+            })
+          }
+        } catch (storageError) {
+          console.error('Error clearing client storage:', storageError)
         }
         
-        // Force a hard reload to ensure all state is cleared
-        window.location.href = "/"
+        console.log('Client state cleared, redirecting...')
+        
+        // Force a complete page reload to ensure all state is cleared
+        setTimeout(() => {
+          window.location.href = "/"
+        }, 100)
+        
       } else {
         const error = await response.json()
+        console.error('Logout failed:', error)
         showToast.error(error.error || "Failed to logout")
       }
     } catch (error) {
