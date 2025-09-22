@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import Paystack from 'paystack-sdk';
+const Paystack = require('paystack-sdk');
 
 // Environment variables validation
 const requiredEnvVars = {
