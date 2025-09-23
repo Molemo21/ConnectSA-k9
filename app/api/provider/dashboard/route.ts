@@ -1,45 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logDashboard } from "@/lib/logger";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
 
-// Structured logging utility
-const createLogger = (context: string) => ({
-  info: (message: string, data?: any) => {
-    console.log(JSON.stringify({
-      level: 'info',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  error: (message: string, error?: any, data?: any) => {
-    console.error(JSON.stringify({
-      level: 'error',
-      context,
-      message,
-      error: error?.message || error,
-      stack: error?.stack,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  warn: (message: string, data?: any) => {
-    console.warn(JSON.stringify({
-      level: 'warn',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  }
-});
-
 export async function GET(request: NextRequest) {
-  const logger = createLogger('ProviderDashboardAPI');
   
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
@@ -49,23 +16,36 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    logger.info('Provider dashboard API: Starting request');
+    // Parse query parameters for pagination
+    const { searchParams } = new URL(request.url);
+    const cursor = searchParams.get('cursor');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const pageSize = Math.min(limit, 50); // Max 50 items per page
+
+    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Starting request', {
+      metadata: { cursor, pageSize }
+    });
     
     // Get current user
     const user = await getCurrentUser();
-    logger.info('Provider dashboard API: User fetched', { 
-      userId: user?.id, 
-      userRole: user?.role,
-      userEmail: user?.email 
+    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: User fetched', {
+      userId: user?.id,
+      metadata: { userRole: user?.role, userEmail: user?.email }
     });
     
     if (!user) {
-      logger.warn('Provider dashboard API: No user found');
+      logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: No user found', new Error('Not authenticated'), {
+        error_code: 'NOT_AUTHENTICATED'
+      });
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
     
     if (user.role !== "PROVIDER") {
-      logger.warn('Provider dashboard API: User is not a provider', { userRole: user.role });
+      logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: User is not a provider', new Error('Unauthorized'), {
+        userId: user.id,
+        userRole: user.role,
+        error_code: 'UNAUTHORIZED_ROLE'
+      });
       return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 });
     }
 
@@ -85,21 +65,27 @@ export async function GET(request: NextRequest) {
     });
 
     if (!provider) {
-      logger.warn('Provider dashboard API: Provider profile not found', { userId: user.id });
+      logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: Provider profile not found', new Error('Provider profile not found'), {
+        userId: user.id,
+        error_code: 'PROVIDER_NOT_FOUND'
+      });
       return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
     }
 
-    logger.info('Provider dashboard API: Provider found', { 
+    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Provider found', {
+      userId: user.id,
       providerId: provider.id,
-      businessName: provider.businessName,
-      status: provider.status 
+      metadata: { businessName: provider.businessName, status: provider.status }
     });
 
-    // Fetch all bookings for this provider
+    // Fetch bookings for this provider with cursor-based pagination
+    const whereClause = {
+      providerId: provider.id,
+      ...(cursor && { createdAt: { lt: new Date(cursor) } })
+    };
+
     const bookings = await prisma.booking.findMany({
-      where: {
-        providerId: provider.id,
-      },
+      where: whereClause,
       include: {
         service: {
           select: {
@@ -123,9 +109,20 @@ export async function GET(request: NextRequest) {
             id: true,
             status: true,
             amount: true,
+            escrowAmount: true,
+            platformFee: true,
             paystackRef: true,
             paidAt: true,
-            authorizationUrl: true
+            authorizationUrl: true,
+            payout: {
+              select: {
+                id: true,
+                status: true,
+                transferCode: true,
+                createdAt: true,
+                updatedAt: true
+              }
+            }
           }
         },
         review: {
@@ -139,15 +136,17 @@ export async function GET(request: NextRequest) {
       },
       orderBy: {
         createdAt: 'desc'
-      }
+      },
+      take: pageSize + 1 // Take one extra to check if there are more items
     });
 
-    logger.info('Provider dashboard API: Bookings fetched', { 
-      providerId: provider.id, 
-      bookingCount: bookings.length 
+    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Bookings fetched', {
+      userId: user.id,
+      providerId: provider.id,
+      metadata: { bookingCount: bookings.length }
     });
 
-    // Calculate stats
+    // Calculate stats including payout information
     const stats = {
       totalBookings: bookings.length,
       pendingBookings: bookings.filter(b => b.status === 'PENDING').length,
@@ -156,17 +155,31 @@ export async function GET(request: NextRequest) {
       completedBookings: bookings.filter(b => b.status === 'COMPLETED').length,
       totalEarnings: bookings
         .filter(b => b.payment?.status === 'RELEASED')
-        .reduce((sum, b) => sum + (b.payment?.amount || 0), 0),
+        .reduce((sum, b) => sum + (b.payment?.escrowAmount || 0), 0),
       pendingEarnings: bookings
         .filter(b => b.payment?.status === 'ESCROW')
-        .reduce((sum, b) => sum + (b.payment?.amount || 0), 0),
+        .reduce((sum, b) => sum + (b.payment?.escrowAmount || 0), 0),
+      processingEarnings: bookings
+        .filter(b => b.payment?.payout?.status === 'PROCESSING')
+        .reduce((sum, b) => sum + (b.payment?.escrowAmount || 0), 0),
+      failedPayouts: bookings
+        .filter(b => b.payment?.payout?.status === 'FAILED')
+        .length,
+      completedPayouts: bookings
+        .filter(b => b.payment?.payout?.status === 'COMPLETED')
+        .length,
       averageRating: bookings
         .filter(b => b.review?.rating)
         .reduce((sum, b, _, arr) => sum + (b.review?.rating || 0) / arr.length, 0)
     };
 
+    // Check if there are more items
+    const hasMore = bookings.length > pageSize;
+    const items = hasMore ? bookings.slice(0, pageSize) : bookings;
+    const nextCursor = hasMore ? items[items.length - 1].createdAt.toISOString() : null;
+
     // Transform bookings for frontend
-    const transformedBookings = bookings.map(booking => ({
+    const transformedBookings = items.map(booking => ({
       id: booking.id,
       status: booking.status,
       scheduledDate: booking.scheduledDate,
@@ -183,6 +196,17 @@ export async function GET(request: NextRequest) {
       review: booking.review
     }));
 
+    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Pagination response prepared', {
+      userId: user.id,
+      providerId: provider.id,
+      metadata: { 
+        itemCount: transformedBookings.length,
+        hasMore,
+        nextCursor: nextCursor ? 'present' : 'null',
+        pageSize
+      }
+    });
+
     return NextResponse.json({
       success: true,
       provider: {
@@ -195,11 +219,19 @@ export async function GET(request: NextRequest) {
       },
       bookings: transformedBookings,
       stats: stats,
-      count: transformedBookings.length
+      pagination: {
+        hasMore,
+        nextCursor,
+        pageSize,
+        count: transformedBookings.length
+      }
     });
 
   } catch (error) {
-    logger.error('Provider dashboard API: Error fetching data', error);
+    logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: Error fetching data', error as Error, {
+      error_code: 'INTERNAL_ERROR',
+      metadata: { errorMessage: (error as Error).message }
+    });
     
     return NextResponse.json({ 
       error: "Internal server error",

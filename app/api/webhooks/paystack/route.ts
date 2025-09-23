@@ -4,6 +4,9 @@ import { paystackClient, paymentProcessor } from "@/lib/paystack";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import crypto from "crypto";
+import { handleTransferFailureWithRetry } from '@/lib/transfer-retry';
+import { logPayment } from '@/lib/logger';
+import { broadcastPaymentStatusChange, broadcastPayoutStatusChange } from '@/lib/socket-server';
 
 // Webhook event schemas for validation
 const WebhookEventSchema = z.object({
@@ -553,7 +556,9 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
 
         return { 
           success: true, 
-          message: `Payment ${existingPayment.id} successfully moved to escrow for booking ${existingPayment.bookingId}` 
+          message: `Payment ${existingPayment.id} successfully moved to escrow for booking ${existingPayment.bookingId}`,
+          payment: existingPayment,
+          booking: existingPayment.booking
         };
       });
     } catch (transactionError) {
@@ -596,6 +601,45 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
       } catch (fallbackError) {
         console.error('❌ Fallback operations also failed:', fallbackError);
         throw new Error(`Failed to process payment: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
+      }
+    }
+
+    // Broadcast payment status change
+    if (result.success && result.payment && result.booking) {
+      try {
+        broadcastPaymentStatusChange(
+          {
+            id: result.payment.id,
+            status: result.payment.status,
+            amount: result.payment.amount,
+            escrowAmount: result.payment.escrowAmount,
+            bookingId: result.payment.bookingId,
+            paystackRef: result.payment.paystackRef
+          },
+          result.booking.clientId,
+          result.booking.providerId
+        );
+        
+        logPayment.success('webhook', 'Payment status change broadcasted via WebSocket', {
+          paymentId: result.payment.id,
+          bookingId: result.payment.bookingId,
+          metadata: { 
+            clientId: result.booking.clientId,
+            providerId: result.booking.providerId,
+            status: result.payment.status
+          }
+        });
+      } catch (broadcastError) {
+        logPayment.error('webhook', 'Failed to broadcast payment status change', broadcastError as Error, {
+          paymentId: result.payment.id,
+          bookingId: result.payment.bookingId,
+          error_code: 'BROADCAST_FAILED',
+          metadata: { 
+            clientId: result.booking.clientId,
+            providerId: result.booking.providerId
+          }
+        });
+        // Don't fail the webhook if broadcast fails
       }
     }
 
@@ -661,7 +705,9 @@ async function handleTransferSuccess(data: any, webhookEventId: string) {
   try {
     const { reference, transfer_code } = data;
 
-    console.log(`💸 Processing transfer success webhook for reference: ${reference}`);
+    logPayment.success('webhook', 'Processing transfer success webhook', {
+      metadata: { reference, transfer_code }
+    });
 
     const result = await prisma.$transaction(async (tx) => {
       // Find payout by reference
@@ -695,18 +741,72 @@ async function handleTransferSuccess(data: any, webhookEventId: string) {
         data: { status: 'COMPLETED' }
       });
 
-      console.log(`🎉 Payout successful for payment ${payout.paymentId}, amount: ${payout.amount}`);
+      logPayment.success('webhook', 'Transfer completed successfully', {
+        payoutId: payout.id,
+        paymentId: payout.paymentId,
+        bookingId: payout.payment.bookingId,
+        metadata: {
+          amount: payout.amount,
+          transferCode: transfer_code,
+          reference
+        }
+      });
 
       return { 
         success: true, 
-        message: `Payout ${payout.id} completed successfully, payment ${payout.paymentId} released to provider` 
+        message: `Payout ${payout.id} completed successfully, payment ${payout.paymentId} released to provider`,
+        payout: payout,
+        payment: payout.payment,
+        booking: payout.payment.booking
       };
     });
+
+    // Broadcast payout status change
+    if (result.success && result.payout && result.payment && result.booking) {
+      try {
+        broadcastPayoutStatusChange(
+          {
+            id: result.payout.id,
+            status: result.payout.status,
+            amount: result.payout.amount,
+            transferCode: result.payout.transferCode,
+            paymentId: result.payout.paymentId,
+            providerId: result.payout.providerId
+          },
+          result.payout.providerId
+        );
+        
+        logPayment.success('webhook', 'Payout status change broadcasted via WebSocket', {
+          payoutId: result.payout.id,
+          paymentId: result.payment.id,
+          bookingId: result.booking.id,
+          metadata: { 
+            providerId: result.payout.providerId,
+            status: result.payout.status,
+            amount: result.payout.amount
+          }
+        });
+      } catch (broadcastError) {
+        logPayment.error('webhook', 'Failed to broadcast payout status change', broadcastError as Error, {
+          payoutId: result.payout.id,
+          paymentId: result.payment.id,
+          bookingId: result.booking.id,
+          error_code: 'BROADCAST_FAILED',
+          metadata: { 
+            providerId: result.payout.providerId
+          }
+        });
+        // Don't fail the webhook if broadcast fails
+      }
+    }
 
     return result;
 
   } catch (error) {
-    console.error('❌ Error handling transfer success:', error);
+    logPayment.error('webhook', 'Error handling transfer success', error as Error, {
+      error_code: 'TRANSFER_SUCCESS_HANDLING_ERROR',
+      metadata: { errorMessage: (error as Error).message }
+    });
     throw error;
   }
 }
@@ -716,7 +816,10 @@ async function handleTransferFailed(data: any, webhookEventId: string) {
   try {
     const { reference, failure_reason } = data;
 
-    console.log(`❌ Processing transfer failure webhook for reference: ${reference}`);
+    logPayment.error('webhook', 'Processing transfer failure webhook', new Error(failure_reason), {
+      error_code: 'TRANSFER_FAILED',
+      metadata: { reference, failure_reason }
+    });
 
     const result = await prisma.$transaction(async (tx) => {
       // Find payout by reference
@@ -747,19 +850,31 @@ async function handleTransferFailed(data: any, webhookEventId: string) {
         data: { status: 'PENDING_EXECUTION' }
       });
 
-      console.log(`💔 Transfer failed for reference: ${reference}, reason: ${failure_reason}`);
-      console.log(`🔄 Reverted payment ${payout.paymentId} back to ESCROW`);
+      logPayment.error('webhook', 'Transfer failed, reverted payment to escrow', new Error(failure_reason), {
+        payoutId: payout.id,
+        paymentId: payout.paymentId,
+        bookingId: payout.payment.bookingId,
+        error_code: 'TRANSFER_FAILED',
+        metadata: { reference, failure_reason }
+      });
 
       return { 
         success: true, 
+        payoutId: payout.id,
         message: `Transfer ${payout.id} failed, payment ${payout.paymentId} reverted to escrow` 
       };
     });
 
+    // Schedule automatic retry for the failed transfer
+    await handleTransferFailureWithRetry(result.payoutId, failure_reason);
+
     return result;
 
   } catch (error) {
-    console.error('❌ Error handling transfer failure:', error);
+    logPayment.error('webhook', 'Error handling transfer failure', error as Error, {
+      error_code: 'TRANSFER_FAILURE_HANDLING_ERROR',
+      metadata: { errorMessage: (error as Error).message }
+    });
     throw error;
   }
 }

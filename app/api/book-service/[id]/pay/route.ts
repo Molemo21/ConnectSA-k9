@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor, PAYMENT_CONSTANTS } from "@/lib/paystack";
 import { z } from "zod";
+import { logPayment } from "@/lib/logger";
 
 export const dynamic = 'force-dynamic'
 
@@ -12,41 +13,7 @@ const paymentSchema = z.object({
   callbackUrl: z.string().url("Valid callback URL is required"),
 });
 
-// Structured logging utility
-const createLogger = (context: string) => ({
-  info: (message: string, data?: any) => {
-    console.log(JSON.stringify({
-      level: 'info',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  error: (message: string, error?: any, data?: any) => {
-    console.error(JSON.stringify({
-      level: 'error',
-      context,
-      message,
-      error: error?.message || error,
-      stack: error?.stack,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  warn: (message: string, data?: any) => {
-    console.warn(JSON.stringify({
-      level: 'warn',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  }
-});
-
 export async function POST(request: NextRequest) {
-  const logger = createLogger('PaymentInitialize');
   
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
@@ -62,9 +29,10 @@ export async function POST(request: NextRequest) {
     // Authentication
     const user = await getCurrentUser();
     if (!user || user.role !== "CLIENT") {
-      logger.warn('Unauthorized payment attempt', { 
-        userId: user?.id, 
-        role: user?.role 
+      logPayment.error('init', 'Unauthorized payment attempt', new Error('Unauthorized'), {
+        userId: user?.id,
+        userRole: user?.role,
+        error_code: 'UNAUTHORIZED'
       });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -77,7 +45,11 @@ export async function POST(request: NextRequest) {
     bookingId = match ? match[1] : null;
     
     if (!bookingId) {
-      logger.warn('Invalid booking ID in URL', { pathname, userId });
+      logPayment.error('init', 'Invalid booking ID in URL', new Error('Invalid booking ID'), {
+        userId,
+        pathname,
+        error_code: 'INVALID_BOOKING_ID'
+      });
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
@@ -86,23 +58,34 @@ export async function POST(request: NextRequest) {
     try {
       const body = await request.json();
       validated = paymentSchema.parse(body);
-      logger.info('Using provided callback URL', { 
-        bookingId, 
-        userId, 
-        callbackUrl: validated.callbackUrl 
+      logPayment.success('init', 'Using provided callback URL', {
+        userId,
+        bookingId,
+        metadata: { callbackUrl: validated.callbackUrl }
       });
     } catch (parseError) {
       // Provide default callback URL if none provided
-      logger.info('No request body provided, using default callback URL', { bookingId, userId });
+      logPayment.success('init', 'No request body provided, using default callback URL', {
+        userId,
+        bookingId,
+        metadata: { defaultCallback: true }
+      });
       validated = {
         callbackUrl: `${request.nextUrl.origin}/dashboard?payment=success&booking=${bookingId}`
       };
     }
 
-    logger.info('Payment initialization started', { bookingId, userId });
+    logPayment.success('init', 'Payment initialization started', {
+      userId,
+      bookingId,
+      metadata: { callbackUrl: validated.callbackUrl }
+    });
 
     // STEP 1: Pre-validation outside transaction (fast operations)
-    logger.info('Step 1: Pre-validation checks', { bookingId, userId });
+    logPayment.success('init', 'Step 1: Pre-validation checks started', {
+      userId,
+      bookingId
+    });
     
     // Get booking with all required relations
     const booking = await prisma.booking.findUnique({ 
@@ -116,26 +99,32 @@ export async function POST(request: NextRequest) {
     });
     
     if (!booking) {
-      logger.warn('Booking not found', { bookingId, userId });
+      logPayment.error('init', 'Booking not found for payment', new Error('Booking not found'), {
+        userId,
+        bookingId,
+        error_code: 'BOOKING_NOT_FOUND'
+      });
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
     // Validate booking ownership
     if (booking.clientId !== userId) {
-      logger.warn('Forbidden payment attempt', { 
-        bookingId, 
-        userId, 
-        bookingClientId: booking.clientId 
+      logPayment.error('init', 'Forbidden payment attempt', new Error('Forbidden'), {
+        userId,
+        bookingId,
+        bookingClientId: booking.clientId,
+        error_code: 'FORBIDDEN'
       });
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Validate booking status - should be ACCEPTED or CONFIRMED
     if (!["CONFIRMED", "PENDING", "ACCEPTED"].includes(booking.status)) {
-      logger.warn('Invalid booking status for payment', { 
-        bookingId, 
-        userId, 
-        status: booking.status 
+      logPayment.error('init', 'Invalid booking status for payment', new Error('Invalid booking status'), {
+        userId,
+        bookingId,
+        status: booking.status,
+        error_code: 'INVALID_BOOKING_STATUS'
       });
       return NextResponse.json({ 
         error: "Payment can only be made for confirmed, pending, or accepted bookings" 
@@ -315,9 +304,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responseData);
 
   } catch (error) {
-    logger.error('Payment initialization failed', error, { 
-      bookingId, 
-      userId 
+    logPayment.error('init', 'Payment initialization failed', error as Error, {
+      userId,
+      bookingId,
+      error_code: 'PAYMENT_INIT_FAILED',
+      metadata: { errorMessage: (error as Error).message }
     });
     
     // Handle specific error types

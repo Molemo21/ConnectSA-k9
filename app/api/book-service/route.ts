@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { z } from "zod";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { logBooking } from "@/lib/logger";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
@@ -30,11 +31,24 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user || user.role !== "CLIENT") {
+      logBooking.error('create', 'Unauthorized booking attempt', new Error('Unauthorized'), {
+        userId: user?.id,
+        userRole: user?.role,
+        error_code: 'UNAUTHORIZED'
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const validated = bookingSchema.parse(body);
+
+    logBooking.success('create', 'Booking creation started', {
+      userId: user.id,
+      serviceId: validated.serviceId,
+      scheduledDate: validated.date,
+      scheduledTime: validated.time,
+      metadata: { address: validated.address, notes: validated.notes }
+    });
 
     // Find available providers for the service
     const providers = await db.provider.findMany({
@@ -71,8 +85,17 @@ export async function POST(request: NextRequest) {
 
     // If no provider is available, return an error
     if (!assignedProvider) {
-      console.log(`No providers available for service ${validated.serviceId} on ${validated.date}`);
-      console.log(`Found ${providers.length} providers, but all are busy`);
+      logBooking.error('create', 'No providers available for booking', new Error('No available providers'), {
+        userId: user.id,
+        serviceId: validated.serviceId,
+        scheduledDate: validated.date,
+        error_code: 'NO_PROVIDERS_AVAILABLE',
+        metadata: { 
+          totalProviders: providers.length,
+          availableProviders: providers.filter(p => p.available).length,
+          approvedProviders: providers.filter(p => p.status === 'APPROVED').length
+        }
+      });
       return NextResponse.json({ 
         error: "No providers are currently available for this service. Please try again later or contact support." 
       }, { status: 400 });
@@ -94,7 +117,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`Booking created successfully: ${booking.id} with provider ${assignedProvider.id}`);
+    logBooking.success('create', 'Booking created successfully', {
+      userId: user.id,
+      bookingId: booking.id,
+      providerId: assignedProvider.id,
+      serviceId: validated.serviceId,
+      metadata: {
+        scheduledDate: booking.scheduledDate.toISOString(),
+        duration: booking.duration,
+        address: booking.address
+      }
+    });
 
     // Create notifications for both client and provider
     try {
@@ -130,19 +163,44 @@ export async function POST(request: NextRequest) {
           content: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent to ${fullBooking.provider?.businessName || 'the provider'}. You'll be notified when they respond.`
         });
 
-        console.log(`🔔 Notifications sent: Provider (${fullBooking.provider.user.email}) and Client (${fullBooking.client.email})`);
+        logBooking.success('create', 'Booking notifications sent successfully', {
+          userId: user.id,
+          bookingId: booking.id,
+          providerId: assignedProvider.id,
+          metadata: {
+            providerEmail: fullBooking.provider.user.email,
+            clientEmail: fullBooking.client.email,
+            notificationType: 'BOOKING_CREATED'
+          }
+        });
       }
     } catch (notificationError) {
-      console.error('❌ Failed to create booking notifications:', notificationError);
+      logBooking.error('create', 'Failed to create booking notifications', notificationError as Error, {
+        userId: user.id,
+        bookingId: booking.id,
+        providerId: assignedProvider.id,
+        error_code: 'NOTIFICATION_FAILED',
+        metadata: { notificationError: (notificationError as Error).message }
+      });
       // Don't fail the request if notifications fail
     }
 
     return NextResponse.json({ booking });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      logBooking.error('create', 'Invalid booking input validation', error, {
+        userId: user?.id,
+        error_code: 'VALIDATION_ERROR',
+        metadata: { validationErrors: error.errors }
+      });
       return NextResponse.json({ error: error.errors[0]?.message || "Invalid input" }, { status: 400 });
     }
-    console.error("Booking error:", error);
+    
+    logBooking.error('create', 'Unexpected booking creation error', error as Error, {
+      userId: user?.id,
+      error_code: 'INTERNAL_ERROR',
+      metadata: { errorMessage: (error as Error).message }
+    });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 } 

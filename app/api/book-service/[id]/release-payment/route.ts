@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor } from "@/lib/paystack";
+import { logPayment } from "@/lib/logger";
 
 export const dynamic = 'force-dynamic'
 
@@ -335,53 +336,63 @@ export async function POST(request: NextRequest) {
           throw new Error("Provider bank details are incomplete. Cannot create transfer recipient.");
         }
 
-        // Check if we're in test mode
-        const isTestMode = process.env.PAYSTACK_TEST_MODE === 'true' || process.env.NODE_ENV === 'development';
-        
-        if (isTestMode) {
-          // Simulate successful recipient creation in test mode
-          console.log(`🧪 TEST MODE: Simulating successful recipient creation`);
-          recipientCode = `TEST_RECIPIENT_${Date.now()}`;
-          
-          // Store test recipient_code in provider record
-          await prisma.provider.update({
-            where: { id: result.provider.id },
-            data: { recipientCode }
-          });
-          
-          console.log(`💾 Stored test recipient_code ${recipientCode} for provider ${result.provider.id}`);
-        } else {
-          // Real Paystack recipient creation in production
-          const recipientData: TransferRecipientData = {
-            type: 'nuban',
-            name: result.provider.accountName,
-            account_number: result.provider.accountNumber,
-            bank_code: result.provider.bankCode
-          };
+      // Create Paystack transfer recipient (always use real API)
+      const recipientData: TransferRecipientData = {
+        type: 'nuban',
+        name: result.provider.accountName,
+        account_number: result.provider.accountNumber,
+        bank_code: result.provider.bankCode
+      };
 
-          console.log(`🏦 Creating Paystack transfer recipient with bank details:`, {
-            bank: result.provider.bankName,
-            accountNumber: result.provider.accountNumber,
-            accountName: result.provider.accountName
-          });
-
-          const recipientResponse = await paystackClient.createRecipient(recipientData);
-          
-          if (!recipientResponse.data?.recipient_code) {
-            throw new Error("Failed to create transfer recipient. Paystack response invalid.");
-          }
-
-          recipientCode = recipientResponse.data.recipient_code;
-          console.log(`✅ Created transfer recipient with code: ${recipientCode}`);
-
-          // Store recipient_code in provider record
-          await prisma.provider.update({
-            where: { id: result.provider.id },
-            data: { recipientCode }
-          });
-          
-          console.log(`💾 Stored recipient_code ${recipientCode} for provider ${result.provider.id}`);
+      logPayment.success('escrow_release', 'Creating Paystack transfer recipient', {
+        userId: user.id,
+        bookingId: bookingId,
+        paymentId: result.payment.id,
+        providerId: result.provider.id,
+        metadata: {
+          bank: result.provider.bankName,
+          accountNumber: result.provider.accountNumber,
+          accountName: result.provider.accountName
         }
+      });
+
+      const recipientResponse = await paystackClient.createRecipient(recipientData);
+      
+      if (!recipientResponse.data?.recipient_code) {
+        logPayment.error('escrow_release', 'Failed to create transfer recipient', new Error('Paystack response invalid'), {
+          userId: user.id,
+          bookingId: bookingId,
+          paymentId: result.payment.id,
+          providerId: result.provider.id,
+          error_code: 'RECIPIENT_CREATION_FAILED',
+          metadata: { paystackResponse: recipientResponse }
+        });
+        throw new Error("Failed to create transfer recipient. Paystack response invalid.");
+      }
+
+      recipientCode = recipientResponse.data.recipient_code;
+      
+      logPayment.success('escrow_release', 'Transfer recipient created successfully', {
+        userId: user.id,
+        bookingId: bookingId,
+        paymentId: result.payment.id,
+        providerId: result.provider.id,
+        metadata: { recipientCode }
+      });
+
+      // Store recipient_code in provider record
+      await prisma.provider.update({
+        where: { id: result.provider.id },
+        data: { recipientCode }
+      });
+      
+      logPayment.success('escrow_release', 'Recipient code stored in provider record', {
+        userId: user.id,
+        bookingId: bookingId,
+        paymentId: result.payment.id,
+        providerId: result.provider.id,
+        metadata: { recipientCode }
+      });
       } else {
         console.log(`✅ Using existing recipient_code: ${recipientCode}`);
       }
@@ -402,35 +413,44 @@ export async function POST(request: NextRequest) {
         reference: transferData.reference
       });
 
-      // Check if we're in test mode
-      const isTestMode = process.env.PAYSTACK_TEST_MODE === 'true' || process.env.NODE_ENV === 'development';
-      
-      let transferResponse;
-      
-      if (isTestMode) {
-        // Simulate successful transfer in test mode
-        console.log(`🧪 TEST MODE: Simulating successful Paystack transfer`);
-        transferResponse = {
-          data: {
-            transfer_code: `TEST_TRANSFER_${Date.now()}`,
-            amount: result.payment.escrowAmount * 100, // Convert to cents
-            status: 'success'
-          }
-        };
-      } else {
-        // Real Paystack transfer in production
-        transferResponse = await paystackClient.createTransfer(transferData);
-        
-        if (!transferResponse.data?.transfer_code) {
-          throw new Error("Failed to create transfer. Paystack response invalid.");
+      // Create real Paystack transfer
+      logPayment.success('escrow_release', 'Initiating Paystack transfer', {
+        userId: user.id,
+        bookingId: bookingId,
+        paymentId: result.payment.id,
+        providerId: result.provider.id,
+        metadata: {
+          amount: result.payment.escrowAmount,
+          recipient: recipientCode,
+          reason: transferData.reason,
+          reference: transferData.reference
         }
+      });
+
+      const transferResponse = await paystackClient.createTransfer(transferData);
+      
+      if (!transferResponse.data?.transfer_code) {
+        logPayment.error('escrow_release', 'Failed to create transfer', new Error('Paystack response invalid'), {
+          userId: user.id,
+          bookingId: bookingId,
+          paymentId: result.payment.id,
+          providerId: result.provider.id,
+          error_code: 'TRANSFER_CREATION_FAILED',
+          metadata: { paystackResponse: transferResponse }
+        });
+        throw new Error("Failed to create transfer. Paystack response invalid.");
       }
 
-      console.log(`✅ Paystack transfer created successfully:`, {
-        transferCode: transferResponse.data.transfer_code,
-        amount: transferResponse.data.amount,
-        status: transferResponse.data.status,
-        mode: isTestMode ? 'TEST' : 'PRODUCTION'
+      logPayment.success('escrow_release', 'Paystack transfer created successfully', {
+        userId: user.id,
+        bookingId: bookingId,
+        paymentId: result.payment.id,
+        providerId: result.provider.id,
+        metadata: {
+          transferCode: transferResponse.data.transfer_code,
+          amount: transferResponse.data.amount,
+          status: transferResponse.data.status
+        }
       });
 
       // 15. Update payout with transfer details
@@ -442,10 +462,30 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      logPayment.success('escrow_release', 'Payout updated with transfer details', {
+        userId: user.id,
+        bookingId: bookingId,
+        paymentId: result.payment.id,
+        providerId: result.provider.id,
+        metadata: {
+          payoutId: result.payout.id,
+          transferCode: transferResponse.data.transfer_code,
+          newStatus: 'PROCESSING'
+        }
+      });
+
       // 16. Update booking status to COMPLETED
       await prisma.booking.update({
         where: { id: bookingId },
         data: { status: "COMPLETED" }
+      });
+
+      logPayment.success('escrow_release', 'Booking status updated to COMPLETED', {
+        userId: user.id,
+        bookingId: bookingId,
+        paymentId: result.payment.id,
+        providerId: result.provider.id,
+        metadata: { newBookingStatus: 'COMPLETED' }
       });
 
       // 17. Update payment status to RELEASED

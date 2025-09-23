@@ -1,45 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logDashboard } from "@/lib/logger";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
 
-// Structured logging utility
-const createLogger = (context: string) => ({
-  info: (message: string, data?: any) => {
-    console.log(JSON.stringify({
-      level: 'info',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  error: (message: string, error?: any, data?: any) => {
-    console.error(JSON.stringify({
-      level: 'error',
-      context,
-      message,
-      error: error?.message || error,
-      stack: error?.stack,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  },
-  warn: (message: string, data?: any) => {
-    console.warn(JSON.stringify({
-      level: 'warn',
-      context,
-      message,
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
-  }
-});
-
 export async function GET(request: NextRequest) {
-  const logger = createLogger('UserBookingsAPI');
   
   // Skip during build time
   if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
@@ -49,29 +16,41 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    logger.info('User bookings API: Starting request');
+    // Parse query parameters for pagination
+    const { searchParams } = new URL(request.url);
+    const cursor = searchParams.get('cursor');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const pageSize = Math.min(limit, 50); // Max 50 items per page
+
+    logDashboard.success('client', 'dashboard_load', 'User bookings API: Starting request', {
+      metadata: { cursor, pageSize }
+    });
     
     // Get current user
     const user = await getCurrentUser();
-    logger.info('User bookings API: User fetched', { 
-      userId: user?.id, 
-      userRole: user?.role,
-      userEmail: user?.email 
+    logDashboard.success('client', 'dashboard_load', 'User bookings API: User fetched', {
+      userId: user?.id,
+      metadata: { userRole: user?.role, userEmail: user?.email }
     });
     
     if (!user) {
-      logger.warn('User bookings API: No user found');
+      logDashboard.error('client', 'dashboard_load', 'User bookings API: No user found', new Error('Not authenticated'), {
+        error_code: 'NOT_AUTHENTICATED'
+      });
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     let bookings = [];
     
     if (user.role === "CLIENT") {
-      // Fetch client bookings
+      // Fetch client bookings with cursor-based pagination
+      const whereClause = {
+        clientId: user.id,
+        ...(cursor && { createdAt: { lt: new Date(cursor) } })
+      };
+
       bookings = await prisma.booking.findMany({
-        where: {
-          clientId: user.id,
-        },
+        where: whereClause,
         include: {
           service: {
             select: {
@@ -97,16 +76,27 @@ export async function GET(request: NextRequest) {
               }
             }
           },
-          payment: {
-            select: {
-              id: true,
-              status: true,
-              amount: true,
-              paystackRef: true,
-              paidAt: true,
-              authorizationUrl: true
+        payment: {
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            escrowAmount: true,
+            platformFee: true,
+            paystackRef: true,
+            paidAt: true,
+            authorizationUrl: true,
+            payout: {
+              select: {
+                id: true,
+                status: true,
+                transferCode: true,
+                createdAt: true,
+                updatedAt: true
+              }
             }
-          },
+          }
+        },
           review: {
             select: {
               id: true,
@@ -118,12 +108,13 @@ export async function GET(request: NextRequest) {
         },
         orderBy: {
           createdAt: 'desc'
-        }
+        },
+        take: pageSize + 1 // Take one extra to check if there are more items
       });
       
-      logger.info('User bookings API: Client bookings fetched', { 
-        userId: user.id, 
-        bookingCount: bookings.length 
+      logDashboard.success('client', 'dashboard_load', 'User bookings API: Client bookings fetched', {
+        userId: user.id,
+        metadata: { bookingCount: bookings.length }
       });
       
     } else if (user.role === "PROVIDER") {
@@ -133,14 +124,21 @@ export async function GET(request: NextRequest) {
       });
 
       if (!provider) {
-        logger.warn('User bookings API: Provider profile not found', { userId: user.id });
+        logDashboard.error('provider', 'dashboard_load', 'User bookings API: Provider profile not found', new Error('Provider profile not found'), {
+          userId: user.id,
+          error_code: 'PROVIDER_NOT_FOUND'
+        });
         return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
       }
 
+      // Fetch provider bookings with cursor-based pagination
+      const whereClause = {
+        providerId: provider.id,
+        ...(cursor && { createdAt: { lt: new Date(cursor) } })
+      };
+
       bookings = await prisma.booking.findMany({
-        where: {
-          providerId: provider.id,
-        },
+        where: whereClause,
         include: {
           service: {
             select: {
@@ -159,16 +157,27 @@ export async function GET(request: NextRequest) {
               phone: true
             }
           },
-          payment: {
-            select: {
-              id: true,
-              status: true,
-              amount: true,
-              paystackRef: true,
-              paidAt: true,
-              authorizationUrl: true
+        payment: {
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            escrowAmount: true,
+            platformFee: true,
+            paystackRef: true,
+            paidAt: true,
+            authorizationUrl: true,
+            payout: {
+              select: {
+                id: true,
+                status: true,
+                transferCode: true,
+                createdAt: true,
+                updatedAt: true
+              }
             }
-          },
+          }
+        },
           review: {
             select: {
               id: true,
@@ -180,21 +189,32 @@ export async function GET(request: NextRequest) {
         },
         orderBy: {
           createdAt: 'desc'
-        }
+        },
+        take: pageSize + 1 // Take one extra to check if there are more items
       });
       
-      logger.info('User bookings API: Provider bookings fetched', { 
-        providerId: provider.id, 
-        bookingCount: bookings.length 
+      logDashboard.success('provider', 'dashboard_load', 'User bookings API: Provider bookings fetched', {
+        userId: user.id,
+        providerId: provider.id,
+        metadata: { bookingCount: bookings.length }
       });
       
     } else {
-      logger.warn('User bookings API: Invalid user role', { userRole: user.role });
+      logDashboard.error('client', 'dashboard_load', 'User bookings API: Invalid user role', new Error('Invalid user role'), {
+        userId: user.id,
+        userRole: user.role,
+        error_code: 'INVALID_USER_ROLE'
+      });
       return NextResponse.json({ error: "Invalid user role" }, { status: 403 });
     }
 
+    // Check if there are more items
+    const hasMore = bookings.length > pageSize;
+    const items = hasMore ? bookings.slice(0, pageSize) : bookings;
+    const nextCursor = hasMore ? items[items.length - 1].createdAt.toISOString() : null;
+
     // Transform bookings for frontend
-    const transformedBookings = bookings.map(booking => ({
+    const transformedBookings = items.map(booking => ({
       id: booking.id,
       status: booking.status,
       scheduledDate: booking.scheduledDate,
@@ -212,15 +232,33 @@ export async function GET(request: NextRequest) {
       review: booking.review
     }));
 
+    logDashboard.success('client', 'dashboard_load', 'User bookings API: Pagination response prepared', {
+      userId: user.id,
+      metadata: { 
+        itemCount: transformedBookings.length,
+        hasMore,
+        nextCursor: nextCursor ? 'present' : 'null',
+        pageSize
+      }
+    });
+
     return NextResponse.json({
       success: true,
       bookings: transformedBookings,
-      count: transformedBookings.length,
+      pagination: {
+        hasMore,
+        nextCursor,
+        pageSize,
+        count: transformedBookings.length
+      },
       userRole: user.role
     });
 
   } catch (error) {
-    logger.error('User bookings API: Error fetching bookings', error);
+    logDashboard.error('client', 'dashboard_load', 'User bookings API: Error fetching bookings', error as Error, {
+      error_code: 'INTERNAL_ERROR',
+      metadata: { errorMessage: (error as Error).message }
+    });
     
     return NextResponse.json({ 
       error: "Internal server error",

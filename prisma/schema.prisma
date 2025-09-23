@@ -112,6 +112,7 @@ model Booking {
   description   String?
   address       String
   status        BookingStatus @default(PENDING)
+  payoutStatus  String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   messages      Message[]
@@ -123,6 +124,7 @@ model Booking {
   review        Review?
   jobProof      JobProof?
   dispute       Dispute?
+  transfer      Transfer?
 
   @@map("bookings")
 }
@@ -383,4 +385,51 @@ enum AuditAction {
   BOOKING_CANCELLED
   DISPUTE_RESOLVED
   SYSTEM_MAINTENANCE
+}
+
+model Transfer {
+  id                    String   @id @default(cuid())
+  bookingId             String   @unique
+  providerId            String
+  amountCents           BigInt
+  currency              String   @default("ZAR")
+  status                String   @default("pending") // pending, initiated, failed, completed, canceled
+  paystackTransferCode  String?
+  paystackRecipientCode String?
+  idempotencyKey        String   @unique
+  attempts              Int      @default(0)
+  lastError             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  booking               Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([providerId])
+  @@map("transfers")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  service     String   // booking, payment, provider, client, admin, auth, webhook, system
+  action      String   // create, update, delete, accept, reject, etc.
+  status      String   // success, failed, pending, retry, timeout
+  errorCode   String?  @map("error_code")
+  message     String
+  level       String   // info, warn, error, debug
+  userId      String?  @map("user_id")
+  bookingId   String?  @map("booking_id")
+  paymentId   String?  @map("payment_id")
+  providerId  String?  @map("provider_id")
+  metadata    Json?
+  stack       String?
+
+  @@index([timestamp])
+  @@index([service])
+  @@index([action])
+  @@index([status])
+  @@index([userId])
+  @@index([bookingId])
+  @@index([paymentId])
+  @@map("audit_logs")
 }
