@@ -547,8 +547,50 @@ function ProviderMainContent({
                           {booking.status}
                         </Badge>
                         {booking.status === 'PENDING' && (
-                          <Button size="sm" className="bg-green-400 hover:bg-green-500 text-white">
-                            Accept Job
+                          <Button 
+                            size="sm" 
+                            className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => acceptBooking(booking.id)}
+                            disabled={dashboardState.ui.acceptingBooking === booking.id}
+                          >
+                            {dashboardState.ui.acceptingBooking === booking.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Accepting...
+                              </>
+                            ) : (
+                              'Accept Job'
+                            )}
+                          </Button>
+                        )}
+                        {booking.status === 'CONFIRMED' && (
+                          <Button 
+                            size="sm" 
+                            className="bg-blue-400 hover:bg-blue-500 text-white"
+                            disabled
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Accepted
+                          </Button>
+                        )}
+                        {booking.status === 'IN_PROGRESS' && (
+                          <Button 
+                            size="sm" 
+                            className="bg-yellow-400 hover:bg-yellow-500 text-white"
+                            disabled
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            In Progress
+                          </Button>
+                        )}
+                        {booking.status === 'COMPLETED' && (
+                          <Button 
+                            size="sm" 
+                            className="bg-gray-400 hover:bg-gray-500 text-white"
+                            disabled
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Completed
                           </Button>
                         )}
                       </div>
@@ -556,6 +598,58 @@ function ProviderMainContent({
                   </CardContent>
                 </Card>
               ))}
+              
+              {/* Accept Success Display */}
+              {dashboardState.ui.acceptSuccess && (
+                <Card className="bg-green-900/20 backdrop-blur-sm border-green-500/30 mb-4">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-5 w-5 text-green-400" />
+                      <div>
+                        <h4 className="text-green-400 font-medium">Job Accepted!</h4>
+                        <p className="text-green-300 text-sm">{dashboardState.ui.acceptSuccess}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-green-400 hover:text-green-300 ml-auto"
+                        onClick={() => setDashboardState(prev => ({
+                          ...prev,
+                          ui: { ...prev.ui, acceptSuccess: null }
+                        }))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Accept Error Display */}
+              {dashboardState.ui.acceptError && (
+                <Card className="bg-red-900/20 backdrop-blur-sm border-red-500/30 mb-4">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="h-5 w-5 text-red-400" />
+                      <div>
+                        <h4 className="text-red-400 font-medium">Failed to Accept Job</h4>
+                        <p className="text-red-300 text-sm">{dashboardState.ui.acceptError}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300 ml-auto"
+                        onClick={() => setDashboardState(prev => ({
+                          ...prev,
+                          ui: { ...prev.ui, acceptError: null }
+                        }))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               
               {filteredBookings.length === 0 && (
                 <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
@@ -759,7 +853,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       lastRefresh: new Date(),
       selectedFilter: "all",
       activeSection: "overview",
-      isCollapsed: false
+      isCollapsed: false,
+      acceptingBooking: null as string | null, // Track which booking is being accepted
+      acceptError: null as string | null, // Track accept errors
+      acceptSuccess: null as string | null // Track accept success messages
     }
   })
 
@@ -1015,6 +1112,91 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     lastRefreshTime.current = Date.now()
     await fetchProviderData()
   }, [fetchProviderData])
+
+  // Accept booking function
+  const acceptBooking = useCallback(async (bookingId: string) => {
+    try {
+      // Set loading state for this specific booking
+      setDashboardState(prev => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          acceptingBooking: bookingId,
+          acceptError: null
+        }
+      }))
+
+      console.log('Accepting booking:', bookingId)
+
+      const response = await fetch(`/api/book-service/${bookingId}/accept`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('Booking accepted successfully:', result)
+
+      // Update the booking status in the local state
+      setDashboardState(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          bookings: prev.data.bookings.map(booking =>
+            booking.id === bookingId
+              ? { ...booking, status: 'CONFIRMED' as const }
+              : booking
+          )
+        },
+        ui: {
+          ...prev.ui,
+          acceptingBooking: null,
+          acceptError: null
+        }
+      }))
+
+      // Show success message
+      setDashboardState(prev => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          acceptSuccess: 'Job accepted successfully! Client has been notified.'
+        }
+      }))
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setDashboardState(prev => ({
+          ...prev,
+          ui: { ...prev.ui, acceptSuccess: null }
+        }))
+      }, 5000)
+
+      console.log('✅ Booking accepted successfully!')
+
+    } catch (error) {
+      console.error('Failed to accept booking:', error)
+      
+      setDashboardState(prev => ({
+        ...prev,
+        ui: {
+          ...prev.ui,
+          acceptingBooking: null,
+          acceptError: error.message || 'Failed to accept booking'
+        }
+      }))
+
+      // Show error message (you could add a toast notification here)
+      console.error('❌ Failed to accept booking:', error.message)
+    }
+  }, [])
 
   // Loading state
   if (dashboardState.auth.isLoading || dashboardState.ui.loading) {
