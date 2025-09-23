@@ -14,9 +14,11 @@ import {
   Calendar,
   Star,
   Clock,
-  DollarSign
+  DollarSign,
+  Loader2
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useLogout } from "@/hooks/use-logout"
 import Link from "next/link"
 
 interface ConsolidatedMobileHeaderProviderProps {
@@ -46,7 +48,9 @@ export function ConsolidatedMobileHeaderProvider({
 }: ConsolidatedMobileHeaderProviderProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const router = useRouter()
+  const { logout, isLoggingOut } = useLogout()
 
   // Close menu when route changes
   useEffect(() => {
@@ -89,12 +93,29 @@ export function ConsolidatedMobileHeaderProvider({
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" })
-      router.push("/")
-      router.refresh()
-      closeMenu()
+      // Show custom confirmation dialog
+      setShowLogoutConfirm(true)
     } catch (error) {
-      console.error("Logout failed:", error)
+      console.error("Logout error:", error)
+    }
+  }
+
+  const confirmLogout = async () => {
+    try {
+      // Close confirmation dialog
+      setShowLogoutConfirm(false)
+      
+      // Close menu first for better UX
+      closeMenu()
+      
+      // Add a small delay to show the loading state
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Perform logout using the comprehensive logout hook
+      await logout()
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Error handling is already done in the useLogout hook
     }
   }
 
@@ -317,6 +338,56 @@ export function ConsolidatedMobileHeaderProvider({
                     </Button>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-gray-900/95 backdrop-blur-xl border border-red-500/30 rounded-2xl p-6 mx-4 w-full max-w-sm shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut className="w-8 h-8 text-red-400" />
+              </div>
+              
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Sign Out
+              </h3>
+              
+              <p className="text-gray-300 text-sm mb-6">
+                Are you sure you want to sign out? You'll need to sign in again to access your account.
+              </p>
+              
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 min-h-[44px] font-medium border-gray-600 text-gray-300 hover:bg-gray-800/50 hover:text-white"
+                  disabled={isLoggingOut}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={confirmLogout}
+                  className="flex-1 min-h-[44px] font-medium bg-red-600 hover:bg-red-700"
+                  disabled={isLoggingOut}
+                >
+                  {isLoggingOut ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Signing out...
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </div>

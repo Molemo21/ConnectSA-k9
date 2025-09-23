@@ -149,9 +149,31 @@ export function ConsolidatedMobileHeaderAdmin({
   }
 
   const handleLogout = async () => {
-    setShowLogoutConfirm(false)
-    closeMenu()
-    await logout()
+    try {
+      // Show custom confirmation dialog
+      setShowLogoutConfirm(true)
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
+  }
+
+  const confirmLogout = async () => {
+    try {
+      // Close confirmation dialog
+      setShowLogoutConfirm(false)
+      
+      // Close menu first for better UX
+      closeMenu()
+      
+      // Add a small delay to show the loading state
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Perform logout using the comprehensive logout hook
+      await logout()
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Error handling is already done in the useLogout hook
+    }
   }
 
   const handleSectionChange = (section: string) => {
@@ -424,7 +446,7 @@ export function ConsolidatedMobileHeaderAdmin({
                 Cancel
               </Button>
               <Button
-                onClick={handleLogout}
+                onClick={confirmLogout}
                 disabled={isLoggingOut}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
