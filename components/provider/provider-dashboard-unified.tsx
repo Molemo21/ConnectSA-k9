@@ -296,7 +296,13 @@ function ProviderMainContent({
   lastRefresh, 
   selectedFilter, 
   setSelectedFilter,
-  hasBankDetails
+  hasBankDetails,
+  acceptBooking,
+  acceptingBooking,
+  acceptError,
+  acceptSuccess,
+  clearAcceptError,
+  clearAcceptSuccess
 }: {
   activeSection: string
   setActiveSection: (section: string) => void
@@ -309,6 +315,12 @@ function ProviderMainContent({
   selectedFilter: string
   setSelectedFilter: (filter: string) => void
   hasBankDetails: boolean
+  acceptBooking: (bookingId: string) => Promise<void>
+  acceptingBooking: string | null
+  acceptError: string | null
+  acceptSuccess: string | null
+  clearAcceptError: () => void
+  clearAcceptSuccess: () => void
 }) {
   // Calculate derived stats
   const totalBookings = bookings.length
@@ -551,9 +563,9 @@ function ProviderMainContent({
                             size="sm" 
                             className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={() => acceptBooking(booking.id)}
-                            disabled={dashboardState.ui.acceptingBooking === booking.id}
+                            disabled={acceptingBooking === booking.id}
                           >
-                            {dashboardState.ui.acceptingBooking === booking.id ? (
+                            {acceptingBooking === booking.id ? (
                               <>
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Accepting...
@@ -600,23 +612,20 @@ function ProviderMainContent({
               ))}
               
               {/* Accept Success Display */}
-              {dashboardState.ui.acceptSuccess && (
+              {acceptSuccess && (
                 <Card className="bg-green-900/20 backdrop-blur-sm border-green-500/30 mb-4">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-5 w-5 text-green-400" />
                       <div>
                         <h4 className="text-green-400 font-medium">Job Accepted!</h4>
-                        <p className="text-green-300 text-sm">{dashboardState.ui.acceptSuccess}</p>
+                        <p className="text-green-300 text-sm">{acceptSuccess}</p>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
                         className="text-green-400 hover:text-green-300 ml-auto"
-                        onClick={() => setDashboardState(prev => ({
-                          ...prev,
-                          ui: { ...prev.ui, acceptSuccess: null }
-                        }))}
+                        onClick={clearAcceptSuccess}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -626,23 +635,20 @@ function ProviderMainContent({
               )}
 
               {/* Accept Error Display */}
-              {dashboardState.ui.acceptError && (
+              {acceptError && (
                 <Card className="bg-red-900/20 backdrop-blur-sm border-red-500/30 mb-4">
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2">
                       <AlertCircle className="h-5 w-5 text-red-400" />
                       <div>
                         <h4 className="text-red-400 font-medium">Failed to Accept Job</h4>
-                        <p className="text-red-300 text-sm">{dashboardState.ui.acceptError}</p>
+                        <p className="text-red-300 text-sm">{acceptError}</p>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
                         className="text-red-400 hover:text-red-300 ml-auto"
-                        onClick={() => setDashboardState(prev => ({
-                          ...prev,
-                          ui: { ...prev.ui, acceptError: null }
-                        }))}
+                        onClick={clearAcceptError}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -1329,6 +1335,18 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, selectedFilter: filter }
           }))}
           hasBankDetails={dashboardState.data.hasBankDetails}
+          acceptBooking={acceptBooking}
+          acceptingBooking={dashboardState.ui.acceptingBooking}
+          acceptError={dashboardState.ui.acceptError}
+          acceptSuccess={dashboardState.ui.acceptSuccess}
+          clearAcceptError={() => setDashboardState(prev => ({
+            ...prev,
+            ui: { ...prev.ui, acceptError: null }
+          }))}
+          clearAcceptSuccess={() => setDashboardState(prev => ({
+            ...prev,
+            ui: { ...prev.ui, acceptSuccess: null }
+          }))}
         />
       </div>
 
@@ -1364,6 +1382,18 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, selectedFilter: filter }
           }))}
           hasBankDetails={dashboardState.data.hasBankDetails}
+          acceptBooking={acceptBooking}
+          acceptingBooking={dashboardState.ui.acceptingBooking}
+          acceptError={dashboardState.ui.acceptError}
+          acceptSuccess={dashboardState.ui.acceptSuccess}
+          clearAcceptError={() => setDashboardState(prev => ({
+            ...prev,
+            ui: { ...prev.ui, acceptError: null }
+          }))}
+          clearAcceptSuccess={() => setDashboardState(prev => ({
+            ...prev,
+            ui: { ...prev.ui, acceptSuccess: null }
+          }))}
         />
       </div>
 

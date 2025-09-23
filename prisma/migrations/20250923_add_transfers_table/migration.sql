@@ -34,3 +34,4 @@ ALTER TABLE "bookings" ADD COLUMN     "payoutStatus" TEXT;
 
 -- AddForeignKey
 ALTER TABLE "transfers" ADD CONSTRAINT "transfers_bookingId_fkey" FOREIGN KEY ("bookingId") REFERENCES "bookings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
