@@ -106,61 +106,144 @@ export async function GET(request: NextRequest) {
       ...(cursor && { createdAt: { lt: new Date(cursor) } })
     };
 
-    const bookings = await prisma.booking.findMany({
-      where: whereClause,
-      include: {
-        service: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            category: true,
-            basePrice: true
-          }
-        },
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        payment: {
-          select: {
-            id: true,
-            status: true,
-            amount: true,
-            escrowAmount: true,
-            platformFee: true,
-            paystackRef: true,
-            paidAt: true,
-            authorizationUrl: true,
-            payout: {
-              select: {
-                id: true,
-                status: true,
-                transferCode: true,
-                createdAt: true,
-                updatedAt: true
+    let bookings;
+    try {
+      bookings = await prisma.booking.findMany({
+        where: whereClause,
+        include: {
+          service: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              category: true,
+              basePrice: true
+            }
+          },
+          client: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true
+            }
+          },
+          payment: {
+            select: {
+              id: true,
+              status: true,
+              amount: true,
+              escrowAmount: true,
+              platformFee: true,
+              paystackRef: true,
+              paidAt: true,
+              authorizationUrl: true,
+              payout: {
+                select: {
+                  id: true,
+                  status: true,
+                  transferCode: true,
+                  createdAt: true,
+                  updatedAt: true
+                }
               }
+            }
+          },
+          review: {
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+              createdAt: true
             }
           }
         },
-        review: {
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: pageSize + 1 // Take one extra to check if there are more items
+      });
+    } catch (error) {
+      // Handle the case where payoutStatus column doesn't exist
+      if (error.message.includes('payoutStatus')) {
+        logDashboard.warn('provider', 'dashboard_load', 'payoutStatus column missing, fetching without it', {
+          error_code: 'MISSING_COLUMN',
+          metadata: { errorMessage: error.message }
+        });
+        
+        // Try without the payoutStatus field by using select instead of include
+        bookings = await prisma.booking.findMany({
+          where: whereClause,
           select: {
             id: true,
-            rating: true,
-            comment: true,
-            createdAt: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: pageSize + 1 // Take one extra to check if there are more items
-    });
+            clientId: true,
+            providerId: true,
+            serviceId: true,
+            scheduledDate: true,
+            duration: true,
+            totalAmount: true,
+            platformFee: true,
+            description: true,
+            address: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            service: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                category: true,
+                basePrice: true
+              }
+            },
+            client: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true
+              }
+            },
+            payment: {
+              select: {
+                id: true,
+                status: true,
+                amount: true,
+                escrowAmount: true,
+                platformFee: true,
+                paystackRef: true,
+                paidAt: true,
+                authorizationUrl: true,
+                payout: {
+                  select: {
+                    id: true,
+                    status: true,
+                    transferCode: true,
+                    createdAt: true,
+                    updatedAt: true
+                  }
+                }
+              }
+            },
+            review: {
+              select: {
+                id: true,
+                rating: true,
+                comment: true,
+                createdAt: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: pageSize + 1
+        });
+      } else {
+        throw error;
+      }
+    }
 
     logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Bookings fetched', {
       userId: user.id,
