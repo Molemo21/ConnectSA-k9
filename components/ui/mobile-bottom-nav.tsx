@@ -37,6 +37,8 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
       console.log('=== MOBILE BOTTOM NAV LOGOUT START ===')
       console.log('📱 Mobile browser:', /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
       console.log('🌐 Network status:', navigator.onLine)
+      console.log('🔄 isLoggingOut:', isLoggingOut)
+      console.log('👤 userRole:', userRole)
       
       // Check mobile-specific conditions
       if (!navigator.onLine) {
@@ -241,15 +243,16 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             return (
               <button
                 key="logout"
-                onClick={handleLogout}
+                onClick={(e) => {
+                  console.log('🖱️ Logout button clicked!', e)
+                  handleLogout()
+                }}
                 onTouchStart={(e) => {
-                  // Ensure touch events work on mobile
-                  e.preventDefault()
+                  // Log touch start but don't prevent default to allow click
                   console.log('📱 Touch start on logout button')
                 }}
                 onTouchEnd={(e) => {
-                  // Prevent double-tap zoom and ensure click works
-                  e.preventDefault()
+                  // Log touch end but don't prevent default to allow click
                   console.log('📱 Touch end on logout button')
                 }}
                 disabled={isLoggingOut}
@@ -259,7 +262,9 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
                   "text-red-400 hover:text-red-300 hover:bg-red-600/20",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
                   "touch-manipulation", // Optimize for touch
-                  "select-none" // Prevent text selection on mobile
+                  "select-none", // Prevent text selection on mobile
+                  "active:bg-red-600/30 active:scale-95", // Visual feedback on touch
+                  "cursor-pointer" // Ensure cursor shows it's clickable
                 )}
                 style={{
                   WebkitTapHighlightColor: 'transparent', // Remove tap highlight on iOS
