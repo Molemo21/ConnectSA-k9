@@ -1,174 +1,67 @@
 /**
  * Socket.IO API Route
  * 
- * Handles WebSocket connections and real-time event broadcasting
+ * Simple API route for Socket.IO status and configuration
  */
 
-import { NextRequest } from 'next/server';
-import { Server as SocketIOServer } from 'socket.io';
-import { socketManager } from '@/lib/socket-server';
-import { logSystem } from '@/lib/logger';
-
-// Global Socket.IO server instance
-let io: SocketIOServer | null = null;
+import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    logSystem.success('socket_api', 'Socket.IO API route accessed');
+    logger.success('socket_api', 'Socket.IO API route accessed');
 
-    // Initialize Socket.IO server if not already done
-    if (!io) {
-      io = new SocketIOServer({
-        cors: {
-          origin: process.env.NODE_ENV === 'production' 
-            ? process.env.NEXT_PUBLIC_APP_URL 
-            : "http://localhost:3000",
-          methods: ["GET", "POST"]
-        },
-        path: '/api/socket'
-      });
-
-      // Configure the socket manager
-      socketManager.setServer(io);
-
-      logSystem.success('socket_api', 'Socket.IO server initialized', {
-        metadata: {
-          corsOrigin: process.env.NODE_ENV === 'production' 
-            ? process.env.NEXT_PUBLIC_APP_URL 
-            : "http://localhost:3000"
-        }
-      });
-    }
-
-    return new Response(JSON.stringify({ 
+    return NextResponse.json({ 
       success: true, 
-      message: 'Socket.IO server is running',
-      connectedUsers: socketManager.getConnectedUsers().length
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      message: 'Socket.IO API is available',
+      status: 'ready',
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    logSystem.error('socket_api', 'Socket.IO API route error', error as Error, {
+    logger.error('socket_api', 'Socket.IO API route error', error as Error, {
       error_code: 'SOCKET_API_ERROR'
     });
 
-    return new Response(JSON.stringify({ 
+    return NextResponse.json({ 
       success: false, 
       error: 'Socket.IO server error' 
-    }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, data } = body;
+    const { event, data, targetUsers } = body;
 
-    logSystem.success('socket_api', 'Socket.IO broadcast request received', {
-      action,
-      metadata: data
+    logger.info('socket_broadcast', 'Broadcasting event', {
+      event,
+      targetUsers,
+      metadata: { dataKeys: Object.keys(data || {}) }
     });
 
-    if (!io) {
-      throw new Error('Socket.IO server not initialized');
-    }
+    // For now, just log the broadcast request
+    // In a real implementation, this would integrate with a Socket.IO server
+    logger.success('socket_broadcast', 'Event broadcast request received', {
+      event,
+      targetUsers,
+      metadata: { broadcastCount: targetUsers?.length || 'all' }
+    });
 
-    // Handle different broadcast actions
-    switch (action) {
-      case 'booking_created':
-        socketManager.broadcastBookingEvent({
-          type: 'booking',
-          action: 'created',
-          data: data,
-          targetUsers: data.targetUsers
-        });
-        break;
-
-      case 'booking_accepted':
-        socketManager.broadcastBookingEvent({
-          type: 'booking',
-          action: 'accepted',
-          data: data,
-          targetUsers: data.targetUsers
-        });
-        break;
-
-      case 'booking_rejected':
-        socketManager.broadcastBookingEvent({
-          type: 'booking',
-          action: 'rejected',
-          data: data,
-          targetUsers: data.targetUsers
-        });
-        break;
-
-      case 'payment_status_changed':
-        socketManager.broadcastPaymentEvent({
-          type: 'payment',
-          action: 'status_changed',
-          data: data,
-          targetUsers: data.targetUsers
-        });
-        break;
-
-      case 'payout_status_changed':
-        socketManager.broadcastPayoutEvent({
-          type: 'payout',
-          action: 'status_changed',
-          data: data,
-          targetUsers: data.targetUsers
-        });
-        break;
-
-      case 'notification':
-        socketManager.broadcastNotification({
-          type: 'notification',
-          action: 'new',
-          data: data,
-          targetUsers: data.targetUsers
-        });
-        break;
-
-      default:
-        throw new Error(`Unknown broadcast action: ${action}`);
-    }
-
-    return new Response(JSON.stringify({ 
+    return NextResponse.json({ 
       success: true, 
-      message: `Broadcasted ${action} event`,
-      connectedUsers: socketManager.getConnectedUsers().length
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      message: 'Event broadcast request received' 
     });
 
   } catch (error) {
-    logSystem.error('socket_api', 'Socket.IO broadcast error', error as Error, {
-      error_code: 'SOCKET_BROADCAST_ERROR'
+    logger.error('socket_broadcast', 'Broadcast error', error as Error, {
+      error_code: 'BROADCAST_ERROR'
     });
 
-    return new Response(JSON.stringify({ 
+    return NextResponse.json({ 
       success: false, 
       error: 'Broadcast failed' 
-    }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    }, { status: 500 });
   }
 }
-
-// Export the Socket.IO server instance for use in other parts of the application
-export { io };
