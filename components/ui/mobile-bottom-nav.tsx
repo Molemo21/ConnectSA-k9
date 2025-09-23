@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { useLogout } from "@/hooks/use-logout"
 import { 
   Home, 
   Calendar, 
@@ -18,7 +19,8 @@ import {
   Briefcase,
   DollarSign,
   Wrench,
-  Activity
+  Activity,
+  LogOut
 } from "lucide-react"
 
 interface MobileBottomNavProps {
@@ -28,6 +30,15 @@ interface MobileBottomNavProps {
 
 export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
   const pathname = usePathname()
+  const { logout, isLoggingOut } = useLogout()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
 
   const getNavItems = () => {
     switch (userRole) {
@@ -38,28 +49,40 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             icon: Home,
             label: "Home",
             active: pathname === "/dashboard",
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
           },
           {
             href: "/search",
             icon: Search,
             label: "Search",
             active: pathname.startsWith("/search") || pathname === "/book-service",
-            isPrimary: true // Primary action - Search/Book
+            isPrimary: true, // Primary action - Search/Book
+            isLogout: false
           },
           {
             href: "/bookings",
             icon: Calendar,
             label: "Bookings",
             active: pathname.startsWith("/bookings"),
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
           },
           {
             href: "/profile",
             icon: User,
             label: "Profile",
             active: pathname === "/profile",
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
+          },
+          {
+            href: null,
+            icon: LogOut,
+            label: "Logout",
+            active: false,
+            isPrimary: false,
+            isLogout: true
           }
         ]
       
@@ -70,28 +93,40 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             icon: Home,
             label: "Home",
             active: pathname === "/provider/dashboard",
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
           },
           {
             href: "/provider/bookings",
             icon: Briefcase,
             label: "Jobs",
             active: pathname.startsWith("/provider") && pathname.includes("booking"),
-            isPrimary: true // Primary action - Manage Bookings
+            isPrimary: true, // Primary action - Manage Bookings
+            isLogout: false
           },
           {
             href: "/provider/earnings",
             icon: DollarSign,
             label: "Earnings",
             active: pathname === "/provider/earnings",
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
           },
           {
             href: "/provider/profile",
             icon: User,
             label: "Profile",
             active: pathname === "/provider/profile",
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
+          },
+          {
+            href: null,
+            icon: LogOut,
+            label: "Logout",
+            active: false,
+            isPrimary: false,
+            isLogout: true
           }
         ]
       
@@ -102,28 +137,40 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             icon: Home,
             label: "Home",
             active: pathname === "/admin/dashboard",
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
           },
           {
             href: "/admin/users",
             icon: Users,
             label: "Users",
             active: pathname.startsWith("/admin") && pathname.includes("user"),
-            isPrimary: true // Primary action - Manage Users
+            isPrimary: true, // Primary action - Manage Users
+            isLogout: false
           },
           {
             href: "/admin/providers",
             icon: Briefcase,
             label: "Providers",
             active: pathname.startsWith("/admin") && pathname.includes("provider"),
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
           },
           {
             href: "/admin/audit-logs",
             icon: Shield,
             label: "Audit",
             active: pathname.startsWith("/admin") && pathname.includes("audit"),
-            isPrimary: false
+            isPrimary: false,
+            isLogout: false
+          },
+          {
+            href: null,
+            icon: LogOut,
+            label: "Logout",
+            active: false,
+            isPrimary: false,
+            isLogout: true
           }
         ]
       
@@ -145,6 +192,28 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
           const Icon = item.icon
           const isPrimary = item.isPrimary
           const isActive = item.active
+          const isLogout = item.isLogout
+          
+          if (isLogout) {
+            return (
+              <button
+                key="logout"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className={cn(
+                  "flex flex-col items-center space-y-1 py-2 px-3 rounded-xl text-xs font-medium transition-all duration-200",
+                  "min-h-[48px] min-w-[48px] justify-center", // Larger touch target for better UX
+                  "text-red-400 hover:text-red-300 hover:bg-red-600/20",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                <Icon className="w-5 h-5 transition-transform duration-200" />
+                <span className="text-xs leading-tight font-medium">
+                  {isLoggingOut ? "..." : item.label}
+                </span>
+              </button>
+            )
+          }
           
           return (
             <Link
