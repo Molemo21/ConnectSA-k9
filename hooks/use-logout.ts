@@ -13,17 +13,24 @@ export function useLogout() {
       setIsLoggingOut(true)
       console.log('=== CLIENT LOGOUT START ===')
       
-      // Make logout request with comprehensive headers
+      // Make logout request with comprehensive headers and mobile-specific handling
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout for mobile
+      
       const response = await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
         cache: 'no-store',
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           "Cache-Control": "no-cache, no-store, must-revalidate",
-          "Pragma": "no-cache"
+          "Pragma": "no-cache",
+          "User-Agent": navigator.userAgent // Include user agent for mobile detection
         },
       })
+      
+      clearTimeout(timeoutId)
 
       console.log('Logout response status:', response.status)
       console.log('Logout response headers:', Object.fromEntries(response.headers.entries()))

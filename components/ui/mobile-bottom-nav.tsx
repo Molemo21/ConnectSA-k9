@@ -35,19 +35,51 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
   const handleLogout = async () => {
     try {
       console.log('=== MOBILE BOTTOM NAV LOGOUT START ===')
+      console.log('📱 Mobile browser:', /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+      console.log('🌐 Network status:', navigator.onLine)
+      
+      // Check mobile-specific conditions
+      if (!navigator.onLine) {
+        console.error('❌ No network connection on mobile')
+        alert('No internet connection. Please check your network and try again.')
+        return
+      }
+      
+      // Check storage availability on mobile
+      let storageAvailable = true
+      try {
+        localStorage.setItem('mobile-test', 'test')
+        localStorage.removeItem('mobile-test')
+      } catch (e) {
+        storageAvailable = false
+        console.warn('⚠️ LocalStorage not available on mobile:', e)
+      }
+      
+      console.log('💾 Storage available:', storageAvailable)
       
       // Add a small delay to show the loading state
       await new Promise(resolve => setTimeout(resolve, 100))
       
       console.log('Calling logout function...')
       
-      // Perform logout using the comprehensive logout hook
+      // Perform logout using the comprehensive logout hook with mobile-specific handling
       await logout()
       
       console.log('=== MOBILE BOTTOM NAV LOGOUT COMPLETE ===')
     } catch (error) {
       console.error("Mobile bottom nav logout error:", error)
-      // Error handling is already done in the useLogout hook
+      
+      // Mobile-specific error handling
+      if (error.name === 'NetworkError' || error.message.includes('fetch')) {
+        console.error('🌐 Mobile network error:', error)
+        alert('Network error. Please check your connection and try again.')
+      } else if (error.name === 'QuotaExceededError') {
+        console.error('💾 Mobile storage quota exceeded:', error)
+        alert('Storage error. Please clear browser data and try again.')
+      } else {
+        console.error('❌ Mobile logout error:', error)
+        alert('Logout failed. Please try again or refresh the page.')
+      }
     }
   }
 
@@ -210,13 +242,31 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
               <button
                 key="logout"
                 onClick={handleLogout}
+                onTouchStart={(e) => {
+                  // Ensure touch events work on mobile
+                  e.preventDefault()
+                  console.log('📱 Touch start on logout button')
+                }}
+                onTouchEnd={(e) => {
+                  // Prevent double-tap zoom and ensure click works
+                  e.preventDefault()
+                  console.log('📱 Touch end on logout button')
+                }}
                 disabled={isLoggingOut}
                 className={cn(
                   "flex flex-col items-center space-y-1 py-2 px-3 rounded-xl text-xs font-medium transition-all duration-200",
                   "min-h-[48px] min-w-[48px] justify-center", // Larger touch target for better UX
                   "text-red-400 hover:text-red-300 hover:bg-red-600/20",
-                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "touch-manipulation", // Optimize for touch
+                  "select-none" // Prevent text selection on mobile
                 )}
+                style={{
+                  WebkitTapHighlightColor: 'transparent', // Remove tap highlight on iOS
+                  WebkitTouchCallout: 'none', // Disable callout on iOS
+                  WebkitUserSelect: 'none', // Prevent selection on WebKit
+                  userSelect: 'none'
+                }}
               >
                 <Icon className="w-5 h-5 transition-transform duration-200" />
                 <span className="text-xs leading-tight font-medium">
