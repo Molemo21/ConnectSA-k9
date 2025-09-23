@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
     const completedJobs = bookings.filter(b => b.status === "COMPLETED").length
 
     const totalEarnings = bookings
-      .filter(b => b.payment && b.status === "COMPLETED")
+      .filter(b => b.payment && b.payment.amount && b.status === "COMPLETED")
       .reduce((sum, b) => sum + (b.payment?.amount || 0), 0)
     
     const thisMonthEarnings = bookings
@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
         const bookingDate = new Date(b.scheduledDate)
         const now = new Date()
         return b.payment && 
+               b.payment.amount &&
                b.status === "COMPLETED" &&
                bookingDate.getMonth() === now.getMonth() &&
                bookingDate.getFullYear() === now.getFullYear()

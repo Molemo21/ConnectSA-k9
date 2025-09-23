@@ -130,7 +130,7 @@ model Booking {
 model Payment {
   id              String        @id @default(cuid())
   bookingId       String        @unique
-  userId          String        @map("user_id")
+  userId          String?       @map("user_id")
   amount          Float
   paystackRef     String        @unique
   status          PaymentStatus
@@ -146,7 +146,7 @@ model Payment {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   booking         Booking       @relation(fields: [bookingId], references: [id])
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   payout          Payout?
 
   @@map("payments")
