@@ -885,10 +885,29 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(`Provider data fetch failed: ${response.status} - ${errorData.error || 'Unknown error'}`)
+        console.error('Provider data fetch failed:', response.status, errorData)
+        // Don't throw error, just set empty data
+        setDashboardState(prev => ({
+          ...prev,
+          data: {
+            bookings: [],
+            stats: {
+              totalBookings: 0,
+              completedBookings: 0,
+              pendingBookings: 0,
+              totalEarnings: 0,
+              monthlyEarnings: 0
+            },
+            hasBankDetails: false
+          },
+          loading: false,
+          error: `Failed to load data: ${errorData.error || 'Unknown error'}`
+        }))
+        return
       }
 
       const data = await response.json()
+      console.log('Provider dashboard data:', data)
 
       setDashboardState(prev => ({
         ...prev,

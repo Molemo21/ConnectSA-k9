@@ -2,6 +2,7 @@ import * as jose from 'jose';
 import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 import { db } from "./db-utils"
+import { prisma } from "./prisma"
 import type { UserRole } from "@prisma/client"
 
 const JWT_EXPIRES_IN = "7d"
@@ -61,7 +62,7 @@ export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: s
     if (!decoded) return null
 
     // Verify user still exists and is active
-    const user = await db.user.findFirst({
+    const user = await prisma.user.findFirst({
       where: { id: decoded.id as string, isActive: true },
       select: {
         id: true,

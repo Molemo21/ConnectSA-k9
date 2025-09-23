@@ -1204,7 +1204,11 @@ export function MobileClientDashboard() {
         
         if (bookingsRes.ok) {
           const bookingsData = await bookingsRes.json()
+          console.log('Client bookings data:', bookingsData)
           setInitialBookings(bookingsData.bookings || [])
+        } else {
+          console.error('Failed to fetch bookings:', bookingsRes.status, await bookingsRes.text())
+          setInitialBookings([])
         }
 
         // Fetch services

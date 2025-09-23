@@ -41,32 +41,40 @@ const createLogger = (context: string) => ({
 export async function GET(request: NextRequest) {
   const logger = createLogger('ClientBookingsAPI');
   
-  // Skip during build time
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
-    return NextResponse.json({
-      error: "Service temporarily unavailable during deployment"
-    }, { status: 503 });
-  }
-
   try {
     logger.info('Client bookings API: Starting request');
+    logger.info('Environment check:', {
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      cookieDomain: process.env.COOKIE_DOMAIN
+    });
     
     // Get current user
     const user = await getCurrentUser();
     logger.info('Client bookings API: User fetched', { 
       userId: user?.id, 
       userRole: user?.role,
-      userEmail: user?.email 
+      userEmail: user?.email,
+      isAuthenticated: !!user
     });
     
     if (!user) {
-      logger.warn('Client bookings API: No user found');
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      logger.warn('Client bookings API: No user found - returning empty data');
+      return NextResponse.json({ 
+        bookings: [],
+        message: "No authenticated user found",
+        success: false
+      }, { status: 200 });
     }
     
     if (user.role !== "CLIENT") {
       logger.warn('Client bookings API: User is not a client', { userRole: user.role });
-      return NextResponse.json({ error: "Unauthorized - Client role required" }, { status: 403 });
+      return NextResponse.json({ 
+        bookings: [],
+        message: "User is not a client",
+        success: false
+      }, { status: 200 });
     }
 
     // Fetch all bookings for this client
@@ -155,9 +163,13 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logger.error('Client bookings API: Error fetching bookings', error);
     
+    // Return empty data instead of error to prevent dashboard crashes
     return NextResponse.json({ 
-      error: "Internal server error",
-      message: "Failed to fetch client bookings"
-    }, { status: 500 });
+      success: false,
+      bookings: [],
+      message: "Failed to fetch bookings",
+      error: error.message,
+      count: 0
+    }, { status: 200 });
   }
 }

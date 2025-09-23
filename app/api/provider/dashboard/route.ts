@@ -34,19 +34,41 @@ export async function GET(request: NextRequest) {
     });
     
     if (!user) {
-      logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: No user found', new Error('Not authenticated'), {
+      logDashboard.warn('provider', 'dashboard_load', 'Provider dashboard API: No user found - returning empty data', {
         error_code: 'NOT_AUTHENTICATED'
       });
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return NextResponse.json({ 
+        success: false,
+        message: "No authenticated user found",
+        bookings: [],
+        stats: {
+          totalBookings: 0,
+          completedBookings: 0,
+          pendingBookings: 0,
+          totalEarnings: 0,
+          monthlyEarnings: 0
+        }
+      }, { status: 200 });
     }
     
     if (user.role !== "PROVIDER") {
-      logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: User is not a provider', new Error('Unauthorized'), {
+      logDashboard.warn('provider', 'dashboard_load', 'Provider dashboard API: User is not a provider', {
         userId: user.id,
         userRole: user.role,
         error_code: 'UNAUTHORIZED_ROLE'
       });
-      return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 });
+      return NextResponse.json({ 
+        success: false,
+        message: "User is not a provider",
+        bookings: [],
+        stats: {
+          totalBookings: 0,
+          completedBookings: 0,
+          pendingBookings: 0,
+          totalEarnings: 0,
+          monthlyEarnings: 0
+        }
+      }, { status: 200 });
     }
 
     // Get provider profile
@@ -233,9 +255,19 @@ export async function GET(request: NextRequest) {
       metadata: { errorMessage: (error as Error).message }
     });
     
+    // Return empty data instead of error to prevent dashboard crashes
     return NextResponse.json({ 
-      error: "Internal server error",
-      message: "Failed to fetch provider dashboard data"
-    }, { status: 500 });
+      success: false,
+      message: "Failed to fetch provider dashboard data",
+      error: (error as Error).message,
+      bookings: [],
+      stats: {
+        totalBookings: 0,
+        completedBookings: 0,
+        pendingBookings: 0,
+        totalEarnings: 0,
+        monthlyEarnings: 0
+      }
+    }, { status: 200 });
   }
 }
