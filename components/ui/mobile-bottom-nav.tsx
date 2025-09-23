@@ -183,7 +183,7 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
 
   return (
     <nav className={cn(
-      "fixed bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm border-t border-white/20 px-2 py-2 z-50",
+      "fixed bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm border-t border-white/20 px-2 py-2 z-[80]",
       "sm:hidden", // Only show on mobile
       className
     )}>
