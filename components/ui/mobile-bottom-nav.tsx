@@ -34,9 +34,20 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
 
   const handleLogout = async () => {
     try {
+      console.log('=== MOBILE BOTTOM NAV LOGOUT START ===')
+      
+      // Add a small delay to show the loading state
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      console.log('Calling logout function...')
+      
+      // Perform logout using the comprehensive logout hook
       await logout()
+      
+      console.log('=== MOBILE BOTTOM NAV LOGOUT COMPLETE ===')
     } catch (error) {
-      console.error("Logout failed:", error)
+      console.error("Mobile bottom nav logout error:", error)
+      // Error handling is already done in the useLogout hook
     }
   }
 
