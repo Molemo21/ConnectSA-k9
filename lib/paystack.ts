@@ -273,7 +273,7 @@ class PaystackClient {
         return dummyResponse;
       }
 
-      const response = await this.paystackSDK.transaction.initialize({
+      const response = await this.makeRequest<PaystackPaymentResponse>('/transaction/initialize', 'POST', {
         amount: params.amount * 100, // Convert to kobo
         email: params.email,
         reference: params.reference,
