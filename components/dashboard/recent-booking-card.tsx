@@ -109,11 +109,15 @@ export function RecentBookingCard({
 
       const paymentData = await response.json()
       console.log('✅ Payment initiated successfully:', paymentData)
+      console.log('🔍 Authorization URL found:', paymentData.authorizationUrl || paymentData.authorization_url)
       
       // Redirect to Paystack payment page
       if (paymentData.authorizationUrl || paymentData.authorization_url) {
-        window.location.href = paymentData.authorizationUrl || paymentData.authorization_url
+        const redirectUrl = paymentData.authorizationUrl || paymentData.authorization_url
+        console.log('🚀 Redirecting to Paystack:', redirectUrl)
+        window.location.href = redirectUrl
       } else {
+        console.log('❌ No authorization URL found in response:', paymentData)
         showToast.success("Payment initiated! Check your email for payment details.")
       }
       
