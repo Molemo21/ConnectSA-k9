@@ -62,8 +62,8 @@ class CentralizedLogger {
   constructor(config?: Partial<LoggerConfig>) {
     this.config = {
       level: (process.env.LOG_LEVEL as LogLevel) || 'info',
-      enableConsole: process.env.NODE_ENV !== 'production',
-      enableFile: process.env.NODE_ENV === 'production',
+      enableConsole: true, // Always enable console logging
+      enableFile: false, // Disable file logging in serverless environments
       enableDatabase: process.env.NODE_ENV === 'production',
       logFilePath: process.env.LOG_FILE_PATH || './logs/app.log',
       maxFileSize: 10 * 1024 * 1024, // 10MB
@@ -71,8 +71,8 @@ class CentralizedLogger {
       ...config
     };
 
-    // Ensure log directory exists
-    if (this.config.enableFile && this.config.logFilePath) {
+    // Skip file system operations in serverless environments
+    if (this.config.enableFile && this.config.logFilePath && !process.env.VERCEL) {
       const logDir = path.dirname(this.config.logFilePath);
       if (!fs.existsSync(logDir)) {
         fs.mkdirSync(logDir, { recursive: true });
