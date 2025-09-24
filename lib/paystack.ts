@@ -282,6 +282,12 @@ class PaystackClient {
         currency: 'ZAR',
       });
 
+      // Debug logging
+      this.logger.info('Paystack SDK response received', { 
+        responseType: typeof response,
+        responseKeys: response ? Object.keys(response) : 'null/undefined'
+      });
+
       const validatedResponse = PaystackPaymentResponseSchema.parse(response);
       this.logger.info('Payment initialized successfully', { 
         reference: params.reference, 
@@ -291,6 +297,17 @@ class PaystackClient {
       return validatedResponse;
     } catch (error) {
       this.logger.error('Payment initialization failed', error, logData);
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('not valid JSON')) {
+          throw new Error(`Paystack API response format error: ${error.message}`);
+        }
+        if (error.message.includes('ZodError')) {
+          throw new Error(`Paystack response validation error: ${error.message}`);
+        }
+      }
+      
       throw new Error(`Paystack payment initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
