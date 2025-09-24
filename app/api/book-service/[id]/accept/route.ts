@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { logBooking } from "@/lib/logger";
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    const booking = await prisma.booking.findUnique({ 
+    const booking = await db.booking.findUnique({ 
       where: { id: bookingId },
       include: {
         client: { select: { name: true, email: true } },
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       metadata: { note: 'Proposal table not available in database' }
     });
 
-    const updated = await prisma.booking.update({
+    const updated = await db.booking.update({
       where: { id: bookingId },
       data: { status: "CONFIRMED" },
     });
