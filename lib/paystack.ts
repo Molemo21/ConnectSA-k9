@@ -279,7 +279,7 @@ class PaystackClient {
         reference: params.reference,
         callback_url: params.callback_url,
         metadata: params.metadata,
-        currency: 'USD', // Use USD for international compatibility
+        currency: 'ZAR', // Use ZAR as supported by the merchant account
       });
 
       // Debug logging
