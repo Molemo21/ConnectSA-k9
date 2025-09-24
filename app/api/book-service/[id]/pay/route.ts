@@ -338,6 +338,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Payment already exists for this booking" }, { status: 400 });
       }
       if (error.message.includes("Paystack") && !error.message.includes("Missing required environment variable")) {
+        if (error.message.includes("authorization error") || error.message.includes("Access denied")) {
+          return NextResponse.json({ 
+            error: "Payment service configuration error. Please contact support." 
+          }, { status: 500 });
+        }
         return NextResponse.json({ 
           error: "Payment service temporarily unavailable. Please try again later." 
         }, { status: 503 });
