@@ -586,6 +586,33 @@ export function PaginatedClientDashboard() {
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
                       </Button>
+                      {booking.status === "CONFIRMED" && (!booking.payment || ['PENDING', 'FAILED'].includes(booking.payment.status)) && (
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/api/book-service/${booking.id}/pay`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                              })
+                              if (response.ok) {
+                                const data = await response.json()
+                                if (data.authorization_url) {
+                                  window.location.href = data.authorization_url
+                                }
+                              }
+                            } catch (error) {
+                              console.error('Payment failed:', error)
+                            }
+                          }}
+                        >
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          Pay Now
+                        </Button>
+                      )}
                       {booking.status === "PENDING" && (
                         <Button variant="outline" size="sm" className="flex-1">
                           <MessageCircle className="h-4 w-4 mr-2" />

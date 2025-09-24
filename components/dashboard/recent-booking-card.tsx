@@ -19,7 +19,8 @@ import {
   Eye,
   RefreshCw,
   X,
-  RotateCcw
+  RotateCcw,
+  DollarSign
 } from "lucide-react"
 import { showToast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
@@ -67,6 +68,7 @@ export function RecentBookingCard({
   isLoading = false 
 }: RecentBookingCardProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -80,6 +82,46 @@ export function RecentBookingCard({
       showToast.error("Failed to refresh booking status")
     } finally {
       setIsRefreshing(false)
+    }
+  }
+
+  // Handle payment
+  const handlePay = async () => {
+    if (!booking || isProcessingPayment) return
+    
+    setIsProcessingPayment(true)
+    try {
+      console.log('💳 Initiating payment for booking:', booking.id)
+      
+      // Call the payment API
+      const response = await fetch(`/api/book-service/${booking.id}/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Payment failed')
+      }
+
+      const paymentData = await response.json()
+      console.log('✅ Payment initiated successfully:', paymentData)
+      
+      // Redirect to Paystack payment page
+      if (paymentData.authorization_url) {
+        window.location.href = paymentData.authorization_url
+      } else {
+        showToast.success("Payment initiated! Check your email for payment details.")
+      }
+      
+    } catch (error) {
+      console.error('❌ Payment failed:', error)
+      showToast.error(error instanceof Error ? error.message : "Payment failed. Please try again.")
+    } finally {
+      setIsProcessingPayment(false)
     }
   }
 
@@ -173,6 +215,17 @@ export function RecentBookingCard({
 
   // Get timeline steps for this booking
   const timelineSteps = getTimelineSteps(booking.status, booking.payment);
+
+  // Determine if pay button should be shown
+  const canPay = () => {
+    // Show pay button if:
+    // 1. Booking is CONFIRMED (provider accepted)
+    // 2. No payment exists yet OR payment is PENDING/FAILED
+    // 3. Not already processing payment
+    return booking.status === 'CONFIRMED' && 
+           (!booking.payment || ['PENDING', 'FAILED'].includes(booking.payment.status)) &&
+           !isProcessingPayment
+  }
 
   return (
     <div className="relative group">
@@ -359,16 +412,37 @@ export function RecentBookingCard({
 
           {/* Enhanced Action Buttons */}
           <div className="flex items-center justify-between pt-6 border-t border-blue-400/20">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onViewAll}
-              className="relative overflow-hidden bg-blue-400/10 border-blue-400/40 text-blue-300 hover:text-white hover:bg-blue-400/20 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-400/25 px-6 py-3 rounded-xl font-semibold group/btn"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
-              <Eye className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
-              <span className="relative z-10">View Details</span>
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onViewAll}
+                className="relative overflow-hidden bg-blue-400/10 border-blue-400/40 text-blue-300 hover:text-white hover:bg-blue-400/20 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-400/25 px-6 py-3 rounded-xl font-semibold group/btn"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
+                <Eye className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
+                <span className="relative z-10">View Details</span>
+              </Button>
+              
+              {canPay() && (
+                <Button
+                  size="sm"
+                  onClick={handlePay}
+                  disabled={isProcessingPayment}
+                  className="relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 px-6 py-3 rounded-xl font-semibold group/btn"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
+                  {isProcessingPayment ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin group-hover/btn:scale-110 transition-transform duration-300" />
+                  ) : (
+                    <DollarSign className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
+                  )}
+                  <span className="relative z-10">
+                    {isProcessingPayment ? "Processing..." : "Pay Now"}
+                  </span>
+                </Button>
+              )}
+            </div>
             
             <Button
               variant="ghost"
