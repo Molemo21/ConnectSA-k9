@@ -279,7 +279,7 @@ class PaystackClient {
         reference: params.reference,
         callback_url: params.callback_url,
         metadata: params.metadata,
-        currency: 'NGN', // Use NGN instead of ZAR for Paystack compatibility
+        currency: 'USD', // Use USD for international compatibility
       });
 
       // Debug logging
@@ -287,7 +287,13 @@ class PaystackClient {
         responseType: typeof response,
         responseKeys: response ? Object.keys(response) : 'null/undefined',
         responseStatus: response?.status,
-        responseMessage: response?.message
+        responseMessage: response?.message,
+        requestParams: {
+          amount: params.amount,
+          email: params.email,
+          currency: 'USD',
+          reference: params.reference
+        }
       });
 
       const validatedResponse = PaystackPaymentResponseSchema.parse(response);
