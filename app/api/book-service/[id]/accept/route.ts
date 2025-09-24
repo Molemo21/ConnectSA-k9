@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db-utils";
+import { prisma } from "@/lib/prisma";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { logBooking } from "@/lib/logger";
@@ -9,6 +9,14 @@ import { broadcastBookingAccepted } from "@/lib/socket-server";
 
 export const dynamic = 'force-dynamic'
 
+// Test endpoint to verify route accessibility
+export async function GET(request: NextRequest) {
+  return NextResponse.json({ 
+    message: "Accept booking endpoint is accessible",
+    method: "GET",
+    timestamp: new Date().toISOString()
+  });
+}
 
 export async function POST(request: NextRequest) {
   // Skip during build time
@@ -17,6 +25,13 @@ export async function POST(request: NextRequest) {
       error: "Service temporarily unavailable during deployment"
     }, { status: 503 });
   }
+
+  // Log the request for debugging
+  console.log('🔍 Accept booking API called:', {
+    method: request.method,
+    url: request.url,
+    timestamp: new Date().toISOString()
+  });
 
   try {
     const user = await getCurrentUser();
@@ -41,7 +56,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    const booking = await db.booking.findUnique({ 
+    const booking = await prisma.booking.findUnique({ 
       where: { id: bookingId },
       include: {
         client: { select: { name: true, email: true } },
@@ -89,7 +104,7 @@ export async function POST(request: NextRequest) {
       metadata: { note: 'Proposal table not available in database' }
     });
 
-    const updated = await db.booking.update({
+    const updated = await prisma.booking.update({
       where: { id: bookingId },
       data: { status: "CONFIRMED" },
     });
