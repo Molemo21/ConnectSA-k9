@@ -279,13 +279,15 @@ class PaystackClient {
         reference: params.reference,
         callback_url: params.callback_url,
         metadata: params.metadata,
-        currency: 'ZAR',
+        currency: 'NGN', // Use NGN instead of ZAR for Paystack compatibility
       });
 
       // Debug logging
       this.logger.info('Paystack SDK response received', { 
         responseType: typeof response,
-        responseKeys: response ? Object.keys(response) : 'null/undefined'
+        responseKeys: response ? Object.keys(response) : 'null/undefined',
+        responseStatus: response?.status,
+        responseMessage: response?.message
       });
 
       const validatedResponse = PaystackPaymentResponseSchema.parse(response);
@@ -305,6 +307,15 @@ class PaystackClient {
         }
         if (error.message.includes('ZodError')) {
           throw new Error(`Paystack response validation error: ${error.message}`);
+        }
+        if (error.message.includes('Request failed with status code 400')) {
+          throw new Error(`Paystack API validation error: Invalid request parameters. Check email, amount, currency, and callback URL.`);
+        }
+        if (error.message.includes('Request failed with status code 401')) {
+          throw new Error(`Paystack API authentication error: Invalid secret key.`);
+        }
+        if (error.message.includes('Request failed with status code 403')) {
+          throw new Error(`Paystack API authorization error: Access denied.`);
         }
       }
       
