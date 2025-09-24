@@ -4,10 +4,18 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor, PAYMENT_CONSTANTS } from "@/lib/paystack";
 import { z } from "zod";
-import { logPayment } from "@/lib/logger";
+import { logPayment, logger } from "@/lib/logger";
 
 export const dynamic = 'force-dynamic'
 
+// Test endpoint to verify route accessibility
+export async function GET(request: NextRequest) {
+  return NextResponse.json({
+    message: "Payment endpoint is accessible",
+    method: "GET",
+    timestamp: new Date().toISOString()
+  });
+}
 
 const paymentSchema = z.object({
   callbackUrl: z.string().url("Valid callback URL is required"),
