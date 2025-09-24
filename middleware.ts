@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware during build time
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
     return NextResponse.next();
   }
 

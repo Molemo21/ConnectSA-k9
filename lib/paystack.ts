@@ -10,7 +10,7 @@ const requiredEnvVars = {
 // Validate environment variables only at runtime
 const validateEnvVars = () => {
   // Skip validation during build time
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
     return;
   }
   
@@ -180,7 +180,7 @@ class PaystackClient {
 
   private constructor() {
     // Skip initialization during build time
-    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
       this.secretKey = 'dummy-key';
       this.publicKey = 'dummy-key';
       this.paystackSDK = {} as Paystack;
@@ -259,7 +259,7 @@ class PaystackClient {
       this.logger.info('Initializing payment', logData);
 
       // Skip during build time
-      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
         const dummyResponse = {
           status: true,
           message: 'Payment initialized successfully',
@@ -301,7 +301,7 @@ class PaystackClient {
       this.logger.info('Verifying payment', { reference });
 
       // Skip during build time
-      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
         const dummyResponse = {
           status: true,
           message: 'Transaction verified successfully',
@@ -453,7 +453,7 @@ class PaystackClient {
   async healthCheck(): Promise<boolean> {
     try {
       // Skip during build time
-      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
         return true;
       }
 
@@ -511,7 +511,7 @@ export class PaymentProcessor {
   validateWebhookSignature(payload: string, signature: string): boolean {
     try {
       // Skip validation during build time
-      if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
         return false;
       }
       

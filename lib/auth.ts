@@ -48,7 +48,7 @@ export async function verifyToken(token: string) {
 export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: string } }) | null> {
   try {
     // Skip during build time
-    if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
       console.log('Skipping getCurrentUser during build time');
       return null;
     }
