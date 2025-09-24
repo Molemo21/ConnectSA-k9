@@ -319,6 +319,10 @@ export async function POST(request: NextRequest) {
       metadata: { errorMessage: (error as Error).message }
     });
     
+    console.error(`❌ [${new Date().toISOString()}] ❌ PAYMENT.INIT: Error processing payment:`, error);
+    console.error(`❌ Error message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error(`❌ Error type: ${typeof error}`);
+    
     // Handle specific error types
     if (error instanceof Error) {
       if (error.message === "Booking not found") {
@@ -333,10 +337,15 @@ export async function POST(request: NextRequest) {
       if (error.message === "Payment already exists for this booking") {
         return NextResponse.json({ error: "Payment already exists for this booking" }, { status: 400 });
       }
-      if (error.message.includes("Paystack")) {
+      if (error.message.includes("Paystack") && !error.message.includes("Missing required environment variable")) {
         return NextResponse.json({ 
           error: "Payment service temporarily unavailable. Please try again later." 
         }, { status: 503 });
+      }
+      if (error.message.includes("Missing required environment variable")) {
+        return NextResponse.json({ 
+          error: "Payment service configuration error. Please contact support." 
+        }, { status: 500 });
       }
     }
 
