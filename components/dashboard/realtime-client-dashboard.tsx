@@ -610,8 +610,8 @@ export function RealtimeClientDashboard() {
                               })
                               if (response.ok) {
                                 const data = await response.json()
-                                if (data.authorization_url) {
-                                  window.location.href = data.authorization_url
+                                if (data.authorizationUrl || data.authorization_url) {
+                                  window.location.href = data.authorizationUrl || data.authorization_url
                                 }
                               }
                             } catch (error) {

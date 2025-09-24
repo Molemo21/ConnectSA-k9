@@ -111,8 +111,8 @@ export function RecentBookingCard({
       console.log('✅ Payment initiated successfully:', paymentData)
       
       // Redirect to Paystack payment page
-      if (paymentData.authorization_url) {
-        window.location.href = paymentData.authorization_url
+      if (paymentData.authorizationUrl || paymentData.authorization_url) {
+        window.location.href = paymentData.authorizationUrl || paymentData.authorization_url
       } else {
         showToast.success("Payment initiated! Check your email for payment details.")
       }
