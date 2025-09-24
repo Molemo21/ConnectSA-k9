@@ -23,17 +23,19 @@ export async function GET(request: NextRequest) {
       const { paystackClient } = await import("@/lib/paystack");
       paystackStatus = 'IMPORT_SUCCESS';
       
-      // Try to initialize
+      // Try to initialize (just test SDK, not actual API call)
       try {
-        // This will trigger the validation
-        const testResponse = await paystackClient.initializePayment({
-          amount: 1000,
-          email: 'test@example.com',
-          reference: 'test-ref',
-          callback_url: 'https://example.com/callback',
-          metadata: {}
-        });
-        paystackStatus = 'INITIALIZATION_SUCCESS';
+        // Test SDK initialization without making actual API call
+        const { paystackSDK } = await import("@/lib/paystack");
+        const client = paystackSDK.getInstance();
+        
+        // Just check if the client is properly initialized
+        if (client && client.secretKey && client.publicKey) {
+          paystackStatus = 'INITIALIZATION_SUCCESS';
+        } else {
+          paystackStatus = 'INITIALIZATION_FAILED';
+          paystackError = 'Client not properly initialized';
+        }
       } catch (initError) {
         paystackStatus = 'INITIALIZATION_FAILED';
         paystackError = initError instanceof Error ? initError.message : 'Unknown error';
