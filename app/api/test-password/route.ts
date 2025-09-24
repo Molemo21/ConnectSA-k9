@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function POST(request: NextRequest) {
   // Skip during build time
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
     return NextResponse.json({
       error: "Service temporarily unavailable during deployment"
     }, { status: 503 });

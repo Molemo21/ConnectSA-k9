@@ -23,8 +23,8 @@ const paymentSchema = z.object({
 
 export async function POST(request: NextRequest) {
   
-  // Skip during build time
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+  // Skip during build time (only if we're actually building, not running)
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
     return NextResponse.json({
       error: "Service temporarily unavailable during deployment"
     }, { status: 503 });

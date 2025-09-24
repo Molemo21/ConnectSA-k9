@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   // Skip during build time
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL === '1' && !process.env.DATABASE_URL) {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
     return NextResponse.json({
       success: false,
       message: "Service temporarily unavailable during deployment"
