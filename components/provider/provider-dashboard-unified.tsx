@@ -327,6 +327,7 @@ function ProviderMainContent({
   const completedBookings = bookings.filter(b => b.status === "COMPLETED").length
   const pendingBookings = bookings.filter(b => b.status === "PENDING").length
   const confirmedBookings = bookings.filter(b => b.status === "CONFIRMED").length
+  const pendingExecutionBookings = bookings.filter(b => b.status === "PENDING_EXECUTION").length
   const inProgressBookings = bookings.filter(b => b.status === "IN_PROGRESS").length
 
   // Filter bookings based on selected filter
@@ -583,6 +584,26 @@ function ProviderMainContent({
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Accepted
+                          </Button>
+                        )}
+                        {booking.status === 'PENDING_EXECUTION' && (
+                          <Button 
+                            size="sm" 
+                            className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => handleStartJob(booking.id)}
+                            disabled={dashboardState.ui.processingAction}
+                          >
+                            {dashboardState.ui.processingAction ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Starting...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="h-4 w-4 mr-2" />
+                                Start Job
+                              </>
+                            )}
                           </Button>
                         )}
                         {booking.status === 'IN_PROGRESS' && (
@@ -862,7 +883,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       isCollapsed: false,
       acceptingBooking: null as string | null, // Track which booking is being accepted
       acceptError: null as string | null, // Track accept errors
-      acceptSuccess: null as string | null // Track accept success messages
+      acceptSuccess: null as string | null, // Track accept success messages
+      processingAction: false // Track when any action is being processed
     }
   })
 
@@ -1203,6 +1225,64 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       console.error('❌ Failed to accept booking:', error.message)
     }
   }, [])
+
+  // Handle starting a job
+  const handleStartJob = useCallback(async (bookingId: string) => {
+    try {
+      // Set processing state
+      setDashboardState(prev => ({
+        ...prev,
+        ui: { ...prev.ui, processingAction: true }
+      }))
+
+      console.log('Starting job for booking:', bookingId)
+
+      const response = await fetch(`/api/book-service/${bookingId}/start`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('Job started successfully:', result)
+
+      // Update the booking status in the local state
+      setDashboardState(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          bookings: prev.data.bookings.map(booking =>
+            booking.id === bookingId
+              ? { ...booking, status: 'IN_PROGRESS' as const }
+              : booking
+          )
+        }
+      }))
+
+      // Refresh data to get latest state
+      await fetchProviderData()
+
+      console.log('✅ Job started successfully!')
+
+    } catch (error) {
+      console.error('Failed to start job:', error)
+      // You could add a toast notification here
+      console.error('❌ Failed to start job:', error.message)
+    } finally {
+      // Clear processing state
+      setDashboardState(prev => ({
+        ...prev,
+        ui: { ...prev.ui, processingAction: false }
+      }))
+    }
+  }, [fetchProviderData])
 
   // Loading state
   if (dashboardState.auth.isLoading || dashboardState.ui.loading) {

@@ -256,6 +256,7 @@ export async function GET(request: NextRequest) {
       totalBookings: bookings.length,
       pendingBookings: bookings.filter(b => b.status === 'PENDING').length,
       confirmedBookings: bookings.filter(b => b.status === 'CONFIRMED').length,
+      pendingExecutionBookings: bookings.filter(b => b.status === 'PENDING_EXECUTION').length,
       inProgressBookings: bookings.filter(b => b.status === 'IN_PROGRESS').length,
       completedBookings: bookings.filter(b => b.status === 'COMPLETED').length,
       totalEarnings: bookings

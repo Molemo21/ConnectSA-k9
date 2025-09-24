@@ -128,6 +128,7 @@ interface ProviderStats {
   totalBookings: number
   pendingBookings: number
   confirmedBookings: number
+  pendingExecutionBookings: number
   inProgressBookings: number
   completedBookings: number
   totalEarnings: number
@@ -312,6 +313,7 @@ export function PaginatedProviderDashboard() {
       totalBookings: bookings.length,
       pendingBookings: bookings.filter(b => b.status === 'PENDING').length,
       confirmedBookings: bookings.filter(b => b.status === 'CONFIRMED').length,
+      pendingExecutionBookings: bookings.filter(b => b.status === 'PENDING_EXECUTION').length,
       inProgressBookings: bookings.filter(b => b.status === 'IN_PROGRESS').length,
       completedBookings: bookings.filter(b => b.status === 'COMPLETED').length,
       totalEarnings: bookings
