@@ -26,11 +26,10 @@ export async function GET(request: NextRequest) {
       // Try to initialize (just test SDK, not actual API call)
       try {
         // Test SDK initialization without making actual API call
-        const { paystackSDK } = await import("@/lib/paystack");
-        const client = paystackSDK.getInstance();
+        const { paystackClient } = await import("@/lib/paystack");
         
         // Just check if the client is properly initialized
-        if (client && client.secretKey && client.publicKey) {
+        if (paystackClient && paystackClient.secretKey && paystackClient.publicKey) {
           paystackStatus = 'INITIALIZATION_SUCCESS';
         } else {
           paystackStatus = 'INITIALIZATION_FAILED';
