@@ -14,8 +14,12 @@
  * - Production: Structured JSON logs to file/DB
  */
 
-import fs from 'fs';
-import path from 'path';
+// Only import Node.js modules on server-side
+let fs: any, path: any;
+if (typeof window === 'undefined') {
+  fs = require('fs');
+  path = require('path');
+}
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 export type ServiceName = 'booking' | 'payment' | 'provider' | 'client' | 'admin' | 'auth' | 'webhook' | 'system';
@@ -71,8 +75,8 @@ class CentralizedLogger {
       ...config
     };
 
-    // Skip file system operations in serverless environments
-    if (this.config.enableFile && this.config.logFilePath && !process.env.VERCEL) {
+    // Skip file system operations in serverless environments or client-side
+    if (this.config.enableFile && this.config.logFilePath && !process.env.VERCEL && typeof window === 'undefined' && fs) {
       const logDir = path.dirname(this.config.logFilePath);
       if (!fs.existsSync(logDir)) {
         fs.mkdirSync(logDir, { recursive: true });
@@ -119,7 +123,7 @@ class CentralizedLogger {
   }
 
   private async writeToFile(entry: LogEntry): Promise<void> {
-    if (!this.config.enableFile || !this.config.logFilePath) return;
+    if (!this.config.enableFile || !this.config.logFilePath || typeof window !== 'undefined' || !fs) return;
 
     try {
       const logLine = this.formatLogEntry(entry) + '\n';
@@ -139,7 +143,7 @@ class CentralizedLogger {
   }
 
   private async rotateLogFile(): Promise<void> {
-    if (!this.config.logFilePath) return;
+    if (!this.config.logFilePath || typeof window !== 'undefined' || !fs || !path) return;
 
     try {
       const logDir = path.dirname(this.config.logFilePath);
@@ -329,6 +333,14 @@ export const logDashboard = {
     logger.dashboardSuccess(service, action, message, options),
   error: (service: ServiceName, action: ActionType, message: string, error: Error, options?: { userId?: string; error_code?: string; metadata?: Record<string, any> }) => 
     logger.dashboardError(service, action, message, error, options),
+};
+
+// Export logSystem for socket-client compatibility
+export const logSystem = {
+  success: (service: ServiceName, action: ActionType, message: string, options?: { userId?: string; metadata?: Record<string, any> }) => 
+    logger.info(service, action, 'success', message, options),
+  error: (service: ServiceName, action: ActionType, message: string, error: Error, options?: { userId?: string; error_code?: string; metadata?: Record<string, any> }) => 
+    logger.error(service, action, 'failed', message, { ...options, error }),
 };
 
 export default logger;
