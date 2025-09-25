@@ -70,6 +70,7 @@ import {
   Briefcase as JobIcon
 } from "lucide-react"
 import { showToast, handleApiError } from "@/lib/toast"
+import { useSocket } from "@/lib/socket-client"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
@@ -323,22 +324,29 @@ function ProviderMainContent({
   clearAcceptSuccess: () => void
 }) {
   // Calculate derived stats
-  const totalBookings = bookings.length
-  const completedBookings = bookings.filter(b => b.status === "COMPLETED").length
-  const pendingBookings = bookings.filter(b => b.status === "PENDING").length
-  const confirmedBookings = bookings.filter(b => b.status === "CONFIRMED").length
-  const pendingExecutionBookings = bookings.filter(b => b.status === "PENDING_EXECUTION").length
-  const inProgressBookings = bookings.filter(b => b.status === "IN_PROGRESS").length
+  const totalBookings = bookings?.length || 0
+  const completedBookings = bookings?.filter(b => b && b.status === "COMPLETED").length || 0
+  const pendingBookings = bookings?.filter(b => b && b.status === "PENDING").length || 0
+  const confirmedBookings = bookings?.filter(b => b && b.status === "CONFIRMED").length || 0
+  const pendingExecutionBookings = bookings?.filter(b => b && b.status === "PENDING_EXECUTION").length || 0
+  const inProgressBookings = bookings?.filter(b => b && b.status === "IN_PROGRESS").length || 0
 
   // Filter bookings based on selected filter
   const filteredBookings = useMemo(() => {
-    if (selectedFilter === "all") return bookings
-    return bookings.filter(booking => booking.status.toLowerCase() === selectedFilter.toLowerCase())
+    if (!bookings || !Array.isArray(bookings)) return []
+    if (selectedFilter === "all") return bookings.filter(booking => booking && booking.id)
+    return bookings.filter(booking => 
+      booking && 
+      booking.id && 
+      booking.status && 
+      booking.status.toLowerCase() === selectedFilter.toLowerCase()
+    )
   }, [bookings, selectedFilter])
 
   // Render different sections based on activeSection
   const renderSectionContent = () => {
-    switch (activeSection) {
+    try {
+      switch (activeSection) {
       case "overview":
         return (
           <div className="space-y-6">
@@ -450,26 +458,26 @@ function ProviderMainContent({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {bookings.slice(0, 3).map((booking) => (
+                  {(bookings || []).filter(booking => booking && booking.id).slice(0, 3).map((booking) => (
                     <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-300/10">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 bg-blue-400/20 rounded-full">
                           <Calendar className="w-4 h-4 text-blue-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{booking.service.name}</p>
-                          <p className="text-sm text-gray-400">{booking.client.name}</p>
+                          <p className="text-white font-medium">{booking.service?.name || 'Unknown Service'}</p>
+                          <p className="text-sm text-gray-400">{booking.client?.name || 'Unknown Client'}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {booking.status}
+                          {booking.status || 'UNKNOWN'}
                         </Badge>
-                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount}</p>
+                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount || 0}</p>
                       </div>
                     </div>
                   ))}
-                  {bookings.length === 0 && (
+                  {(!bookings || bookings.length === 0) && (
                     <div className="text-center py-8">
                       <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-400">No jobs yet</p>
@@ -511,7 +519,7 @@ function ProviderMainContent({
 
             {/* Jobs List */}
             <div className="space-y-4">
-              {filteredBookings.map((booking) => (
+              {filteredBookings.filter(booking => booking && booking.id).map((booking) => (
                 <Card key={booking.id} className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
@@ -521,24 +529,24 @@ function ProviderMainContent({
                             <Calendar className="w-5 h-5 text-blue-400" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-white">{booking.service.name}</h3>
-                            <p className="text-sm text-gray-400">{booking.service.category}</p>
+                            <h3 className="text-lg font-semibold text-white">{booking.service?.name || 'Unknown Service'}</h3>
+                            <p className="text-sm text-gray-400">{booking.service?.category || 'No Category'}</p>
                           </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-gray-400">Client</p>
-                            <p className="text-white font-medium">{booking.client.name}</p>
-                            <p className="text-sm text-gray-400">{booking.client.email}</p>
+                            <p className="text-white font-medium">{booking.client?.name || 'Unknown Client'}</p>
+                            <p className="text-sm text-gray-400">{booking.client?.email || 'No Email'}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-400">Scheduled Date</p>
                             <p className="text-white font-medium">
-                              {new Date(booking.scheduledDate).toLocaleDateString()}
+                              {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString() : 'No Date'}
                             </p>
                             <p className="text-sm text-gray-400">
-                              {new Date(booking.scheduledDate).toLocaleTimeString()}
+                              {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleTimeString() : 'No Time'}
                             </p>
                           </div>
                         </div>
@@ -546,18 +554,18 @@ function ProviderMainContent({
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="flex items-center text-gray-400">
                             <MapPin className="w-4 h-4 mr-1" />
-                            {booking.address}
+                            {booking.address || 'No Address'}
                           </span>
                           <span className="flex items-center text-gray-400">
                             <DollarSign className="w-4 h-4 mr-1" />
-                            R{booking.totalAmount}
+                            R{booking.totalAmount || 0}
                           </span>
                         </div>
                       </div>
                       
                       <div className="flex flex-col items-end space-y-2">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {booking.status}
+                          {booking.status || 'UNKNOWN'}
                         </Badge>
                         {booking.status === 'PENDING' && (
                           <Button 
@@ -799,6 +807,25 @@ function ProviderMainContent({
           </Card>
         )
     }
+    } catch (error) {
+      console.error('Error rendering section content:', error)
+      return (
+        <div className="text-center py-12">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">Error Loading Content</h3>
+          <p className="text-gray-400 mb-4">
+            There was an error loading this section. Please try refreshing the page.
+          </p>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-400 hover:bg-blue-500 text-white"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Reload Page
+          </Button>
+        </div>
+      )
+    }
   }
 
   return (
@@ -962,6 +989,34 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       return false
     }
   }, [router])
+
+  // WebSocket connection for real-time updates
+  const { connected, error: socketError, reconnect, isPolling } = useSocket({
+    userId: dashboardState.auth.user?.id || 'test_provider_123',
+    role: 'PROVIDER',
+    enablePolling: true,
+    pollingInterval: 60000, // 60 seconds
+    onBookingUpdate: (event) => {
+      console.log('🔔 Provider booking update received:', event)
+      // Refresh data when booking status changes
+      fetchProviderData()
+    },
+    onPaymentUpdate: (event) => {
+      console.log('💳 Provider payment update received:', event)
+      // Refresh data when payment status changes
+      fetchProviderData()
+    },
+    onPayoutUpdate: (event) => {
+      console.log('💰 Provider payout update received:', event)
+      // Refresh data when payout status changes
+      fetchProviderData()
+    },
+    onNotification: (event) => {
+      console.log('🔔 Provider notification received:', event)
+      // Show notification to user
+      showToast.info(event.data.message || 'New notification')
+    }
+  })
 
   // Stable provider data fetch function with retry logic
   const fetchProviderData = useCallback(async (retryCount = 0) => {
