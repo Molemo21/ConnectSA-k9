@@ -303,7 +303,9 @@ function ProviderMainContent({
   acceptError,
   acceptSuccess,
   clearAcceptError,
-  clearAcceptSuccess
+  clearAcceptSuccess,
+  handleStartJob,
+  processingAction
 }: {
   activeSection: string
   setActiveSection: (section: string) => void
@@ -322,6 +324,8 @@ function ProviderMainContent({
   acceptSuccess: string | null
   clearAcceptError: () => void
   clearAcceptSuccess: () => void
+  handleStartJob: (bookingId: string) => Promise<void>
+  processingAction: boolean
 }) {
   // Calculate derived stats
   const totalBookings = bookings?.length || 0
@@ -346,7 +350,7 @@ function ProviderMainContent({
   // Render different sections based on activeSection
   const renderSectionContent = () => {
     try {
-      switch (activeSection) {
+    switch (activeSection) {
       case "overview":
         return (
           <div className="space-y-6">
@@ -599,9 +603,9 @@ function ProviderMainContent({
                             size="sm" 
                             className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={() => handleStartJob(booking.id)}
-                            disabled={dashboardState.ui.processingAction}
+                            disabled={processingAction}
                           >
-                            {dashboardState.ui.processingAction ? (
+                            {processingAction ? (
                               <>
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Starting...
@@ -824,7 +828,7 @@ function ProviderMainContent({
             Reload Page
           </Button>
         </div>
-      )
+        )
     }
   }
 
@@ -1482,6 +1486,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ...prev,
             ui: { ...prev.ui, acceptSuccess: null }
           }))}
+          handleStartJob={handleStartJob}
+          processingAction={dashboardState.ui.processingAction}
         />
       </div>
 
@@ -1529,6 +1535,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ...prev,
             ui: { ...prev.ui, acceptSuccess: null }
           }))}
+          handleStartJob={handleStartJob}
+          processingAction={dashboardState.ui.processingAction}
         />
       </div>
 
