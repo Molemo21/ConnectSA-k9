@@ -10,7 +10,7 @@ import { CreditCard, Building, User, Hash } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface BankDetailsFormProps {
-  onBankDetailsChange: (bankDetails: {
+  onBankDetailsChange?: (bankDetails: {
     bankName: string
     bankCode: string
     accountNumber: string
@@ -84,7 +84,7 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
       bankName,
       bankCode: bank?.code || ""
     }))
-    onBankDetailsChange({
+    onBankDetailsChange?.({
       ...bankDetails,
       bankName,
       bankCode: bank?.code || ""
@@ -96,7 +96,7 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
       ...prev,
       [field]: value
     }))
-    onBankDetailsChange({
+    onBankDetailsChange?.({
       ...bankDetails,
       [field]: value
     })

@@ -74,7 +74,7 @@ import { useSocket } from "@/lib/socket-client"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
-import { ProviderBankDetailsContent } from "./provider-bank-details-content"
+import { BankDetailsForm } from "./bank-details-form"
 import Link from "next/link"
 
 interface Booking {
@@ -817,7 +817,7 @@ function ProviderMainContent({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ProviderBankDetailsContent providerId={user.provider?.id || ''} />
+                <BankDetailsForm />
               </CardContent>
             </Card>
           </div>

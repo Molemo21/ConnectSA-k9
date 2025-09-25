@@ -64,8 +64,22 @@ export async function POST(request: NextRequest) {
         include: { 
           payment: true,
           provider: {
-            include: {
-              user: true // Include user info for notifications
+            select: {
+              id: true,
+              userId: true,
+              businessName: true,
+              bankName: true,
+              bankCode: true,
+              accountNumber: true,
+              accountName: true,
+              recipientCode: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
             }
           },
           service: true
