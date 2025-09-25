@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         where: {
           providerId: provider.id,
           status: {
-            in: ["PENDING", "CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "COMPLETED"]
+            in: ["PENDING", "CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"]
           },
         },
         include: {
@@ -99,6 +99,7 @@ export async function GET(request: NextRequest) {
     const confirmedJobs = bookings.filter(b => b.status === "CONFIRMED").length
     const pendingExecutionJobs = bookings.filter(b => b.status === "PENDING_EXECUTION").length
     const inProgressJobs = bookings.filter(b => b.status === "IN_PROGRESS").length
+    const awaitingConfirmationJobs = bookings.filter(b => b.status === "AWAITING_CONFIRMATION").length
     const completedJobs = bookings.filter(b => b.status === "COMPLETED").length
 
     const totalEarnings = bookings
@@ -127,6 +128,7 @@ export async function GET(request: NextRequest) {
       confirmedJobs,
       pendingExecutionJobs,
       inProgressJobs,
+      awaitingConfirmationJobs,
       completedJobs,
       totalEarnings,
       thisMonthEarnings,
