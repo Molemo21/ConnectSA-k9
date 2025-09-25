@@ -325,6 +325,7 @@ function ProviderMainContent({
   clearAcceptError: () => void
   clearAcceptSuccess: () => void
   handleStartJob: (bookingId: string) => Promise<void>
+  handleCompleteJob: (bookingId: string) => Promise<void>
   processingAction: boolean
 }) {
   // Calculate derived stats
@@ -334,6 +335,7 @@ function ProviderMainContent({
   const confirmedBookings = bookings?.filter(b => b && b.status === "CONFIRMED").length || 0
   const pendingExecutionBookings = bookings?.filter(b => b && b.status === "PENDING_EXECUTION").length || 0
   const inProgressBookings = bookings?.filter(b => b && b.status === "IN_PROGRESS").length || 0
+  const awaitingConfirmationBookings = bookings?.filter(b => b && b.status === "AWAITING_CONFIRMATION").length || 0
 
   // Filter bookings based on selected filter
   const filteredBookings = useMemo(() => {
@@ -503,7 +505,7 @@ function ProviderMainContent({
             <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
               <CardContent className="p-4">
                 <div className="flex flex-wrap gap-2">
-                  {['all', 'pending', 'confirmed', 'in_progress', 'completed'].map((filter) => (
+                  {['all', 'pending', 'confirmed', 'in_progress', 'awaiting_confirmation', 'completed'].map((filter) => (
                     <Button
                       key={filter}
                       variant={selectedFilter === filter ? 'default' : 'outline'}
@@ -621,11 +623,31 @@ function ProviderMainContent({
                         {booking.status === 'IN_PROGRESS' && (
                           <Button 
                             size="sm" 
+                            className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => handleCompleteJob(booking.id)}
+                            disabled={processingAction}
+                          >
+                            {processingAction ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Completing...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Complete Job
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        {booking.status === 'AWAITING_CONFIRMATION' && (
+                          <Button 
+                            size="sm" 
                             className="bg-yellow-400 hover:bg-yellow-500 text-white"
                             disabled
                           >
-                            <Play className="h-4 w-4 mr-2" />
-                            In Progress
+                            <Clock className="h-4 w-4 mr-2" />
+                            Awaiting Confirmation
                           </Button>
                         )}
                         {booking.status === 'COMPLETED' && (
@@ -1343,6 +1365,68 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [fetchProviderData])
 
+  // Handle completing a job
+  const handleCompleteJob = useCallback(async (bookingId: string) => {
+    try {
+      // Set processing state
+      setDashboardState(prev => ({
+        ...prev,
+        ui: { ...prev.ui, processingAction: true }
+      }))
+
+      console.log('Completing job for booking:', bookingId)
+
+      const response = await fetch(`/api/book-service/${bookingId}/complete`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          notes: 'Job completed successfully',
+          photos: []
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const result = await response.json()
+      console.log('Job completed successfully:', result)
+
+      // Update the booking status in the local state
+      setDashboardState(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          bookings: prev.data.bookings.map(booking =>
+            booking.id === bookingId
+              ? { ...booking, status: 'AWAITING_CONFIRMATION' as const }
+              : booking
+          )
+        }
+      }))
+
+      // Refresh data to get latest state
+      await fetchProviderData()
+
+      console.log('✅ Job completed successfully!')
+
+    } catch (error) {
+      console.error('Failed to complete job:', error)
+      // You could add a toast notification here
+      console.error('❌ Failed to complete job:', error.message)
+    } finally {
+      // Clear processing state
+      setDashboardState(prev => ({
+        ...prev,
+        ui: { ...prev.ui, processingAction: false }
+      }))
+    }
+  }, [fetchProviderData])
+
   // Loading state
   if (dashboardState.auth.isLoading || dashboardState.ui.loading) {
     return (
@@ -1487,6 +1571,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, acceptSuccess: null }
           }))}
           handleStartJob={handleStartJob}
+          handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
         />
       </div>
@@ -1536,6 +1621,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, acceptSuccess: null }
           }))}
           handleStartJob={handleStartJob}
+          handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
         />
       </div>
