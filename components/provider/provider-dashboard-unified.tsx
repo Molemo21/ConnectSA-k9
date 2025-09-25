@@ -305,6 +305,7 @@ function ProviderMainContent({
   clearAcceptError,
   clearAcceptSuccess,
   handleStartJob,
+  handleCompleteJob,
   processingAction
 }: {
   activeSection: string
