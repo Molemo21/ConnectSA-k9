@@ -548,7 +548,7 @@ export async function POST(request: NextRequest) {
 
       if (transferError instanceof Error) {
         if (transferError.message.includes("bank details are incomplete")) {
-          errorMessage = "Provider bank details are incomplete. Cannot process payment transfer.";
+          errorMessage = "Provider has not set up their bank account details yet. Please ask the provider to add their bank information in their dashboard, or contact support for assistance.";
           statusCode = 400;
         } else if (transferError.message.includes("Failed to create transfer recipient")) {
           errorMessage = "Failed to set up provider bank account. Please contact support.";

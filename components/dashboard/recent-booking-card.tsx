@@ -231,6 +231,35 @@ export function RecentBookingCard({
            !isProcessingPayment
   }
 
+  // Determine if confirm completion button should be shown
+  const canConfirmCompletion = () => {
+    return booking.status === 'AWAITING_CONFIRMATION'
+  }
+
+  // Handle confirm completion
+  const handleConfirmCompletion = async () => {
+    try {
+      const response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        showToast.success(data.message || "Job completion confirmed! Payment will be released to provider.")
+        onRefresh?.() // Refresh the booking data
+        // Refresh the page to update the status
+        window.location.reload()
+      } else {
+        const errorData = await response.json()
+        showToast.error(errorData.error || "Failed to confirm completion")
+      }
+    } catch (error) {
+      console.error("Confirm completion error:", error)
+      showToast.error("Network error. Please try again.")
+    }
+  }
+
   return (
     <div className="relative group">
       {/* Animated Background Effects */}
@@ -444,6 +473,18 @@ export function RecentBookingCard({
                   <span className="relative z-10">
                     {isProcessingPayment ? "Processing..." : "Pay Now"}
                   </span>
+                </Button>
+              )}
+              
+              {canConfirmCompletion() && (
+                <Button
+                  size="sm"
+                  onClick={handleConfirmCompletion}
+                  className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-orange-500/25 px-6 py-3 rounded-xl font-semibold group/btn"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
+                  <CheckCircle className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
+                  <span className="relative z-10">Confirm Completion</span>
                 </Button>
               )}
             </div>
