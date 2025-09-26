@@ -54,7 +54,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
     }
   }
 
-  const getRoleDisplay = (role: string) => {
+  const getRoleDisplay = (role: string | null | undefined) => {
     switch (role) {
       case "CLIENT":
         return { label: "Client", color: "bg-blue-100 text-blue-800" }
@@ -63,7 +63,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       case "ADMIN":
         return { label: "Admin", color: "bg-purple-100 text-purple-800" }
       default:
-        return { label: role, color: "bg-gray-100 text-gray-800" }
+        return { label: role || "User", color: "bg-gray-100 text-gray-800" }
     }
   }
 
@@ -125,14 +125,14 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                     <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                     <AvatarFallback className="bg-primary text-white text-sm lg:text-base">
                       {user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
+                        ?.split(" ")
+                        ?.map((n) => n[0])
+                        ?.join("")
+                        ?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden lg:block text-left">
-                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                    <p className="text-sm font-medium text-gray-900">{user.name || "User"}</p>
                     <Badge className={`text-xs ${roleDisplay.color}`}>{roleDisplay.label}</Badge>
                   </div>
                 </Button>
@@ -140,8 +140,8 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
+                    <p className="text-sm font-medium">{user.name || "User"}</p>
+                    <p className="text-xs text-gray-500">{user.email || "No email"}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -219,14 +219,14 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                   <AvatarFallback className="bg-primary text-white text-sm">
                     {user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()}
+                      ?.split(" ")
+                      ?.map((n) => n[0])
+                      ?.join("")
+                      ?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{user.name || "User"}</p>
                   <Badge className={`text-xs ${roleDisplay.color} mt-1`}>{roleDisplay.label}</Badge>
                 </div>
               </div>

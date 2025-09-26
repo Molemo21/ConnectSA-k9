@@ -198,7 +198,7 @@ export function ConsolidatedMobileHeaderProvider({
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-sm">
-                      {user.name?.charAt(0) || 'P'}
+                      {user.name?.charAt(0)?.toUpperCase() || 'P'}
                     </span>
                   </div>
                 </Button>
