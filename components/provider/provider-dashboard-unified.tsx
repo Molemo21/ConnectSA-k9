@@ -306,7 +306,8 @@ function ProviderMainContent({
   clearAcceptSuccess,
   handleStartJob,
   handleCompleteJob,
-  processingAction
+  processingAction,
+  handleBankDetailsChange
 }: {
   activeSection: string
   setActiveSection: (section: string) => void
@@ -328,6 +329,7 @@ function ProviderMainContent({
   handleStartJob: (bookingId: string) => Promise<void>
   handleCompleteJob: (bookingId: string) => Promise<void>
   processingAction: boolean
+  handleBankDetailsChange: (bankDetails: any) => void
 }) {
   // Calculate derived stats
   const totalBookings = bookings?.length || 0
@@ -350,7 +352,6 @@ function ProviderMainContent({
     )
   }, [bookings, selectedFilter])
 
-  // Render different sections based on activeSection
   const renderSectionContent = () => {
     try {
     switch (activeSection) {
@@ -819,17 +820,7 @@ function ProviderMainContent({
               <CardContent>
                 <BankDetailsForm 
                   initialBankDetails={dashboardState.data.bankDetails}
-                  onBankDetailsChange={(bankDetails) => {
-                    // Update local state when bank details change
-                    setDashboardState(prev => ({
-                      ...prev,
-                      data: { 
-                        ...prev.data, 
-                        hasBankDetails: true,
-                        bankDetails: bankDetails
-                      }
-                    }))
-                  }}
+                  onBankDetailsChange={handleBankDetailsChange}
                 />
               </CardContent>
             </Card>
@@ -1240,6 +1231,18 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     await fetchProviderData()
   }, [fetchProviderData])
 
+  // Handle bank details change with useCallback to prevent re-renders
+  const handleBankDetailsChange = useCallback((bankDetails: any) => {
+    setDashboardState(prev => ({
+      ...prev,
+      data: { 
+        ...prev.data, 
+        hasBankDetails: true,
+        bankDetails: bankDetails
+      }
+    }))
+  }, [])
+
   // Accept booking function
   const acceptBooking = useCallback(async (bookingId: string) => {
     try {
@@ -1591,6 +1594,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           handleStartJob={handleStartJob}
           handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
+          handleBankDetailsChange={handleBankDetailsChange}
         />
       </div>
 
@@ -1641,6 +1645,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           handleStartJob={handleStartJob}
           handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
+          handleBankDetailsChange={handleBankDetailsChange}
         />
       </div>
 
