@@ -1,28 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, Building, User, Hash, Loader2, AlertTriangle, RefreshCw } from "lucide-react"
+import { CreditCard, Building, Loader2, AlertTriangle, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useEffect } from "react"
+
+interface BankDetails {
+  bankName: string
+  bankCode: string
+  accountNumber: string
+  accountName: string
+}
+
+interface InitialBankDetails {
+  bankName?: string
+  bankCode?: string
+  accountNumber?: string
+  accountName?: string
+}
 
 interface BankDetailsFormProps {
-  onBankDetailsChange?: (bankDetails: {
-    bankName: string
-    bankCode: string
-    accountNumber: string
-    accountName: string
-  }) => void
-  initialBankDetails?: {
-    bankName?: string
-    bankCode?: string
-    accountNumber?: string
-    accountName?: string
-  }
+  onBankDetailsChange?: (bankDetails: BankDetails) => void
+  initialBankDetails?: InitialBankDetails | null
   disabled?: boolean
 }
 
@@ -48,6 +51,11 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
     ? initialBankDetails 
     : null
 
+  // Early return if component is in an invalid state
+  if (disabled === undefined || typeof disabled !== 'boolean') {
+    console.warn('BankDetailsForm: disabled prop is invalid, defaulting to false')
+  }
+
   const [bankDetails, setBankDetails] = useState({
     bankName: safeInitialBankDetails?.bankName || "",
     bankCode: safeInitialBankDetails?.bankCode || "",
@@ -57,16 +65,25 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
-
-  // Update form state when initialBankDetails changes
+  
+  // Use ref to track previous initialBankDetails to prevent infinite loops
+  const prevInitialBankDetailsRef = useRef<string>('')
+  
+  // Update form state when initialBankDetails changes (only if actually different)
   useEffect(() => {
     if (safeInitialBankDetails) {
-      setBankDetails({
-        bankName: safeInitialBankDetails.bankName || "",
-        bankCode: safeInitialBankDetails.bankCode || "",
-        accountNumber: safeInitialBankDetails.accountNumber || "",
-        accountName: safeInitialBankDetails.accountName || ""
-      })
+      const currentInitialBankDetails = JSON.stringify(safeInitialBankDetails)
+      
+      // Only update if the initialBankDetails have actually changed
+      if (currentInitialBankDetails !== prevInitialBankDetailsRef.current) {
+        setBankDetails({
+          bankName: safeInitialBankDetails.bankName || "",
+          bankCode: safeInitialBankDetails.bankCode || "",
+          accountNumber: safeInitialBankDetails.accountNumber || "",
+          accountName: safeInitialBankDetails.accountName || ""
+        })
+        prevInitialBankDetailsRef.current = currentInitialBankDetails
+      }
     }
   }, [safeInitialBankDetails])
 
@@ -104,16 +121,15 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
     }
     
     const bank = SOUTH_AFRICAN_BANKS.find(b => b && b.name === bankName)
-    setBankDetails(prev => ({
-      ...prev,
+    const newBankDetails = {
       bankName,
-      bankCode: bank?.code || ""
-    }))
-    onBankDetailsChange?.({
-      ...bankDetails,
-      bankName,
-      bankCode: bank?.code || ""
-    })
+      bankCode: bank?.code || "",
+      accountNumber: bankDetails.accountNumber,
+      accountName: bankDetails.accountName
+    }
+    
+    setBankDetails(newBankDetails)
+    onBankDetailsChange?.(newBankDetails)
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -122,14 +138,13 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
       return
     }
     
-    setBankDetails(prev => ({
-      ...prev,
-      [field]: value
-    }))
-    onBankDetailsChange?.({
+    const newBankDetails = {
       ...bankDetails,
       [field]: value
-    })
+    }
+    
+    setBankDetails(newBankDetails)
+    onBankDetailsChange?.(newBankDetails)
   }
 
   const handleSubmit = async () => {
@@ -196,6 +211,11 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
   }
 
     try {
+      // Validate that all required UI components are available
+      if (!Button || !Card || !Input || !Label || !Select) {
+        throw new Error('Required UI components are not available')
+      }
+
       return (
       <div className="space-y-6">
         <div className="text-center mb-6">
