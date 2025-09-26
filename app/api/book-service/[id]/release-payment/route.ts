@@ -374,7 +374,7 @@ export async function POST(request: NextRequest) {
           throw new Error("Provider has not set up their bank account details yet. Please ask the provider to add their bank information in their dashboard, or contact support for assistance.");
         }
 
-      // Create Paystack transfer recipient (always use real API)
+      // Create Paystack transfer recipient
       const recipientData: TransferRecipientData = {
         type: 'nuban',
         name: result.provider.accountName,
@@ -390,11 +390,42 @@ export async function POST(request: NextRequest) {
         metadata: {
           bank: result.provider.bankName,
           accountNumber: result.provider.accountNumber,
-          accountName: result.provider.accountName
+          accountName: result.provider.accountName,
+          isTestMode
         }
       });
 
-      const recipientResponse = await paystackClient.createRecipient(recipientData);
+      let recipientResponse;
+      
+      if (isTestMode) {
+        console.log(`🧪 Test mode detected - simulating recipient creation`);
+        // In test mode, simulate recipient creation
+        recipientResponse = {
+          status: true,
+          data: {
+            recipient_code: `TEST_RECIPIENT_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+            type: 'nuban',
+            name: result.provider.accountName,
+            account_number: result.provider.accountNumber,
+            bank_code: result.provider.bankCode
+          },
+          message: 'Recipient simulated successfully in test mode'
+        };
+        
+        logPayment.success('escrow_release', 'Recipient simulated in test mode', {
+          userId: user.id,
+          bookingId: bookingId,
+          paymentId: result.payment.id,
+          providerId: result.provider.id,
+          metadata: {
+            recipientCode: recipientResponse.data.recipient_code,
+            mode: 'TEST'
+          }
+        });
+      } else {
+        // In production mode, make real API call
+        recipientResponse = await paystackClient.createRecipient(recipientData);
+      }
       
       if (!recipientResponse.data?.recipient_code) {
         logPayment.error('escrow_release', 'Failed to create transfer recipient', new Error('Paystack response invalid'), {
@@ -433,6 +464,20 @@ export async function POST(request: NextRequest) {
       });
       } else {
         console.log(`✅ Using existing recipient_code: ${recipientCode}`);
+        
+        // In test mode, we still need to simulate the recipient for logging
+        if (isTestMode) {
+          logPayment.success('escrow_release', 'Using existing recipient in test mode', {
+            userId: user.id,
+            bookingId: bookingId,
+            paymentId: result.payment.id,
+            providerId: result.provider.id,
+            metadata: {
+              recipientCode,
+              mode: 'TEST'
+            }
+          });
+        }
       }
 
       // 14. Create transfer to provider
@@ -461,11 +506,44 @@ export async function POST(request: NextRequest) {
           amount: result.payment.escrowAmount,
           recipient: recipientCode,
           reason: transferData.reason,
-          reference: transferData.reference
+          reference: transferData.reference,
+          isTestMode
         }
       });
 
-      const transferResponse = await paystackClient.createTransfer(transferData);
+      let transferResponse;
+      
+      if (isTestMode) {
+        console.log(`🧪 Test mode detected - simulating successful transfer`);
+        // In test mode, simulate a successful transfer
+        transferResponse = {
+          status: true,
+          data: {
+            transfer_code: `TEST_TRANSFER_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+            amount: transferData.amount,
+            status: 'success',
+            reference: transferData.reference,
+            recipient: recipientCode
+          },
+          message: 'Transfer simulated successfully in test mode'
+        };
+        
+        logPayment.success('escrow_release', 'Transfer simulated in test mode', {
+          userId: user.id,
+          bookingId: bookingId,
+          paymentId: result.payment.id,
+          providerId: result.provider.id,
+          metadata: {
+            transferCode: transferResponse.data.transfer_code,
+            amount: transferResponse.data.amount,
+            status: transferResponse.data.status,
+            mode: 'TEST'
+          }
+        });
+      } else {
+        // In production mode, make real API call
+        transferResponse = await paystackClient.createTransfer(transferData);
+      }
       
       if (!transferResponse.data?.transfer_code) {
         logPayment.error('escrow_release', 'Failed to create transfer', new Error('Paystack response invalid'), {
