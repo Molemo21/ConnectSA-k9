@@ -891,7 +891,7 @@ function ProviderMainContent({
                     }
                   >
                     <BankDetailsForm 
-                      initialBankDetails={bankDetails}
+                      initialBankDetails={memoizedBankDetails}
                       // DISABLED: No callback to prevent infinite loops
                       // onBankDetailsChange={handleBankDetailsChange}
                     />
@@ -1284,9 +1284,28 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [dashboardState.auth.isAuthenticated, checkAuthentication])
 
-  // Check bank details - BULLETPROOF VERSION
+  // Check bank details - OPTIMIZED VERSION with debouncing and caching
+  const lastBankDetailsCheck = useRef<number>(0)
+  const bankDetailsCache = useRef<{providerId: string, data: any} | null>(null)
+  
   const checkBankDetails = useCallback(async (providerId: string) => {
+    // Debounce: Don't check more than once every 10 seconds
+    const now = Date.now()
+    if (now - lastBankDetailsCheck.current < 10000) {
+      console.log('checkBankDetails: Skipping due to debounce (last check was', now - lastBankDetailsCheck.current, 'ms ago)')
+      return
+    }
+    
+    // Cache: If we already have data for this provider, don't fetch again
+    if (bankDetailsCache.current?.providerId === providerId) {
+      console.log('checkBankDetails: Using cached data for provider', providerId)
+      return
+    }
+    
+    lastBankDetailsCheck.current = now
+    
     try {
+      console.log('checkBankDetails: Fetching bank details for provider', providerId)
       const response = await fetch(`/api/provider/${providerId}/bank-details`, {
         credentials: 'include'
       })
@@ -1294,6 +1313,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       if (response.ok) {
         const data = await response.json()
         console.log('Bank details API response:', data)
+        
+        // Cache the response
+        bankDetailsCache.current = { providerId, data }
         
         // Defensive programming - ensure data structure is correct
         const hasBankDetails = Boolean(data.hasBankDetails)
@@ -1332,6 +1354,13 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       }))
     }
   }, [])
+
+  // Memoize bank details props to prevent unnecessary BankDetailsForm re-renders
+  const memoizedBankDetails = useMemo(() => {
+    const safeDashboardState = dashboardState || {}
+    const safeData = safeDashboardState.data || {}
+    return safeData.bankDetails || null
+  }, [dashboardState?.data?.bankDetails])
 
   // Single initialization effect
   useEffect(() => {
@@ -1376,6 +1405,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
   // Handle bank details change with useCallback to prevent re-renders
   const handleBankDetailsChange = useCallback((bankDetails: any) => {
+    // Clear cache when bank details are updated
+    bankDetailsCache.current = null
+    lastBankDetailsCheck.current = 0
+    
     setDashboardState(prev => ({
       ...prev,
       data: { 

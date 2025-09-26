@@ -52,7 +52,7 @@ const DEFAULT_BANK_DETAILS: BankDetails = {
   accountName: ""
 }
 
-export function BankDetailsForm({ 
+const BankDetailsFormComponent = function BankDetailsForm({ 
   onBankDetailsChange, 
   initialBankDetails, 
   disabled = false 
@@ -387,5 +387,26 @@ export function BankDetailsForm({
     return renderErrorFallback(error instanceof Error ? error : new Error('Unknown error'))
   }
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const BankDetailsForm = React.memo(BankDetailsFormComponent, (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  const prevBankDetails = prevProps.initialBankDetails
+  const nextBankDetails = nextProps.initialBankDetails
+  
+  // Compare initialBankDetails deeply
+  if (prevBankDetails === nextBankDetails) return true
+  if (!prevBankDetails && !nextBankDetails) return true
+  if (!prevBankDetails || !nextBankDetails) return false
+  
+  return (
+    prevBankDetails.bankName === nextBankDetails.bankName &&
+    prevBankDetails.bankCode === nextBankDetails.bankCode &&
+    prevBankDetails.accountNumber === nextBankDetails.accountNumber &&
+    prevBankDetails.accountName === nextBankDetails.accountName &&
+    prevProps.disabled === nextProps.disabled &&
+    prevProps.onBankDetailsChange === nextProps.onBankDetailsChange
+  )
+})
 
 export default BankDetailsForm
