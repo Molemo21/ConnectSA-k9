@@ -307,7 +307,8 @@ function ProviderMainContent({
   handleStartJob,
   handleCompleteJob,
   processingAction,
-  handleBankDetailsChange
+  handleBankDetailsChange,
+  dashboardState
 }: {
   activeSection: string
   setActiveSection: (section: string) => void
@@ -330,6 +331,7 @@ function ProviderMainContent({
   handleCompleteJob: (bookingId: string) => Promise<void>
   processingAction: boolean
   handleBankDetailsChange: (bankDetails: any) => void
+  dashboardState: any
 }) {
   // Calculate derived stats
   const totalBookings = bookings?.length || 0
@@ -1640,6 +1642,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
           handleBankDetailsChange={handleBankDetailsChange}
+          dashboardState={dashboardState}
         />
       </div>
 
@@ -1691,6 +1694,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
           handleBankDetailsChange={handleBankDetailsChange}
+          dashboardState={dashboardState}
         />
       </div>
 
