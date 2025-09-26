@@ -75,6 +75,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
 import { BankDetailsForm } from "./bank-details-form"
+import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
 import Link from "next/link"
 
 interface Booking {
@@ -333,15 +334,15 @@ function ProviderMainContent({
   handleBankDetailsChange: (bankDetails: any) => void
   dashboardState: any
 }) {
-  // Calculate derived stats with defensive programming
+  // Calculate derived stats with comprehensive validation
   const safeBookings = Array.isArray(bookings) ? bookings : []
   const totalBookings = safeBookings.length
-  const completedBookings = safeBookings.filter(b => b && b.status === "COMPLETED").length
-  const pendingBookings = safeBookings.filter(b => b && b.status === "PENDING").length
-  const confirmedBookings = safeBookings.filter(b => b && b.status === "CONFIRMED").length
-  const pendingExecutionBookings = safeBookings.filter(b => b && b.status === "PENDING_EXECUTION").length
-  const inProgressBookings = safeBookings.filter(b => b && b.status === "IN_PROGRESS").length
-  const awaitingConfirmationBookings = safeBookings.filter(b => b && b.status === "AWAITING_CONFIRMATION").length
+  const completedBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "COMPLETED").length
+  const pendingBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "PENDING").length
+  const confirmedBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "CONFIRMED").length
+  const pendingExecutionBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "PENDING_EXECUTION").length
+  const inProgressBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "IN_PROGRESS").length
+  const awaitingConfirmationBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "AWAITING_CONFIRMATION").length
 
   // Filter bookings based on selected filter with defensive programming
   const filteredBookings = useMemo(() => {
@@ -541,7 +542,8 @@ function ProviderMainContent({
                   }
                   
                   return (
-                    <Card key={booking.id} className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
+                    <ComponentErrorBoundary key={booking.id} componentName={`BookingCard-${booking.id}`}>
+                      <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -588,7 +590,7 @@ function ProviderMainContent({
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
                           {booking.status || 'UNKNOWN'}
                         </Badge>
-                        {booking.status === 'PENDING' && (
+                        {booking.status && typeof booking.status === 'string' && booking.status === 'PENDING' && (
                           <Button 
                             size="sm" 
                             className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -605,7 +607,7 @@ function ProviderMainContent({
                             )}
                           </Button>
                         )}
-                        {booking.status === 'CONFIRMED' && (
+                        {booking.status && typeof booking.status === 'string' && booking.status === 'CONFIRMED' && (
                           <Button 
                             size="sm" 
                             className="bg-blue-400 hover:bg-blue-500 text-white"
@@ -617,7 +619,7 @@ function ProviderMainContent({
                             </div>
                           </Button>
                         )}
-                        {booking.status === 'PENDING_EXECUTION' && (
+                        {booking.status && typeof booking.status === 'string' && booking.status === 'PENDING_EXECUTION' && (
                           <Button 
                             size="sm" 
                             className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -637,7 +639,7 @@ function ProviderMainContent({
                             )}
                           </Button>
                         )}
-                        {booking.status === 'IN_PROGRESS' && (
+                        {booking.status && typeof booking.status === 'string' && booking.status === 'IN_PROGRESS' && (
                           <Button 
                             size="sm" 
                             className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -657,7 +659,7 @@ function ProviderMainContent({
                             )}
                           </Button>
                         )}
-                        {booking.status === 'AWAITING_CONFIRMATION' && (
+                        {booking.status && typeof booking.status === 'string' && booking.status === 'AWAITING_CONFIRMATION' && (
                           <Button 
                             size="sm" 
                             className="bg-yellow-400 hover:bg-yellow-500 text-white"
@@ -669,7 +671,7 @@ function ProviderMainContent({
                             </div>
                           </Button>
                         )}
-                        {booking.status === 'COMPLETED' && (
+                        {booking.status && typeof booking.status === 'string' && booking.status === 'COMPLETED' && (
                           <Button 
                             size="sm" 
                             className="bg-gray-400 hover:bg-gray-500 text-white"
@@ -681,10 +683,25 @@ function ProviderMainContent({
                             </div>
                           </Button>
                         )}
+                        {/* Fallback for invalid or undefined status */}
+                        {(!booking.status || typeof booking.status !== 'string' || 
+                          !['PENDING', 'CONFIRMED', 'PENDING_EXECUTION', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(booking.status)) && (
+                          <Button 
+                            size="sm" 
+                            className="bg-gray-400 hover:bg-gray-500 text-white"
+                            disabled
+                          >
+                            <div className="flex items-center">
+                              <AlertTriangle className="h-4 w-4 mr-2" />
+                              Invalid Status
+                            </div>
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
+                    </ComponentErrorBoundary>
                   );
                 })
                 .filter(Boolean) // Remove any null values from invalid bookings
@@ -847,10 +864,12 @@ function ProviderMainContent({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <BankDetailsForm 
-                    initialBankDetails={bankDetails}
-                    onBankDetailsChange={handleBankDetailsChange}
-                  />
+                  <ComponentErrorBoundary componentName="BankDetailsForm">
+                    <BankDetailsForm 
+                      initialBankDetails={bankDetails}
+                      onBankDetailsChange={handleBankDetailsChange}
+                    />
+                  </ComponentErrorBoundary>
                 </CardContent>
               </Card>
             </div>

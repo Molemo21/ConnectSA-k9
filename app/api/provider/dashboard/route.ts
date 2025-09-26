@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     // Get current user
     const user = await getCurrentUser();
     logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: User fetched', {
-      userId: user?.id,
+      userId: user?.id, 
       metadata: { userRole: user?.role, userEmail: user?.email }
     });
     
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch bookings for this provider with cursor-based pagination
     const whereClause = {
-      providerId: provider.id,
+        providerId: provider.id,
       ...(cursor && { createdAt: { lt: new Date(cursor) } })
     };
 
@@ -110,33 +110,33 @@ export async function GET(request: NextRequest) {
     try {
       bookings = await prisma.booking.findMany({
         where: whereClause,
-        include: {
-          service: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              category: true,
-              basePrice: true
-            }
-          },
-          client: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true
-            }
-          },
-          payment: {
-            select: {
-              id: true,
-              status: true,
-              amount: true,
+      include: {
+        service: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            category: true,
+            basePrice: true
+          }
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        payment: {
+          select: {
+            id: true,
+            status: true,
+            amount: true,
               escrowAmount: true,
               platformFee: true,
-              paystackRef: true,
-              paidAt: true,
+            paystackRef: true,
+            paidAt: true,
               authorizationUrl: true,
               payout: {
                 select: {
@@ -147,19 +147,19 @@ export async function GET(request: NextRequest) {
                   updatedAt: true
                 }
               }
-            }
-          },
-          review: {
-            select: {
-              id: true,
-              rating: true,
-              comment: true,
-              createdAt: true
-            }
           }
         },
-        orderBy: {
-          createdAt: 'desc'
+        review: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
         },
         take: pageSize + 1 // Take one extra to check if there are more items
       });
@@ -247,7 +247,7 @@ export async function GET(request: NextRequest) {
 
     logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Bookings fetched', {
       userId: user.id,
-      providerId: provider.id,
+      providerId: provider.id, 
       metadata: { bookingCount: bookings.length }
     });
 
@@ -329,7 +329,7 @@ export async function GET(request: NextRequest) {
         hasMore,
         nextCursor,
         pageSize,
-        count: transformedBookings.length
+      count: transformedBookings.length
       }
     });
 
