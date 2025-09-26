@@ -309,7 +309,8 @@ function ProviderMainContent({
   handleCompleteJob,
   processingAction,
   handleBankDetailsChange,
-  dashboardState
+  dashboardState,
+  memoizedBankDetails
 }: {
   activeSection: string
   setActiveSection: (section: string) => void
@@ -333,6 +334,7 @@ function ProviderMainContent({
   processingAction: boolean
   handleBankDetailsChange: (bankDetails: any) => void
   dashboardState: any
+  memoizedBankDetails: any
 }) {
   // Calculate derived stats with comprehensive validation
   const safeBookings = Array.isArray(bookings) ? bookings : []
@@ -1772,6 +1774,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           processingAction={dashboardState.ui.processingAction}
           handleBankDetailsChange={handleBankDetailsChange}
           dashboardState={dashboardState}
+          memoizedBankDetails={memoizedBankDetails}
         />
       </div>
 
@@ -1824,6 +1827,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           processingAction={dashboardState.ui.processingAction}
           handleBankDetailsChange={handleBankDetailsChange}
           dashboardState={dashboardState}
+          memoizedBankDetails={memoizedBankDetails}
         />
       </div>
 
