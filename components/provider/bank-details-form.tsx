@@ -63,12 +63,17 @@ export function BankDetailsForm({
   const [bankDetails, setBankDetails] = useState<BankDetails>(DEFAULT_BANK_DETAILS)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   
-  // Refs to prevent infinite loops - CRITICAL FIX
+  // Refs to prevent infinite loops - BULLETPROOF APPROACH
   const prevInitialBankDetailsRef = useRef<string>('')
   const isUpdatingFromParentRef = useRef(false)
   const hasInitializedRef = useRef(false)
+  const onBankDetailsChangeRef = useRef(onBankDetailsChange)
+  
+  // Update ref when callback changes (no re-renders)
+  useEffect(() => {
+    onBankDetailsChangeRef.current = onBankDetailsChange
+  }, [onBankDetailsChange])
   
   // Safe initial bank details with validation
   const safeInitialBankDetails = useMemo(() => {
@@ -84,7 +89,7 @@ export function BankDetailsForm({
     }
   }, [initialBankDetails])
 
-  // Initialize form state safely - FIXED INFINITE LOOP
+  // Initialize form state safely - COMPLETELY BULLETPROOF
   useEffect(() => {
     // Only run once on mount or when initialBankDetails actually changes
     if (safeInitialBankDetails && !hasInitializedRef.current) {
@@ -108,12 +113,9 @@ export function BankDetailsForm({
         }, 100)
       }
     }
-    
-    // Set loading to false after initialization
-    setIsLoading(false)
-  }, [safeInitialBankDetails]) // REMOVED isInitialized from dependencies - THIS WAS THE BUG!
+  }, [safeInitialBankDetails]) // ONLY safeInitialBankDetails in dependencies
 
-  // Form validation
+  // Form validation - STABLE CALLBACK
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {}
 
@@ -139,9 +141,9 @@ export function BankDetailsForm({
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }, [bankDetails])
+  }, [bankDetails]) // Keep bankDetails dependency for validation
 
-  // Handle bank selection
+  // Handle bank selection - STABLE CALLBACK WITH REF
   const handleBankChange = useCallback((bankName: string) => {
     if (!bankName || typeof bankName !== 'string') {
       console.warn('Invalid bank name:', bankName)
@@ -149,41 +151,46 @@ export function BankDetailsForm({
     }
     
     const bank = SOUTH_AFRICAN_BANKS.find(b => b && b.name === bankName)
-    const newBankDetails = {
-      ...bankDetails,
-      bankName,
-      bankCode: bank?.code || ""
-    }
     
-    setBankDetails(newBankDetails)
-    
-    // Only call callback if not updating from parent
-    if (!isUpdatingFromParentRef.current && onBankDetailsChange) {
-      onBankDetailsChange(newBankDetails)
-    }
-  }, [bankDetails, onBankDetailsChange])
+    setBankDetails(prevDetails => {
+      const newBankDetails = {
+        ...prevDetails,
+        bankName,
+        bankCode: bank?.code || ""
+      }
+      
+      // Only call callback if not updating from parent
+      if (!isUpdatingFromParentRef.current && onBankDetailsChangeRef.current) {
+        onBankDetailsChangeRef.current(newBankDetails)
+      }
+      
+      return newBankDetails
+    })
+  }, []) // NO DEPENDENCIES - using refs and functional setState
 
-  // Handle input changes
+  // Handle input changes - STABLE CALLBACK WITH REF
   const handleInputChange = useCallback((field: keyof BankDetails, value: string) => {
     if (!field || typeof field !== 'string' || typeof value !== 'string') {
       console.warn('Invalid input change:', { field, value })
       return
     }
     
-    const newBankDetails = {
-      ...bankDetails,
-      [field]: value
-    }
-    
-    setBankDetails(newBankDetails)
-    
-    // Only call callback if not updating from parent
-    if (!isUpdatingFromParentRef.current && onBankDetailsChange) {
-      onBankDetailsChange(newBankDetails)
-    }
-  }, [bankDetails, onBankDetailsChange])
+    setBankDetails(prevDetails => {
+      const newBankDetails = {
+        ...prevDetails,
+        [field]: value
+      }
+      
+      // Only call callback if not updating from parent
+      if (!isUpdatingFromParentRef.current && onBankDetailsChangeRef.current) {
+        onBankDetailsChangeRef.current(newBankDetails)
+      }
+      
+      return newBankDetails
+    })
+  }, []) // NO DEPENDENCIES - using refs and functional setState
 
-  // Handle form submission
+  // Handle form submission - STABLE CALLBACK
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) {
       toast({
@@ -222,8 +229,8 @@ export function BankDetailsForm({
         })
         
         // Call the optional callback if provided
-        if (onBankDetailsChange) {
-          onBankDetailsChange(bankDetails)
+        if (onBankDetailsChangeRef.current) {
+          onBankDetailsChangeRef.current(bankDetails)
         }
         
         // Clear the form
@@ -242,17 +249,7 @@ export function BankDetailsForm({
     } finally {
       setIsSaving(false)
     }
-  }, [bankDetails, validateForm, toast, onBankDetailsChange])
-
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-600">Loading bank details form...</span>
-      </div>
-    )
-  }
+  }, [validateForm, toast, bankDetails]) // Keep necessary dependencies
 
   // Render error fallback
   const renderErrorFallback = (error: Error) => (
