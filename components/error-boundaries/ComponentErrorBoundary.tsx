@@ -39,6 +39,13 @@ export class ComponentErrorBoundary extends Component<Props, State> {
     console.error('Component Stack:', errorInfo.componentStack)
     console.error('Full Error Info:', errorInfo)
     
+    // Check for specific React errors
+    if (error.message.includes('185')) {
+      console.error('🚨 REACT ERROR #185 DETECTED: Infinite render loop')
+      console.error('This usually means a component is continuously updating state')
+      console.error('Check for: useEffect without proper dependencies, circular state updates')
+    }
+    
     // Log to server if callback provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo)
