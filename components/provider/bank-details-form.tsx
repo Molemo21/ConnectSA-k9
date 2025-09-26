@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CreditCard, Building, User, Hash, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useEffect } from "react"
 
 interface BankDetailsFormProps {
   onBankDetailsChange?: (bankDetails: {
@@ -50,6 +51,18 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+
+  // Update form state when initialBankDetails changes
+  useEffect(() => {
+    if (initialBankDetails) {
+      setBankDetails({
+        bankName: initialBankDetails.bankName || "",
+        bankCode: initialBankDetails.bankCode || "",
+        accountNumber: initialBankDetails.accountNumber || "",
+        accountName: initialBankDetails.accountName || ""
+      })
+    }
+  }, [initialBankDetails])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
