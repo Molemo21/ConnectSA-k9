@@ -531,8 +531,17 @@ function ProviderMainContent({
 
             {/* Jobs List */}
             <div className="space-y-4">
-              {filteredBookings.filter(booking => booking && booking.id).map((booking) => (
-                <Card key={booking.id} className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
+              {filteredBookings
+                .filter(booking => booking && booking.id && typeof booking.id === 'string')
+                .map((booking) => {
+                  // Additional validation to prevent React errors
+                  if (!booking || !booking.id || typeof booking.id !== 'string') {
+                    console.warn('Invalid booking object:', booking);
+                    return null;
+                  }
+                  
+                  return (
+                    <Card key={booking.id} className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -587,10 +596,10 @@ function ProviderMainContent({
                             disabled={acceptingBooking === booking.id}
                           >
                             {acceptingBooking === booking.id ? (
-                              <>
+                              <div className="flex items-center">
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Accepting...
-                              </>
+                              </div>
                             ) : (
                               'Accept Job'
                             )}
@@ -602,8 +611,10 @@ function ProviderMainContent({
                             className="bg-blue-400 hover:bg-blue-500 text-white"
                             disabled
                           >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Accepted
+                            <div className="flex items-center">
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Accepted
+                            </div>
                           </Button>
                         )}
                         {booking.status === 'PENDING_EXECUTION' && (
@@ -614,15 +625,15 @@ function ProviderMainContent({
                             disabled={processingAction}
                           >
                             {processingAction ? (
-                              <>
+                              <div className="flex items-center">
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Starting...
-                              </>
+                              </div>
                             ) : (
-                              <>
+                              <div className="flex items-center">
                                 <Play className="h-4 w-4 mr-2" />
                                 Start Job
-                              </>
+                              </div>
                             )}
                           </Button>
                         )}
@@ -634,15 +645,15 @@ function ProviderMainContent({
                             disabled={processingAction}
                           >
                             {processingAction ? (
-                              <>
+                              <div className="flex items-center">
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Completing...
-                              </>
+                              </div>
                             ) : (
-                              <>
+                              <div className="flex items-center">
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Complete Job
-                              </>
+                              </div>
                             )}
                           </Button>
                         )}
@@ -652,8 +663,10 @@ function ProviderMainContent({
                             className="bg-yellow-400 hover:bg-yellow-500 text-white"
                             disabled
                           >
-                            <Clock className="h-4 w-4 mr-2" />
-                            Awaiting Confirmation
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-2" />
+                              Awaiting Confirmation
+                            </div>
                           </Button>
                         )}
                         {booking.status === 'COMPLETED' && (
@@ -662,15 +675,20 @@ function ProviderMainContent({
                             className="bg-gray-400 hover:bg-gray-500 text-white"
                             disabled
                           >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Completed
+                            <div className="flex items-center">
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Completed
+                            </div>
                           </Button>
                         )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                  );
+                })
+                .filter(Boolean) // Remove any null values from invalid bookings
+              }
               
               {/* Accept Success Display */}
               {acceptSuccess && (
