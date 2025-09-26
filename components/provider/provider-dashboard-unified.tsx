@@ -333,26 +333,28 @@ function ProviderMainContent({
   handleBankDetailsChange: (bankDetails: any) => void
   dashboardState: any
 }) {
-  // Calculate derived stats
-  const totalBookings = bookings?.length || 0
-  const completedBookings = bookings?.filter(b => b && b.status === "COMPLETED").length || 0
-  const pendingBookings = bookings?.filter(b => b && b.status === "PENDING").length || 0
-  const confirmedBookings = bookings?.filter(b => b && b.status === "CONFIRMED").length || 0
-  const pendingExecutionBookings = bookings?.filter(b => b && b.status === "PENDING_EXECUTION").length || 0
-  const inProgressBookings = bookings?.filter(b => b && b.status === "IN_PROGRESS").length || 0
-  const awaitingConfirmationBookings = bookings?.filter(b => b && b.status === "AWAITING_CONFIRMATION").length || 0
+  // Calculate derived stats with defensive programming
+  const safeBookings = Array.isArray(bookings) ? bookings : []
+  const totalBookings = safeBookings.length
+  const completedBookings = safeBookings.filter(b => b && b.status === "COMPLETED").length
+  const pendingBookings = safeBookings.filter(b => b && b.status === "PENDING").length
+  const confirmedBookings = safeBookings.filter(b => b && b.status === "CONFIRMED").length
+  const pendingExecutionBookings = safeBookings.filter(b => b && b.status === "PENDING_EXECUTION").length
+  const inProgressBookings = safeBookings.filter(b => b && b.status === "IN_PROGRESS").length
+  const awaitingConfirmationBookings = safeBookings.filter(b => b && b.status === "AWAITING_CONFIRMATION").length
 
-  // Filter bookings based on selected filter
+  // Filter bookings based on selected filter with defensive programming
   const filteredBookings = useMemo(() => {
     if (!bookings || !Array.isArray(bookings)) return []
-    if (selectedFilter === "all") return bookings.filter(booking => booking && booking.id)
-    return bookings.filter(booking => 
+    if (selectedFilter === "all") return safeBookings.filter(booking => booking && booking.id)
+    return safeBookings.filter(booking => 
       booking && 
       booking.id && 
       booking.status && 
+      typeof booking.status === 'string' &&
       booking.status.toLowerCase() === selectedFilter.toLowerCase()
     )
-  }, [bookings, selectedFilter])
+  }, [safeBookings, selectedFilter])
 
   const renderSectionContent = () => {
     try {
@@ -806,8 +808,10 @@ function ProviderMainContent({
       case "bank":
         try {
           // Defensive programming for bank section
-          const bankDetails = dashboardState.data.bankDetails || null
-          const hasBankDetails = dashboardState.data.hasBankDetails || false
+          const safeDashboardState = dashboardState || {}
+          const safeData = safeDashboardState.data || {}
+          const bankDetails = safeData.bankDetails || null
+          const hasBankDetails = safeData.hasBankDetails || false
           
           return (
             <div className="space-y-6">
@@ -879,9 +883,12 @@ function ProviderMainContent({
       console.error('Active section:', activeSection)
       console.error('Error stack:', error.stack)
       console.error('Dashboard state:', {
-        hasBankDetails: dashboardState.data.hasBankDetails,
-        bankDetails: dashboardState.data.bankDetails,
-        user: dashboardState.auth.user
+        hasBankDetails: dashboardState?.data?.hasBankDetails,
+        bankDetails: dashboardState?.data?.bankDetails,
+        user: dashboardState?.auth?.user,
+        activeSection: activeSection,
+        bookingsLength: bookings?.length,
+        stats: stats
       })
       
       return (

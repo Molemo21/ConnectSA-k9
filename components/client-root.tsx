@@ -59,7 +59,16 @@ class ClientErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('🔴 CLIENT ERROR BOUNDARY:', error, errorInfo);
+    console.error('🔴 CLIENT ERROR BOUNDARY CAUGHT ERROR:');
+    console.error('Error Name:', error.name);
+    console.error('Error Message:', error.message);
+    console.error('Error Stack:', error.stack);
+    console.error('Component Stack:', errorInfo.componentStack);
+    console.error('Full Error Info:', errorInfo);
+    
+    // Log current URL and user agent for context
+    console.error('Current URL:', window.location.href);
+    console.error('User Agent:', navigator.userAgent);
     
     // Log to server
     logToServer('error', 'React Error Boundary caught error', {
@@ -69,6 +78,8 @@ class ClientErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
         stack: error.stack,
       },
       errorInfo,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
     });
 
     this.setState({
@@ -90,13 +101,28 @@ class ClientErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
             </p>
             <details className="text-left bg-red-100 p-4 rounded">
               <summary className="cursor-pointer font-medium">Error Details</summary>
-              <pre className="mt-2 text-sm overflow-auto">
-                {this.state.error?.toString()}
-              </pre>
+              <div className="mt-2 text-sm">
+                <div className="mb-2">
+                  <strong>Error Name:</strong> {this.state.error?.name}
+                </div>
+                <div className="mb-2">
+                  <strong>Error Message:</strong> {this.state.error?.message}
+                </div>
+                <div className="mb-2">
+                  <strong>URL:</strong> {window.location.href}
+                </div>
+              </div>
               {process.env.NODE_ENV === 'development' && (
-                <pre className="mt-2 text-xs overflow-auto">
-                  {this.state.error?.stack}
-                </pre>
+                <div className="mt-2">
+                  <strong>Stack Trace:</strong>
+                  <pre className="mt-1 text-xs overflow-auto bg-red-200 p-2 rounded">
+                    {this.state.error?.stack}
+                  </pre>
+                  <strong>Component Stack:</strong>
+                  <pre className="mt-1 text-xs overflow-auto bg-red-200 p-2 rounded">
+                    {this.state.errorInfo?.componentStack}
+                  </pre>
+                </div>
               )}
             </details>
             <button 
