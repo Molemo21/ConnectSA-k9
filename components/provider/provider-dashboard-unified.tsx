@@ -892,7 +892,8 @@ function ProviderMainContent({
                   >
                     <BankDetailsForm 
                       initialBankDetails={bankDetails}
-                      onBankDetailsChange={handleBankDetailsChange}
+                      // DISABLED: No callback to prevent infinite loops
+                      // onBankDetailsChange={handleBankDetailsChange}
                     />
                   </ComponentErrorBoundary>
                 </CardContent>
