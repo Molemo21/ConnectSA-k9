@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
 
   const startTime = Date.now();
   
+  // Determine if we're in test mode
+  const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
+  
   try {
     // 1. Authentication and authorization
     const user = await getCurrentUser();
@@ -347,7 +350,28 @@ export async function POST(request: NextRequest) {
         
         // Check if provider has bank details
         if (!result.provider.bankCode || !result.provider.accountNumber || !result.provider.accountName) {
-          throw new Error("Provider bank details are incomplete. Cannot create transfer recipient.");
+          console.log(`❌ Provider ${result.provider.id} bank details incomplete:`, {
+            bankCode: result.provider.bankCode,
+            accountNumber: result.provider.accountNumber ? '***' + result.provider.accountNumber.slice(-4) : 'missing',
+            accountName: result.provider.accountName,
+            bankName: result.provider.bankName
+          });
+          
+          logPayment.error('escrow_release', 'Provider bank details incomplete', new Error('Bank details missing'), {
+            userId: user.id,
+            bookingId: bookingId,
+            paymentId: result.payment.id,
+            providerId: result.provider.id,
+            error_code: 'INCOMPLETE_BANK_DETAILS',
+            metadata: {
+              bankCode: !!result.provider.bankCode,
+              accountNumber: !!result.provider.accountNumber,
+              accountName: !!result.provider.accountName,
+              bankName: result.provider.bankName
+            }
+          });
+          
+          throw new Error("Provider has not set up their bank account details yet. Please ask the provider to add their bank information in their dashboard, or contact support for assistance.");
         }
 
       // Create Paystack transfer recipient (always use real API)
@@ -561,7 +585,13 @@ export async function POST(request: NextRequest) {
       let statusCode = 500;
 
       if (transferError instanceof Error) {
-        if (transferError.message.includes("bank details are incomplete")) {
+        console.log(`🔍 Transfer error details:`, {
+          message: transferError.message,
+          stack: transferError.stack
+        });
+        
+        if (transferError.message.includes("bank details are incomplete") || 
+            transferError.message.includes("has not set up their bank account details")) {
           errorMessage = "Provider has not set up their bank account details yet. Please ask the provider to add their bank information in their dashboard, or contact support for assistance.";
           statusCode = 400;
         } else if (transferError.message.includes("Failed to create transfer recipient")) {
@@ -570,6 +600,12 @@ export async function POST(request: NextRequest) {
         } else if (transferError.message.includes("Failed to create transfer")) {
           errorMessage = "Payment transfer failed. Please try again later.";
           statusCode = 500;
+        } else if (transferError.message.includes("Invalid bank code")) {
+          errorMessage = "Provider's bank details are invalid. Please ask the provider to update their bank information.";
+          statusCode = 400;
+        } else if (transferError.message.includes("Invalid account number")) {
+          errorMessage = "Provider's account number is invalid. Please ask the provider to verify their account details.";
+          statusCode = 400;
         }
       }
 
