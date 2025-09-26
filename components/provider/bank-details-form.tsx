@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -63,14 +63,15 @@ export function BankDetailsForm({
   const [bankDetails, setBankDetails] = useState<BankDetails>(DEFAULT_BANK_DETAILS)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   
-  // Refs to prevent infinite loops
+  // Refs to prevent infinite loops - CRITICAL FIX
   const prevInitialBankDetailsRef = useRef<string>('')
   const isUpdatingFromParentRef = useRef(false)
+  const hasInitializedRef = useRef(false)
   
   // Safe initial bank details with validation
-  const safeInitialBankDetails = React.useMemo(() => {
+  const safeInitialBankDetails = useMemo(() => {
     if (!initialBankDetails || typeof initialBankDetails !== 'object') {
       return null
     }
@@ -83,9 +84,10 @@ export function BankDetailsForm({
     }
   }, [initialBankDetails])
 
-  // Initialize form state safely (prevent infinite loops)
+  // Initialize form state safely - FIXED INFINITE LOOP
   useEffect(() => {
-    if (safeInitialBankDetails && !isInitialized) {
+    // Only run once on mount or when initialBankDetails actually changes
+    if (safeInitialBankDetails && !hasInitializedRef.current) {
       const currentInitialBankDetails = JSON.stringify(safeInitialBankDetails)
       
       // Only update if the initial data has actually changed
@@ -98,7 +100,7 @@ export function BankDetailsForm({
           accountName: safeInitialBankDetails.accountName || ""
         })
         prevInitialBankDetailsRef.current = currentInitialBankDetails
-        setIsInitialized(true)
+        hasInitializedRef.current = true
         
         // Reset the flag after a short delay
         setTimeout(() => {
@@ -106,7 +108,10 @@ export function BankDetailsForm({
         }, 100)
       }
     }
-  }, [safeInitialBankDetails, isInitialized])
+    
+    // Set loading to false after initialization
+    setIsLoading(false)
+  }, [safeInitialBankDetails]) // REMOVED isInitialized from dependencies - THIS WAS THE BUG!
 
   // Form validation
   const validateForm = useCallback((): boolean => {
@@ -238,6 +243,16 @@ export function BankDetailsForm({
       setIsSaving(false)
     }
   }, [bankDetails, validateForm, toast, onBankDetailsChange])
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Loading bank details form...</span>
+      </div>
+    )
+  }
 
   // Render error fallback
   const renderErrorFallback = (error: Error) => (
