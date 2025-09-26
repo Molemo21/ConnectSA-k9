@@ -600,6 +600,9 @@ export async function POST(request: NextRequest) {
         } else if (transferError.message.includes("Failed to create transfer")) {
           errorMessage = "Payment transfer failed. Please try again later.";
           statusCode = 500;
+        } else if (transferError.message.includes("Invalid key")) {
+          errorMessage = "Payment system configuration error. Please contact support to resolve this issue.";
+          statusCode = 500;
         } else if (transferError.message.includes("Invalid bank code")) {
           errorMessage = "Provider's bank details are invalid. Please ask the provider to update their bank information.";
           statusCode = 400;
