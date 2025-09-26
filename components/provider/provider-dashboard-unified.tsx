@@ -802,30 +802,64 @@ function ProviderMainContent({
         )
 
       case "bank":
-        return (
-          <div className="space-y-6">
-            <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-blue-400" />
-                  Bank Details Setup
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  {hasBankDetails 
-                    ? 'Your bank details are configured. You can update them below.' 
-                    : 'Setup your bank details to receive payments from completed jobs.'
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BankDetailsForm 
-                  initialBankDetails={dashboardState.data.bankDetails}
-                  onBankDetailsChange={handleBankDetailsChange}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        )
+        try {
+          // Defensive programming for bank section
+          const bankDetails = dashboardState.data.bankDetails || null
+          const hasBankDetails = dashboardState.data.hasBankDetails || false
+          
+          return (
+            <div className="space-y-6">
+              <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-blue-400" />
+                    Bank Details Setup
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">
+                    {hasBankDetails 
+                      ? 'Your bank details are configured. You can update them below.' 
+                      : 'Setup your bank details to receive payments from completed jobs.'
+                    }
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BankDetailsForm 
+                    initialBankDetails={bankDetails}
+                    onBankDetailsChange={handleBankDetailsChange}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )
+        } catch (bankError) {
+          console.error('Bank section specific error:', bankError)
+          return (
+            <div className="text-center py-12">
+              <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-white mb-2">Bank Setup Error</h3>
+              <p className="text-gray-400 mb-4">
+                There was an error loading the bank setup section.
+              </p>
+              <div className="text-xs text-gray-500 mb-4">
+                Error: {bankError.message}
+              </div>
+              <Button 
+                onClick={() => setActiveSection('overview')}
+                className="bg-blue-400 hover:bg-blue-500 text-white mr-2"
+              >
+                Go to Overview
+              </Button>
+              <Button 
+                onClick={() => window.location.reload()}
+                variant="outline"
+                className="border-gray-300/30 text-gray-300 hover:bg-gray-700"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reload Page
+              </Button>
+            </div>
+          )
+        }
 
       default:
         return (
@@ -840,6 +874,14 @@ function ProviderMainContent({
     }
     } catch (error) {
       console.error('Error rendering section content:', error)
+      console.error('Active section:', activeSection)
+      console.error('Error stack:', error.stack)
+      console.error('Dashboard state:', {
+        hasBankDetails: dashboardState.data.hasBankDetails,
+        bankDetails: dashboardState.data.bankDetails,
+        user: dashboardState.auth.user
+      })
+      
       return (
         <div className="text-center py-12">
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
@@ -847,6 +889,9 @@ function ProviderMainContent({
           <p className="text-gray-400 mb-4">
             There was an error loading this section. Please try refreshing the page.
           </p>
+          <div className="text-xs text-gray-500 mb-4">
+            Error: {error.message}
+          </div>
           <Button 
             onClick={() => window.location.reload()}
             className="bg-blue-400 hover:bg-blue-500 text-white"

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, Building, User, Hash, Loader2 } from "lucide-react"
+import { CreditCard, Building, User, Hash, Loader2, AlertTriangle, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useEffect } from "react"
 
@@ -42,11 +42,17 @@ const SOUTH_AFRICAN_BANKS = [
 
 export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disabled = false }: BankDetailsFormProps) {
   const { toast } = useToast()
+  
+  // Defensive programming - ensure initialBankDetails is safe to use
+  const safeInitialBankDetails = initialBankDetails && typeof initialBankDetails === 'object' 
+    ? initialBankDetails 
+    : null
+
   const [bankDetails, setBankDetails] = useState({
-    bankName: initialBankDetails?.bankName || "",
-    bankCode: initialBankDetails?.bankCode || "",
-    accountNumber: initialBankDetails?.accountNumber || "",
-    accountName: initialBankDetails?.accountName || ""
+    bankName: safeInitialBankDetails?.bankName || "",
+    bankCode: safeInitialBankDetails?.bankCode || "",
+    accountNumber: safeInitialBankDetails?.accountNumber || "",
+    accountName: safeInitialBankDetails?.accountName || ""
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -54,15 +60,15 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
 
   // Update form state when initialBankDetails changes
   useEffect(() => {
-    if (initialBankDetails) {
+    if (safeInitialBankDetails) {
       setBankDetails({
-        bankName: initialBankDetails.bankName || "",
-        bankCode: initialBankDetails.bankCode || "",
-        accountNumber: initialBankDetails.accountNumber || "",
-        accountName: initialBankDetails.accountName || ""
+        bankName: safeInitialBankDetails.bankName || "",
+        bankCode: safeInitialBankDetails.bankCode || "",
+        accountNumber: safeInitialBankDetails.accountNumber || "",
+        accountName: safeInitialBankDetails.accountName || ""
       })
     }
-  }, [initialBankDetails])
+  }, [safeInitialBankDetails])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -179,15 +185,16 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
     }
   }
 
-    return (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <CreditCard className="w-8 h-8 text-green-600" />
+    try {
+      return (
+      <div className="space-y-6">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <CreditCard className="w-8 h-8 text-green-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Bank Details</h3>
+          <p className="text-gray-600">Add your bank account details for payments</p>
         </div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">Bank Details</h3>
-        <p className="text-gray-600">Add your bank account details for payments</p>
-      </div>
 
       <Card>
         <CardHeader>
@@ -317,4 +324,26 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
     </Card>
     </div>
   )
+    } catch (error) {
+      console.error('BankDetailsForm rendering error:', error)
+      return (
+        <div className="text-center py-8">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Form Error</h3>
+          <p className="text-gray-600 mb-4">
+            There was an error loading the bank details form.
+          </p>
+          <div className="text-xs text-gray-500 mb-4">
+            Error: {error.message}
+          </div>
+          <Button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-400 hover:bg-blue-500 text-white"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Reload Page
+          </Button>
+        </div>
+      )
+    }
 }
