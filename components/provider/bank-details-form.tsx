@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, Building, User, Hash } from "lucide-react"
+import { CreditCard, Building, User, Hash, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface BankDetailsFormProps {
@@ -49,6 +49,7 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSaving, setIsSaving] = useState(false)
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -102,18 +103,66 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
     })
   }
 
-  const handleSubmit = () => {
-    if (validateForm()) {
-      toast({
-        title: "Bank details saved",
-        description: "Your bank details have been saved successfully"
-      })
-      } else {
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       toast({
         title: "Please fix errors",
         description: "Please correct the highlighted fields",
         variant: "destructive"
       })
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      // Get current user to get provider ID
+      const userResponse = await fetch('/api/auth/me')
+      if (!userResponse.ok) {
+        throw new Error('Failed to get user information')
+      }
+      
+      const userData = await userResponse.json()
+      if (!userData.user?.provider?.id) {
+        throw new Error('Provider information not found')
+      }
+
+      const response = await fetch(`/api/provider/${userData.user.provider.id}/bank-details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bankDetails),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Bank details saved",
+          description: "Your bank details have been saved successfully"
+        })
+        
+        // Call the optional callback if provided
+        onBankDetailsChange?.(bankDetails)
+        
+        // Clear the form
+        setBankDetails({
+          bankName: "",
+          bankCode: "",
+          accountNumber: "",
+          accountName: ""
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save bank details')
+      }
+    } catch (error) {
+      console.error('Error saving bank details:', error)
+      toast({
+        title: "Error saving bank details",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -238,10 +287,17 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
             {/* Submit Button */}
             <Button 
               onClick={handleSubmit}
-              disabled={disabled}
-              className="w-full"
+              disabled={disabled || isSaving}
+              className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Bank Details
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Bank Details'
+              )}
             </Button>
           </div>
       </CardContent>
