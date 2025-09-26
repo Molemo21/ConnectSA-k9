@@ -98,7 +98,12 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
   }
 
   const handleBankChange = (bankName: string) => {
-    const bank = SOUTH_AFRICAN_BANKS.find(b => b.name === bankName)
+    if (!bankName || typeof bankName !== 'string') {
+      console.warn('Invalid bank name:', bankName)
+      return
+    }
+    
+    const bank = SOUTH_AFRICAN_BANKS.find(b => b && b.name === bankName)
     setBankDetails(prev => ({
       ...prev,
       bankName,
@@ -112,6 +117,11 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
   }
 
   const handleInputChange = (field: string, value: string) => {
+    if (!field || typeof field !== 'string' || typeof value !== 'string') {
+      console.warn('Invalid input change:', { field, value })
+      return
+    }
+    
     setBankDetails(prev => ({
       ...prev,
       [field]: value
@@ -217,14 +227,16 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
                 <SelectValue placeholder="Select your bank" />
               </SelectTrigger>
               <SelectContent>
-                  {SOUTH_AFRICAN_BANKS.map((bank) => (
-                    <SelectItem key={bank.code} value={bank.name}>
-                    {bank.name}
-                  </SelectItem>
-                ))}
+                  {SOUTH_AFRICAN_BANKS
+                    .filter(bank => bank && bank.name && bank.code)
+                    .map((bank) => (
+                      <SelectItem key={bank.code} value={bank.name}>
+                        {bank.name}
+                      </SelectItem>
+                    ))}
               </SelectContent>
             </Select>
-              {errors.bankName && (
+              {errors.bankName && typeof errors.bankName === 'string' && (
                 <p className="text-sm text-red-600">{errors.bankName}</p>
               )}
             </div>
@@ -240,7 +252,7 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
                 disabled={disabled || !!bankDetails.bankName}
                 className={errors.bankCode ? "border-red-500" : ""}
               />
-              {errors.bankCode && (
+              {errors.bankCode && typeof errors.bankCode === 'string' && (
                 <p className="text-sm text-red-600">{errors.bankCode}</p>
               )}
               <p className="text-xs text-gray-500">
@@ -260,7 +272,7 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
                 disabled={disabled}
                 className={errors.accountNumber ? "border-red-500" : ""}
               />
-              {errors.accountNumber && (
+              {errors.accountNumber && typeof errors.accountNumber === 'string' && (
                 <p className="text-sm text-red-600">{errors.accountNumber}</p>
               )}
             <p className="text-xs text-gray-500">
@@ -279,7 +291,7 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
                 disabled={disabled}
                 className={errors.accountName ? "border-red-500" : ""}
             />
-              {errors.accountName && (
+              {errors.accountName && typeof errors.accountName === 'string' && (
                 <p className="text-sm text-red-600">{errors.accountName}</p>
               )}
             <p className="text-xs text-gray-500">
@@ -311,10 +323,10 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
               className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (
-                <>
+                <div className="flex items-center">
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Saving...
-                </>
+                </div>
               ) : (
                 'Save Bank Details'
               )}
@@ -334,7 +346,7 @@ export function BankDetailsForm({ onBankDetailsChange, initialBankDetails, disab
             There was an error loading the bank details form.
           </p>
           <div className="text-xs text-gray-500 mb-4">
-            Error: {error.message}
+            Error: {error instanceof Error ? error.message : 'Unknown error'}
           </div>
           <Button 
             onClick={() => window.location.reload()}
