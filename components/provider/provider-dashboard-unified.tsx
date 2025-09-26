@@ -817,7 +817,20 @@ function ProviderMainContent({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <BankDetailsForm />
+                <BankDetailsForm 
+                  initialBankDetails={dashboardState.data.bankDetails}
+                  onBankDetailsChange={(bankDetails) => {
+                    // Update local state when bank details change
+                    setDashboardState(prev => ({
+                      ...prev,
+                      data: { 
+                        ...prev.data, 
+                        hasBankDetails: true,
+                        bankDetails: bankDetails
+                      }
+                    }))
+                  }}
+                />
               </CardContent>
             </Card>
           </div>
@@ -1174,7 +1187,11 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         const data = await response.json()
         setDashboardState(prev => ({
           ...prev,
-          data: { ...prev.data, hasBankDetails: data.hasBankDetails }
+          data: { 
+            ...prev.data, 
+            hasBankDetails: data.hasBankDetails,
+            bankDetails: data.bankDetails || null
+          }
         }))
       }
     } catch (error) {
