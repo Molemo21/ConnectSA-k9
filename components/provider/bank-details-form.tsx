@@ -59,54 +59,29 @@ export function BankDetailsForm({
 }: BankDetailsFormProps) {
   const { toast } = useToast()
   
-  // State management with proper defaults
-  const [bankDetails, setBankDetails] = useState<BankDetails>(DEFAULT_BANK_DETAILS)
+  // Initialize form state with initial data if provided
+  const [bankDetails, setBankDetails] = useState<BankDetails>(() => {
+    if (initialBankDetails && typeof initialBankDetails === 'object') {
+      return {
+        bankName: typeof initialBankDetails.bankName === 'string' ? initialBankDetails.bankName : "",
+        bankCode: typeof initialBankDetails.bankCode === 'string' ? initialBankDetails.bankCode : "",
+        accountNumber: typeof initialBankDetails.accountNumber === 'string' ? initialBankDetails.accountNumber : "",
+        accountName: typeof initialBankDetails.accountName === 'string' ? initialBankDetails.accountName : ""
+      }
+    }
+    return DEFAULT_BANK_DETAILS
+  })
+  
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
   
-  // Refs to prevent infinite loops - NUCLEAR SOLUTION
-  const hasInitializedRef = useRef(false) // Tracks if initial data has been set
-  const onBankDetailsChangeRef = useRef(onBankDetailsChange) // Ref for the callback
+  // Ref for callback to prevent re-renders
+  const onBankDetailsChangeRef = useRef(onBankDetailsChange)
   
-  // Update ref when callback changes (no re-renders)
+  // Update ref when callback changes
   useEffect(() => {
     onBankDetailsChangeRef.current = onBankDetailsChange
   }, [onBankDetailsChange])
-  
-  // Safe initial bank details with validation
-  const safeInitialBankDetails = useMemo(() => {
-    if (!initialBankDetails || typeof initialBankDetails !== 'object') {
-      return null
-    }
-    
-    return {
-      bankName: typeof initialBankDetails.bankName === 'string' ? initialBankDetails.bankName : "",
-      bankCode: typeof initialBankDetails.bankCode === 'string' ? initialBankDetails.bankCode : "",
-      accountNumber: typeof initialBankDetails.accountNumber === 'string' ? initialBankDetails.accountNumber : "",
-      accountName: typeof initialBankDetails.accountName === 'string' ? initialBankDetails.accountName : ""
-    }
-  }, [initialBankDetails])
-
-  // Initialize form state safely - NUCLEAR SOLUTION
-  useEffect(() => {
-    // Only run once on mount - NEVER AGAIN
-    if (hasInitializedRef.current) {
-      console.log('BankDetailsForm: Already initialized, skipping')
-      return
-    }
-    
-    console.log('BankDetailsForm: Initializing with data:', safeInitialBankDetails)
-    hasInitializedRef.current = true
-    
-    if (safeInitialBankDetails) {
-      setBankDetails({
-        bankName: safeInitialBankDetails.bankName || "",
-        bankCode: safeInitialBankDetails.bankCode || "",
-        accountNumber: safeInitialBankDetails.accountNumber || "",
-        accountName: safeInitialBankDetails.accountName || ""
-      })
-    }
-  }, []) // EMPTY DEPENDENCY ARRAY - NEVER RUN AGAIN
 
   // Form validation - STABLE CALLBACK
   const validateForm = useCallback((): boolean => {
@@ -221,13 +196,8 @@ export function BankDetailsForm({
           description: "Your bank details have been saved successfully"
         })
         
-        // Call the optional callback if provided
-        if (onBankDetailsChangeRef.current) {
-          onBankDetailsChangeRef.current(bankDetails)
-        }
-        
-        // Clear the form
-        setBankDetails(DEFAULT_BANK_DETAILS)
+        // Don't call callback or clear form to prevent re-renders
+        // The parent will refresh the data if needed
       } else {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to save bank details')

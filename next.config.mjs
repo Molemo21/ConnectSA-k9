@@ -9,8 +9,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Enable development mode for better error reporting
-  reactStrictMode: true,
+  // Disable React Strict Mode to prevent double mounting in development
+  reactStrictMode: false,
   // Disable minification in production for better error debugging
   swcMinify: false,
   // Enable source maps for better error tracking
