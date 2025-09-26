@@ -1210,7 +1210,11 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           }))
           return
         }
-        return fetchProviderData()
+        // Retry with current retry count instead of recursive call
+        if (retryCount < maxRetries) {
+          return fetchProviderData(retryCount + 1)
+        }
+        return
       }
 
       if (!response.ok) {
@@ -1255,7 +1259,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       }))
 
       if (data.providerId) {
-        checkBankDetails(data.providerId)
+        // Use setTimeout to defer bank details check and prevent render loops
+        setTimeout(() => {
+          checkBankDetails(data.providerId);
+        }, 100);
       }
 
     } catch (error) {
@@ -1267,7 +1274,13 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       
       if (retryCount < maxRetries) {
         console.log(`Retrying in ${(retryCount + 1) * 2} seconds...`);
-        setTimeout(() => fetchProviderData(retryCount + 1), (retryCount + 1) * 2000);
+        // Use a ref to track retry attempts to prevent infinite loops
+        const retryTimeoutId = setTimeout(() => {
+          fetchProviderData(retryCount + 1);
+        }, (retryCount + 1) * 2000);
+        
+        // Store timeout ID for cleanup if component unmounts
+        return () => clearTimeout(retryTimeoutId);
       } else {
         setDashboardState(prev => ({
           ...prev,
@@ -1284,7 +1297,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         ui: { ...prev.ui, loading: false }
       }))
     }
-  }, [dashboardState.auth.isAuthenticated, checkAuthentication])
+  }, [checkAuthentication]) // Remove dashboardState.auth.isAuthenticated to prevent loops
 
   // Check bank details - OPTIMIZED VERSION with debouncing and caching
   const lastBankDetailsCheck = useRef<number>(0)
@@ -1380,12 +1393,14 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     initializeDashboard()
   }, []) // Empty dependency array
 
-  // Auto-refresh effect
+  // Auto-refresh effect - use ref to avoid dependency issues
   useEffect(() => {
-    if (!dashboardState.auth.isAuthenticated) return
-
     const pollInterval = setInterval(async () => {
       try {
+        // Check authentication state directly instead of using dashboardState
+        const response = await fetch('/api/auth/me', { credentials: 'include' });
+        if (!response.ok) return; // Not authenticated, skip refresh
+        
         const timeSinceLastRefresh = Date.now() - lastRefreshTime.current
         if (timeSinceLastRefresh > 60000) { // 1 minute
           lastRefreshTime.current = Date.now()
@@ -1397,7 +1412,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }, 30000) // Check every 30 seconds
 
     return () => clearInterval(pollInterval)
-  }, [dashboardState.auth.isAuthenticated])
+  }, []) // Empty dependency array to prevent loops
 
   // Refresh function for manual refresh
   const refreshData = useCallback(async () => {
