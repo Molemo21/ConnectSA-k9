@@ -97,6 +97,7 @@ export function BankDetailsForm({
       
       // Only update if the initial data has actually changed
       if (currentInitialBankDetails !== prevInitialBankDetailsRef.current) {
+        console.log('BankDetailsForm: Initializing with data:', safeInitialBankDetails)
         isUpdatingFromParentRef.current = true
         setBankDetails({
           bankName: safeInitialBankDetails.bankName || "",
@@ -112,6 +113,10 @@ export function BankDetailsForm({
           isUpdatingFromParentRef.current = false
         }, 100)
       }
+    } else if (!safeInitialBankDetails && !hasInitializedRef.current) {
+      // Initialize with empty data if no initial data provided
+      console.log('BankDetailsForm: Initializing with empty data')
+      hasInitializedRef.current = true
     }
   }, [safeInitialBankDetails]) // ONLY safeInitialBankDetails in dependencies
 

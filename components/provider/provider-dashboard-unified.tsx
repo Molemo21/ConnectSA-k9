@@ -864,7 +864,32 @@ function ProviderMainContent({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ComponentErrorBoundary componentName="BankDetailsForm">
+                  <ComponentErrorBoundary 
+                    componentName="BankDetailsForm"
+                    fallback={
+                      <div className="text-center py-8">
+                        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-white mb-2">Bank Form Error</h3>
+                        <p className="text-gray-400 mb-4">
+                          There was an error loading the bank details form.
+                        </p>
+                        <Button
+                          onClick={() => setActiveSection('overview')}
+                          className="bg-blue-400 hover:bg-blue-500 text-white mr-2"
+                        >
+                          Go to Overview
+                        </Button>
+                        <Button
+                          onClick={() => window.location.reload()}
+                          variant="outline"
+                          className="border-gray-300/30 text-gray-300 hover:bg-gray-700"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Reload Page
+                        </Button>
+                      </div>
+                    }
+                  >
                     <BankDetailsForm 
                       initialBankDetails={bankDetails}
                       onBankDetailsChange={handleBankDetailsChange}
@@ -1258,7 +1283,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [dashboardState.auth.isAuthenticated, checkAuthentication])
 
-  // Check bank details
+  // Check bank details - BULLETPROOF VERSION
   const checkBankDetails = useCallback(async (providerId: string) => {
     try {
       const response = await fetch(`/api/provider/${providerId}/bank-details`, {
@@ -1267,17 +1292,43 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       
       if (response.ok) {
         const data = await response.json()
+        console.log('Bank details API response:', data)
+        
+        // Defensive programming - ensure data structure is correct
+        const hasBankDetails = Boolean(data.hasBankDetails)
+        const bankDetails = data.bankDetails || null
+        
         setDashboardState(prev => ({
           ...prev,
           data: { 
             ...prev.data, 
-            hasBankDetails: data.hasBankDetails,
-            bankDetails: data.bankDetails || null
+            hasBankDetails,
+            bankDetails
+          }
+        }))
+      } else {
+        console.warn('Bank details API failed:', response.status)
+        // Set default values on API failure
+        setDashboardState(prev => ({
+          ...prev,
+          data: { 
+            ...prev.data, 
+            hasBankDetails: false,
+            bankDetails: null
           }
         }))
       }
     } catch (error) {
       console.error('Error checking bank details:', error)
+      // Set default values on error
+      setDashboardState(prev => ({
+        ...prev,
+        data: { 
+          ...prev.data, 
+          hasBankDetails: false,
+          bankDetails: null
+        }
+      }))
     }
   }, [])
 

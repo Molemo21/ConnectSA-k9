@@ -78,7 +78,13 @@ export async function GET(
       accountName: bankDetails.accountName 
     });
 
-    return NextResponse.json({ bankDetails });
+    // Check if bank details are complete
+    const hasBankDetails = !!(provider.bankName && provider.bankCode && provider.accountNumber && provider.accountName);
+    
+    return NextResponse.json({ 
+      bankDetails,
+      hasBankDetails 
+    });
   } catch (error) {
     console.error("Error fetching bank details:", error);
     console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
