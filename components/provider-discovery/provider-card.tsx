@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Star, MapPin, Clock, DollarSign, CheckCircle, XCircle, Eye } from "lucide-react"
+import { Star, MapPin, Clock, DollarSign, CheckCircle, XCircle, Eye, Package } from "lucide-react"
 import { showToast } from "@/lib/toast"
+import { ProviderCatalogueModal } from "./provider-catalogue-modal"
 
 interface Provider {
   id: string
@@ -50,6 +51,7 @@ interface ProviderCardProps {
 
 export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: ProviderCardProps) {
   const [showReviews, setShowReviews] = useState(false)
+  const [showCatalogue, setShowCatalogue] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleAccept = async () => {
@@ -84,6 +86,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
   }
 
   return (
+    <>
     <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 animate-slide-in-up">
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
@@ -162,14 +165,25 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-white">Recent Reviews</h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowReviews(!showReviews)}
-                className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
-              >
-                {showReviews ? "Hide" : "Show"} Reviews
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCatalogue(true)}
+                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
+                >
+                  <Package className="w-4 h-4 mr-1" />
+                  Catalogue
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowReviews(!showReviews)}
+                  className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
+                >
+                  {showReviews ? "Hide" : "Show"} Reviews
+                </Button>
+              </div>
             </div>
             
             {showReviews && (
@@ -244,5 +258,13 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
         </div>
       </CardContent>
     </Card>
+
+    {/* Provider Catalogue Modal */}
+    <ProviderCatalogueModal
+      provider={provider}
+      isOpen={showCatalogue}
+      onClose={() => setShowCatalogue(false)}
+    />
+  </>
   )
 } 

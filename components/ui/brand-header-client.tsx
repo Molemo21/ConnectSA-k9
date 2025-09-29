@@ -13,13 +13,22 @@ interface BrandHeaderClientProps {
     completedBookings?: number
     rating?: number
   }
+  // Loading states
+  servicesLoading?: boolean
+  signInLoading?: boolean
+  onServicesClick?: () => void
+  onSignInClick?: () => void
 }
 
 export function BrandHeaderClient({ 
   showAuth = true, 
   showUserMenu = false, 
   className = "",
-  userStats
+  userStats,
+  servicesLoading = false,
+  signInLoading = false,
+  onServicesClick,
+  onSignInClick
 }: BrandHeaderClientProps) {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -62,6 +71,10 @@ export function BrandHeaderClient({
       className={className}
       user={user}
       userStats={userStats}
+      servicesLoading={servicesLoading}
+      signInLoading={signInLoading}
+      onServicesClick={onServicesClick}
+      onSignInClick={onSignInClick}
     />
   )
 } 

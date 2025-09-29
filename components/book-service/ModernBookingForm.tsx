@@ -22,6 +22,8 @@ import {
   ChevronRight,
   ChevronLeft
 } from "lucide-react"
+import { reverseGeocode } from "@/lib/geocoding"
+import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel"
 
 const bookingFormSchema = z.object({
   serviceId: z.string().min(1, 'Please select a service'),
@@ -42,6 +44,10 @@ interface ModernBookingFormProps {
   onNext: () => void
   onBack?: () => void
   submitting?: boolean
+  onProviderSelected?: (providerId: string) => void
+  onLoginSuccess?: () => void
+  isAuthenticated?: boolean
+  onShowLoginModal?: () => void
 }
 
 const steps = [
@@ -49,13 +55,15 @@ const steps = [
   { id: 'datetime', title: 'Date & Time', icon: CalendarDays },
   { id: 'address', title: 'Address', icon: MapPin },
   { id: 'notes', title: 'Notes', icon: FileText },
-  { id: 'confirm', title: 'Confirm', icon: CheckCircle },
+  { id: 'review', title: 'Review', icon: CheckCircle },
+  { id: 'provider', title: 'Choose Provider', icon: CheckCircle },
 ]
 
-export function ModernBookingForm({ value, onChange, onNext, onBack, submitting }: ModernBookingFormProps) {
+export function ModernBookingForm({ value, onChange, onNext, onBack, submitting, onProviderSelected, onLoginSuccess, isAuthenticated, onShowLoginModal }: ModernBookingFormProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof typeof value, string>>>({})
+  const [isGeocoding, setIsGeocoding] = useState(false)
   const [serviceQuery, setServiceQuery] = useState("")
   const [recentServiceIds, setRecentServiceIds] = useState<string[]>([])
   const [notesCount, setNotesCount] = useState(value.notes?.length || 0)
@@ -200,13 +208,22 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
   const handleFieldChange = (name: keyof typeof value, val: string) => {
     const next = { ...value, [name]: val }
     onChange(next)
+    
+    // Clear the error for this specific field when user starts typing/selecting
+    setErrors(prev => ({ ...prev, [name]: undefined }))
+    
+    // Validate the entire form to check for other errors
     const res = bookingFormSchema.safeParse(next)
     if (!res.success) {
-      const issue = res.error.issues[0]
-      if (issue?.path[0]) setErrors(prev => ({ ...prev, [issue.path[0] as keyof typeof value]: issue.message }))
-    } else {
-      setErrors({})
+      const newErrors: Partial<Record<keyof typeof value, string>> = {}
+      res.error.issues.forEach(issue => {
+        if (issue.path[0]) {
+          newErrors[issue.path[0] as keyof typeof value] = issue.message
+        }
+      })
+      setErrors(newErrors)
     }
+    
     if (name === 'serviceId') {
       if (typeof window !== 'undefined') {
         const nextRecents = [val, ...recentServiceIds.filter(id => id !== val)].slice(0, 5)
@@ -219,6 +236,64 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
     if (name === 'notes') setNotesCount(val.length)
   }
 
+  const handleCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      setErrors(prev => ({ ...prev, address: 'Geolocation is not supported by this browser' }))
+      return
+    }
+
+    setIsGeocoding(true)
+    setErrors(prev => ({ ...prev, address: undefined }))
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        })
+      })
+
+      const { latitude, longitude } = position.coords
+      
+      // Show coordinates temporarily while geocoding
+      handleFieldChange('address', `Getting your location...`)
+      
+      // Reverse geocode to get readable address
+      const result = await reverseGeocode(latitude, longitude)
+      
+      if (result.error) {
+        // Fallback to coordinates if geocoding fails
+        handleFieldChange('address', `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+        setErrors(prev => ({ ...prev, address: 'Could not get readable address, using coordinates' }))
+      } else {
+        handleFieldChange('address', result.address)
+      }
+      
+    } catch (error) {
+      console.error('Geolocation error:', error)
+      let errorMessage = 'Failed to get your location'
+      
+      if (error instanceof GeolocationPositionError) {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Location access denied. Please enable location permissions.'
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information unavailable.'
+            break
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out.'
+            break
+        }
+      }
+      
+      setErrors(prev => ({ ...prev, address: errorMessage }))
+    } finally {
+      setIsGeocoding(false)
+    }
+  }
+
   const handleNext = async () => {
     // Validate current step
     const stepValidations = {
@@ -226,11 +301,18 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
       1: () => value.date && value.time,
       2: () => value.address,
       3: () => true, // Notes are optional
-      4: () => true, // Confirmation step
+      4: () => true, // Review step
+      5: () => true, // Provider selection step
     }
 
     if (!stepValidations[currentStep]()) {
       setErrors({ [currentStep === 0 ? 'serviceId' : currentStep === 1 ? 'date' : 'address']: 'This field is required' })
+      return
+    }
+
+    // Check if user is trying to go to provider selection step (step 5) without being authenticated
+    if (currentStep === 4 && !isAuthenticated && onShowLoginModal) {
+      onShowLoginModal()
       return
     }
 
@@ -246,6 +328,22 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
       }, 300)
     } else {
       onNext()
+    }
+  }
+
+  const handleLoginSuccess = () => {
+    if (onLoginSuccess) {
+      onLoginSuccess()
+    }
+    // After successful login, automatically proceed to provider selection step
+    if (currentStep === 4) {
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setCurrentStep(5) // Move to provider selection step
+        setTimeout(() => {
+          setIsTransitioning(false)
+        }, 50)
+      }, 300)
     }
   }
 
@@ -399,7 +497,16 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
                     className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-                {errors.date && <p className="text-xs sm:text-sm text-red-400">{errors.date}</p>}
+                {errors.date ? (
+                  <p className="text-xs sm:text-sm text-red-400">{errors.date}</p>
+                ) : value.date ? (
+                  <p className="text-xs sm:text-sm text-green-400 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Date selected
+                  </p>
+                ) : (
+                  <p className="text-xs sm:text-sm text-gray-400">Select a date</p>
+                )}
               </div>
 
               <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
@@ -430,7 +537,16 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
                     ))}
                   </div>
                 )}
-                {errors.time && <p className="text-xs sm:text-sm text-red-600">{errors.time}</p>}
+                {errors.time ? (
+                  <p className="text-xs sm:text-sm text-red-400">{errors.time}</p>
+                ) : value.time ? (
+                  <p className="text-xs sm:text-sm text-green-400 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Time selected
+                  </p>
+                ) : (
+                  <p className="text-xs sm:text-sm text-gray-400">Select a time</p>
+                )}
               </div>
             </div>
           </div>
@@ -470,17 +586,20 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
                   variant="outline"
                   className="w-full text-sm sm:text-base animate-slide-in-up"
                   style={{ animationDelay: '0.3s' }}
-                  onClick={() => {
-                    if (navigator.geolocation) {
-                      navigator.geolocation.getCurrentPosition((pos) => {
-                        const coords = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`
-                        handleFieldChange('address', `My location (${coords})`)
-                      })
-                    }
-                  }}
+                  onClick={handleCurrentLocation}
+                  disabled={isGeocoding}
                 >
+                  {isGeocoding ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Getting location...
+                    </>
+                  ) : (
+                    <>
                   <MapPin className="w-4 h-4 mr-2" />
                   Use my current location
+                    </>
+                  )}
                 </Button>
                 {errors.address && <p className="text-xs sm:text-sm text-red-600">{errors.address}</p>}
               </div>
@@ -536,12 +655,12 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
           </div>
         )
 
-      case 4: // Confirm
+      case 4: // Review
         return (
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className="text-center animate-slide-in-up">
-              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Review your booking</h3>
-              <p className="text-sm sm:text-base text-white/80">Please confirm your service details</p>
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Review Your Booking</h3>
+              <p className="text-sm sm:text-base text-white/80">Please review your service details before proceeding</p>
             </div>
             
             <div className="space-y-4">
@@ -574,6 +693,31 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
                 )}
               </div>
             </div>
+          </div>
+        )
+
+      case 5: // Choose Provider
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Choose Your Provider</h3>
+              <p className="text-sm sm:text-base text-white/80">Select from available providers in your area</p>
+            </div>
+            
+            {/* Provider Discovery Panel */}
+            {onProviderSelected && (
+              <div className="animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <ProviderDiscoveryPanel
+                  form={value}
+                  onProviderSelected={onProviderSelected}
+                  onBack={() => {
+                    // Go back to step 4 (Review)
+                    setCurrentStep(4);
+                  }}
+                  onLoginSuccess={handleLoginSuccess}
+                />
+              </div>
+            )}
           </div>
         )
 
@@ -723,6 +867,8 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting 
             </>
           ) : currentStep === steps.length - 1 ? (
             'Complete Booking'
+          ) : currentStep === steps.length - 2 ? (
+            'Choose Provider'
           ) : (
             <>
               Continue

@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, MapPin, ArrowRight, ArrowLeft, Search, CalendarDays, Clock, X } from "lucide-react"
+import { Loader2, FileText, MapPin, ArrowRight, ArrowLeft, Search, CalendarDays, Clock, X, CheckCircle } from "lucide-react"
 import { BookingLoginModal } from "@/components/ui/booking-login-modal";
 import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel";
 import { useRouter } from 'next/navigation';
+import { reverseGeocode } from "@/lib/geocoding"
 
 const bookingFormSchema = z.object({
   serviceId: z.string().min(1, 'Please select a service'),
@@ -78,6 +79,7 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
   })
 
   const [errors, setErrors] = React.useState<Partial<Record<keyof typeof value, string>>>({})
+  const [isGeocoding, setIsGeocoding] = React.useState(false)
   const formRef = React.useRef<HTMLFormElement | null>(null)
   const liveRegionRef = React.useRef<HTMLDivElement | null>(null)
   const [serviceQuery, setServiceQuery] = React.useState("")
@@ -97,13 +99,22 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
   function handleFieldChange(name: keyof typeof value, val: string) {
     const next = { ...value, [name]: val }
     onChange(next)
+    
+    // Clear the error for this specific field when user starts typing/selecting
+    setErrors(prev => ({ ...prev, [name]: undefined }))
+    
+    // Validate the entire form to check for other errors
     const res = bookingFormSchema.safeParse(next)
     if (!res.success) {
-      const issue = res.error.issues[0]
-      if (issue?.path[0]) setErrors(prev => ({ ...prev, [issue.path[0] as keyof typeof value]: issue.message }))
-    } else {
-      setErrors({})
+      const newErrors: Partial<Record<keyof typeof value, string>> = {}
+      res.error.issues.forEach(issue => {
+        if (issue.path[0]) {
+          newErrors[issue.path[0] as keyof typeof value] = issue.message
+        }
+      })
+      setErrors(newErrors)
     }
+    
     if (name === 'serviceId') {
       if (typeof window !== 'undefined') {
         const nextRecents = [val, ...recentServiceIds.filter(id => id !== val)].slice(0, 5)
@@ -113,6 +124,64 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
       setIsServiceDropdownOpen(false)
     }
     if (name === 'notes') setNotesCount(val.length)
+  }
+
+  const handleCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      setErrors(prev => ({ ...prev, address: 'Geolocation is not supported by this browser' }))
+      return
+    }
+
+    setIsGeocoding(true)
+    setErrors(prev => ({ ...prev, address: undefined }))
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        })
+      })
+
+      const { latitude, longitude } = position.coords
+      
+      // Show coordinates temporarily while geocoding
+      handleFieldChange('address', `Getting your location...`)
+      
+      // Reverse geocode to get readable address
+      const result = await reverseGeocode(latitude, longitude)
+      
+      if (result.error) {
+        // Fallback to coordinates if geocoding fails
+        handleFieldChange('address', `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+        setErrors(prev => ({ ...prev, address: 'Could not get readable address, using coordinates' }))
+      } else {
+        handleFieldChange('address', result.address)
+      }
+      
+    } catch (error) {
+      console.error('Geolocation error:', error)
+      let errorMessage = 'Failed to get your location'
+      
+      if (error instanceof GeolocationPositionError) {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Location access denied. Please enable location permissions.'
+            break
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information unavailable.'
+            break
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out.'
+            break
+        }
+      }
+      
+      setErrors(prev => ({ ...prev, address: errorMessage }))
+    } finally {
+      setIsGeocoding(false)
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -269,7 +338,16 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
                     aria-invalid={!!errors.date} 
                   />
                 </div>
-                {errors.date && <p className="text-xs text-red-600" role="alert">{errors.date}</p>}
+                {errors.date ? (
+                  <p className="text-xs text-red-600" role="alert">{errors.date}</p>
+                ) : value.date ? (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Date selected
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500">Select a date</p>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -316,7 +394,16 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
                     )}
                   </div>
                 )}
-                {errors.time && <p className="text-xs text-red-600" role="alert">{errors.time}</p>}
+                {errors.time ? (
+                  <p className="text-xs text-red-600" role="alert">{errors.time}</p>
+                ) : value.time ? (
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    Time selected
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500">Select a time</p>
+                )}
               </div>
             </div>
 
@@ -341,16 +428,19 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
                   type="button" 
                   variant="outline" 
                   className="w-full sm:w-auto text-sm" 
-                  onClick={() => {
-                    if (navigator.geolocation) {
-                      navigator.geolocation.getCurrentPosition((pos) => {
-                        const coords = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`
-                        handleFieldChange('address', `My location (${coords})`)
-                      })
-                    }
-                  }}
+                  onClick={handleCurrentLocation}
+                  disabled={isGeocoding}
                 >
-                  📍 Use my location
+                  {isGeocoding ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Getting location...
+                    </>
+                  ) : (
+                    <>
+                      📍 Use my location
+                    </>
+                  )}
                 </Button>
               </div>
               {value.address && (
