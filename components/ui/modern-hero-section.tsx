@@ -1,12 +1,31 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
 import { CheckCircle, Search, UserPlus, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { useLanguage } from "@/contexts/LanguageContext"
 
-export function ModernHeroSection() {
+interface ModernHeroSectionProps {
+  bookServiceLoading?: boolean
+  becomeProviderLoading?: boolean
+  getStartedLoading?: boolean
+  onBookServiceClick?: () => void
+  onBecomeProviderClick?: () => void
+  onGetStartedClick?: () => void
+}
+
+export function ModernHeroSection({ 
+  bookServiceLoading = false, 
+  becomeProviderLoading = false,
+  getStartedLoading = false,
+  onBookServiceClick,
+  onBecomeProviderClick,
+  onGetStartedClick
+}: ModernHeroSectionProps) {
   const [isVisible, setIsVisible] = useState(false)
+  const { t } = useLanguage()
 
   useEffect(() => {
     // Trigger animation after component mounts
@@ -47,7 +66,7 @@ export function ModernHeroSection() {
               letterSpacing: '0.025em'
             }}
           >
-            Bringing <span className="font-bold">trusted professionals</span> to your doorstep
+{t('hero.title')}
           </h1>
 
           {/* Subheadline - Mobile First */}
@@ -59,13 +78,21 @@ export function ModernHeroSection() {
               textShadow: '0 2px 10px rgba(0,0,0,0.5)'
             }}
           >
-            Verified experts ready to help, while you relax at home.{" "}
-            <Link 
-              href="/signup" 
-              className="text-blue-400 hover:text-blue-300 underline underline-offset-2 sm:underline-offset-4 hover:underline-offset-4 sm:hover:underline-offset-8 transition-all duration-300 font-medium text-sm xs:text-base sm:text-lg md:text-xl"
+            {t('hero.subtitle')}{" "}
+            <button 
+              onClick={onGetStartedClick}
+              disabled={getStartedLoading}
+              className="text-blue-400 hover:text-blue-300 underline underline-offset-2 sm:underline-offset-4 hover:underline-offset-4 sm:hover:underline-offset-8 transition-all duration-300 font-medium text-sm xs:text-base sm:text-lg md:text-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-blue-400"
             >
-              Get Started
-            </Link>
+              {getStartedLoading ? (
+                <span className="flex items-center space-x-2">
+                  <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  <span>Loading...</span>
+                </span>
+              ) : (
+                t('hero.getStarted')
+              )}
+            </button>
           </p>
 
           {/* CTA Buttons - Mobile First */}
@@ -75,30 +102,34 @@ export function ModernHeroSection() {
             }`}
           >
             {/* Primary CTA */}
-            <Button
+            <EnhancedButton
               size="lg"
-              className="w-full xs:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
-              asChild
+              className="w-full xs:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
+              href="/book-service"
+              loading={bookServiceLoading}
+              loadingText="Booking..."
+              onClick={onBookServiceClick}
+              disabled={bookServiceLoading}
             >
-              <Link href="/book-service">
-                <Search className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Book a Service
-                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </Button>
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              {t('hero.bookService')}
+              <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </EnhancedButton>
 
             {/* Secondary CTA */}
-            <Button
+            <EnhancedButton
               variant="outline"
               size="lg"
               className="w-full xs:w-auto bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 hover:border-white/50 font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
-              asChild
+              href="/become-provider"
+              loading={becomeProviderLoading}
+              loadingText="Loading..."
+              onClick={onBecomeProviderClick}
+              disabled={becomeProviderLoading}
             >
-              <Link href="/become-provider">
-                <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Become a Provider
-              </Link>
-            </Button>
+              <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              {t('hero.becomeProvider')}
+            </EnhancedButton>
           </div>
 
           {/* Trust Badge - Mobile First */}
@@ -109,7 +140,7 @@ export function ModernHeroSection() {
           >
             <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-400 flex-shrink-0" />
             <span style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
-              100% Verified Providers
+              {t('hero.trustBadge')}
             </span>
           </div>
         </div>

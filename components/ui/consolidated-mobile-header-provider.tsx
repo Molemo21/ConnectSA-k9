@@ -330,7 +330,7 @@ export function ConsolidatedMobileHeaderProvider({
                   </Button>
                 ) : (
                   <div className="space-y-2">
-                    <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+                    <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
                       <Link href="/login">Sign In</Link>
                     </Button>
                     <Button asChild variant="outline" className="w-full text-gray-200 border-gray-600 hover:bg-gray-800/50 hover:text-white">

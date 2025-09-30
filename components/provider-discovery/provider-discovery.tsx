@@ -401,11 +401,11 @@ export function ProviderDiscovery({
             No providers are currently available for this service at the requested time.
           </p>
           <div className="space-x-2">
-            <Button onClick={onBack} variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
+            <Button onClick={onBack} className="!bg-white !text-black hover:!bg-gray-100 !border-0 font-medium px-4 py-2 rounded-md transition-all duration-200">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Go Back
             </Button>
-            <Button onClick={discoverProviders} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+            <Button onClick={discoverProviders} className="!bg-blue-600 hover:!bg-blue-700 !text-white font-medium px-4 py-2 rounded-md transition-all duration-200">
               <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
             </Button>

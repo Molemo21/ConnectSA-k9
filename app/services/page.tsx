@@ -215,74 +215,13 @@ const services: (Service & { comingSoon?: boolean })[] = [
     price: "From R500",
     image: "/services/pest.jpg",
     icon: "🐜"
-  },
-  // Services without images (coming soon)
-  {
-    id: 6,
-    slug: "tutoring",
-    title: "Tutoring",
-    description: "Personalized tutoring in various subjects.",
-    category: "Education",
-    subcategories: ["Math", "Science", "Languages", "Test prep"],
-    price: "From R150/hour",
-    image: "",
-    icon: "📚",
-    comingSoon: true
-  },
-  {
-    id: 9,
-    slug: "personal-training",
-    title: "Personal Training",
-    description: "Custom fitness training programs.",
-    category: "Fitness",
-    subcategories: ["Weight loss", "Strength training", "Rehabilitation", "Nutrition"],
-    price: "From R300/session",
-    image: "",
-    icon: "💪",
-    comingSoon: true
-  },
-  {
-    id: 20,
-    slug: "photography",
-    title: "Photography",
-    description: "Professional photography services for all occasions.",
-    category: "Media",
-    subcategories: ["Portraits", "Events", "Products", "Real estate"],
-    price: "From R1000/session",
-    image: "",
-    icon: "📸",
-    comingSoon: true
-  },
-  {
-    id: 21,
-    slug: "catering",
-    title: "Catering",
-    description: "Delicious catering for events and special occasions.",
-    category: "Food",
-    subcategories: ["Corporate events", "Weddings", "Private parties", "Canapés"],
-    price: "From R150/pp",
-    image: "",
-    icon: "🍽️",
-    comingSoon: true
-  },
-  {
-    id: 22,
-    slug: "spa-treatments",
-    title: "Spa Treatments",
-    description: "Relaxing spa treatments for ultimate relaxation and rejuvenation.",
-    category: "Wellness",
-    subcategories: ["Massage", "Facials", "Body treatments", "Pamper packages"],
-    price: "From R500",
-    image: "",
-    icon: "🧖",
-    comingSoon: true
   }
 ]
 
 // Categories for filtering
-const categories = ["All", "Home Services", "Beauty", "Education", "Technology", "Fitness", "Media", "Food", "Wellness", "Automotive", "Transportation"]
+const categories = ["All", "Home Services", "Beauty", "Technology", "Automotive", "Transportation"]
 
-// Sort services: ones with images first, then coming soon
+// Sort services: ones with images first
 const sortedServices = [...services].sort((a, b) => {
   // Services with images come first
   if (a.image && !b.image) return -1;
@@ -342,7 +281,14 @@ export default function ServicesPage() {
     setTimeout(() => setContentReady(true), 10);
   }, []);
   return (
-    <div className={`flex min-h-screen flex-col gradient-bg-dark text-white transition-all duration-700 ${contentReady ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}>
+    <div className="min-h-screen relative overflow-hidden animate-fade-in gradient-bg-dark">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/serv.jpg')" }}
+      />
+      {/* Overlay for better text readability */}
+      <div className="absolute inset-0 bg-black/60" />
       {/* Top right navigation buttons */}
       <div className="absolute top-6 right-6 z-20 flex gap-3">
         <Button variant="outline" onClick={() => router.back()} className="border border-white/30 bg-black/60 text-white hover:bg-blue-900/20">
@@ -356,7 +302,7 @@ export default function ServicesPage() {
       </div>
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative w-full py-20 md:py-32 overflow-hidden bg-gradient-to-b from-[#1a1a1a] via-[#1a1a1a] to-[#2d2d2d] dark:from-[#1a1a1a] dark:via-[#1a1a1a] dark:to-[#2d2d2d]">
+        <section className="relative w-full py-20 md:py-32 overflow-hidden">
           <div className="container relative z-10 px-4 md:px-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div className={`space-y-6 transition-all duration-700 ease-out ${contentReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}> 
@@ -367,7 +313,7 @@ export default function ServicesPage() {
                   From plumbing emergencies to electrical installations, ProLiink Connect has you covered.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button size="lg" className="bg-[#00A3E0] hover:bg-[#0089BD]">
+                  <Button size="lg" className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
                     Book a Service
                   </Button>
                 </div>
@@ -410,8 +356,8 @@ export default function ServicesPage() {
         </section>
 
         {/* Filter and Services Section */}
-        <section className="w-full py-16 md:py-24 bg-white dark:bg-gray-900">
-          <div className="container px-4 md:px-6">
+        <section className="w-full py-16 md:py-24 bg-black/80 backdrop-blur-sm">
+          <div className="container px-4 md:px-6 relative z-10">
             {/* Filter Section */}
             <div className="mb-12">
               <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -421,16 +367,16 @@ export default function ServicesPage() {
                     placeholder="Search services..."
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-blue-400"
                   />
                 </div>
                 <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                  <SelectTrigger className="w-full md:w-48">
+                  <SelectTrigger className="w-full md:w-48 bg-white/10 border-white/20 text-white">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-gray-900 border-gray-700">
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
+                      <SelectItem key={category} value={category} className="text-white hover:bg-gray-800">
                         {category}
                       </SelectItem>
                     ))}
@@ -442,7 +388,7 @@ export default function ServicesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredServices.length > 0 ? (
                 filteredServices.map((service, index) => (
-                  <Card key={service.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden">
+                  <Card key={service.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden bg-white/10 backdrop-blur-sm border-white/20 hover:border-white/30">
                     <div className="relative">
                       {service.image ? (
                         <div className="h-48 overflow-hidden">
@@ -453,7 +399,7 @@ export default function ServicesPage() {
                           />
                         </div>
                       ) : (
-                        <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                        <div className="h-48 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
                           <div className="text-6xl">{service.icon}</div>
                         </div>
                       )}
@@ -466,31 +412,31 @@ export default function ServicesPage() {
                     <CardHeader>
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{service.icon}</span>
-                        <CardTitle className="text-xl">{service.title}</CardTitle>
+                        <CardTitle className="text-xl text-white">{service.title}</CardTitle>
                       </div>
-                      <CardDescription>{service.description}</CardDescription>
+                      <CardDescription className="text-gray-300">{service.description}</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         <div className="flex flex-wrap gap-1">
                           {service.subcategories.slice(0, 3).map((sub, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
+                            <Badge key={idx} variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
                               {sub}
                             </Badge>
                           ))}
                           {service.subcategories.length > 3 && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="text-xs border-white/30 text-white">
                               +{service.subcategories.length - 3} more
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-lg font-semibold text-[#00A3E0]">
+                          <span className="text-lg font-semibold text-blue-400">
                             {service.price}
                           </span>
                           <Button 
                             size="sm" 
-                            className="bg-[#00A3E0] hover:bg-[#0089BD]"
+                            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
                             disabled={service.comingSoon}
                             onClick={() => router.push(`/book-service?service=${service.slug}`)}
                           >
@@ -503,7 +449,7 @@ export default function ServicesPage() {
                 ))
               ) : (
                 <div className="col-span-full text-center py-12">
-                  <p className="text-muted-foreground">No services found matching your criteria.</p>
+                  <p className="text-gray-300">No services found matching your criteria.</p>
                   <Button 
                     variant="link" 
                     onClick={() => {
@@ -511,7 +457,7 @@ export default function ServicesPage() {
                       setSearchTerm("");
                       handleFilterChange("All", "");
                     }} 
-                    className="mt-2 text-[#00A3E0]"
+                    className="mt-2 text-blue-400 hover:text-blue-300"
                   >
                     Reset filters
                   </Button>
@@ -522,93 +468,92 @@ export default function ServicesPage() {
         </section>
 
         {/* Trust Section */}
-        <section className="w-full py-16 md:py-24 bg-gray-50 dark:bg-gray-800">
-          <div className="container px-4 md:px-6">
+        <section className="w-full py-16 md:py-24 bg-black/60 backdrop-blur-sm">
+          <div className="container px-4 md:px-6 relative z-10">
             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">Why Book with ProLiink Connect?</h2>
-                <p className="max-w-[700px] text-muted-foreground">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-white">Why Book with ProLiink Connect?</h2>
+                <p className="max-w-[700px] text-gray-300">
                   We're committed to providing reliable, high-quality services through our trusted platform.
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="text-center p-6">
+              <Card className="text-center p-6 bg-white/10 backdrop-blur-sm border-white/20">
                 <CardHeader>
-                  <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  <div className="mx-auto w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle className="h-6 w-6 text-green-400" />
                   </div>
-                  <CardTitle className="text-lg">Vetted Professionals</CardTitle>
+                  <CardTitle className="text-lg text-white">Vetted Professionals</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-300">
                     All service providers are thoroughly vetted and verified for your safety and peace of mind.
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="text-center p-6">
+              <Card className="text-center p-6 bg-white/10 backdrop-blur-sm border-white/20">
                 <CardHeader>
-                  <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Lock className="h-6 w-6 text-blue-600" />
+                  <div className="mx-auto w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+                    <Lock className="h-6 w-6 text-blue-400" />
                   </div>
-                  <CardTitle className="text-lg">Secure Payments</CardTitle>
+                  <CardTitle className="text-lg text-white">Secure Payments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-300">
                     Pay securely through our platform with transparent pricing and no hidden fees.
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="text-center p-6">
+              <Card className="text-center p-6 bg-white/10 backdrop-blur-sm border-white/20">
                 <CardHeader>
-                  <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-                    <Clock className="h-6 w-6 text-orange-600" />
+                  <div className="mx-auto w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center mb-4">
+                    <Clock className="h-6 w-6 text-orange-400" />
                   </div>
-                  <CardTitle className="text-lg">Quick Turnaround</CardTitle>
+                  <CardTitle className="text-lg text-white">Quick Turnaround</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-300">
                     Get matched with available professionals quickly, even for urgent service needs.
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="text-center p-6">
+              <Card className="text-center p-6 bg-white/10 backdrop-blur-sm border-white/20">
                 <CardHeader>
-                  <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <DollarSign className="h-6 w-6 text-green-600" />
+                  <div className="mx-auto w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
+                    <DollarSign className="h-6 w-6 text-green-400" />
                   </div>
-                  <CardTitle className="text-lg">Transparent Pricing</CardTitle>
+                  <CardTitle className="text-lg text-white">Transparent Pricing</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-300">
                     Clear pricing information upfront so you know exactly what to expect.
                   </p>
                 </CardContent>
               </Card>
             </div>
             <div className="flex justify-center mt-10">
-              <img src="/placeholder.jpg" alt="Handshake" className="max-w-xs w-full rounded-xl shadow-lg" />
+              <img src="/Handshake.png" alt="Handshake" className="max-w-xs w-full rounded-xl shadow-lg" />
             </div>
           </div>
         </section>
 
         {/* Final CTA Section */}
-        <section className="w-full py-16 md:py-24 bg-black text-white relative overflow-hidden">
+        <section className="w-full py-16 md:py-24 bg-black/80 backdrop-blur-sm text-white relative overflow-hidden">
           <div className="container px-4 md:px-6 relative z-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div className="space-y-6">
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-white">
                   Ready to Book a Reliable Pro?
                 </h2>
-                <p className="text-xl">Get started today and connect with skilled professionals in your area.</p>
+                <p className="text-xl text-gray-300">Get started today and connect with skilled professionals in your area.</p>
                 <Button
                   size="lg"
-                  className="bg-white text-[#00A3E0] hover:bg-gray-100 border-2 border-yellow-400 shadow-[0_0_12px_2px_rgba(255,215,0,0.6)] transition-all"
-                  style={{ boxShadow: '0 0 16px 2px rgba(255,215,0,0.7)' }}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
                   asChild
                 >
                   <Link href="/book-service">

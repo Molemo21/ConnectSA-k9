@@ -1,9 +1,12 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
+import { LoadingLink } from "@/components/ui/loading-link"
 import { UserMenu } from "@/components/ui/user-menu"
-import { RegionSwitcher } from "./region-switcher"
+import { LanguageSwitcher } from "./language-switcher"
 import { Mail, Phone, MapPin, Clock, Globe } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 interface BrandHeaderProps {
   showAuth?: boolean
@@ -22,9 +25,25 @@ interface BrandHeaderProps {
     completedBookings?: number
     rating?: number
   }
+  // Loading states
+  servicesLoading?: boolean
+  signInLoading?: boolean
+  onServicesClick?: () => void
+  onSignInClick?: () => void
 }
 
-export function BrandHeader({ showAuth = true, showUserMenu = false, className = "", user = null, userStats }: BrandHeaderProps) {
+export function BrandHeader({ 
+  showAuth = true, 
+  showUserMenu = false, 
+  className = "", 
+  user = null, 
+  userStats,
+  servicesLoading = false,
+  signInLoading = false,
+  onServicesClick,
+  onSignInClick
+}: BrandHeaderProps) {
+  const { t } = useLanguage()
   const [isExploreOpen, setIsExploreOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [isContactOpen, setIsContactOpen] = useState(false)
@@ -107,79 +126,22 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
 
           {/* Navigation - Desktop Only */}
           <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <div className="relative" ref={dropdownRef}>
-              <button 
-                onClick={handleExploreClick}
-                className={`text-gray-200 hover:text-blue-400 transition-all duration-200 font-medium text-sm lg:text-base focus:outline-none ${
-                  isAnimating ? 'scale-110' : 'scale-100'
-                }`}
-                style={{
-                  transform: isAnimating ? 'scale(1.1)' : 'scale(1)',
-                  transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                }}
-              >
-                Explore
-              </button>
-              
-              {/* Dropdown Menu */}
-              <div 
-                className={`absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-lg py-2 overflow-hidden ${
-                  isExploreOpen 
-                    ? 'opacity-100 translate-y-0' 
-                    : 'opacity-0 -translate-y-2 pointer-events-none'
-                } transition-all duration-300 ease-out`}
-                style={{
-                  transform: isExploreOpen ? 'translateY(0)' : 'translateY(-8px)',
-                  transition: 'opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                }}
-              >
-                <Link 
-                  href="/services" 
-                  className={`block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-opacity duration-200 ${
-                    isExploreOpen ? 'opacity-100' : 'opacity-0'
-                  }`}
-                  style={{
-                    transitionDelay: isExploreOpen ? '0.1s' : '0s'
-                  }}
-                >
-                  Services
-                </Link>
-                <Link 
-                  href="#how-it-works" 
-                  className={`block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-opacity duration-200 ${
-                    isExploreOpen ? 'opacity-100' : 'opacity-0'
-                  }`}
-                  style={{
-                    transitionDelay: isExploreOpen ? '0.2s' : '0s'
-                  }}
-                >
-                  How it Works
-                </Link>
-                <Link 
-                  href="/about" 
-                  className={`block px-4 py-2 text-gray-800 hover:bg-gray-100 transition-opacity duration-200 ${
-                    isExploreOpen ? 'opacity-100' : 'opacity-0'
-                  }`}
-                  style={{
-                    transitionDelay: isExploreOpen ? '0.3s' : '0s'
-                  }}
-                >
-                  About Us
-                </Link>
-              </div>
-            </div>
+            <LoadingLink 
+              href="/services"
+              className="text-gray-200 hover:text-blue-400 transition-all duration-200 font-medium text-sm lg:text-base focus:outline-none hover:scale-105"
+              loading={servicesLoading}
+              loadingText="Loading..."
+              onClick={onServicesClick}
+            >
+              {t('nav.services')}
+            </LoadingLink>
           </nav>
 
           {/* Auth/User Menu - Mobile First */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Region Switcher - Desktop Only */}
+            {/* Language Switcher - Desktop Only */}
             <div className="hidden md:block">
-              <RegionSwitcher 
-                onRegionChange={(region) => {
-                  console.log('Region changed to:', region)
-                  // You can add your region change logic here
-                }}
-              />
+              <LanguageSwitcher />
             </div>
             
             {/* User Menu - Show for authenticated users on all devices */}
@@ -256,9 +218,15 @@ export function BrandHeader({ showAuth = true, showUserMenu = false, className =
                   </div>
                 </div>
                 
-                <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-xs sm:text-sm lg:text-base text-white px-3 sm:px-4 py-1.5 sm:py-2">
-                  <Link href="/login">Sign In</Link>
-                </Button>
+                <EnhancedButton 
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-xs sm:text-sm lg:text-base text-white px-3 sm:px-4 py-1.5 sm:py-2"
+                  href="/login"
+                  loading={signInLoading}
+                  loadingText="Signing In..."
+                  onClick={onSignInClick}
+                >
+                  {t('nav.signIn')}
+                </EnhancedButton>
               </div>
             ) : null}
           </div>

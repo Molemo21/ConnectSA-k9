@@ -157,12 +157,10 @@ function BookServiceContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<any>(null);
-  const [showReview, setShowReview] = useState(false);
   const [showProviderDiscovery, setShowProviderDiscovery] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<'FORM' | 'REVIEW' | 'DISCOVERY' | 'CONFIRM'>('FORM')
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = checking, true = logged in, false = not logged in
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
 
   // Debug logging function
@@ -203,8 +201,7 @@ function BookServiceContent() {
       if (stored) {
         addDebugInfo('Found stored booking details in sessionStorage');
         setForm(JSON.parse(stored));
-        setShowReview(true);
-        setActiveStep('REVIEW')
+        setActiveStep('FORM')
         sessionStorage.removeItem("bookingDetails");
       }
     }
@@ -325,40 +322,9 @@ function BookServiceContent() {
     setSubmitError(null);
     setConfirmation(null);
     
-    // Show review step for all users (authenticated or not)
-    addDebugInfo("Showing review step...");
-    setShowReview(true);
-    setActiveStep('REVIEW');
+    // Form submission completed
+    addDebugInfo("Form submission completed");
     setSubmitting(false);
-  };
-
-  // Show provider discovery after review
-  const handleShowProviderDiscovery = () => {
-    addDebugInfo('Starting provider discovery with form data');
-    
-    // Check if user is authenticated before proceeding to provider discovery
-    if (!isAuthenticated) {
-      addDebugInfo("User not authenticated, showing sign-in popup...");
-      setShowLoginPrompt(true);
-      return;
-    }
-    
-    // Validate serviceId format (Prisma custom ID format)
-    const cuidLike = /^[a-z0-9]{25}$/i;
-    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!(cuidLike.test(form.serviceId) || uuid.test(form.serviceId))) {
-      addDebugInfo(`Invalid serviceId format: ${form.serviceId}`);
-      setSubmitError('Invalid service selection. Please try again.');
-      return;
-    }
-    
-    setShowProviderDiscovery(true);
-    setShowReview(false);
-    setActiveStep('DISCOVERY')
-    // Smoothly scroll to the top of the main content when step changes
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
   };
 
   // Handle provider selection
@@ -372,43 +338,22 @@ function BookServiceContent() {
       providerId: providerId
     });
     setShowProviderDiscovery(false);
-    setShowReview(false);
     setActiveStep('CONFIRM')
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   };
 
-  // Handle login success from prompt
+  // Handle login success from modal
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
-    setShowLoginPrompt(false);
     setShowLoginModal(false);
     addDebugInfo("User successfully logged in, continuing with booking");
     
     // Automatically proceed to provider discovery after successful login
-    if (showReview) {
       setShowProviderDiscovery(true);
       setActiveStep('DISCOVERY');
       addDebugInfo("Proceeding to provider discovery after login");
-    }
-  };
-
-  // Handle closing login prompt
-  const handleCloseLoginPrompt = () => {
-    setShowLoginPrompt(false);
-    setShowLoginModal(false);
-    // Redirect to home page if user closes without logging in
-    router.push("/");
-  };
-
-  // Handle closing login modal
-  const handleCloseLoginModal = () => {
-    setShowLoginModal(false);
-    // Don't show the popup again if user is authenticated
-    if (!isAuthenticated) {
-      setShowLoginPrompt(true);
-    }
   };
 
   const selectedService = services.find(s => s.id === form.serviceId);
@@ -596,42 +541,6 @@ function BookServiceContent() {
                 console.log('User logged in successfully, continuing booking flow')
               }}
             />
-          ) : showReview ? (
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="pb-4 sm:pb-6">
-                <CardTitle className="text-lg sm:text-xl">Review Booking</CardTitle>
-                <CardDescription>Please review your booking details before confirming</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Selected Service</Label>
-                    <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                      <span className="font-medium text-sm sm:text-base">{selectedService?.name}</span>
-                      <Badge variant="secondary" className="ml-2 text-xs">{selectedService?.category}</Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">Date & Time</Label>
-                    <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm sm:text-base">{form.date} • {form.time}</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
-                  <Button type="button" variant="outline" onClick={() => { setShowReview(false); setActiveStep('FORM') }} className="flex-1 h-12 sm:h-11 order-2 sm:order-1">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Edit Details
-                  </Button>
-                  <Button onClick={handleShowProviderDiscovery} disabled={submitting} className="flex-1 h-12 sm:h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 order-1 sm:order-2">
-                    <div className="flex items-center space-x-2">
-                      <span>Choose Provider</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </div>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           ) : (
             <BookingFormPanel
               value={form}
@@ -645,11 +554,20 @@ function BookServiceContent() {
                 });
               }}
               onNext={() => {
-                // When the modern form completes all steps, proceed to review
-                setShowReview(true);
-                setActiveStep('REVIEW');
+                // When the modern form completes all steps, the provider selection is handled within the form
+                // No need to show separate review step
+                console.log('Form completed, provider selection handled within form');
               }}
               submitting={submitting}
+              onProviderSelected={handleProviderSelected}
+              onLoginSuccess={() => {
+                setIsAuthenticated(true);
+                setShowLoginModal(false);
+                // After successful login, automatically proceed to provider selection
+                console.log('User logged in successfully, proceeding to provider selection');
+              }}
+              isAuthenticated={isAuthenticated}
+              onShowLoginModal={() => setShowLoginModal(true)}
             />
           )}
         </div>
@@ -659,52 +577,10 @@ function BookServiceContent() {
         <MobileBottomNav userRole="CLIENT" />
         <MobileFloatingActionButton userRole="CLIENT" />
         
-        {/* Sign-in Required Popup */}
-        {showLoginPrompt && !isAuthenticated && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Background overlay */}
-            <div className="absolute inset-0 bg-black/50" />
-            
-            {/* Popup Card */}
-            <Card className="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl">
-              <CardContent className="p-8 text-center">
-                <div className="mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-8 h-8 text-white" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In Required</h2>
-                  <p className="text-gray-600">
-                    Please sign in to your account to continue with your booking
-                  </p>
-                </div>
-                
-                <div className="space-y-4">
-                  <Button 
-                    onClick={() => {
-                      setShowLoginPrompt(false);
-                      setShowLoginModal(true);
-                    }}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    Sign In
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleCloseLoginPrompt}
-                    className="w-full"
-                  >
-                    Go Back Home
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Login Modal */}
         <BookingLoginModal
           isOpen={showLoginModal}
-          onClose={handleCloseLoginModal}
+          onClose={() => setShowLoginModal(false)}
           onLoginSuccess={handleLoginSuccess}
           bookingData={{
             serviceId: form.serviceId || "",

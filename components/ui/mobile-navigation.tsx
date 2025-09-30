@@ -359,7 +359,7 @@ export function MobileNavigation({ user, showAuth = true, showUserMenu = false }
                       </Link>
                     </Button>
                     <Button
-                      className="w-full justify-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      className="w-full justify-center bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                       asChild
                       onClick={closeMenu}
                     >

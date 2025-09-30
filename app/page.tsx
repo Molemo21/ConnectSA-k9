@@ -28,23 +28,55 @@ import {
 } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { LoadingButton } from "@/components/ui/loading-button"
-import { WhatWeOfferSection } from "@/components/ui/what-we-offer-section"
+import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
+import { LoadingLink } from "@/components/ui/loading-link"
+import { GlobalLoadingOverlay } from "@/components/ui/global-loading-overlay"
 import { ModernHeroSection } from "@/components/ui/modern-hero-section"
+import { ScrollParallaxSection } from "@/components/ui/scroll-parallax-section"
+import { ScrollProgressIndicator } from "@/components/ui/scroll-progress-indicator"
+import { FloatingParticles } from "@/components/ui/floating-elements"
 import { useState, useEffect } from "react"
 import { useScrollAnimation, useScrollProgress, useScrollToTop } from "@/hooks/use-scroll-animation"
+import { motion } from "framer-motion"
+import { useLanguage } from "@/contexts/LanguageContext"
 
 export default function HomePage() {
   const [showSplash, setShowSplash] = useState(true)
   const [fadeSplash, setFadeSplash] = useState(false)
   const [contentReady, setContentReady] = useState(false)
+  const { t } = useLanguage()
   // Loading states for different buttons
   const [loadingStates, setLoadingStates] = useState({
     bookService: false,
+    becomeProvider: false,
+    getStarted: false,
     browseServices: false,
+    viewAllServices: false,
     scrollLeft: false,
     scrollRight: false,
     scrollLeftDesktop: false,
-    scrollRightDesktop: false
+    scrollRightDesktop: false,
+    // Footer links
+    footerServices: false,
+    footerBookService: false,
+    footerBecomeProvider: false,
+    footerAbout: false,
+    footerDashboard: false,
+    footerContact: false,
+    // Service category links
+    footerHomeServices: false,
+    footerBeauty: false,
+    footerIT: false,
+    footerAutomotive: false,
+    footerViewAll: false,
+    // Social links
+    facebook: false,
+    twitter: false,
+    instagram: false,
+    linkedin: false,
+    // Header links
+    headerServices: false,
+    headerSignIn: false
   })
   const [showGlobalLoader, setShowGlobalLoader] = useState(false)
 
@@ -59,13 +91,11 @@ export default function HomePage() {
 
   const handleButtonClick = (buttonKey: keyof typeof loadingStates, action: () => void) => {
     setLoadingStates(prev => ({ ...prev, [buttonKey]: true }))
-    setShowGlobalLoader(true)
     
-    // Simulate loading time (you can adjust this or make it dynamic)
+    // Simulate loading time and then execute action
     setTimeout(() => {
       action()
       setLoadingStates(prev => ({ ...prev, [buttonKey]: false }))
-      setShowGlobalLoader(false)
     }, 1000) // 1 second loading simulation
   }
 
@@ -144,14 +174,19 @@ export default function HomePage() {
   ]
 
   const whyChooseUs = [
-    { icon: Clock, title: "Save Time", description: "We make finding reliable services effortless, saving you hours of research and phone calls." },
-    { icon: Shield, title: "Guaranteed Quality", description: "Avoid scams and poor service with our vetted professionals and quality guarantee." },
-    { icon: MessageSquare, title: "Dedicated Support", description: "Our customer service team is always ready to help with any questions or issues." },
-    { icon: Star, title: "Real Reviews", description: "Make informed decisions based on authentic reviews from real users." },
+    { icon: Clock, title: t('whyChooseUs.saveTime.title'), description: t('whyChooseUs.saveTime.description') },
+    { icon: Shield, title: t('whyChooseUs.guaranteedQuality.title'), description: t('whyChooseUs.guaranteedQuality.description') },
+    { icon: MessageSquare, title: t('whyChooseUs.dedicatedSupport.title'), description: t('whyChooseUs.dedicatedSupport.description') },
+    { icon: Star, title: t('whyChooseUs.realReviews.title'), description: t('whyChooseUs.realReviews.description') },
   ]
 
   return (
     <div className={`flex min-h-screen flex-col gradient-bg-dark text-white transition-all duration-700 ${showSplash ? 'opacity-0 blur-sm' : contentReady ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}>
+      {/* Scroll Progress Indicator */}
+      <ScrollProgressIndicator />
+      
+      {/* Floating Particles */}
+      <FloatingParticles />
       {showSplash && (
         <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0a1626] transition-opacity duration-700 ${fadeSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <div className="w-32 h-32 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mb-6 animate-pulse">
@@ -197,191 +232,278 @@ export default function HomePage() {
 
         {/* Navbar with transparent background */}
         <div className="relative z-10">
-          <BrandHeaderClient showAuth={true} showUserMenu={false} className="bg-transparent border-none" />
+          <BrandHeaderClient 
+            showAuth={true} 
+            showUserMenu={false} 
+            className="bg-transparent border-none"
+            servicesLoading={loadingStates.headerServices}
+            signInLoading={loadingStates.headerSignIn}
+            onServicesClick={() => handleButtonClick('headerServices', () => {})}
+            onSignInClick={() => handleButtonClick('headerSignIn', () => {})}
+          />
         </div>
 
         {/* Hero Content */}
         <div className="relative z-10">
-          <ModernHeroSection />
+          <ModernHeroSection 
+            bookServiceLoading={loadingStates.bookService}
+            becomeProviderLoading={loadingStates.becomeProvider}
+            getStartedLoading={loadingStates.getStarted}
+            onBookServiceClick={() => handleButtonClick('bookService', () => window.location.href = '/book-service')}
+            onBecomeProviderClick={() => handleButtonClick('becomeProvider', () => window.location.href = '/become-provider')}
+            onGetStartedClick={() => handleButtonClick('getStarted', () => window.location.href = '/signup')}
+          />
         </div>
       </div>
 
-      {/* Popular Services - Mobile First */}
+      {/* Modern Services Section - Bolt-Inspired Design */}
       <section 
         ref={servicesAnimation.ref as React.RefObject<HTMLElement>}
-        className={`w-full py-8 sm:py-12 bg-black ${servicesAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
+        className={`w-full py-16 sm:py-20 md:py-24 lg:py-32 bg-black ${servicesAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
       >
-        <div className="container px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between mb-4 sm:mb-6 gap-3 xs:gap-4">
-            <h2 className="text-xl xs:text-2xl sm:text-3xl font-bold tracking-tight text-white">Popular Services</h2>
-            <Link href="/services" className="text-blue-400 hover:text-blue-300 hover:underline whitespace-nowrap text-sm sm:text-base font-medium">
-              View all services
-            </Link>
+        <div className="container px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-16 sm:mb-20">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
+                {t('services.title')}
+              </h2>
+              <p className="text-gray-300 text-lg sm:text-xl max-w-3xl mx-auto leading-relaxed">
+                {t('services.subtitle')}
+              </p>
+            </motion.div>
           </div>
 
-          {/* Mobile carousel - Mobile First */}
-          <div className="relative md:hidden">
-            <LoadingButton
-              onClick={() => handleButtonClick('scrollLeft', () => {
-              const el = document.getElementById('popular-scroll-mobile');
-              if (el) el.scrollBy({ left: -el.offsetWidth * 0.8, behavior: 'smooth' });
-              })}
-              loading={loadingStates.scrollLeft}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full shadow-lg flex items-center justify-center hover:bg-white/20 transition-all duration-300"
-              style={{ left: '-4px' }}
-              aria-label="Scroll left"
-              loaderColor="white"
-            >
-              <ChevronLeft className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-            </LoadingButton>
-
-            <div id="popular-scroll-mobile" className="flex overflow-x-auto hide-scrollbar gap-3 sm:gap-4 snap-x snap-mandatory scroll-smooth px-1 sm:px-2" style={{ scrollSnapType: 'x mandatory' }}>
-              {services.map((service, index) => {
-                const Icon = service.icon
+          {/* Services Grid - Show 4 services, scroll horizontally */}
+          <div className="relative">
+            {/* Scroll container */}
+            <div className="flex overflow-x-auto hide-scrollbar gap-6 pb-4 snap-x snap-mandatory scroll-smooth">
+              {services.slice(0, 4).map((service, index) => {
                 return (
-                  <div key={index} className="min-w-[75vw] xs:min-w-[70vw] sm:min-w-[60vw] max-w-xs snap-center flex-shrink-0">
-                    <Card className="group hover:shadow-xl transition-all duration-300 bg-gray-700/50 backdrop-blur-sm border border-gray-600/30 h-full">
-                      <div className="relative h-40 sm:h-48 overflow-hidden rounded-t-lg">
-                        <img src={service.image} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                        <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 right-3 sm:right-4">
-                          <h3 className="font-bold text-white text-base sm:text-lg mb-1 drop-shadow-lg">{service.name}</h3>
-                          <p className="text-gray-200 text-xs sm:text-sm font-medium">{service.category}</p>
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ 
+                      duration: 0.6, 
+                      delay: index * 0.1,
+                      ease: "easeOut"
+                    }}
+                    viewport={{ once: true }}
+                    className="group flex-shrink-0 w-full sm:w-80 lg:w-96 snap-center"
+                  >
+                    <Card className="relative overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl h-full hover:bg-white/10">
+                      {/* Service Image */}
+                      <div className="relative h-48 sm:h-56 overflow-hidden">
+                        <img 
+                          src={service.image} 
+                          alt={service.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+
+                        {/* Category Badge */}
+                        <div className="absolute top-4 left-4">
+                          <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-medium border border-white/30">
+                            {service.category}
+                          </span>
                         </div>
+            </div>
+
+                      {/* Service Content */}
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                              {service.name}
+                            </h3>
+                            <p className="text-gray-300 text-sm leading-relaxed">
+                              Professional {service.name.toLowerCase()} services delivered by verified experts in your area.
+                            </p>
+          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="text-blue-400 font-semibold text-lg">
+                              {service.price}
+                            </div>
+                            <EnhancedButton 
+                              size="sm"
+                              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-105"
+                              onClick={() => handleButtonClick('browseServices', () => window.location.href = '/book-service')}
+                              loading={loadingStates.browseServices}
+                              loadingText="Booking..."
+                            >
+                                <div className="flex items-center space-x-2">
+                                  <span>{t('services.bookNow')}</span>
+                                  <ArrowRight className="w-4 h-4" />
+                        </div>
+                            </EnhancedButton>
                       </div>
-                      <CardContent className="p-3 sm:p-4">
-                        <div className="text-center">
-                          <p className="text-blue-300 font-bold text-base sm:text-lg">{service.price}</p>
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
+                  </motion.div>
                 )
               })}
             </div>
 
-            <LoadingButton
-              onClick={() => handleButtonClick('scrollRight', () => {
-              const el = document.getElementById('popular-scroll-mobile');
-              if (el) el.scrollBy({ left: el.offsetWidth * 0.8, behavior: 'smooth' });
-              })}
-              loading={loadingStates.scrollRight}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full shadow-lg flex items-center justify-center hover:bg-white/20 transition-all duration-300"
-              style={{ right: '-4px' }}
-              aria-label="Scroll right"
-              loaderColor="white"
-            >
-              <ChevronRight className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-            </LoadingButton>
-          </div>
-
-          {/* Desktop carousel */}
-          <div className="relative hidden md:block">
-            <LoadingButton
-              onClick={() => handleButtonClick('scrollLeftDesktop', () => {
-              const el = document.getElementById('popular-scroll-desktop');
-              if (el) el.scrollBy({ left: -400, behavior: 'smooth' });
-              })}
-              loading={loadingStates.scrollLeftDesktop}
-              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full shadow-lg flex items-center justify-center hover:bg-white/20 transition-all duration-300"
-              style={{ left: '-18px' }}
-              aria-label="Scroll left"
-              loaderColor="white"
-            >
-              <ChevronLeft className="h-6 w-6 text-white" />
-            </LoadingButton>
-
-            <div id="popular-scroll-desktop" className="flex overflow-x-auto hide-scrollbar gap-6 scroll-smooth px-2">
-              {services.map((service, index) => {
-                const Icon = service.icon
-                return (
-                  <div key={index} className="min-w-[320px] flex-shrink-0">
-                    <Card className="group hover:shadow-xl transition-all duration-300 bg-gray-700/50 backdrop-blur-sm border border-gray-600/30 h-full">
-                      <div className="relative h-48 overflow-hidden rounded-t-lg">
-                        <img src={service.image} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <h3 className="font-bold text-white text-lg mb-1 drop-shadow-lg">{service.name}</h3>
-                          <p className="text-gray-200 text-sm font-medium">{service.category}</p>
-                        </div>
-                      </div>
-                      <CardContent className="p-4">
-                        <div className="text-center">
-                          <p className="text-blue-300 font-bold text-lg">{service.price}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )
-              })}
+            {/* View All Services Link */}
+            <div className="text-center mt-6">
+              <LoadingLink 
+                href="/services" 
+                className="text-blue-400 hover:text-blue-300 hover:underline text-lg font-medium transition-colors duration-300"
+                loading={loadingStates.viewAllServices}
+                loadingText="Loading Services..."
+                onClick={() => handleButtonClick('viewAllServices', () => {})}
+              >
+                {t('services.viewAllServices')}
+              </LoadingLink>
             </div>
-
-            <LoadingButton
-              onClick={() => handleButtonClick('scrollRightDesktop', () => {
-              const el = document.getElementById('popular-scroll-desktop');
-              if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
-              })}
-              loading={loadingStates.scrollRightDesktop}
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full shadow-lg flex items-center justify-center hover:bg-white/20 transition-all duration-300"
-              style={{ right: '-18px' }}
-              aria-label="Scroll right"
-              loaderColor="white"
-            >
-              <ChevronRight className="h-6 w-6 text-white" />
-            </LoadingButton>
           </div>
+
         </div>
       </section>
 
-      {/* What We Offer Section */}
-      <WhatWeOfferSection />
+      {/* Enhanced Scroll Parallax Section */}
+      <ScrollParallaxSection
+        imageSrc="/painting.jpg"
+        title=""
+        subtitle=""
+      />
 
-      {/* How It Works - Mobile First */}
+      {/* How It Works - Phone Background with Steps Overlay */}
       <section 
         ref={howItWorksAnimation.ref as React.RefObject<HTMLElement>}
         id="how-it-works" 
-        className={`w-full py-8 sm:py-12 md:py-24 lg:py-32 bg-black ${howItWorksAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
+        className={`w-full py-20 sm:py-24 md:py-32 lg:py-40 relative overflow-hidden ${howItWorksAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
+        style={{
+          backgroundImage: "url('/phone.png')",
+          backgroundSize: "contain",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat"
+        }}
       >
-        <div className="container px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center md:items-stretch gap-8 sm:gap-10 md:gap-16">
-            <div className="flex-1 flex flex-col justify-center">
-              <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter mb-6 sm:mb-8 text-white">How It Works</h2>
-              <div className="space-y-6 sm:space-y-8">
-                <div>
-                  <h3 className="text-lg xs:text-xl font-semibold text-[#00A3E0] mb-1">1. Browse</h3>
-                  <p className="text-gray-300 text-sm xs:text-base">Find the right service or contractor for your specific needs from our extensive network.</p>
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/60" />
+
+        <div className="container px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Header */}
+          <div className="text-center mb-20 sm:mb-24">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 tracking-tight">
+                {t('howItWorks.title')}
+              </h2>
+              <p className="text-gray-300 text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed">
+                {t('howItWorks.subtitle')}
+              </p>
+            </motion.div>
                 </div>
-                <div>
-                  <h3 className="text-lg xs:text-xl font-semibold text-[#00A3E0] mb-1">2. Connect</h3>
-                  <p className="text-gray-300 text-sm xs:text-base">Send a request and chat directly with providers to discuss your requirements.</p>
-                </div>
-                <div>
-                  <h3 className="text-lg xs:text-xl font-semibold text-[#00A3E0] mb-1">3. Book</h3>
-                  <p className="text-gray-300 text-sm xs:text-base">Confirm your booking, get the job done, and enjoy hassle-free service.</p>
-                </div>
+
+          <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+            {/* Phone Background Area - Left Side */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              {/* This space is intentionally left for the phone background to show through */}
+              <div className="h-96 lg:h-[32rem]">
+                {/* Empty space to let phone background show through */}
               </div>
-            </div>
-            <div className="flex-1 flex items-center justify-center">
-              <div className="w-full max-w-[140px] xs:max-w-[160px] sm:max-w-[180px] md:max-w-[220px] lg:max-w-[260px] xl:max-w-[300px] h-auto">
-                <div className="w-24 h-24 xs:w-28 xs:h-28 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mx-auto">
-                  <span className="text-white font-bold text-2xl xs:text-3xl sm:text-4xl">🤝</span>
-                </div>
-              </div>
-            </div>
+            </motion.div>
+
+            {/* Steps - Right Side Overlay */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              viewport={{ once: true }}
+              className="space-y-8"
+            >
+              {[
+                {
+                  step: "01",
+                  title: t('howItWorks.step1.title'),
+                  description: t('howItWorks.step1.description'),
+                  color: "from-blue-600 to-blue-700"
+                },
+                {
+                  step: "02", 
+                  title: t('howItWorks.step2.title'),
+                  description: t('howItWorks.step2.description'),
+                  color: "from-blue-700 to-blue-800"
+                },
+                {
+                  step: "03",
+                  title: t('howItWorks.step3.title'),
+                  description: t('howItWorks.step3.description'),
+                  color: "from-blue-800 to-blue-900"
+                }
+              ].map((item, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ 
+                    duration: 0.6, 
+                    delay: 0.1 * index,
+                    ease: "easeOut"
+                  }}
+                  viewport={{ once: true }}
+                  className="group relative"
+                >
+                  {/* Glassy card background */}
+                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:bg-white/15 shadow-xl hover:shadow-2xl hover:scale-105">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-gray-300 text-lg leading-relaxed">
+                        {item.description}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
+
         </div>
       </section>
 
       {/* Why Choose Us - Mobile First */}
       <section 
         ref={testimonialsAnimation.ref as React.RefObject<HTMLElement>}
-        className={`w-full py-8 sm:py-12 md:py-24 lg:py-32 bg-black ${testimonialsAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
+        className={`w-full py-8 sm:py-12 md:py-24 lg:py-32 bg-black relative overflow-hidden ${testimonialsAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
       >
-        <div className="container px-3 sm:px-4 md:px-6 lg:px-8">
+        {/* Background Image with Black and White Filter */}
+        <div 
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat filter grayscale"
+          style={{
+            backgroundImage: "url('/contractor.jpg')"
+          }}
+        />
+        
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/70" />
+        
+        <div className="container px-3 sm:px-4 md:px-6 lg:px-8 relative z-10">
           <div className="flex flex-col items-center justify-center space-y-3 sm:space-y-4 text-center">
             <div className="space-y-2">
-              <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter text-white">Why People Trust Our Platform</h2>
-              <p className="max-w-[900px] text-gray-300 text-sm xs:text-base sm:text-lg md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">Join thousands of satisfied customers who rely on our platform for their service needs.</p>
+              <h2 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter text-white">{t('whyChooseUs.title')}</h2>
+              <p className="max-w-[900px] text-gray-300 text-sm xs:text-base sm:text-lg md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">{t('whyChooseUs.subtitle')}</p>
             </div>
           </div>
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 mt-8 sm:mt-12">
@@ -400,40 +522,150 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
       
       {/* Footer - Mobile First */}
-      <footer className="w-full border-t py-8 sm:py-12 bg-black">
+      <footer className="w-full border-t border-gray-800/50 py-8 sm:py-12 bg-gradient-to-b from-black to-gray-900">
         <div className="container px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
             <div>
               <h3 className="text-base sm:text-lg font-bold">
                 <span className="flex flex-col">
-                  <span>ProL<span className="text-blue-600">i</span>nk</span>
-                  <span>Co<span className="text-blue-600">nn</span>ect</span>
+                  <span>ProL<span className="text-blue-400">i</span>nk</span>
+                  <span>Co<span className="text-blue-400">nn</span>ect</span>
                 </span>
               </h3>
               <p className="mt-2 text-xs sm:text-sm text-gray-400">The smart way to link professionals and clients.</p>
-              <img src="/handshake.png" alt="Handshake" className="mt-3 sm:mt-4 h-8 sm:h-10 w-auto" />
+              <img src="/handshake.png" alt="Handshake" className="mt-3 sm:mt-4 h-8 sm:h-10 w-auto opacity-80 hover:opacity-100 transition-opacity" />
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold">Quick Links</h3>
               <ul className="mt-2 space-y-1.5 sm:space-y-2">
-                <li><Link href="/about" className="text-xs sm:text-sm text-gray-400 hover:text-white">About Us</Link></li>
-                <li><Link href="/services" className="text-xs sm:text-sm text-gray-400 hover:text-white">Services</Link></li>
-                <li><Link href="#how-it-works" className="text-xs sm:text-sm text-gray-400 hover:text-white">How It Works</Link></li>
-                <li><Link href="#blog" className="text-xs sm:text-sm text-gray-400 hover:text-white">Blog</Link></li>
-                <li><Link href="/contact" className="text-xs sm:text-sm text-gray-400 hover:text-white">Contact Us</Link></li>
+                <li>
+                  <LoadingLink 
+                    href="/services" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerServices}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerServices', () => {})}
+                  >
+                    Services
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/book-service" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerBookService}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerBookService', () => {})}
+                  >
+                    Book Service
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/become-provider" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerBecomeProvider}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerBecomeProvider', () => {})}
+                  >
+                    Become Provider
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/about" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerAbout}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerAbout', () => {})}
+                  >
+                    About Us
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/dashboard" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerDashboard}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerDashboard', () => {})}
+                  >
+                    Dashboard
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/contact" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerContact}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerContact', () => {})}
+                  >
+                    Contact Us
+                  </LoadingLink>
+                </li>
               </ul>
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold">Services</h3>
+              <h3 className="text-base sm:text-lg font-bold">Popular Services</h3>
               <ul className="mt-2 space-y-1.5 sm:space-y-2">
-                <li><Link href="#plumbing" className="text-xs sm:text-sm text-gray-400 hover:text-white">Plumbing</Link></li>
-                <li><Link href="#electrical" className="text-xs sm:text-sm text-gray-400 hover:text-white">Electrical</Link></li>
-                <li><Link href="#gardening" className="text-xs sm:text-sm text-gray-400 hover:text-white">Gardening</Link></li>
-                <li><Link href="#hair-styling" className="text-xs sm:text-sm text-gray-400 hover:text-white">Hair Styling</Link></li>
-                <li><Link href="#painting" className="text-xs sm:text-sm text-gray-400 hover:text-white">Painting</Link></li>
+                <li>
+                  <LoadingLink 
+                    href="/services?category=Home Services" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerHomeServices}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerHomeServices', () => {})}
+                  >
+                    Home Services
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/services?category=Beauty" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerBeauty}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerBeauty', () => {})}
+                  >
+                    Beauty & Wellness
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/services?category=Technology" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerIT}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerIT', () => {})}
+                  >
+                    IT Support
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/services?category=Automotive" 
+                    className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                    loading={loadingStates.footerAutomotive}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerAutomotive', () => {})}
+                  >
+                    Automotive
+                  </LoadingLink>
+                </li>
+                <li>
+                  <LoadingLink 
+                    href="/services" 
+                    className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                    loading={loadingStates.footerViewAll}
+                    loadingText="Loading..."
+                    onClick={() => handleButtonClick('footerViewAll', () => {})}
+                  >
+                    View All Services →
+                  </LoadingLink>
+                </li>
               </ul>
             </div>
             <div>
@@ -445,18 +677,50 @@ export default function HomePage() {
                 <p>5099</p>
                 <p className="mt-2">
                   <span className="block">Email: support@proliinkconnect.co.za</span>
-                  <span className="block">Phone: +27 78 128 3697</span>
+                  <span className="block">Phone: +27 68 947 6401</span>
                 </p>
               </address>
             </div>
           </div>
 
-          <div className="mt-6 sm:mt-8 border-t border-gray-800 pt-6 sm:pt-8 text-center">
+          <div className="mt-6 sm:mt-8 border-t border-gray-800/50 pt-6 sm:pt-8 text-center">
             <div className="flex justify-center gap-4 sm:gap-6 mb-3 sm:mb-4">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors"><Facebook className="h-5 w-5 sm:h-6 sm:w-6" /></a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors"><Twitter className="h-5 w-5 sm:h-6 sm:w-6" /></a>
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors"><Instagram className="h-5 w-5 sm:h-6 sm:w-6" /></a>
-              <a href="https://www.linkedin.com/company/proliink-connect-sa" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors"><Linkedin className="h-5 w-5 sm:h-6 sm:w-6" /></a>
+              <LoadingLink 
+                href="https://facebook.com" 
+                className="text-gray-400 hover:text-blue-500 transition-all duration-300 hover:scale-110"
+                loading={loadingStates.facebook}
+                loadingText="Loading..."
+                onClick={() => handleButtonClick('facebook', () => {})}
+              >
+                <Facebook className="h-5 w-5 sm:h-6 sm:w-6" />
+              </LoadingLink>
+              <LoadingLink 
+                href="https://twitter.com" 
+                className="text-gray-400 hover:text-blue-400 transition-all duration-300 hover:scale-110"
+                loading={loadingStates.twitter}
+                loadingText="Loading..."
+                onClick={() => handleButtonClick('twitter', () => {})}
+              >
+                <Twitter className="h-5 w-5 sm:h-6 sm:w-6" />
+              </LoadingLink>
+              <LoadingLink 
+                href="https://instagram.com" 
+                className="text-gray-400 hover:text-pink-500 transition-all duration-300 hover:scale-110"
+                loading={loadingStates.instagram}
+                loadingText="Loading..."
+                onClick={() => handleButtonClick('instagram', () => {})}
+              >
+                <Instagram className="h-5 w-5 sm:h-6 sm:w-6" />
+              </LoadingLink>
+              <LoadingLink 
+                href="https://www.linkedin.com/company/proliink-connect-sa" 
+                className="text-gray-400 hover:text-blue-600 transition-all duration-300 hover:scale-110"
+                loading={loadingStates.linkedin}
+                loadingText="Loading..."
+                onClick={() => handleButtonClick('linkedin', () => {})}
+              >
+                <Linkedin className="h-5 w-5 sm:h-6 sm:w-6" />
+              </LoadingLink>
             </div>
             <p className="text-xs sm:text-sm text-gray-400">© 2024 ProLiink Connect. All rights reserved.</p>
           </div>
@@ -477,6 +741,12 @@ export default function HomePage() {
       >
         <ChevronLeft className="h-6 w-6 rotate-90 text-white" />
       </button>
+
+      {/* Global Loading Overlay */}
+      <GlobalLoadingOverlay 
+        isVisible={showGlobalLoader} 
+        message="Processing your request..."
+      />
     </div>
   )
 }

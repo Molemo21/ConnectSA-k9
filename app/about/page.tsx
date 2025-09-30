@@ -15,23 +15,38 @@ import {
   Target,
   Lightbulb,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Construction,
+  Wrench
 } from "lucide-react"
 import { BrandHeader } from "@/components/ui/brand-header"
+import { useState, useEffect } from "react"
 
 export default function AboutPage() {
+  const [showConstruction, setShowConstruction] = useState(true)
+  const [blurContent, setBlurContent] = useState(true)
+
+  useEffect(() => {
+    // Show construction overlay for 3 seconds, then blur content
+    const timer = setTimeout(() => {
+      setShowConstruction(false)
+      setBlurContent(true)
+    }, 3000)
+    
+    return () => clearTimeout(timer)
+  }, [])
   const values = [
-    { icon: Shield, title: "Trust & Safety", description: "Every service provider is thoroughly vetted and background-checked to ensure your safety and peace of mind." },
-    { icon: Users, title: "Community First", description: "We believe in building strong communities by connecting people with reliable local service providers." },
-    { icon: Star, title: "Quality Service", description: "We maintain high standards by only working with verified professionals who deliver exceptional results." },
-    { icon: Heart, title: "Customer Care", description: "Your satisfaction is our priority. We provide dedicated support throughout your entire service journey." },
+    { icon: Shield, title: "Transparency", description: "We believe in clear communication and honest business practices that build trust with our clients and service providers." },
+    { icon: Star, title: "Quality", description: "We're committed to excellence in every aspect of our platform, from the professionals we verify to the user experience we deliver." },
+    { icon: Users, title: "Community", description: "We're building more than a platform—we're creating a community that connects people and strengthens local economies." },
   ]
 
   const team = [
-    { name: "Sarah Johnson", role: "CEO & Founder", description: "Passionate about connecting communities through reliable services." },
-    { name: "Michael Chen", role: "CTO", description: "Tech visionary focused on creating seamless user experiences." },
-    { name: "Emily Rodriguez", role: "Head of Operations", description: "Ensuring smooth operations and exceptional service delivery." },
-    { name: "David Thompson", role: "Head of Customer Success", description: "Dedicated to making every customer interaction a positive one." },
+    { name: "Bubele Mbizeni", role: "Chief Financial Officer", description: "Numbers tell a story—my job is to make sure it's a successful one.", image: "Bubele Mbizeni card background" },
+    { name: "Qhawe Mlengana", role: "Project Manager", description: "Great things are never done alone—they're done with great teams.", image: "Qhawe Mlengana card background" },
+    { name: "Molemo Nakin", role: "Operations Manager & Lead Developer", description: "Clean code. Clear process. Connected people.", image: "Molemo Nakin card background" },
+    { name: "Nontlahla Adonis", role: "Communications & Marketing Manager", description: "A strong message turns interest into trust—and trust into loyalty.", image: "Nontlahla Adonis card background" },
+    { name: "Aphiwe Gaya", role: "Business Analyst", description: "Analysis is the bridge between questions and answers that matter.", image: "Aphiwe Gaya card background" },
   ]
 
   const stats = [
@@ -42,8 +57,37 @@ export default function AboutPage() {
   ]
 
   return (
-    <div className="min-h-screen gradient-bg-dark text-white">
+    <div className="min-h-screen gradient-bg-dark text-white relative">
       <BrandHeader showAuth={true} showUserMenu={false} />
+      
+      {/* Construction Overlay */}
+      {showConstruction && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0a1626] transition-opacity duration-700">
+          <div className="w-32 h-32 bg-gradient-to-br from-orange-600 to-red-600 rounded-xl flex items-center justify-center shadow-lg mb-6 animate-pulse">
+            <Construction className="w-16 h-16 text-white" />
+          </div>
+          <span className="text-3xl font-bold text-white transition-opacity duration-700 animate-fade-in-out">
+            Under Construction
+          </span>
+          <p className="text-lg text-gray-300 mt-4 text-center max-w-md">
+            We're working hard to bring you an amazing About page. Please check back soon!
+          </p>
+        </div>
+      )}
+
+      {/* Floating Construction Notice */}
+      {!showConstruction && (
+        <div className="fixed top-20 right-6 z-50 bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-lg shadow-lg border border-orange-400/30 backdrop-blur-sm">
+          <div className="flex items-center space-x-2">
+            <Wrench className="w-5 h-5" />
+            <span className="font-semibold">Under Construction</span>
+          </div>
+          <p className="text-sm text-orange-100 mt-1">Page is being updated</p>
+        </div>
+      )}
+
+      {/* Blurred Content */}
+      <div className={`transition-all duration-1000 ${blurContent ? 'blur-sm opacity-50' : 'blur-0 opacity-100'}`}>
       
       {/* Hero Section */}
       <section className="relative w-full py-24 md:py-32 lg:py-40 overflow-hidden flex items-center justify-center">
@@ -51,7 +95,8 @@ export default function AboutPage() {
           <div 
             className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
             style={{
-              backgroundImage: "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"
+              backgroundImage: "url('/all.jpg')",
+              backgroundSize: "120%"
             }}
           />
           <div className="absolute inset-0 bg-black/70" />
@@ -63,18 +108,14 @@ export default function AboutPage() {
               About <span className="text-blue-500">ProLiink Connect</span>
             </h1>
             <p className="text-xl text-gray-200 mb-8 max-w-3xl mx-auto leading-relaxed drop-shadow-md">
-              We're on a mission to revolutionize how people find and book trusted local services, 
-              creating stronger communities through reliable connections.
+              Connecting skilled professionals with clients across Africa since 2024
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg shadow-lg">
-                <Link href="/book-service">
-                  Get Started Today
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                <Link href="/">
+                  <ArrowLeft className="mr-2 w-5 h-5" />
+                  Back to Home
                 </Link>
-              </Button>
-              <Button variant="outline" asChild size="lg" className="px-8 py-4 text-lg text-white border border-white/30 bg-black/60 hover:bg-blue-900/20 backdrop-blur-sm">
-                <Link href="/contact">Contact Us</Link>
               </Button>
             </div>
           </div>
@@ -88,59 +129,22 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white">
               Our Story
             </h2>
+            <p className="text-lg text-gray-300 leading-relaxed mb-8">
+              ProLiink Connect was founded in 2024 with a simple yet powerful vision: to revolutionize how people connect with service professionals. What began as a solution to the frustration of finding reliable contractors has grown into a comprehensive platform that serves communities across Eastern Cape and beyond.
+            </p>
+            <p className="text-lg text-gray-300 leading-relaxed mb-8">
+              We recognized two critical problems in the service industry: clients struggled to find trustworthy, skilled professionals, while talented service providers lacked effective ways to market themselves and grow their businesses. ProLiink Connect bridges this gap, creating a marketplace where quality, reliability, and transparency are paramount.
+            </p>
             <p className="text-lg text-gray-300 leading-relaxed">
-              Founded in 2024, ProLiink Connect was born from a simple observation: finding reliable 
-              local services shouldn't be complicated. We saw too many people struggling to find 
-              trustworthy professionals for their home and business needs, while skilled service 
-              providers struggled to reach potential customers.
+              Today, we're proud to be a leading platform in our market, with thousands of successful service connections made through our platform. As we continue to grow, we remain committed to our core mission: empowering both service providers and customers through technology that makes finding and booking services simpler, safer, and more efficient than ever before.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-gray-800/50 border-gray-700">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mb-4">
-                  <Lightbulb className="w-6 h-6 text-white" />
-                </div>
-                <CardTitle className="text-white">The Problem</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-300">
-                  People were spending hours searching for reliable service providers, 
-                  often ending up with subpar results or no-shows.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800/50 border-gray-700">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-blue-600 rounded-xl flex items-center justify-center mb-4">
-                  <Target className="w-6 h-6 text-white" />
-                </div>
-                <CardTitle className="text-white">Our Solution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-300">
-                  We created a platform that connects verified professionals with 
-                  customers who need their services, all in one place.
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gray-800/50 border-gray-700">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mb-4">
-                  <Award className="w-6 h-6 text-white" />
-                </div>
-                <CardTitle className="text-white">The Result</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-300">
-                  Thousands of successful connections, happy customers, and 
-                  thriving service providers across South Africa.
-                </p>
-              </CardContent>
-            </Card>
+          {/* Image placeholder for ProLiink service professionals greeting a customer */}
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="w-full h-64 bg-gray-800/50 rounded-lg flex items-center justify-center border border-gray-700">
+              <p className="text-gray-400">ProLiink service professionals greeting a customer</p>
+            </div>
           </div>
         </div>
       </section>
@@ -150,10 +154,10 @@ export default function AboutPage() {
         <div className="container px-4 md:px-6">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white">
-              Our Values
+              Our Mission & Values
             </h2>
             <p className="text-lg text-gray-300 leading-relaxed">
-              These core principles guide everything we do and shape how we serve our community.
+              At ProLiink Connect, we're guided by a set of core values that shape everything we do.
             </p>
           </div>
           
@@ -212,15 +216,14 @@ export default function AboutPage() {
         <div className="container px-4 md:px-6">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white">
-              Meet Our Team
+              Meet Our Leadership Team
             </h2>
             <p className="text-lg text-gray-300 leading-relaxed">
-              The passionate people behind ProLiink Connect, working to make your service 
-              experience seamless and reliable.
+              The passionate individuals driving ProLiink Connect's mission forward.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {team.map((member, index) => (
               <Card key={index} className="bg-gray-800/50 border-gray-700 text-center">
                 <CardContent className="p-6">
@@ -231,10 +234,30 @@ export default function AboutPage() {
                   </div>
                   <h3 className="text-lg font-semibold text-white mb-1">{member.name}</h3>
                   <p className="text-blue-400 text-sm mb-2">{member.role}</p>
-                  <p className="text-gray-300 text-sm">{member.description}</p>
+                  <p className="text-gray-300 text-sm italic">"{member.description}"</p>
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Join Our Team */}
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-black">
+        <div className="container px-4 md:px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white">
+              Join Our Team
+            </h2>
+            <p className="text-lg text-gray-300 mb-8 leading-relaxed">
+              We're always looking for talented individuals who share our passion for connecting people and building innovative solutions.
+            </p>
+            <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg shadow-lg">
+              <Link href="/contact">
+                View Open Positions
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -301,16 +324,22 @@ export default function AboutPage() {
                 <p>5099</p>
                 <p className="mt-2">
                   <span className="block">Email: support@proliinkconnect.co.za</span>
-                  <span className="block">Phone: +27 78 128 3697</span>
+                  <span className="block">Phone: +27 68 947 6401</span>
                 </p>
               </address>
             </div>
           </div>
           <div className="mt-8 border-t border-gray-800 pt-8 text-center">
+            <div className="flex justify-center space-x-6 mb-4">
+              <Link href="/privacy" className="text-sm text-gray-400 hover:text-white">Privacy Policy</Link>
+              <Link href="/terms" className="text-sm text-gray-400 hover:text-white">Terms of Service</Link>
+              <Link href="/contact" className="text-sm text-gray-400 hover:text-white">Contact Us</Link>
+            </div>
             <p className="text-sm text-gray-400">© 2024 ProLiink Connect. All rights reserved.</p>
           </div>
         </div>
       </footer>
+      </div>
     </div>
   )
 }

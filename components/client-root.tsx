@@ -2,6 +2,7 @@
 
 import React, { Component, ReactNode, useEffect } from 'react';
 import { CurrencyProvider } from '@/contexts/currency-context';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 
 // Client logger utility
 const logToServer = async (level: 'error' | 'info', message: string, data?: any) => {
@@ -148,9 +149,11 @@ export function ClientRoot({ children }: ClientRootProps) {
   return (
     <ClientErrorBoundary>
       <HydrationProbe />
-      <CurrencyProvider>
-        {children}
-      </CurrencyProvider>
+      <LanguageProvider>
+        <CurrencyProvider>
+          {children}
+        </CurrencyProvider>
+      </LanguageProvider>
     </ClientErrorBoundary>
   );
 }
