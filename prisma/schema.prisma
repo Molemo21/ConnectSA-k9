@@ -23,13 +23,6 @@ enum ProviderStatus {
   INCOMPLETE
 }
 
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-  EXPIRED
-}
-
 enum PaymentStatus {
   PENDING
   ESCROW
@@ -120,13 +113,6 @@ model Provider {
   certifications  String[]
   profileImages   String[]
   status          ProviderStatus    @default(PENDING)
-  verificationStatus VerificationStatus? @default(PENDING)
-  verificationDocuments Json?
-  phoneVerified   Boolean?           @default(false)
-  emailVerified   Boolean?           @default(false)
-  addressVerified Boolean?           @default(false)
-  verifiedAt      DateTime?
-  verificationNotes String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   available       Boolean?          @default(true)
