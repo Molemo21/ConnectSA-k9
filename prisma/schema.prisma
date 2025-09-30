@@ -9,6 +9,34 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum UserRole {
+  CLIENT
+  PROVIDER
+  ADMIN
+}
+
+enum ProviderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id                  String               @id @default(cuid())
   email               String               @unique
@@ -51,6 +79,13 @@ model Provider {
   certifications  String[]
   profileImages   String[]
   status          ProviderStatus    @default(PENDING)
+  verificationStatus VerificationStatus @default(PENDING)
+  verificationDocuments JSONB?
+  phoneVerified   Boolean           @default(false)
+  emailVerified   Boolean           @default(false)
+  addressVerified Boolean           @default(false)
+  verifiedAt      DateTime?
+  verificationNotes String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   available       Boolean?          @default(true)

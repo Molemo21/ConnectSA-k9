@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db-utils"
 import { getCurrentUser } from "@/lib/auth"
+import { adminDataService } from "@/lib/admin-data-service"
+import { db } from "@/lib/db-utils"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
-
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,101 +15,111 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search") || ""
-    const role = searchParams.get("role") || "all"
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "10")
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const search = searchParams.get('search') || ''
+    const status = searchParams.get('status') || ''
+    const role = searchParams.get('role') || ''
 
-    // Build where clause
-    const where: any = {}
-    
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } }
-      ]
-    }
-    
-    if (role !== "all") {
-      where.role = role
-    }
+    console.log('Admin users API: Starting request for user:', user.id, 'page:', page, 'filters:', { search, status, role })
 
-    // Get users with pagination
-    const [users, totalCount] = await Promise.all([
-      db.user.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          role: true,
-          emailVerified: true,
-          createdAt: true,
-          updatedAt: true,
-          provider: {
-            select: {
-              status: true
-            }
-          },
-          bookings: {
-            select: {
-              id: true,
-              status: true
-            }
-          },
-          reviews: {
-            select: {
-              rating: true
-            }
-          }
-        },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit
-      }),
-      db.user.count({ where })
-    ])
-
-    // Transform users data
-    const transformedUsers = users.map(user => {
-      const bookings = user.bookings || []
-      const reviews = user.reviews || []
-      
-      const completedBookings = bookings.filter(b => b.status === "COMPLETED").length
-      const averageRating = reviews.length > 0 
-        ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
-        : 0
-
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        status: user.emailVerified ? "ACTIVE" : "INACTIVE",
-        joinDate: user.createdAt.toISOString().split('T')[0],
-        lastActive: user.updatedAt.toISOString().split('T')[0],
-        bookings: completedBookings,
-        rating: Math.round(averageRating * 10) / 10,
-        providerStatus: user.provider?.status || null
-      }
+    // Use centralized admin data service with filters
+    const result = await adminDataService.getUsers(page, limit, {
+      search: search || undefined,
+      status: status || undefined,
+      role: role || undefined
     })
 
-    return NextResponse.json({
-      users: transformedUsers,
+    const totalPages = Math.ceil(result.total / limit)
+
+    const response = {
+      users: result.users,
       pagination: {
         page,
         limit,
-        total: totalCount,
-        pages: Math.ceil(totalCount / limit)
+        totalCount: result.total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
       }
-    })
+    }
+
+    console.log('Admin users API: Successfully fetched users:', response.pagination.totalCount, 'of', result.total)
+    return NextResponse.json(response)
   } catch (error) {
     console.error("Error fetching users:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    // Check if user is admin
+    const user = await getCurrentUser()
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { userId, action, data } = body
+
+    console.log('Admin users API: Updating user:', userId, 'action:', action)
+
+    // Handle different user management actions
+    switch (action) {
+      case 'updateStatus':
+        // Update user status
+        const updatedUser = await db.user.update({
+          where: { id: userId },
+          data: { status: data.status }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ success: true, user: updatedUser })
+
+      case 'updateRole':
+        // Update user role
+        const roleUpdatedUser = await db.user.update({
+          where: { id: userId },
+          data: { role: data.role }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ success: true, user: roleUpdatedUser })
+
+      case 'suspendUser':
+        // Suspend user
+        const suspendedUser = await db.user.update({
+          where: { id: userId },
+          data: { status: 'SUSPENDED' }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ success: true, user: suspendedUser })
+
+      case 'activateUser':
+        // Activate user
+        const activatedUser = await db.user.update({
+          where: { id: userId },
+          data: { status: 'ACTIVE' }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ success: true, user: activatedUser })
+
+      default:
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    }
+  } catch (error) {
+    console.error("Error updating user:", error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

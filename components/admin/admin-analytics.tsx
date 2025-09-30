@@ -65,48 +65,20 @@ export function AdminAnalytics() {
     try {
       setLoading(true)
       
-      // Fetch analytics data
-      const [
-        usersCount,
-        providersCount,
-        bookingsCount,
-        completedBookingsCount,
-        cancelledBookingsCount,
-        revenueData,
-        pendingRevenueData,
-        escrowRevenueData,
-        ratingData
-      ] = await Promise.all([
-        fetch('/api/admin/stats/users').then(res => res.json()).catch(() => ({ count: 0 })),
-        fetch('/api/admin/stats/providers').then(res => res.json()).catch(() => ({ count: 0 })),
-        fetch('/api/admin/stats/bookings').then(res => res.json()).catch(() => ({ count: 0 })),
-        fetch('/api/admin/stats/completed-bookings').then(res => res.json()).catch(() => ({ count: 0 })),
-        fetch('/api/admin/stats/cancelled-bookings').then(res => res.json()).catch(() => ({ count: 0 })),
-        fetch('/api/admin/stats/revenue').then(res => res.json()).catch(() => ({ _sum: { amount: 0 } })),
-        fetch('/api/admin/stats/pending-revenue').then(res => res.json()).catch(() => ({ _sum: { amount: 0 } })),
-        fetch('/api/admin/stats/escrow-revenue').then(res => res.json()).catch(() => ({ _sum: { amount: 0 } })),
-        fetch('/api/admin/stats/average-rating').then(res => res.json()).catch(() => ({ _avg: { rating: 0 } }))
-      ])
-
-      setAnalytics({
-        totalUsers: usersCount.count || 0,
-        totalProviders: providersCount.count || 0,
-        totalBookings: bookingsCount.count || 0,
-        completedBookings: completedBookingsCount.count || 0,
-        cancelledBookings: cancelledBookingsCount.count || 0,
-        totalRevenue: revenueData._sum?.amount || 0,
-        pendingRevenue: pendingRevenueData._sum?.amount || 0,
-        escrowRevenue: escrowRevenueData._sum?.amount || 0,
-        averageRating: ratingData._avg?.rating || 0,
-        userGrowth: 12, // This would be calculated from historical data
-        providerGrowth: 8,
-        bookingGrowth: 15,
-        revenueGrowth: 25
-      })
+      // Fetch comprehensive analytics data from centralized service
+      const response = await fetch(`/api/admin/analytics?timeRange=${timeRange}`)
+      
+      if (response.ok) {
+        const analyticsData = await response.json()
+        setAnalytics(analyticsData)
+      } else {
+        console.error('Failed to fetch analytics data')
+        showToast.error('Error fetching analytics data')
+      }
 
     } catch (error) {
       console.error('Error fetching analytics:', error)
-      showToast('Error fetching analytics data', 'error')
+      showToast.error('Error fetching analytics data')
     } finally {
       setLoading(false)
     }
@@ -123,13 +95,11 @@ export function AdminAnalytics() {
   }
 
   const getCompletionRate = () => {
-    if (analytics.totalBookings === 0) return 0
-    return Math.round((analytics.completedBookings / analytics.totalBookings) * 100)
+    return analytics.completionRate || 0
   }
 
   const getCancellationRate = () => {
-    if (analytics.totalBookings === 0) return 0
-    return Math.round((analytics.cancelledBookings / analytics.totalBookings) * 100)
+    return analytics.cancellationRate || 0
   }
 
   if (loading) {

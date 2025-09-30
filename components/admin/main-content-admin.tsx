@@ -23,6 +23,14 @@ import {
   Bell,
   User
 } from "lucide-react"
+import { AdminUserManagementEnhanced } from "@/components/admin/admin-user-management-enhanced"
+import { AdminProviderManagementEnhanced } from "@/components/admin/admin-provider-management-enhanced"
+import { AdminBookingManagementEnhanced } from "@/components/admin/admin-booking-management-enhanced"
+import { AdminPaymentManagement } from "@/components/admin/admin-payment-management"
+import { AdminAnalytics } from "@/components/admin/admin-analytics"
+import AdminSystemHealth from "@/components/admin/admin-system-health"
+import { AdminProviderCleanupTool } from "@/components/admin/admin-provider-cleanup-tool"
+import { RecentActivityFeed } from "@/components/admin/recent-activity-feed"
 
 interface AdminStats {
   totalUsers: number
@@ -47,6 +55,7 @@ interface AdminStats {
 
 interface MainContentAdminProps {
   activeSection: string
+  setActiveSection?: (section: string) => void
   user: any
   stats: AdminStats | null
   onRefresh: () => void
@@ -55,6 +64,7 @@ interface MainContentAdminProps {
 
 export function MainContentAdmin({
   activeSection,
+  setActiveSection,
   user,
   stats,
   onRefresh,
@@ -167,6 +177,7 @@ export function MainContentAdmin({
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   variant="outline"
+                  onClick={() => setActiveSection?.('users')}
                   className="h-16 bg-gray-800/50 border-gray-700/50 text-gray-200 hover:bg-blue-500/30 hover:border-blue-300 hover:text-blue-50 group transition-all duration-200 flex flex-col items-center space-y-2"
                 >
                   <Users className="w-6 h-6 text-gray-400 group-hover:text-blue-50" />
@@ -174,6 +185,7 @@ export function MainContentAdmin({
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={() => setActiveSection?.('providers')}
                   className="h-16 bg-gray-800/50 border-gray-700/50 text-gray-200 hover:bg-purple-500/30 hover:border-purple-300 hover:text-purple-50 group transition-all duration-200 flex flex-col items-center space-y-2"
                 >
                   <CheckCircle className="w-6 h-6 text-gray-400 group-hover:text-purple-50" />
@@ -181,6 +193,7 @@ export function MainContentAdmin({
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={() => setActiveSection?.('bookings')}
                   className="h-16 bg-gray-800/50 border-gray-700/50 text-gray-200 hover:bg-green-500/30 hover:border-green-300 hover:text-green-50 group transition-all duration-200 flex flex-col items-center space-y-2"
                 >
                   <Calendar className="w-6 h-6 text-gray-400 group-hover:text-green-50" />
@@ -188,6 +201,7 @@ export function MainContentAdmin({
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={() => setActiveSection?.('payments')}
                   className="h-16 bg-gray-800/50 border-gray-700/50 text-gray-200 hover:bg-cyan-500/30 hover:border-cyan-300 hover:text-cyan-50 group transition-all duration-200 flex flex-col items-center space-y-2"
                 >
                   <CreditCard className="w-6 h-6 text-gray-400 group-hover:text-cyan-50" />
@@ -204,36 +218,7 @@ export function MainContentAdmin({
                   label: "Bookings", 
                   icon: Calendar,
                   content: (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-green-400/20 rounded-lg flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-green-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">New Booking</p>
-                            <p className="text-gray-400 text-sm">House Cleaning - R250</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-green-900/50 text-green-400 border-green-800/50">
-                          Pending
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-400/20 rounded-lg flex items-center justify-center">
-                            <CheckCircle className="w-5 h-5 text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">Booking Completed</p>
-                            <p className="text-gray-400 text-sm">Plumbing Repair - R450</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-blue-900/50 text-blue-400 border-blue-800/50">
-                          Completed
-                        </Badge>
-                      </div>
-                    </div>
+                    <RecentActivityFeed type="bookings" limit={5} />
                   )
                 },
                 { 
@@ -241,22 +226,7 @@ export function MainContentAdmin({
                   label: "Users", 
                   icon: Users,
                   content: (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-purple-400/20 rounded-lg flex items-center justify-center">
-                            <User className="w-5 h-5 text-purple-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">New User Registered</p>
-                            <p className="text-gray-400 text-sm">john.doe@example.com</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-purple-900/50 text-purple-400 border-purple-800/50">
-                          New
-                        </Badge>
-                      </div>
-                    </div>
+                    <RecentActivityFeed type="users" limit={5} />
                   )
                 },
                 { 
@@ -264,22 +234,7 @@ export function MainContentAdmin({
                   label: "Providers", 
                   icon: Briefcase,
                   content: (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-orange-400/20 rounded-lg flex items-center justify-center">
-                            <Clock className="w-5 h-5 text-orange-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">Provider Pending Approval</p>
-                            <p className="text-gray-400 text-sm">ABC Cleaning Services</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-orange-900/50 text-orange-400 border-orange-800/50">
-                          Pending
-                        </Badge>
-                      </div>
-                    </div>
+                    <RecentActivityFeed type="providers" limit={5} />
                   )
                 },
                 { 
@@ -287,22 +242,7 @@ export function MainContentAdmin({
                   label: "Payments", 
                   icon: CreditCard,
                   content: (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-green-400/20 rounded-lg flex items-center justify-center">
-                            <DollarSign className="w-5 h-5 text-green-400" />
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">Payment Processed</p>
-                            <p className="text-gray-400 text-sm">R250 - House Cleaning</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-green-900/50 text-green-400 border-green-800/50">
-                          Completed
-                        </Badge>
-                      </div>
-                    </div>
+                    <RecentActivityFeed type="payments" limit={5} />
                   )
                 }
               ]}
@@ -346,120 +286,43 @@ export function MainContentAdmin({
       case "users":
         return (
           <div className="space-y-6">
-            <Card className="bg-black/70 backdrop-blur-sm shadow-xl rounded-2xl border border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-white">
-                  <Users className="w-5 h-5 text-blue-400" />
-                  <span>User Management</span>
-                </CardTitle>
-                <CardDescription className="text-white/80">Manage user accounts and permissions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Users className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">User Management</h3>
-                  <p className="text-white/80">User management feature coming soon!</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminUserManagementEnhanced onStatsUpdate={onRefresh} />
           </div>
         )
 
       case "providers":
         return (
           <div className="space-y-6">
-            <Card className="bg-black/70 backdrop-blur-sm shadow-xl rounded-2xl border border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-white">
-                  <Briefcase className="w-5 h-5 text-purple-400" />
-                  <span>Provider Management</span>
-                </CardTitle>
-                <CardDescription className="text-white/80">Manage service providers and approvals</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Briefcase className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Provider Management</h3>
-                  <p className="text-white/80">Provider management feature coming soon!</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminProviderManagementEnhanced onStatsUpdate={onRefresh} />
           </div>
         )
 
       case "bookings":
         return (
           <div className="space-y-6">
-            <Card className="bg-black/70 backdrop-blur-sm shadow-xl rounded-2xl border border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-white">
-                  <Calendar className="w-5 h-5 text-green-400" />
-                  <span>Booking Management</span>
-                </CardTitle>
-                <CardDescription className="text-white/80">View and manage all bookings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Booking Management</h3>
-                  <p className="text-white/80">Booking management feature coming soon!</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminBookingManagementEnhanced onStatsUpdate={onRefresh} />
           </div>
         )
 
       case "payments":
         return (
           <div className="space-y-6">
-            <Card className="bg-black/70 backdrop-blur-sm shadow-xl rounded-2xl border border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-white">
-                  <CreditCard className="w-5 h-5 text-cyan-400" />
-                  <span>Payment Management</span>
-                </CardTitle>
-                <CardDescription className="text-white/80">Manage payments and transactions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CreditCard className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Payment Management</h3>
-                  <p className="text-white/80">Payment management feature coming soon!</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminPaymentManagement />
           </div>
         )
 
       case "analytics":
         return (
           <div className="space-y-6">
-            <Card className="bg-black/70 backdrop-blur-sm shadow-xl rounded-2xl border border-white/10">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-white">
-                  <TrendingUp className="w-5 h-5 text-orange-400" />
-                  <span>Analytics Dashboard</span>
-                </CardTitle>
-                <CardDescription className="text-white/80">View platform analytics and insights</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <TrendingUp className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">Analytics Dashboard</h3>
-                  <p className="text-white/80">Analytics dashboard feature coming soon!</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AdminAnalytics />
+          </div>
+        )
+
+      case "system":
+        return (
+          <div className="space-y-6">
+            <AdminSystemHealth />
+            <AdminProviderCleanupTool />
           </div>
         )
 

@@ -1,125 +1,216 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, Activity, AlertTriangle, CheckCircle, Clock, TrendingUp, Zap } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Shield, Activity, AlertTriangle, CheckCircle, Clock, TrendingUp, Zap, RefreshCw, Loader2 } from "lucide-react"
+import { showToast } from "@/lib/toast"
 
-interface AdminSystemHealthProps {
-  totalBookings: number
-  pendingPayments: number
-  escrowPayments: number
-  pendingPayouts: number
+interface SystemHealth {
+  status: 'healthy' | 'warning' | 'critical'
+  databaseConnection: boolean
+  apiResponseTime: number
+  errorRate: number
+  activeUsers: number
+  systemLoad: number
+  lastBackup?: string
+  databaseSize?: string
 }
 
-export default function AdminSystemHealth({
-  totalBookings,
-  pendingPayments,
-  escrowPayments,
-  pendingPayouts
-}: AdminSystemHealthProps) {
-  // Calculate system health indicators
-  const hasPendingPayments = pendingPayments > 0
-  const hasEscrowPayments = escrowPayments > 0
-  const hasPendingPayouts = pendingPayouts > 0
-  
-  // Determine overall system health
-  const getSystemHealth = () => {
-    if (pendingPayments > 5) return { status: 'critical', color: 'red', icon: AlertTriangle }
-    if (pendingPayments > 0 || pendingPayouts > 0) return { status: 'warning', color: 'orange', icon: Clock }
-    return { status: 'healthy', color: 'green', icon: CheckCircle }
+export default function AdminSystemHealth() {
+  const [health, setHealth] = useState<SystemHealth | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const fetchSystemHealth = async () => {
+    try {
+      setRefreshing(true)
+      
+      // Skip API calls during build time
+      if (typeof window === 'undefined') {
+        console.log('Skipping API call during build time')
+        return
+      }
+
+      const response = await fetch('/api/admin/system-health')
+      
+      if (response.ok) {
+        const healthData = await response.json()
+        setHealth(healthData)
+      } else {
+        console.error('Failed to fetch system health')
+        showToast.error('Error fetching system health')
+      }
+    } catch (error) {
+      console.error('Error fetching system health:', error)
+      showToast.error('Error fetching system health')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
 
-  const systemHealth = getSystemHealth()
-  const HealthIcon = systemHealth.icon
+  useEffect(() => {
+    fetchSystemHealth()
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchSystemHealth, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  if (loading) {
+    return (
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Shield className="w-5 h-5 text-blue-600" />
+            <span>System Health Monitoring</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600">Loading system health...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!health) {
+    return (
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Shield className="w-5 h-5 text-blue-600" />
+            <span>System Health Monitoring</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Unable to fetch system health data. Please try again.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const HealthIcon = health.status === 'healthy' ? CheckCircle : 
+                     health.status === 'warning' ? Clock : AlertTriangle
+  const healthColor = health.status === 'healthy' ? 'green' : 
+                      health.status === 'warning' ? 'orange' : 'red'
 
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Shield className="w-5 h-5 text-blue-600" />
-          <span>System Health Monitoring</span>
-        </CardTitle>
-        <CardDescription>
-          Real-time monitoring of platform health and performance metrics
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center space-x-2">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <span>System Health Monitoring</span>
+            </CardTitle>
+            <CardDescription>
+              Real-time monitoring of platform health and performance metrics
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchSystemHealth}
+            disabled={refreshing}
+            className="flex items-center space-x-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           {/* Overall System Status */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-3">
-              <div className={`w-3 h-3 rounded-full bg-${systemHealth.color}-500`}></div>
+              <div className={`w-3 h-3 rounded-full bg-${healthColor}-500`}></div>
               <span className="font-medium text-gray-900">System Status</span>
             </div>
             <div className="flex items-center space-x-2">
-              <HealthIcon className={`w-5 h-5 text-${systemHealth.color}-600`} />
+              <HealthIcon className={`w-5 h-5 text-${healthColor}-600`} />
               <Badge 
-                variant={systemHealth.status === 'healthy' ? 'default' : 'secondary'}
-                className={`bg-${systemHealth.color}-100 text-${systemHealth.color}-800`}
+                variant={health.status === 'healthy' ? 'default' : 'secondary'}
+                className={`bg-${healthColor}-100 text-${healthColor}-800`}
               >
-                {systemHealth.status === 'healthy' ? 'Healthy' : 
-                 systemHealth.status === 'warning' ? 'Warning' : 'Critical'}
+                {health.status === 'healthy' ? 'Healthy' : 
+                 health.status === 'warning' ? 'Warning' : 'Critical'}
               </Badge>
             </div>
           </div>
 
           {/* Health Indicators Grid */}
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Payment System Health */}
+            {/* System Performance */}
             <div className="space-y-4">
               <h4 className="font-medium text-gray-900 flex items-center space-x-2">
-                <Zap className="w-4 h-4 text-blue-600" />
-                <span>Payment System</span>
+                <Activity className="w-4 h-4 text-blue-600" />
+                <span>System Performance</span>
               </h4>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Pending Payments</span>
+                  <span className="text-sm text-gray-600">API Response Time</span>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${hasPendingPayments ? 'bg-orange-500' : 'bg-green-500'}`}></div>
-                    <span className="text-sm font-medium">{pendingPayments}</span>
+                    <div className={`w-2 h-2 rounded-full ${health.apiResponseTime > 1000 ? 'bg-red-500' : health.apiResponseTime > 500 ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                    <span className="text-sm font-medium">{health.apiResponseTime}ms</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Escrow Payments</span>
+                  <span className="text-sm text-gray-600">Database Connection</span>
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                    <span className="text-sm font-medium">{escrowPayments}</span>
+                    <div className={`w-2 h-2 rounded-full ${health.databaseConnection ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <span className="text-sm font-medium">{health.databaseConnection ? 'Connected' : 'Disconnected'}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">System Status</span>
-                  <Badge 
-                    variant={hasPendingPayments ? 'secondary' : 'default'}
-                    className={hasPendingPayments ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}
-                  >
-                    {hasPendingPayments ? 'Needs Attention' : 'Healthy'}
-                  </Badge>
+                  <span className="text-sm text-gray-600">Error Rate</span>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${health.errorRate > 5 ? 'bg-red-500' : health.errorRate > 2 ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                    <span className="text-sm font-medium">{health.errorRate}%</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Payout System Health */}
+            {/* User Activity */}
             <div className="space-y-4">
               <h4 className="font-medium text-gray-900 flex items-center space-x-2">
                 <TrendingUp className="w-4 h-4 text-green-600" />
-                <span>Payout System</span>
+                <span>User Activity</span>
               </h4>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Pending Payouts</span>
+                  <span className="text-sm text-gray-600">Active Users (24h)</span>
                   <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${hasPendingPayouts ? 'bg-orange-500' : 'bg-green-500'}`}></div>
-                    <span className="text-sm font-medium">{pendingPayouts}</span>
+                    <div className={`w-2 h-2 rounded-full ${health.activeUsers > 100 ? 'bg-green-500' : health.activeUsers > 50 ? 'bg-orange-500' : 'bg-red-500'}`}></div>
+                    <span className="text-sm font-medium">{health.activeUsers}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">System Status</span>
+                  <span className="text-sm text-gray-600">System Load</span>
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${health.systemLoad > 80 ? 'bg-red-500' : health.systemLoad > 60 ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                    <span className="text-sm font-medium">{health.systemLoad}%</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Overall Health</span>
                   <Badge 
-                    variant={hasPendingPayouts ? 'secondary' : 'default'}
-                    className={hasPendingPayouts ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}
+                    variant={health.status === 'healthy' ? 'default' : 'secondary'}
+                    className={`bg-${healthColor}-100 text-${healthColor}-800`}
                   >
-                    {hasPendingPayouts ? 'Processing' : 'Healthy'}
+                    {health.status === 'healthy' ? 'Optimal' : 
+                     health.status === 'warning' ? 'Degraded' : 'Critical'}
                   </Badge>
                 </div>
               </div>
@@ -128,41 +219,31 @@ export default function AdminSystemHealth({
 
           {/* System Alerts */}
           <div className="space-y-4">
-            {hasPendingPayments && (
+            {health.status === 'critical' && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <strong>Critical System Issues Detected</strong> - Immediate attention required. 
+                  Check system logs and consider maintenance mode.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {health.status === 'warning' && (
               <Alert className="border-orange-200 bg-orange-50">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
+                <Clock className="h-4 w-4 text-orange-600" />
                 <AlertDescription className="text-orange-800">
-                  <strong>{pendingPayments} payment(s)</strong> are currently pending and may require manual intervention. 
-                  Consider using the payment recovery tools in the Payment Management section.
+                  <strong>System Performance Degraded</strong> - Monitor closely and consider optimization. 
+                  Response times or error rates are elevated.
                 </AlertDescription>
               </Alert>
             )}
 
-            {hasEscrowPayments && (
-              <Alert className="border-purple-200 bg-purple-50">
-                <Shield className="h-4 w-4 text-purple-600" />
-                <AlertDescription className="text-purple-800">
-                  <strong>{escrowPayments} payment(s)</strong> are currently in escrow. 
-                  This is normal operation - payments will be released when jobs are completed.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {hasPendingPayouts && (
-              <Alert className="border-blue-200 bg-blue-50">
-                <Activity className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  <strong>{pendingPayouts} payout(s)</strong> are currently being processed. 
-                  This is normal operation - payouts are processed automatically.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {!hasPendingPayments && !hasEscrowPayments && !hasPendingPayouts && (
+            {health.status === 'healthy' && (
               <Alert className="border-green-200 bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-green-800">
-                  <strong>All systems are operating normally.</strong> No pending payments or payouts detected.
+                  All systems are operating normally. No immediate attention required.
                 </AlertDescription>
               </Alert>
             )}
@@ -171,16 +252,16 @@ export default function AdminSystemHealth({
           {/* Performance Metrics */}
           <div className="grid md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{totalBookings}</div>
-              <div className="text-sm text-gray-600">Total Bookings</div>
+              <div className="text-2xl font-bold text-gray-900">{health.activeUsers}</div>
+              <div className="text-sm text-gray-600">Active Users</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{pendingPayments + escrowPayments}</div>
-              <div className="text-sm text-gray-600">Active Payments</div>
+              <div className="text-2xl font-bold text-gray-900">{health.apiResponseTime}ms</div>
+              <div className="text-sm text-gray-600">Response Time</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{pendingPayouts}</div>
-              <div className="text-sm text-gray-600">Pending Payouts</div>
+              <div className="text-2xl font-bold text-gray-900">{health.errorRate}%</div>
+              <div className="text-sm text-gray-600">Error Rate</div>
             </div>
           </div>
         </div>

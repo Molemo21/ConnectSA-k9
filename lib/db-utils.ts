@@ -120,6 +120,7 @@ const createDbWrapper = () => {
         count: () => Promise.resolve(0),
         create: () => Promise.resolve(null),
         update: () => Promise.resolve(null),
+        aggregate: () => Promise.resolve({ _sum: { totalAmount: 0 }, _avg: { totalAmount: 0 } }),
       },
       payment: { 
         findFirst: () => Promise.resolve(null), 
@@ -210,6 +211,7 @@ const createDbWrapper = () => {
       count: (args: any) => withRetry(() => prisma.booking.count(args), 'booking.count'),
       create: (args: any) => withRetry(() => prisma.booking.create(args), 'booking.create'),
       update: (args: any) => withRetry(() => prisma.booking.update(args), 'booking.update'),
+      aggregate: (args: any) => withRetry(() => prisma.booking.aggregate(args), 'booking.aggregate'),
     },
     
     // Payment operations

@@ -72,6 +72,12 @@ export function DesktopSidebarAdmin({
       badge: null
     },
     {
+      id: "system",
+      label: "System Health",
+      icon: Shield,
+      badge: null
+    },
+    {
       id: "settings",
       label: "Settings",
       icon: Settings,

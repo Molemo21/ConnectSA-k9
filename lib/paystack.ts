@@ -291,7 +291,7 @@ class PaystackClient {
         requestParams: {
           amount: params.amount,
           email: params.email,
-          currency: 'USD',
+          currency: 'ZAR',
           reference: params.reference
         }
       });

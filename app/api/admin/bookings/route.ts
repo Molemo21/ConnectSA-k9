@@ -117,3 +117,95 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    // Check if user is admin
+    const user = await getCurrentUser()
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { bookingId, action, data } = body
+
+    console.log('Admin bookings API: Updating booking:', bookingId, 'action:', action)
+
+    // Handle different booking management actions
+    switch (action) {
+      case 'confirm':
+        const confirmedBooking = await db.booking.update({
+          where: { id: bookingId },
+          data: { 
+            status: 'CONFIRMED'
+          }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ 
+          success: true, 
+          booking: confirmedBooking,
+          message: 'Booking confirmed successfully'
+        })
+
+      case 'complete':
+        const completedBooking = await db.booking.update({
+          where: { id: bookingId },
+          data: { 
+            status: 'COMPLETED'
+          }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ 
+          success: true, 
+          booking: completedBooking,
+          message: 'Booking completed successfully'
+        })
+
+      case 'cancel':
+        const cancelledBooking = await db.booking.update({
+          where: { id: bookingId },
+          data: { 
+            status: 'CANCELLED'
+          }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ 
+          success: true, 
+          booking: cancelledBooking,
+          message: 'Booking cancelled successfully'
+        })
+
+      case 'reschedule':
+        const rescheduledBooking = await db.booking.update({
+          where: { id: bookingId },
+          data: { 
+            status: 'PENDING'
+          }
+        })
+        
+        // Clear cache
+        adminDataService.clearCache()
+        
+        return NextResponse.json({ 
+          success: true, 
+          booking: rescheduledBooking,
+          message: 'Booking rescheduled successfully'
+        })
+
+      default:
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    }
+  } catch (error) {
+    console.error("Error updating booking:", error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

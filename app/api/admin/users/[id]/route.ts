@@ -35,19 +35,9 @@ export async function GET(
                 service: true,
               },
             },
-            providerReviews: {
-              include: {
-                admin: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-              orderBy: {
-                createdAt: 'desc',
-              },
-            },
+            bookings: { select: { id: true, status: true } },
+            payouts: { select: { amount: true } },
+            reviews: { select: { rating: true } },
           },
         },
         clientBookings: {
@@ -68,14 +58,12 @@ export async function GET(
           orderBy: {
             createdAt: 'desc',
           },
-          take: 10,
         },
-        _count: {
-          select: {
-            clientBookings: true,
-            messages: true,
-            notifications: true,
+        payments: {
+          orderBy: {
+            createdAt: 'desc',
           },
+          take: 10,
         },
       },
     })
@@ -84,7 +72,33 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    return NextResponse.json(targetUser)
+    // Calculate stats
+    const stats = {
+      totalBookings: targetUser.clientBookings?.length || 0,
+      completedBookings: targetUser.clientBookings?.filter(b => b.status === 'COMPLETED').length || 0,
+      cancelledBookings: targetUser.clientBookings?.filter(b => b.status === 'CANCELLED').length || 0,
+      totalSpent: targetUser.payments?.reduce((sum, p) => sum + p.amount, 0) || 0,
+      averageBookingValue: targetUser.clientBookings?.length > 0
+        ? targetUser.clientBookings.reduce((sum, b) => sum + b.totalAmount, 0) / targetUser.clientBookings.length
+        : 0
+    }
+
+    // Add provider stats if user is a provider
+    if (targetUser.provider) {
+      const providerStats = {
+        totalBookings: targetUser.provider.bookings?.length || 0,
+        totalEarnings: targetUser.provider.payouts?.reduce((sum, p) => sum + p.amount, 0) || 0,
+        averageRating: targetUser.provider.reviews?.length > 0
+          ? targetUser.provider.reviews.reduce((sum, r) => sum + r.rating, 0) / targetUser.provider.reviews.length
+          : 0
+      }
+      targetUser.provider = { ...targetUser.provider, ...providerStats } as any
+    }
+
+    return NextResponse.json({
+      ...targetUser,
+      stats
+    })
   } catch (error) {
     console.error('Error fetching user details:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

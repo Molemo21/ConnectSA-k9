@@ -47,14 +47,19 @@ export async function GET(
             }
           }
         },
-        providerReviews: {
-          where: {
-            adminId: admin.id
+        bookings: {
+          include: {
+            service: { select: { name: true } },
+            client: { select: { name: true } }
           },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
+          orderBy: { createdAt: 'desc' }
+        },
+        payouts: {
+          orderBy: { createdAt: 'desc' },
+          take: 10
+        },
+        reviews: {
+          orderBy: { createdAt: 'desc' }
         }
       }
     });
@@ -63,7 +68,21 @@ export async function GET(
       return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
     }
 
-    return NextResponse.json(provider);
+    // Calculate stats
+    const stats = {
+      totalBookings: provider.bookings?.length || 0,
+      completedBookings: provider.bookings?.filter(b => b.status === 'COMPLETED').length || 0,
+      totalEarnings: provider.payouts?.reduce((sum, p) => sum + p.amount, 0) || 0,
+      averageRating: provider.reviews?.length > 0
+        ? provider.reviews.reduce((sum, r) => sum + r.rating, 0) / provider.reviews.length
+        : 0,
+      totalReviews: provider.reviews?.length || 0
+    }
+
+    return NextResponse.json({
+      ...provider,
+      stats
+    });
   } catch (error) {
     console.error('Error fetching provider details:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

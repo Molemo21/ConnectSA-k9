@@ -77,11 +77,11 @@ export function AdminPaymentManagementPage() {
         const data = await response.json()
         setPayments(data)
       } else {
-        showToast('Failed to fetch payments', 'error')
+        showToast.error('Failed to fetch payments')
       }
     } catch (error) {
       console.error('Error fetching payments:', error)
-      showToast('Error fetching payments', 'error')
+      showToast.error('Error fetching payments')
     } finally {
       setLoading(false)
     }

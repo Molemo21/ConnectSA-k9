@@ -179,6 +179,7 @@ export default function AdminDashboard() {
         />
         <MainContentAdmin
           activeSection={activeSection}
+          setActiveSection={setActiveSection}
           user={user}
           stats={stats}
           onRefresh={handleRefresh}
@@ -199,6 +200,7 @@ export default function AdminDashboard() {
         />
         <MainContentAdmin
           activeSection={activeSection}
+          setActiveSection={setActiveSection}
           user={user}
           stats={stats}
           onRefresh={handleRefresh}

@@ -93,67 +93,16 @@ export function MobileAdminDashboard() {
           return
         }
 
-        // Fetch comprehensive admin stats
-        const [
-          usersCount,
-          providersCount,
-          pendingProvidersCount,
-          bookingsCount,
-          completedBookingsCount,
-          cancelledBookingsCount,
-          revenueData,
-          pendingRevenueData,
-          escrowRevenueData,
-          ratingData,
-          paymentsCount,
-          pendingPaymentsCount,
-          escrowPaymentsCount,
-          completedPaymentsCount,
-          failedPaymentsCount,
-          payoutsCount,
-          pendingPayoutsCount,
-          completedPayoutsCount
-        ] = await Promise.all([
-          fetch('/api/admin/stats/users').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/providers').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/pending-providers').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/bookings').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/completed-bookings').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/cancelled-bookings').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/revenue').then(res => res.json()).catch(() => ({ _sum: { amount: 0 } })),
-          fetch('/api/admin/stats/pending-revenue').then(res => res.json()).catch(() => ({ _sum: { amount: 0 } })),
-          fetch('/api/admin/stats/escrow-revenue').then(res => res.json()).catch(() => ({ _sum: { amount: 0 } })),
-          fetch('/api/admin/stats/average-rating').then(res => res.json()).catch(() => ({ _avg: { rating: 0 } })),
-          fetch('/api/admin/stats/payments').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/pending-payments').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/escrow-payments').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/completed-payments').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/failed-payments').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/payouts').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/pending-payouts').then(res => res.json()).catch(() => ({ count: 0 })),
-          fetch('/api/admin/stats/completed-payouts').then(res => res.json()).catch(() => ({ count: 0 }))
-        ])
-
-        setStats({
-          totalUsers: usersCount.count || 0,
-          totalProviders: providersCount.count || 0,
-          pendingProviders: pendingProvidersCount.count || 0,
-          totalBookings: bookingsCount.count || 0,
-          completedBookings: completedBookingsCount.count || 0,
-          cancelledBookings: cancelledBookingsCount.count || 0,
-          totalRevenue: revenueData._sum?.amount || 0,
-          pendingRevenue: pendingRevenueData._sum?.amount || 0,
-          escrowRevenue: escrowRevenueData._sum?.amount || 0,
-          averageRating: ratingData._avg?.rating || 0,
-          totalPayments: paymentsCount.count || 0,
-          pendingPayments: pendingPaymentsCount.count || 0,
-          escrowPayments: escrowPaymentsCount.count || 0,
-          completedPayments: completedPaymentsCount.count || 0,
-          failedPayments: failedPaymentsCount.count || 0,
-          totalPayouts: payoutsCount.count || 0,
-          pendingPayouts: pendingPayoutsCount.count || 0,
-          completedPayouts: completedPayoutsCount.count || 0
-        })
+        // Fetch comprehensive admin stats from centralized service
+        const response = await fetch('/api/admin/stats')
+        
+        if (response.ok) {
+          const statsData = await response.json()
+          setStats(statsData)
+        } else {
+          console.error('Failed to fetch admin stats')
+          setError('Failed to load admin statistics')
+        }
 
       } catch (error) {
         console.error('Error fetching admin stats:', error)

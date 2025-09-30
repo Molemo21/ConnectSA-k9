@@ -66,11 +66,11 @@ export function AdminProviderManagement() {
         const data = await response.json()
         setProviders(data)
       } else {
-        showToast('Failed to fetch providers', 'error')
+        showToast.error('Failed to fetch providers')
       }
     } catch (error) {
       console.error('Error fetching providers:', error)
-      showToast('Error fetching providers', 'error')
+      showToast.error('Error fetching providers')
     } finally {
       setLoading(false)
     }

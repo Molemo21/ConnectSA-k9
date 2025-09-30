@@ -94,7 +94,7 @@ export function AdminSystemManagement() {
 
     } catch (error) {
       console.error('Error fetching system stats:', error)
-      showToast('Error fetching system statistics', 'error')
+      showToast.error('Error fetching system statistics')
     } finally {
       setLoading(false)
     }
@@ -134,30 +134,29 @@ export function AdminSystemManagement() {
     try {
       // This would call an API to toggle maintenance mode
       setMaintenanceMode(!maintenanceMode)
-      showToast(
-        maintenanceMode ? 'Maintenance mode disabled' : 'Maintenance mode enabled',
-        'success'
+      showToast.success(
+        maintenanceMode ? 'Maintenance mode disabled' : 'Maintenance mode enabled'
       )
     } catch (error) {
-      showToast('Failed to toggle maintenance mode', 'error')
+      showToast.error('Failed to toggle maintenance mode')
     }
   }
 
   const handleDatabaseBackup = async () => {
     try {
-      showToast('Database backup initiated...', 'info')
+      showToast.info('Database backup initiated...')
       // This would call an API to initiate backup
     } catch (error) {
-      showToast('Failed to initiate backup', 'error')
+      showToast.error('Failed to initiate backup')
     }
   }
 
   const handleCleanupOrphanedData = async () => {
     try {
-      showToast('Cleaning up orphaned data...', 'info')
+      showToast.info('Cleaning up orphaned data...')
       // This would call an API to cleanup orphaned data
     } catch (error) {
-      showToast('Failed to cleanup orphaned data', 'error')
+      showToast.error('Failed to cleanup orphaned data')
     }
   }
 

@@ -1,15 +1,49 @@
 import '@testing-library/jest-dom'
 
 // Polyfill web Fetch API classes for node environment
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const nodeFetch = require('node-fetch')
-// Only set if not already defined by environment
+// Simple polyfills for testing
 // @ts-ignore
-global.Headers = global.Headers || nodeFetch.Headers
+global.Headers = global.Headers || class Headers {
+  constructor(init?: any) {
+    this.headers = new Map()
+    if (init) {
+      if (Array.isArray(init)) {
+        init.forEach(([key, value]) => this.headers.set(key, value))
+      } else if (typeof init === 'object') {
+        Object.entries(init).forEach(([key, value]) => this.headers.set(key, value))
+      }
+    }
+  }
+  get(name: string) { return this.headers.get(name) }
+  set(name: string, value: string) { this.headers.set(name, value) }
+  has(name: string) { return this.headers.has(name) }
+  delete(name: string) { this.headers.delete(name) }
+  forEach(callback: any) { this.headers.forEach(callback) }
+}
+
 // @ts-ignore
-global.Request = global.Request || nodeFetch.Request
+global.Request = global.Request || class Request {
+  constructor(input: any, init?: any) {
+    this.url = input
+    this.method = init?.method || 'GET'
+    this.headers = new Headers(init?.headers)
+    this.body = init?.body
+  }
+}
+
 // @ts-ignore
-global.Response = global.Response || nodeFetch.Response
+global.Response = global.Response || class Response {
+  constructor(body?: any, init?: any) {
+    this.body = body
+    this.status = init?.status || 200
+    this.statusText = init?.statusText || 'OK'
+    this.headers = new Headers(init?.headers)
+    this.ok = this.status >= 200 && this.status < 300
+  }
+  async json() { return JSON.parse(this.body) }
+  async text() { return this.body }
+  async blob() { return new Blob([this.body]) }
+}
 
 // Remove custom Request mock since we polyfill above
 
@@ -44,8 +78,6 @@ jest.mock('next/image', () => ({
 
 // Mock NextResponse for API route unit tests (node environment)
 jest.mock('next/server', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { Headers } = require('node-fetch')
   return {
     NextResponse: {
       json: (body: any, init?: { status?: number; headers?: Record<string, string> }) => ({
@@ -102,8 +134,6 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
 
 // Mock fetch globally (Node environment)
 if (!global.fetch) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const realFetch = require('node-fetch')
   // @ts-ignore
   global.fetch = jest.fn(async (input: any, init?: any) => {
     // Simple route stubs for component tests
@@ -149,7 +179,7 @@ if (!global.fetch) {
           ],
           totalCount: 2,
         }),
-        headers: new nodeFetch.Headers(),
+        headers: new Headers(),
       } as any
     }
     if (typeof input === 'string' && input.includes('/api/book-service/send-offer')) {
@@ -157,10 +187,16 @@ if (!global.fetch) {
         ok: true,
         status: 200,
         json: async () => ({ message: 'Offer sent successfully' }),
-        headers: new nodeFetch.Headers(),
+        headers: new Headers(),
       } as any
     }
-    return realFetch(input, init)
+    // Default mock response
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      headers: new Headers(),
+    } as any
   })
 }
 
