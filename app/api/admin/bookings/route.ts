@@ -83,25 +83,21 @@ export async function GET(request: NextRequest) {
       id: booking.id,
       clientName: booking.client.name,
       clientEmail: booking.client.email,
-      clientPhone: booking.client.phone,
       providerName: booking.provider.user.name,
       providerEmail: booking.provider.user.email,
-      service: booking.service.name,
-      description: booking.description,
+      serviceName: booking.service.name,
       status: booking.status,
-      scheduledDate: booking.scheduledDate?.toISOString().split('T')[0] || null,
-      completedDate: booking.completedAt?.toISOString().split('T')[0] || null,
-      duration: booking.estimatedDuration || "Not specified",
-      location: booking.location || "Not specified",
-      address: booking.address || "Not specified",
-      price: booking.totalAmount,
-      rating: booking.review?.rating || 0,
-      review: booking.review?.comment || null,
-      createdAt: booking.createdAt.toISOString().split('T')[0]
+      totalAmount: booking.totalAmount,
+      createdAt: booking.createdAt,
+      scheduledDate: booking.scheduledDate,
+      location: booking.location,
+      notes: booking.description
     }))
 
     return NextResponse.json({
       bookings: transformedBookings,
+      totalCount: totalCount,
+      totalPages: Math.ceil(totalCount / limit),
       pagination: {
         page,
         limit,

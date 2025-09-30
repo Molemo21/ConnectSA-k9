@@ -120,11 +120,11 @@ model Provider {
   certifications  String[]
   profileImages   String[]
   status          ProviderStatus    @default(PENDING)
-  verificationStatus VerificationStatus @default(PENDING)
+  verificationStatus VerificationStatus? @default(PENDING)
   verificationDocuments Json?
-  phoneVerified   Boolean           @default(false)
-  emailVerified   Boolean           @default(false)
-  addressVerified Boolean           @default(false)
+  phoneVerified   Boolean?           @default(false)
+  emailVerified   Boolean?           @default(false)
+  addressVerified Boolean?           @default(false)
   verifiedAt      DateTime?
   verificationNotes String?
   createdAt       DateTime          @default(now())
