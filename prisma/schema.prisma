@@ -20,6 +20,7 @@ enum ProviderStatus {
   APPROVED
   REJECTED
   SUSPENDED
+  INCOMPLETE
 }
 
 enum VerificationStatus {
@@ -27,6 +28,46 @@ enum VerificationStatus {
   VERIFIED
   REJECTED
   EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  ESCROW
+  HELD_IN_ESCROW
+  PROCESSING_RELEASE
+  RELEASED
+  COMPLETED
+  REFUNDED
+  FAILED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum DisputeStatus {
+  PENDING
+  RESOLVED
+  ESCALATED
+}
+
+enum AuditAction {
+  USER_SUSPENDED
+  USER_UNSUSPENDED
+  USER_DELETED
+  USER_ROLE_CHANGED
+  PROVIDER_APPROVED
+  PROVIDER_REJECTED
+  PROVIDER_SUSPENDED
+  PROVIDER_UNSUSPENDED
+  PAYMENT_RELEASED
+  PAYMENT_REFUNDED
+  BOOKING_CANCELLED
+  DISPUTE_RESOLVED
+  SYSTEM_MAINTENANCE
 }
 
 enum BookingStatus {
@@ -80,7 +121,7 @@ model Provider {
   profileImages   String[]
   status          ProviderStatus    @default(PENDING)
   verificationStatus VerificationStatus @default(PENDING)
-  verificationDocuments JSONB?
+  verificationDocuments Json?
   phoneVerified   Boolean           @default(false)
   emailVerified   Boolean           @default(false)
   addressVerified Boolean           @default(false)
@@ -355,72 +396,6 @@ model AdminAuditLog {
   admin       User        @relation("AdminAuditLogs", fields: [adminId], references: [id], onDelete: Cascade)
 
   @@map("admin_audit_logs")
-}
-
-enum UserRole {
-  CLIENT
-  PROVIDER
-  ADMIN
-}
-
-enum PaymentStatus {
-  PENDING
-  ESCROW
-  HELD_IN_ESCROW
-  PROCESSING_RELEASE
-  RELEASED
-  COMPLETED
-  REFUNDED
-  FAILED
-}
-
-enum PayoutStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum DisputeStatus {
-  PENDING
-  RESOLVED
-  ESCALATED
-}
-
-enum ProviderStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  SUSPENDED
-  INCOMPLETE
-}
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  PENDING_EXECUTION
-  IN_PROGRESS
-  AWAITING_CONFIRMATION
-  PAYMENT_PROCESSING
-  COMPLETED
-  CANCELLED
-  DISPUTED
-}
-
-enum AuditAction {
-  USER_SUSPENDED
-  USER_UNSUSPENDED
-  USER_DELETED
-  USER_ROLE_CHANGED
-  PROVIDER_APPROVED
-  PROVIDER_REJECTED
-  PROVIDER_SUSPENDED
-  PROVIDER_UNSUSPENDED
-  PAYMENT_RELEASED
-  PAYMENT_REFUNDED
-  BOOKING_CANCELLED
-  DISPUTE_RESOLVED
-  SYSTEM_MAINTENANCE
 }
 
 model Transfer {
