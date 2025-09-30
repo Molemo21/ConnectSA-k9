@@ -467,14 +467,14 @@ class AdminDataService {
       ])
 
       const providerData: ProviderData[] = providers.map(provider => {
-        const averageRating = provider.reviews.length > 0 
+        const averageRating = provider.reviews?.length > 0 
           ? provider.reviews.reduce((sum, review) => sum + review.rating, 0) / provider.reviews.length
           : 0
 
         return {
           id: provider.id,
-          email: provider.user.email,
-          name: provider.user.name || 'N/A',
+          email: provider.user?.email || 'N/A',
+          name: provider.user?.name || 'N/A',
           businessName: provider.businessName || 'N/A',
           status: provider.status,
           createdAt: provider.createdAt,

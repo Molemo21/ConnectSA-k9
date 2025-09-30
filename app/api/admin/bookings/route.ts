@@ -81,17 +81,17 @@ export async function GET(request: NextRequest) {
     // Transform bookings data
     const transformedBookings = bookings.map(booking => ({
       id: booking.id,
-      clientName: booking.client.name,
-      clientEmail: booking.client.email,
-      providerName: booking.provider.user.name,
-      providerEmail: booking.provider.user.email,
-      serviceName: booking.service.name,
+      clientName: booking.client?.name || 'N/A',
+      clientEmail: booking.client?.email || 'N/A',
+      providerName: booking.provider?.user?.name || 'N/A',
+      providerEmail: booking.provider?.user?.email || 'N/A',
+      serviceName: booking.service?.name || 'N/A',
       status: booking.status,
-      totalAmount: booking.totalAmount,
+      totalAmount: booking.totalAmount || 0,
       createdAt: booking.createdAt,
       scheduledDate: booking.scheduledDate,
-      location: booking.location,
-      notes: booking.description
+      location: booking.location || booking.address || 'N/A',
+      notes: booking.description || 'N/A'
     }))
 
     return NextResponse.json({
@@ -108,7 +108,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching bookings:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }

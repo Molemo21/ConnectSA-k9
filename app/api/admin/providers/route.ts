@@ -23,15 +23,67 @@ export async function GET(request: NextRequest) {
 
     console.log('Admin providers API: Starting request for user:', user.id, 'page:', page, 'filters:', { search, status, verification })
 
-    // Use centralized admin data service with filters
-    const result = await adminDataService.getProviders(page, limit, {
-      search: search || undefined,
-      status: status || undefined,
-      verification: verification || undefined
+    // Build where clause
+    const where: any = {}
+    if (status) {
+      where.status = status
+    }
+
+    // Fetch providers with safe field selection
+    const [providers, total] = await Promise.all([
+      db.provider.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          businessName: true,
+          status: true,
+          createdAt: true,
+          user: {
+            select: {
+              email: true,
+              name: true
+            }
+          },
+          bookings: {
+            select: { id: true }
+          },
+          payouts: {
+            select: { amount: true }
+          },
+          reviews: {
+            select: { rating: true }
+          }
+        }
+      }),
+      db.provider.count({ where })
+    ])
+
+    // Transform providers data with safe field access
+    const transformedProviders = providers.map(provider => {
+      const averageRating = provider.reviews?.length > 0 
+        ? provider.reviews.reduce((sum, review) => sum + review.rating, 0) / provider.reviews.length
+        : 0
+
+      return {
+        id: provider.id,
+        email: provider.user?.email || 'N/A',
+        name: provider.user?.name || 'N/A',
+        businessName: provider.businessName || 'N/A',
+        status: provider.status,
+        createdAt: provider.createdAt,
+        totalBookings: provider.bookings?.length || 0,
+        totalEarnings: provider.payouts?.reduce((sum, payout) => sum + payout.amount, 0) || 0,
+        averageRating,
+        verificationStatus: provider.status === 'APPROVED' ? 'VERIFIED' : 
+                            provider.status === 'REJECTED' ? 'REJECTED' : 'PENDING',
+      }
     })
 
-    // Apply search filter on user-related fields (can't be done in DB query due to relation)
-    let filteredProviders = result.providers
+    // Apply search filter
+    let filteredProviders = transformedProviders
     if (search) {
       filteredProviders = filteredProviders.filter(provider => 
         provider.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -40,25 +92,29 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const totalPages = Math.ceil(result.total / limit)
+    const totalPages = Math.ceil(total / limit)
 
     const response = {
-      providers: result.providers,
+      providers: filteredProviders,
       pagination: {
         page,
         limit,
-        totalCount: result.total,
+        totalCount: total,
         totalPages,
         hasNext: page < totalPages,
         hasPrev: page > 1
       }
     }
 
-    console.log('Admin providers API: Successfully fetched providers:', response.pagination.totalCount, 'of', result.total)
+    console.log('Admin providers API: Successfully fetched providers:', response.pagination.totalCount, 'of', total)
     return NextResponse.json(response)
   } catch (error) {
     console.error("Error fetching providers:", error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 })
   }
 }
 
