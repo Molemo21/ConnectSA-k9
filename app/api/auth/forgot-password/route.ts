@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { email } = forgotPasswordSchema.parse(body);
 
     // Find user by email
-    const user = await prisma.user.findUnique({ 
+    const user = await db.user.findUnique({ 
       where: { email },
       select: { id: true, name: true, email: true }
     });
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (user) {
       try {
         // Delete any existing tokens for this user
-        await prisma.passwordResetToken.deleteMany({ 
+        await db.passwordResetToken.deleteMany({ 
           where: { userId: user.id } 
         });
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
         // Create the new reset token
-        await prisma.passwordResetToken.create({
+        await db.passwordResetToken.create({
           data: {
             userId: user.id,
             token,
