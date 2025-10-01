@@ -6,15 +6,33 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Mail, Loader2, ArrowLeft } from "lucide-react"
+import { Mail, Loader2, ArrowLeft, AlertCircle } from "lucide-react"
+import { showToast } from "@/lib/toast"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    
+    // Client-side email validation
+    if (!email.trim()) {
+      setError("Please enter your email address")
+      showToast.error("Please enter your email address")
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address")
+      showToast.error("Please enter a valid email address")
+      return
+    }
+    
     setIsLoading(true)
     
     try {
@@ -28,12 +46,19 @@ export default function ForgotPasswordPage() {
       
       if (response.ok) {
         setSubmitted(true)
-        console.log("Success:", data.message)
+        showToast.success("Password reset link sent! Check your email.", "Email Sent")
+        console.log("✅ Success:", data.message)
       } else {
-        console.error("Error:", data.error)
+        const errorMsg = data.error || "Failed to send reset link. Please try again."
+        setError(errorMsg)
+        showToast.error(errorMsg, "Error")
+        console.error("❌ Error:", data.error)
       }
     } catch (error) {
-      console.error("Network error:", error)
+      const errorMsg = "Network error. Please check your connection and try again."
+      setError(errorMsg)
+      showToast.error(errorMsg, "Connection Error")
+      console.error("❌ Network error:", error)
     } finally {
       setIsLoading(false)
     }
@@ -145,6 +170,18 @@ export default function ForgotPasswordPage() {
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm text-red-300 font-medium">Error</p>
+                        <p className="text-sm text-red-200 mt-1">{error}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium text-white">
                     Email Address
@@ -156,10 +193,15 @@ export default function ForgotPasswordPage() {
                       type="email"
                       placeholder="Enter your email address"
                       value={email}
-                      onChange={e => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value)
+                        setError("") // Clear error when user types
+                      }}
                       required
                       disabled={isLoading}
-                      className="w-full pl-10 bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                      className={`w-full pl-10 bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500 ${
+                        error ? 'border-red-500 focus:border-red-500' : ''
+                      }`}
                     />
                   </div>
                 </div>
