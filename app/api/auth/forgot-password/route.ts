@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  console.log('🔐 MINIMAL TEST API CALLED');
+  console.log('🔐 ULTRA MINIMAL TEST API CALLED');
   
   try {
     console.log('📝 Step 1: Parsing request body...');
@@ -17,27 +17,40 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Step 3: Email validation passed');
     
-    console.log('🔍 Step 4: Testing database import...');
+    console.log('🔍 Step 4: Testing Prisma import...');
     try {
-      const { db } = await import('@/lib/db-utils');
-      console.log('✅ Database import successful');
+      const { PrismaClient } = await import('@prisma/client');
+      console.log('✅ PrismaClient import successful');
       
-      console.log('🔍 Step 5: Testing user lookup...');
-      const user = await db.user.findUnique({ 
+      const prisma = new PrismaClient({
+        datasources: {
+          db: {
+            url: process.env.DATABASE_URL
+          }
+        }
+      });
+      console.log('✅ Prisma client created');
+      
+      console.log('🔍 Step 5: Testing database connection...');
+      const userCount = await prisma.user.count();
+      console.log('✅ Database connection successful, user count:', userCount);
+      
+      console.log('🔍 Step 6: Testing user lookup...');
+      const user = await prisma.user.findUnique({ 
         where: { email: body.email },
         select: { id: true, name: true, email: true }
       });
       console.log('👤 User lookup result:', user ? `${user.name} (${user.email})` : 'No user found');
       
       if (user) {
-        console.log('🔐 Step 6: Testing token generation...');
-        const { generateSecureToken } = await import('@/lib/utils');
-        const token = generateSecureToken(32);
+        console.log('🔐 Step 7: Testing token generation...');
+        const crypto = await import('crypto');
+        const token = crypto.randomBytes(32).toString('hex');
         console.log('✅ Token generated:', token.substring(0, 10) + '...');
         
-        console.log('💾 Step 7: Testing token creation...');
+        console.log('💾 Step 8: Testing token creation...');
         const expires = new Date(Date.now() + 60 * 60 * 1000);
-        await db.passwordResetToken.create({
+        await prisma.passwordResetToken.create({
           data: {
             userId: user.id,
             token,
@@ -46,12 +59,15 @@ export async function POST(request: NextRequest) {
         });
         console.log('✅ Token created in database');
         
-        console.log('📧 Step 8: Testing email service...');
+        console.log('📧 Step 9: Testing email service import...');
         try {
           const { sendPasswordResetEmail } = await import('@/lib/email');
+          console.log('✅ Email service import successful');
+          
           const baseUrl = request.nextUrl.origin || 'http://localhost:3000';
           const resetLink = `${baseUrl}/reset-password?token=${token}`;
           
+          console.log('📧 Step 10: Sending email...');
           const emailResult = await sendPasswordResetEmail(
             user.email,
             user.name,
@@ -69,8 +85,11 @@ export async function POST(request: NextRequest) {
           // Don't fail the request if email fails
         }
         
-        console.log('✅ Step 9: All operations completed successfully');
+        console.log('✅ Step 11: All operations completed successfully');
       }
+      
+      await prisma.$disconnect();
+      console.log('✅ Prisma client disconnected');
       
     } catch (dbError) {
       console.error('❌ Database operation error:', dbError);
@@ -80,14 +99,14 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    console.log('✅ Step 10: Returning success response');
+    console.log('✅ Step 12: Returning success response');
     return NextResponse.json({ 
       message: 'If an account with that email exists, a password reset link has been sent.',
       debug: process.env.NODE_ENV === 'development' ? 'All steps completed successfully' : undefined
     });
 
   } catch (error) {
-    console.error('❌ CRITICAL ERROR in minimal test API:', error);
+    console.error('❌ CRITICAL ERROR in ultra minimal test API:', error);
     console.error('❌ Error stack:', error.stack);
     
     return NextResponse.json({ 
