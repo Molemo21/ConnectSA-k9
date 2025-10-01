@@ -1384,9 +1384,15 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     
     const initializeDashboard = async () => {
       console.log('Initializing provider dashboard...')
-      const authSuccess = await checkAuthentication()
-      if (authSuccess) {
+      // Skip authentication check if initialUser was provided (already authenticated on server)
+      if (initialUser) {
+        console.log('Using initialUser from server, skipping auth check')
         await fetchProviderData()
+      } else {
+        const authSuccess = await checkAuthentication()
+        if (authSuccess) {
+          await fetchProviderData()
+        }
       }
     }
 
