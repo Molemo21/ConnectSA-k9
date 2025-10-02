@@ -1,32 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Import with error handling
-let db: any;
-let generateSecureToken: any;
-let sendPasswordResetEmail: any;
-
-try {
-  const dbModule = await import('@/lib/db-utils');
-  db = dbModule.db;
-} catch (error) {
-  console.error('Failed to import db-utils:', error);
-}
-
-try {
-  const utilsModule = await import('@/lib/utils');
-  generateSecureToken = utilsModule.generateSecureToken;
-} catch (error) {
-  console.error('Failed to import utils:', error);
-}
-
-try {
-  const emailModule = await import('@/lib/email');
-  sendPasswordResetEmail = emailModule.sendPasswordResetEmail;
-} catch (error) {
-  console.error('Failed to import email:', error);
-}
-
 // Validation schema
 const forgotPasswordSchema = z.object({
   email: z.string()
@@ -75,9 +49,34 @@ export async function POST(request: NextRequest) {
     }, { status: 503 }));
   }
 
-  // Check if required modules are loaded
-  if (!db || !generateSecureToken || !sendPasswordResetEmail) {
-    console.error('Required modules not loaded:', { db: !!db, generateSecureToken: !!generateSecureToken, sendPasswordResetEmail: !!sendPasswordResetEmail });
+  // Import modules with error handling
+  let db, generateSecureToken, sendPasswordResetEmail;
+  
+  try {
+    const dbModule = await import('@/lib/db-utils');
+    db = dbModule.db;
+  } catch (error) {
+    console.error('Failed to import db-utils:', error);
+    return addSecurityHeaders(NextResponse.json({ 
+      error: 'Service temporarily unavailable' 
+    }, { status: 503 }));
+  }
+
+  try {
+    const utilsModule = await import('@/lib/utils');
+    generateSecureToken = utilsModule.generateSecureToken;
+  } catch (error) {
+    console.error('Failed to import utils:', error);
+    return addSecurityHeaders(NextResponse.json({ 
+      error: 'Service temporarily unavailable' 
+    }, { status: 503 }));
+  }
+
+  try {
+    const emailModule = await import('@/lib/email');
+    sendPasswordResetEmail = emailModule.sendPasswordResetEmail;
+  } catch (error) {
+    console.error('Failed to import email:', error);
     return addSecurityHeaders(NextResponse.json({ 
       error: 'Service temporarily unavailable' 
     }, { status: 503 }));
