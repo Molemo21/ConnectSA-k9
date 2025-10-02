@@ -8,6 +8,9 @@ import { AuthProvider } from '@/contexts/AuthContext';
 // Client logger utility
 const logToServer = async (level: 'error' | 'info', message: string, data?: any) => {
   try {
+    // Prevent hydration mismatch by only running on client
+    if (typeof window === 'undefined') return
+    
     await fetch('/api/client-logs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

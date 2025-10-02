@@ -1,0 +1,33 @@
+{
+  "timestamp": "2025-09-30T18:33:45.157Z",
+  "duration": 50092,
+  "summary": {
+    "total": 3,
+    "passed": 1,
+    "failed": 2
+  },
+  "tests": [
+    {
+      "name": "Flow Tests",
+      "passed": false,
+      "duration": 1525,
+      "exitCode": 1,
+      "error": "Exit code: 1"
+    },
+    {
+      "name": "Performance Tests",
+      "passed": true,
+      "duration": 38082,
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "Integration Tests",
+      "passed": false,
+      "duration": 1126,
+      "exitCode": 1,
+      "error": "Exit code: 1"
+    }
+  ],
+  "serverUrl": "http://localhost:3000"
+}

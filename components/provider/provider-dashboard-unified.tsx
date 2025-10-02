@@ -1053,9 +1053,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     },
     // UI state
     ui: {
-      loading: true,
+      loading: !initialUser, // Set to false when initialUser is provided to prevent hydration mismatch
       error: null as string | null,
-      lastRefresh: new Date(),
+      lastRefresh: new Date(0), // Use epoch time to prevent hydration mismatch
       selectedFilter: "all",
       activeSection: "overview",
       isCollapsed: false,
