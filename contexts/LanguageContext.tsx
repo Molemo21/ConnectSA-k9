@@ -194,19 +194,24 @@ const translations = {
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>('en')
+  const [mounted, setMounted] = useState(false)
 
-  // Load saved language from localStorage on mount
+  // Prevent hydration mismatch by only running on client
   useEffect(() => {
+    setMounted(true)
+    
+    // Load saved language from localStorage on mount
     const savedLanguage = localStorage.getItem('language') as Language
     if (savedLanguage && ['en', 'af', 'zu', 'xh'].includes(savedLanguage)) {
       setLanguage(savedLanguage)
     }
   }, [])
 
-  // Save language to localStorage when it changes
+  // Save language to localStorage when it changes - only on client
   useEffect(() => {
+    if (!mounted) return
     localStorage.setItem('language', language)
-  }, [language])
+  }, [language, mounted])
 
   const t = (key: string): string => {
     return translations[language][key as keyof typeof translations[typeof language]] || key

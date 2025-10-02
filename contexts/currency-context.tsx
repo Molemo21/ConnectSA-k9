@@ -29,9 +29,13 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [selectedRegion, setSelectedRegion] = useState<Region>(defaultRegion)
+  const [mounted, setMounted] = useState(false)
 
-  // Load saved region from localStorage on mount
+  // Prevent hydration mismatch by only running on client
   useEffect(() => {
+    setMounted(true)
+    
+    // Load saved region from localStorage on mount
     const savedRegion = localStorage.getItem('selectedRegion')
     if (savedRegion) {
       try {
@@ -43,10 +47,11 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Save region to localStorage when it changes
+  // Save region to localStorage when it changes - only on client
   useEffect(() => {
+    if (!mounted) return
     localStorage.setItem('selectedRegion', JSON.stringify(selectedRegion))
-  }, [selectedRegion])
+  }, [selectedRegion, mounted])
 
   const formatCurrency = (amount: number): string => {
     const currencyCode = selectedRegion.currencyCode

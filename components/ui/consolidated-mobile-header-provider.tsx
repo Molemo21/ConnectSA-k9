@@ -49,11 +49,19 @@ export function ConsolidatedMobileHeaderProvider({
   const [isOpen, setIsOpen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { logout, isLoggingOut } = useLogout()
 
+  // Prevent hydration mismatch by only running on client
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Close menu when route changes
   useEffect(() => {
+    if (!mounted) return
+    
     const handleRouteChange = () => {
       if (isOpen) {
         closeMenu()
@@ -63,10 +71,12 @@ export function ConsolidatedMobileHeaderProvider({
     return () => {
       // Cleanup function
     }
-  }, [isOpen])
+  }, [isOpen, mounted])
 
-  // Prevent body scroll when menu is open
+  // Prevent body scroll when menu is open - only on client
   useEffect(() => {
+    if (!mounted) return
+    
     if (isOpen) {
       document.body.style.overflow = 'hidden'
     } else {
@@ -76,7 +86,7 @@ export function ConsolidatedMobileHeaderProvider({
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen])
+  }, [isOpen, mounted])
 
   const closeMenu = () => {
     setIsClosing(true)
