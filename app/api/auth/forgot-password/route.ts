@@ -45,12 +45,6 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 }
 
 export async function POST(request: NextRequest) {
-  // Skip during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return addSecurityHeaders(NextResponse.json({ 
-      message: 'Service temporarily unavailable during deployment' 
-    }, { status: 503 }));
-  }
 
 
   try {
