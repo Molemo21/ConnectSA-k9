@@ -167,24 +167,24 @@ async function testCompleteBookingFlow() {
         escrowAmount: testBooking.totalAmount - testBooking.platformFee,
         platformFee: testBooking.platformFee,
         status: 'ESCROW',
-        reference: `test_${Date.now()}`,
-        paymentMethod: 'PAYSTACK'
+        paystackRef: `test_${Date.now()}`,
+        currency: 'ZAR'
       }
     })
     
-    // Update payment to PAID (simulating successful verification)
+    // Update payment to COMPLETED (simulating successful verification)
     await db.payment.update({
       where: { id: payment.id },
       data: { 
-        status: 'PAID',
+        status: 'COMPLETED',
         paidAt: new Date()
       }
     })
     
-    // Update booking status
+    // Update booking status to CONFIRMED (payment completed)
     await db.booking.update({
       where: { id: testBooking.id },
-      data: { status: 'PAID' }
+      data: { status: 'CONFIRMED' }
     })
     
     // Create payment received notification for provider
