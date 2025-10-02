@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/db-utils';
 import { hashPassword } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { token, password } = resetPasswordSchema.parse(body);
 
-    // Validate token format
-    if (!token || token.length < 32) {
+    // Validate token format (should be 64 characters for hex-encoded 32-byte token)
+    if (!token || token.length !== 64) {
       return NextResponse.json({ 
         error: 'Invalid token format' 
       }, { status: 400 });
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Find the reset token
-      const resetToken = await prisma.passwordResetToken.findUnique({
+      const resetToken = await db.passwordResetToken.findUnique({
         where: { token },
         include: { user: true },
       });
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       // Check if token has expired
       if (resetToken.expires < new Date()) {
         // Clean up expired token
-        await prisma.passwordResetToken.delete({ where: { token } });
+        await db.passwordResetToken.delete({ where: { token } });
         return NextResponse.json({ 
           error: 'Reset token has expired. Please request a new password reset.' 
         }, { status: 400 });
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
       // Check if user still exists and is active
       if (!resetToken.user || !resetToken.user.id) {
-        await prisma.passwordResetToken.delete({ where: { token } });
+        await db.passwordResetToken.delete({ where: { token } });
         return NextResponse.json({ 
           error: 'User account not found' 
         }, { status: 400 });
@@ -61,13 +61,13 @@ export async function POST(request: NextRequest) {
       const hashedPassword = await hashPassword(password);
 
       // Update user's password
-      await prisma.user.update({
+      await db.user.update({
         where: { id: resetToken.userId },
         data: { password: hashedPassword },
       });
 
       // Delete the token after successful use
-      await prisma.passwordResetToken.delete({ where: { token } });
+      await db.passwordResetToken.delete({ where: { token } });
 
       // Log successful password reset
       console.log(`✅ Password reset successful for user: ${resetToken.user.email}`);
