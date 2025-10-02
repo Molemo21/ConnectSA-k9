@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 // Simplified imports to identify the problematic one
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
 // Test endpoint to verify route accessibility
 export async function GET(request: NextRequest) {
@@ -96,6 +97,60 @@ export async function POST(request: NextRequest) {
       bookingId,
       newStatus: updated.status
     });
+
+    // Create notification for client about booking acceptance
+    try {
+      const notificationData = NotificationTemplates.BOOKING_ACCEPTED(booking);
+      await createNotification({
+        userId: booking.clientId,
+        type: notificationData.type,
+        title: notificationData.title,
+        content: notificationData.content
+      });
+      console.log(`🔔 Booking acceptance notification sent to client: ${booking.client?.email || 'unknown'}`);
+    } catch (notificationError) {
+      console.error('❌ Failed to create booking acceptance notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+
+    // Broadcast real-time update to client
+    try {
+      const { broadcastBookingUpdate } = await import('@/lib/socket-server');
+      
+      // Get the full updated booking with relations for the client
+      const fullBooking = await db.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          client: { select: { name: true, email: true } },
+          provider: { 
+            include: { 
+              user: { select: { name: true, email: true } }
+            }
+          },
+          service: { select: { name: true } },
+          payment: true
+        }
+      });
+
+      if (fullBooking) {
+        // Broadcast to the client who made the booking
+        broadcastBookingUpdate(
+          bookingId, 
+          'accepted', 
+          fullBooking, 
+          [fullBooking.clientId]
+        );
+
+        console.log('📡 Real-time update broadcasted to client:', {
+          bookingId,
+          clientId: fullBooking.clientId,
+          action: 'accepted'
+        });
+      }
+    } catch (broadcastError) {
+      console.error('❌ Failed to broadcast real-time update:', broadcastError);
+      // Don't fail the request if broadcasting fails
+    }
 
     return NextResponse.json({ 
       success: true,

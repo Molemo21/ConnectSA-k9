@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 
 export const dynamic = 'force-dynamic'
 
@@ -26,7 +27,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    const booking = await db.booking.findUnique({ 
+      where: { id: bookingId },
+      include: {
+        client: { select: { name: true, email: true } },
+        provider: { 
+          include: { 
+            user: { select: { name: true } }
+          }
+        },
+        service: { select: { name: true } }
+      }
+    });
     if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
@@ -40,13 +52,64 @@ export async function POST(request: NextRequest) {
     // Note: Proposal update removed - table doesn't exist in database
     console.log('ℹ️ Skipping proposal update (table not available)');
 
-    const updated = await prisma.booking.update({
+    const updated = await db.booking.update({
       where: { id: bookingId },
       data: { status: "CANCELLED" },
     });
 
-    // TODO: Notify client (in-app/email) that provider declined
-    // TODO: Suggest next available provider to client
+    // Create notification for client about booking decline
+    try {
+      const notificationData = NotificationTemplates.BOOKING_DECLINED(booking);
+      await createNotification({
+        userId: booking.clientId,
+        type: notificationData.type,
+        title: notificationData.title,
+        content: notificationData.content
+      });
+      console.log(`🔔 Booking decline notification sent to client: ${booking.client?.email || 'unknown'}`);
+    } catch (notificationError) {
+      console.error('❌ Failed to create booking decline notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+
+    // Broadcast real-time update to client
+    try {
+      const { broadcastBookingUpdate } = await import('@/lib/socket-server');
+      
+      // Get the full updated booking with relations for the client
+      const fullBooking = await db.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          client: { select: { name: true, email: true } },
+          provider: { 
+            include: { 
+              user: { select: { name: true, email: true } }
+            }
+          },
+          service: { select: { name: true } },
+          payment: true
+        }
+      });
+
+      if (fullBooking) {
+        // Broadcast to the client who made the booking
+        broadcastBookingUpdate(
+          bookingId, 
+          'declined', 
+          fullBooking, 
+          [fullBooking.clientId]
+        );
+
+        console.log('📡 Real-time update broadcasted to client:', {
+          bookingId,
+          clientId: fullBooking.clientId,
+          action: 'declined'
+        });
+      }
+    } catch (broadcastError) {
+      console.error('❌ Failed to broadcast real-time update:', broadcastError);
+      // Don't fail the request if broadcasting fails
+    }
 
     return NextResponse.json({ 
       success: true,
