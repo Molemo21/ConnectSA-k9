@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db-utils';
 import { ProviderStatus } from '@prisma/client';
-import { getUserFromRequest } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(
   request: Request,
@@ -17,7 +17,7 @@ export async function GET(
   const { id } = params;
 
   // Get the admin user from the request
-  const admin = await getUserFromRequest(request);
+  const admin = await getCurrentUser();
   if (!admin || admin.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -108,7 +108,7 @@ export async function PATCH(
   }
 
   // Get the admin user from the request
-  const admin = await getUserFromRequest(request);
+  const admin = await getCurrentUser();
   if (!admin || admin.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
