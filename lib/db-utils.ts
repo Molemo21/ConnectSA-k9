@@ -175,6 +175,15 @@ const createDbWrapper = () => {
         delete: () => Promise.resolve(null),
         deleteMany: () => Promise.resolve({ count: 0 }),
       },
+      passwordResetToken: {
+        findFirst: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        deleteMany: () => Promise.resolve({ count: 0 }),
+      },
     };
   }
 
@@ -279,6 +288,17 @@ const createDbWrapper = () => {
       create: (args: any) => withRetry(() => prisma.verificationToken.create(args), 'verificationToken.create'),
       delete: (args: any) => withRetry(() => prisma.verificationToken.delete(args), 'verificationToken.delete'),
       deleteMany: (args: any) => withRetry(() => prisma.verificationToken.deleteMany(args), 'verificationToken.deleteMany'),
+    },
+
+    // PasswordResetToken operations
+    passwordResetToken: {
+      findFirst: (args: any) => withRetry(() => prisma.passwordResetToken.findFirst(args), 'passwordResetToken.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.passwordResetToken.findMany(args), 'passwordResetToken.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.passwordResetToken.findUnique(args), 'passwordResetToken.findUnique'),
+      count: (args: any) => withRetry(() => prisma.passwordResetToken.count(args), 'passwordResetToken.count'),
+      create: (args: any) => withRetry(() => prisma.passwordResetToken.create(args), 'passwordResetToken.create'),
+      delete: (args: any) => withRetry(() => prisma.passwordResetToken.delete(args), 'passwordResetToken.delete'),
+      deleteMany: (args: any) => withRetry(() => prisma.passwordResetToken.deleteMany(args), 'passwordResetToken.deleteMany'),
     },
   };
 };
