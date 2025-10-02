@@ -484,7 +484,7 @@ export function FixedProviderDashboard({ initialUser }: FixedProviderDashboardPr
             Error Loading Dashboard
           </h2>
           <p className="text-gray-600 mb-6">
-            {dashboardState.ui.error}
+            {dashboardState.ui.error?.message || dashboardState.ui.error?.toString() || 'Unknown error'}
           </p>
           <div className="space-y-3">
             <Button 
@@ -580,8 +580,8 @@ export function FixedProviderDashboard({ initialUser }: FixedProviderDashboardPr
                 <Card key={booking.id} className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h4 className="font-medium text-gray-900">{booking.service.name}</h4>
-                      <p className="text-sm text-gray-600">{booking.client.name}</p>
+                      <h4 className="font-medium text-gray-900">{booking.service?.name || 'Unknown Service'}</h4>
+                      <p className="text-sm text-gray-600">{booking.client?.name || 'Unknown Client'}</p>
                       <p className="text-sm text-gray-500">{booking.address}</p>
                     </div>
                     <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
@@ -593,7 +593,7 @@ export function FixedProviderDashboard({ initialUser }: FixedProviderDashboardPr
                     <div className="flex items-center gap-4">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        {new Date(booking.scheduledDate).toLocaleDateString()}
+                        {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString() : 'No Date'}
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="h-4 w-4" />

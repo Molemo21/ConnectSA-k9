@@ -487,10 +487,10 @@ function MainContent({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">
-                          {booking.service.name}
+                          {booking.service?.name || 'Unknown Service'}
                         </p>
                         <p className="text-xs text-gray-400 truncate">
-                          {booking.client.name}
+                          {booking.client?.name || 'Unknown Client'}
                         </p>
                       </div>
                       <Badge 
@@ -907,7 +907,7 @@ export function MobileProviderDashboardV2() {
           <div className="max-w-7xl mx-auto text-center">
             <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">Error Loading Dashboard</h2>
-            <p className="text-gray-400 mb-4">{error}</p>
+            <p className="text-gray-400 mb-4">{error?.message || error?.toString() || 'Unknown error'}</p>
             <Button onClick={() => window.location.reload()}>
               Try Again
             </Button>

@@ -400,7 +400,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Total Earnings</p>
-                      <p className="text-2xl font-bold text-white">R{stats.totalEarnings.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-white">R{stats.totalEarnings?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="p-3 bg-yellow-400/20 rounded-full">
                       <DollarSign className="w-6 h-6 text-yellow-400" />
@@ -414,7 +414,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Rating</p>
-                      <p className="text-2xl font-bold text-white">{stats.averageRating.toFixed(1)}</p>
+                      <p className="text-2xl font-bold text-white">{stats.averageRating?.toFixed(1) || '0.0'}</p>
                     </div>
                     <div className="p-3 bg-purple-400/20 rounded-full">
                       <Star className="w-6 h-6 text-purple-400" />
@@ -783,7 +783,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Total Earnings</p>
-                      <p className="text-3xl font-bold text-white">R{stats.totalEarnings.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-white">R{stats.totalEarnings?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="p-3 bg-green-400/20 rounded-full">
                       <DollarSign className="w-8 h-8 text-green-400" />
@@ -797,7 +797,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">This Month</p>
-                      <p className="text-3xl font-bold text-white">R{stats.thisMonthEarnings.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-white">R{stats.thisMonthEarnings?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="p-3 bg-blue-400/20 rounded-full">
                       <TrendingUp className="w-8 h-8 text-blue-400" />
@@ -811,8 +811,8 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Average Rating</p>
-                      <p className="text-3xl font-bold text-white">{stats.averageRating.toFixed(1)}</p>
-                      <p className="text-sm text-gray-400">{stats.totalReviews} reviews</p>
+                      <p className="text-3xl font-bold text-white">{stats.averageRating?.toFixed(1) || '0.0'}</p>
+                      <p className="text-sm text-gray-400">{stats.totalReviews || 0} reviews</p>
                     </div>
                     <div className="p-3 bg-yellow-400/20 rounded-full">
                       <Star className="w-8 h-8 text-yellow-400" />

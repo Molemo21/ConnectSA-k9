@@ -422,7 +422,7 @@ export function EnhancedProviderDashboard({ initialUser }: EnhancedProviderDashb
             Error Loading Dashboard
           </h2>
           <p className="text-gray-600 mb-6">
-            {error}
+            {error?.message || error?.toString() || 'Unknown error'}
           </p>
           <div className="space-y-3">
             <Button 

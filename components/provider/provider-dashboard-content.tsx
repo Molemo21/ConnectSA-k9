@@ -344,7 +344,7 @@ export function ProviderDashboardContent() {
             <div className="flex items-center justify-center h-48 sm:h-64">
               <div className="text-center">
                 <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 mx-auto mb-3 sm:mb-4" />
-                <p className="text-red-600 mb-3 sm:mb-4 text-sm sm:text-base">{error}</p>
+                <p className="text-red-600 mb-3 sm:mb-4 text-sm sm:text-base">{error?.message || error?.toString() || 'Unknown error'}</p>
                 <Button onClick={fetchBookings} size="sm" className="h-9 sm:h-10">Try Again</Button>
               </div>
             </div>
