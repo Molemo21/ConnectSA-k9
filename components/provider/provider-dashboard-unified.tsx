@@ -1023,6 +1023,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   // Use refs to prevent infinite loops
   const isInitialized = useRef(false)
   const lastRefreshTime = useRef(Date.now())
+  const [mounted, setMounted] = useState(false)
   
   // Consolidated state management
   const [dashboardState, setDashboardState] = useState({
@@ -1172,7 +1173,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   const fetchProviderData = useCallback(async (retryCount = 0) => {
     const maxRetries = 3;
     
-    if (!dashboardState.auth.isAuthenticated) {
+    // Use initialUser or check authentication state without circular dependency
+    const isAuthenticated = initialUser || dashboardState.auth.isAuthenticated;
+    
+    if (!isAuthenticated) {
       console.log('Not authenticated, skipping provider data fetch')
       return
     }
@@ -1297,7 +1301,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         ui: { ...prev.ui, loading: false }
       }))
     }
-  }, [checkAuthentication]) // Remove dashboardState.auth.isAuthenticated to prevent loops
+  }, [checkAuthentication, initialUser]) // Remove dashboardState.auth.isAuthenticated to prevent loops
 
   // Check bank details - OPTIMIZED VERSION with debouncing and caching
   const lastBankDetailsCheck = useRef<number>(0)
@@ -1379,6 +1383,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
   // Single initialization effect
   useEffect(() => {
+    setMounted(true)
+    
     if (isInitialized.current) return
     isInitialized.current = true
     
@@ -1646,6 +1652,18 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       }))
     }
   }, [fetchProviderData])
+
+  // Prevent hydration mismatch - don't render until mounted
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-400" />
+          <p className="text-gray-300">Loading provider dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Loading state
   if (dashboardState.auth.isLoading || dashboardState.ui.loading) {
