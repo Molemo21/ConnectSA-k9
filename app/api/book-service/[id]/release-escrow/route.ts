@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { paystackClient } from "@/lib/paystack";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
 
 export const dynamic = 'force-dynamic'
@@ -193,10 +194,54 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // TODO: Send notifications
-    // - Notify provider about payment
-    // - Notify client about escrow release
-    // - Send email confirmations
+    // Create notifications for escrow release
+    try {
+      // Get the full booking data with relations for notifications
+      const fullBooking = await db.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+          provider: { 
+            include: { 
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+          service: { select: { name: true } },
+          payment: { select: { escrowAmount: true } }
+        }
+      });
+
+      if (fullBooking && fullBooking.payment) {
+        // Notify provider about payment release
+        const providerNotificationData = NotificationTemplates.PAYMENT_RELEASED(
+          fullBooking, 
+          fullBooking.payment.escrowAmount || 0
+        );
+        await createNotification({
+          userId: fullBooking.provider.user.id,
+          type: providerNotificationData.type,
+          title: providerNotificationData.title,
+          content: providerNotificationData.content
+        });
+
+        // Notify client about escrow release
+        const clientNotificationData = NotificationTemplates.ESCROW_RELEASED(
+          fullBooking, 
+          fullBooking.payment.escrowAmount || 0
+        );
+        await createNotification({
+          userId: fullBooking.client.id,
+          type: clientNotificationData.type,
+          title: clientNotificationData.title,
+          content: clientNotificationData.content
+        });
+
+        console.log(`🔔 Escrow release notifications sent: Provider ${fullBooking.provider.user.email}, Client ${fullBooking.client.email}`);
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to create escrow release notifications:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     return NextResponse.json({
       success: true,

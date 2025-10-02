@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { paystackClient } from "@/lib/paystack";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
 
 export const dynamic = 'force-dynamic'
@@ -136,23 +137,21 @@ export async function POST(request: NextRequest) {
         newBookingStatus: result.updatedBooking.status
       });
 
-      // Create notification for provider (skip if schema doesn't support content field)
+      // Create notification for provider about payment received
       try {
-        await prisma.notification.create({
-          data: {
-            userId: payment.booking.provider.user.id,
-            type: 'PAYMENT_RECEIVED',
-            title: 'Payment Received',
-            content: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
-            isRead: false,
-          }
+        const notificationData = NotificationTemplates.PAYMENT_RECEIVED(payment.booking);
+        await createNotification({
+          userId: payment.booking.provider.user.id,
+          type: notificationData.type,
+          title: notificationData.title,
+          content: notificationData.content
         });
-        logger.info('Provider notification created', {
+        logger.info('Provider payment notification created', {
           reference,
           providerId: payment.booking.provider.user.id
         });
       } catch (notificationError) {
-        logger.warn('Could not create notification (schema issue)', {
+        logger.warn('Could not create payment notification', {
           reference,
           error: notificationError instanceof Error ? notificationError.message : 'Unknown error'
         });

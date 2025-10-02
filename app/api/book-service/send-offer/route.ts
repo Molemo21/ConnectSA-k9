@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
 
 // Force dynamic rendering to prevent build-time static generation
@@ -250,8 +251,46 @@ export async function POST(request: NextRequest) {
     // Note: Proposal creation removed - table doesn't exist in database
     console.log('ℹ️ Skipping proposal creation (table not available)');
 
-    // TODO: Send notification to provider about new job offer
-    // TODO: Send email notification to provider
+    // Create notifications for both client and provider
+    try {
+      // Get the full booking data with relations for notifications
+      const fullBooking = await db.booking.findUnique({
+        where: { id: booking.id },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+          provider: { 
+            include: { 
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+          service: { select: { name: true, category: true } }
+        }
+      });
+
+      if (fullBooking) {
+        // Notify provider about new booking
+        const providerNotification = NotificationTemplates.BOOKING_CREATED(fullBooking);
+        await createNotification({
+          userId: fullBooking.provider.user.id,
+          type: providerNotification.type,
+          title: providerNotification.title,
+          content: providerNotification.content
+        });
+
+        // Notify client about booking creation
+        await createNotification({
+          userId: fullBooking.client.id,
+          type: 'BOOKING_CREATED',
+          title: 'Booking Request Sent',
+          content: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent to ${fullBooking.provider?.businessName || 'the provider'}. You'll be notified when they respond.`
+        });
+
+        console.log(`🔔 Notifications sent: Provider ${fullBooking.provider.user.email}, Client ${fullBooking.client.email}`);
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to create booking notifications:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     console.log(`✅ Job offer sent successfully: Booking ${booking.id} to provider ${validated.providerId} for client ${user.id}`);
     console.log(`✅ Booking created with status PENDING`);

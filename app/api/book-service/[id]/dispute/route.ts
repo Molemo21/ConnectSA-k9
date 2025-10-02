@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
 
 export const dynamic = 'force-dynamic'
@@ -94,9 +95,45 @@ export async function POST(request: NextRequest) {
       return { dispute, booking: updatedBooking };
     });
 
-    // TODO: Send notification to admin about new dispute
-    // TODO: Send notification to the other party (client/provider)
-    // TODO: Send email notifications
+    // Create notifications for dispute creation
+    try {
+      // Get the full booking data with relations for notifications
+      const fullBooking = await db.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+          provider: { 
+            include: { 
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+          service: { select: { name: true } }
+        }
+      });
+
+      if (fullBooking) {
+        // Notify the other party (client or provider)
+        const otherPartyId = user.role === 'CLIENT' 
+          ? fullBooking.provider.user.id 
+          : fullBooking.client.id;
+        
+        const notificationData = NotificationTemplates.DISPUTE_CREATED(fullBooking, validated.reason);
+        await createNotification({
+          userId: otherPartyId,
+          type: notificationData.type,
+          title: notificationData.title,
+          content: notificationData.content
+        });
+
+        // TODO: Send notification to admin about new dispute
+        // TODO: Send email notifications
+
+        console.log(`🔔 Dispute notification sent to other party: ${otherPartyId}`);
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to create dispute notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     console.log(`Dispute created for booking ${bookingId} by user ${user.id}`);
 
