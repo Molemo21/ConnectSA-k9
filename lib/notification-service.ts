@@ -49,7 +49,7 @@ export async function createNotification(data: NotificationData) {
         userId: data.userId,
         type: data.type,
         title: data.title,
-        content: data.content,
+        message: data.content, // Database uses 'message' field, but interface uses 'content'
         isRead: false
       },
       include: {

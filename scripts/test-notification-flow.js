@@ -76,11 +76,11 @@ async function testNotificationFlow() {
         serviceId: service.id,
         status: 'PENDING',
         scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-        scheduledTime: '14:00',
+        duration: 120, // 2 hours
         address: 'Test Address, Cape Town',
         totalAmount: 500.00,
         platformFee: 50.00,
-        notes: 'Test booking for notification flow'
+        description: 'Test booking for notification flow'
       },
       include: {
         client: { select: { name: true, email: true } },
@@ -104,7 +104,7 @@ async function testNotificationFlow() {
         userId: provider.id,
         type: 'BOOKING_CREATED',
         title: 'New Booking Request',
-        content: `You have a new booking request for ${testBooking.service.name} from ${testBooking.client.name}. Please review and respond.`,
+        message: `You have a new booking request for ${testBooking.service.name} from ${testBooking.client.name}. Please review and respond.`,
         isRead: false
       }
     })
@@ -115,7 +115,7 @@ async function testNotificationFlow() {
         userId: client.id,
         type: 'BOOKING_CREATED',
         title: 'Booking Request Sent',
-        content: `Your booking request for ${testBooking.service.name} has been sent to ${testBooking.provider.businessName || 'the provider'}. You'll be notified when they respond.`,
+        message: `Your booking request for ${testBooking.service.name} has been sent to ${testBooking.provider.businessName || 'the provider'}. You'll be notified when they respond.`,
         isRead: false
       }
     })
@@ -138,7 +138,7 @@ async function testNotificationFlow() {
         userId: client.id,
         type: 'BOOKING_ACCEPTED',
         title: 'Booking Accepted!',
-        content: `Great news! Your booking for ${testBooking.service.name} has been accepted by ${testBooking.provider.businessName || 'the provider'}. You can now proceed with payment.`,
+        message: `Great news! Your booking for ${testBooking.service.name} has been accepted by ${testBooking.provider.businessName || 'the provider'}. You can now proceed with payment.`,
         isRead: false
       }
     })
@@ -156,11 +156,11 @@ async function testNotificationFlow() {
         serviceId: service.id,
         status: 'PENDING',
         scheduledDate: new Date(Date.now() + 48 * 60 * 60 * 1000), // Day after tomorrow
-        scheduledTime: '10:00',
+        duration: 90, // 1.5 hours
         address: 'Test Address 2, Cape Town',
         totalAmount: 300.00,
         platformFee: 30.00,
-        notes: 'Test booking for decline notification'
+        description: 'Test booking for decline notification'
       }
     })
     
@@ -176,7 +176,7 @@ async function testNotificationFlow() {
         userId: client.id,
         type: 'BOOKING_DECLINED',
         title: 'Booking Declined',
-        content: `Unfortunately, your booking for ${service.name} was declined. Don't worry, you can try booking with another provider.`,
+        message: `Unfortunately, your booking for ${service.name} was declined. Don't worry, you can try booking with another provider.`,
         isRead: false
       }
     })
@@ -191,7 +191,7 @@ async function testNotificationFlow() {
         userId: client.id,
         type: 'JOB_STARTED',
         title: 'Job Started',
-        content: `Great news! ${testBooking.provider.businessName || 'The provider'} has started working on your ${testBooking.service.name}.`,
+        message: `Great news! ${testBooking.provider.businessName || 'The provider'} has started working on your ${testBooking.service.name}.`,
         isRead: false
       }
     })
@@ -206,7 +206,7 @@ async function testNotificationFlow() {
         userId: client.id,
         type: 'JOB_COMPLETED',
         title: 'Job Completed',
-        content: `Your ${testBooking.service.name} has been completed! Please review the work and confirm completion to release payment.`,
+        message: `Your ${testBooking.service.name} has been completed! Please review the work and confirm completion to release payment.`,
         isRead: false
       }
     })
