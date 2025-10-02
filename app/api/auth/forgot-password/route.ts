@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db-utils';
+import { generateSecureToken } from '@/lib/utils';
+import { sendPasswordResetEmail } from '@/lib/email';
 import { z } from 'zod';
 
 // Validation schema
@@ -49,38 +52,6 @@ export async function POST(request: NextRequest) {
     }, { status: 503 }));
   }
 
-  // Import modules with error handling
-  let db, generateSecureToken, sendPasswordResetEmail;
-  
-  try {
-    const dbModule = await import('@/lib/db-utils');
-    db = dbModule.db;
-  } catch (error) {
-    console.error('Failed to import db-utils:', error);
-    return addSecurityHeaders(NextResponse.json({ 
-      error: 'Service temporarily unavailable' 
-    }, { status: 503 }));
-  }
-
-  try {
-    const utilsModule = await import('@/lib/utils');
-    generateSecureToken = utilsModule.generateSecureToken;
-  } catch (error) {
-    console.error('Failed to import utils:', error);
-    return addSecurityHeaders(NextResponse.json({ 
-      error: 'Service temporarily unavailable' 
-    }, { status: 503 }));
-  }
-
-  try {
-    const emailModule = await import('@/lib/email');
-    sendPasswordResetEmail = emailModule.sendPasswordResetEmail;
-  } catch (error) {
-    console.error('Failed to import email:', error);
-    return addSecurityHeaders(NextResponse.json({ 
-      error: 'Service temporarily unavailable' 
-    }, { status: 503 }));
-  }
 
   try {
     // Parse and validate request body
