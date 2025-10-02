@@ -617,10 +617,10 @@ export function RealtimeProviderDashboard() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                          {booking.service.name}
+                          {booking.service?.name || 'Unknown Service'}
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 mt-1">
-                          {booking.client.name}
+                          {booking.client?.name || 'Unknown Client'}
                         </CardDescription>
                       </div>
                       <Badge className={getStatusBadgeColor(booking.status)}>
@@ -667,8 +667,8 @@ export function RealtimeProviderDashboard() {
                         <div className="flex items-center gap-2 text-sm">
                           <CreditCard className="h-4 w-4 text-gray-600" />
                           <span className="text-gray-600">Payment:</span>
-                          <Badge className={getPaymentStatusBadgeColor(booking.payment.status)}>
-                            {booking.payment.status}
+                          <Badge className={getPaymentStatusBadgeColor(booking.payment?.status || 'UNKNOWN')}>
+                            {booking.payment?.status || 'UNKNOWN'}
                           </Badge>
                         </div>
                       )}
@@ -677,8 +677,8 @@ export function RealtimeProviderDashboard() {
                         <div className="flex items-center gap-2 text-sm">
                           <Wallet className="h-4 w-4 text-gray-600" />
                           <span className="text-gray-600">Payout:</span>
-                          <Badge className={getPayoutStatusBadgeColor(booking.payment.payout.status)}>
-                            {booking.payment.payout.status}
+                          <Badge className={getPayoutStatusBadgeColor(booking.payment?.payout?.status || 'UNKNOWN')}>
+                            {booking.payment?.payout?.status || 'UNKNOWN'}
                           </Badge>
                         </div>
                       )}

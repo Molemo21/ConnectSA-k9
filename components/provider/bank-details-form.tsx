@@ -223,7 +223,7 @@ const BankDetailsFormComponent = function BankDetailsForm({
         There was an error loading the bank details form.
       </p>
       <div className="text-xs text-gray-500 mb-4">
-        Error: {error.message}
+        Error: {error?.message || error?.toString() || 'Unknown error'}
       </div>
       <Button 
         onClick={() => window.location.reload()}
