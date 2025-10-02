@@ -42,10 +42,12 @@ export function useLogout() {
         showToast.success("Logged out successfully")
         console.log('Logout successful, clearing ALL client state...')
         
-        // Clear AuthContext state first
+        // Clear AuthContext state first (with safety check)
         if (authContext) {
           authContext.logout()
           console.log('AuthContext cleared')
+        } else {
+          console.warn('AuthContext not available - this might indicate a provider issue')
         }
         
         // Nuclear option: Clear EVERYTHING
