@@ -298,11 +298,18 @@ export function ProviderDashboardContent() {
   const filteredBookings = bookings.filter(booking => {
     let matchesFilter = true
     if (selectedFilter !== "all") {
-      if (selectedFilter === "pending_execution") {
-        matchesFilter = booking.status === "PENDING_EXECUTION"
-      } else {
-        matchesFilter = booking.status === selectedFilter.toUpperCase()
+      // Map filter values to actual database status values
+      const statusMap: Record<string, string> = {
+        'pending': 'PENDING',
+        'confirmed': 'CONFIRMED',
+        'in_progress': 'IN_PROGRESS',
+        'awaiting_confirmation': 'AWAITING_CONFIRMATION',
+        'pending_execution': 'PENDING_EXECUTION',
+        'completed': 'COMPLETED'
       }
+      
+      const targetStatus = statusMap[selectedFilter]
+      matchesFilter = booking.status === targetStatus
     }
     const matchesSearch = booking.service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          booking.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

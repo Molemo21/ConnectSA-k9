@@ -397,6 +397,10 @@ export function RealtimeProviderDashboard() {
         return booking.status === "CONFIRMED"
       case "in-progress":
         return booking.status === "IN_PROGRESS"
+      case "awaiting-confirmation":
+        return booking.status === "AWAITING_CONFIRMATION"
+      case "pending-execution":
+        return booking.status === "PENDING_EXECUTION"
       case "completed":
         return booking.status === "COMPLETED"
       default:

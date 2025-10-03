@@ -356,12 +356,24 @@ function ProviderMainContent({
     if (selectedFilter === "all") {
       filtered = safeBookings.filter(booking => booking && booking.id)
     } else {
+      // Map filter values to actual database status values
+      const statusMap: Record<string, string> = {
+        'pending': 'PENDING',
+        'confirmed': 'CONFIRMED',
+        'in_progress': 'IN_PROGRESS',
+        'awaiting_confirmation': 'AWAITING_CONFIRMATION',
+        'pending_execution': 'PENDING_EXECUTION',
+        'completed': 'COMPLETED'
+      }
+      
+      const targetStatus = statusMap[selectedFilter]
+      
       filtered = safeBookings.filter(booking => 
         booking && 
         booking.id && 
         booking.status && 
         typeof booking.status === 'string' &&
-        booking.status.toLowerCase() === selectedFilter.toLowerCase()
+        booking.status === targetStatus
       )
     }
     
@@ -528,7 +540,7 @@ function ProviderMainContent({
             <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
               <CardContent className="p-4">
                 <div className="flex flex-wrap gap-2">
-                  {['all', 'pending', 'confirmed', 'in_progress', 'awaiting_confirmation', 'completed'].map((filter) => (
+                  {['all', 'pending', 'confirmed', 'in_progress', 'awaiting_confirmation', 'pending_execution', 'completed'].map((filter) => (
                     <Button
                       key={filter}
                       variant={selectedFilter === filter ? 'default' : 'outline'}
