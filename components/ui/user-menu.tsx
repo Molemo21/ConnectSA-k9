@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { 
   DropdownMenu, 
@@ -93,10 +93,10 @@ export function UserMenu({ user, showNotifications = true, userStats }: UserMenu
     return "U"
   }
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     setIsOpen(false)
     await logout()
-  }
+  }, [logout])
 
   return (
     <div className="flex items-center space-x-3">
@@ -137,7 +137,7 @@ export function UserMenu({ user, showNotifications = true, userStats }: UserMenu
       )}
 
       {/* Enhanced User Menu */}
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu open={isOpen} onOpenChange={useCallback((open: boolean) => setIsOpen(open), [])}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 px-3 py-2 rounded-lg hover:bg-white/10 transition-all duration-200 group">
             <div className="flex items-center space-x-3">

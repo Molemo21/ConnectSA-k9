@@ -1473,6 +1473,14 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }))
   }, [])
 
+  // Memoize userStats to prevent infinite re-renders
+  const memoizedUserStats = useMemo(() => ({
+    totalBookings: dashboardState.data.bookings?.length || 0,
+    pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
+    completedBookings: dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0,
+    rating: dashboardState.data.stats?.averageRating || 0
+  }), [dashboardState.data.bookings, dashboardState.data.stats?.averageRating])
+
   const clearAcceptError = useCallback(() => {
     setDashboardState(prev => ({
       ...prev,
@@ -1792,12 +1800,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           showAuth={false} 
           showUserMenu={true} 
           user={dashboardState.auth.user}
-          userStats={{
-            totalBookings: dashboardState.data.bookings?.length || 0,
-            pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
-            completedBookings: dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0,
-            rating: dashboardState.data.stats?.averageRating || 0
-          }}
+          userStats={memoizedUserStats}
         />
       </div>
       
