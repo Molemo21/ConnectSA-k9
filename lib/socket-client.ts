@@ -11,6 +11,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { logSystem } from '@/lib/logger';
+import { WebSocketErrorHandler, WebSocketErrorUtils } from '@/lib/websocket-error-handler';
+import { normalizeBooking } from '@/lib/normalize-booking';
 
 export interface SocketEvent {
   type: 'booking' | 'payment' | 'payout' | 'notification';
@@ -145,17 +147,21 @@ export function useSocket(options: UseSocketOptions = {}) {
       });
 
       socket.on('connect_error', (error) => {
+        const errorHandler = WebSocketErrorHandler.getInstance();
+        const wsError = errorHandler.handleConnectionError(error);
+        
         logSystem.error('socket_client', 'Socket connection error', error, {
           userId,
           role,
-          error_code: 'SOCKET_CONNECTION_ERROR'
+          error_code: wsError.code,
+          retryable: wsError.retryable
         });
 
         setSocketState(prev => ({
           ...prev,
           connected: false,
           connecting: false,
-          error: error.message,
+          error: wsError.message,
           reconnectAttempts: prev.reconnectAttempts + 1
         }));
 
@@ -196,6 +202,15 @@ export function useSocket(options: UseSocketOptions = {}) {
           action: event.action,
           metadata: event.data
         });
+
+        // Normalize booking data before passing to callback
+        if (event.data && typeof event.data === 'object') {
+          try {
+            event.data = normalizeBooking(event.data);
+          } catch (error) {
+            console.warn('Failed to normalize booking data from socket:', error);
+          }
+        }
 
         setSocketState(prev => ({ ...prev, lastEvent: event }));
         onBookingUpdate?.(event);

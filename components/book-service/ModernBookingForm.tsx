@@ -185,7 +185,10 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   })
 
   useEffect(() => {
-    const recents = (typeof window !== 'undefined' && localStorage.getItem('recentServices')) || '[]'
+    // Prevent hydration mismatch by only running on client
+    if (typeof window === 'undefined') return
+    
+    const recents = localStorage.getItem('recentServices') || '[]'
     try { setRecentServiceIds(JSON.parse(recents)) } catch { setRecentServiceIds([]) }
   }, [])
 

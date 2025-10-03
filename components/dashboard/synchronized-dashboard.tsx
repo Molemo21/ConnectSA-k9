@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { normalizeBookings } from '@/lib/normalize-booking';
 import { 
   RefreshCw, 
   AlertTriangle, 
@@ -139,7 +140,7 @@ export function SynchronizedDashboard({
         throw new Error('Invalid response format');
       }
 
-      return data.bookings;
+      return normalizeBookings(data.bookings || []);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
       throw error;

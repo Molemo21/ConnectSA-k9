@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -9,21 +9,37 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC = ({ children }) => {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only running on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const login = (token: string) => {
     setIsAuthenticated(true);
-    localStorage.setItem('authToken', token);
-    console.log("Token stored:", token);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token);
+      console.log("Token stored:", token);
+    }
   };
 
   const logout = () => {
     setIsAuthenticated(false);
-    localStorage.removeItem('authToken');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken');
+    }
   };
 
   const checkAuth = async () => {
+    if (typeof window === 'undefined') return;
+    
     const token = localStorage.getItem('authToken');
     if (!token) {
       setIsAuthenticated(false);
@@ -47,13 +63,15 @@ export const AuthProvider: React.FC = ({ children }) => {
   };
 
   useEffect(() => {
+    if (!mounted) return; // FIX: Only run after mount to prevent hydration mismatch
+    
     const token = localStorage.getItem('authToken');
     if (token) {
       setIsAuthenticated(true);
     } else {
       checkAuth();
     }
-  }, []);
+  }, [mounted]); // FIX: Add mounted dependency
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout, checkAuth }}>

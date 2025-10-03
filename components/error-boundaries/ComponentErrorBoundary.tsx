@@ -3,6 +3,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { renderError } from '@/lib/render-safe'
+import { logReactError } from '@/lib/react-error-logger'
 
 interface Props {
   children: ReactNode
@@ -41,10 +43,18 @@ export class ComponentErrorBoundary extends Component<Props, State> {
     
     // Check for specific React errors
     if (error.message.includes('185')) {
-      console.error('🚨 REACT ERROR #185 DETECTED: Infinite render loop')
-      console.error('This usually means a component is continuously updating state')
-      console.error('Check for: useEffect without proper dependencies, circular state updates')
+      console.error('🚨 REACT ERROR #185 DETECTED: Invalid JSX render')
+      console.error('This usually means an object/array/undefined value is being rendered directly')
+      console.error('Check for: {error}, {booking.property}, {array.map()} with undefined arrays')
     }
+    
+    // Log error with structured logging
+    logReactError(error, errorInfo, {
+      componentName: this.props.componentName,
+      errorBoundary: 'ComponentErrorBoundary',
+      errorType: 'render',
+      severity: 'high'
+    });
     
     // Log to server if callback provided
     if (this.props.onError) {
@@ -72,24 +82,24 @@ export class ComponentErrorBoundary extends Component<Props, State> {
             </h3>
           </div>
           <p className="text-sm text-red-700 mb-2">
-            {this.state.error?.message || 'An error occurred'}
+            {renderError(this.state.error)}
           </p>
           <details className="text-xs text-red-600 mb-2">
             <summary className="cursor-pointer">Error Details</summary>
             <div className="mt-1">
-              <div><strong>Error Name:</strong> {this.state.error?.name}</div>
-              <div><strong>Error Message:</strong> {this.state.error?.message}</div>
+              <div><strong>Error Name:</strong> {this.state.error?.name || 'Unknown'}</div>
+              <div><strong>Error Message:</strong> {renderError(this.state.error)}</div>
               <div><strong>Component:</strong> {this.props.componentName || 'Unknown'}</div>
             </div>
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-2">
                 <strong>Stack Trace:</strong>
                 <pre className="mt-1 text-xs overflow-auto bg-red-100 p-2 rounded">
-                  {this.state.error?.stack}
+                  {this.state.error?.stack || 'No stack trace available'}
                 </pre>
                 <strong>Component Stack:</strong>
                 <pre className="mt-1 text-xs overflow-auto bg-red-100 p-2 rounded">
-                  {this.state.errorInfo?.componentStack}
+                  {this.state.errorInfo?.componentStack || 'No component stack available'}
                 </pre>
               </div>
             )}

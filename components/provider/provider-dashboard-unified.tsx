@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { BrandHeaderClient } from "@/components/ui/brand-header-client"
+import { BrandHeader } from "@/components/ui/brand-header"
 import { ConsolidatedMobileHeaderProvider } from "@/components/ui/consolidated-mobile-header-provider"
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
 import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
@@ -76,6 +76,8 @@ import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
 import { BankDetailsForm } from "./bank-details-form"
 import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
+import { renderSafe, renderError, safeGet, safeMap } from "@/lib/render-safe"
+import { normalizeBooking, normalizeBookings, safeBooking } from "@/lib/normalize-booking"
 import Link from "next/link"
 
 interface Booking {
@@ -337,7 +339,13 @@ function ProviderMainContent({
   memoizedBankDetails: any
 }) {
   // Calculate derived stats with comprehensive validation
-  const safeBookings = Array.isArray(bookings) ? bookings : []
+  const safeBookings = useMemo(() => {
+    if (!Array.isArray(bookings)) {
+      console.warn('Bookings is not an array:', bookings);
+      return [];
+    }
+    return normalizeBookings(bookings).filter(booking => booking && booking.id && typeof booking.id === 'string');
+  }, [bookings])
   const totalBookings = safeBookings.length
   const completedBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "COMPLETED").length
   const pendingBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "PENDING").length
@@ -348,7 +356,7 @@ function ProviderMainContent({
 
   // Filter bookings based on selected filter with defensive programming
   const filteredBookings = useMemo(() => {
-    if (!bookings || !Array.isArray(bookings)) return []
+    if (!Array.isArray(safeBookings)) return []
     if (selectedFilter === "all") return safeBookings.filter(booking => booking && booking.id)
     return safeBookings.filter(booking => 
       booking && 
@@ -400,7 +408,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Total Earnings</p>
-                      <p className="text-2xl font-bold text-white">R{stats.totalEarnings.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-white">R{stats.totalEarnings?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="p-3 bg-yellow-400/20 rounded-full">
                       <DollarSign className="w-6 h-6 text-yellow-400" />
@@ -414,7 +422,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Rating</p>
-                      <p className="text-2xl font-bold text-white">{stats.averageRating.toFixed(1)}</p>
+                      <p className="text-2xl font-bold text-white">{stats.averageRating?.toFixed(1) || '0.0'}</p>
                     </div>
                     <div className="p-3 bg-purple-400/20 rounded-full">
                       <Star className="w-6 h-6 text-purple-400" />
@@ -473,22 +481,22 @@ function ProviderMainContent({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(bookings || []).filter(booking => booking && booking.id).slice(0, 3).map((booking) => (
+                  {safeMap(safeBookings.slice(0, 3), (booking) => (
                     <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-300/10">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 bg-blue-400/20 rounded-full">
                           <Calendar className="w-4 h-4 text-blue-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{booking.service?.name || 'Unknown Service'}</p>
-                          <p className="text-sm text-gray-400">{booking.client?.name || 'Unknown Client'}</p>
+                          <p className="text-white font-medium">{renderSafe(booking.service?.name)}</p>
+                          <p className="text-sm text-gray-400">{renderSafe(booking.client?.name)}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {booking.status || 'UNKNOWN'}
+                          {renderSafe(booking.status)}
                         </Badge>
-                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount || 0}</p>
+                        <p className="text-sm text-gray-400 mt-1">R{renderSafe(booking.totalAmount)}</p>
                       </div>
                     </div>
                   ))}
@@ -554,16 +562,16 @@ function ProviderMainContent({
                             <Calendar className="w-5 h-5 text-blue-400" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-white">{booking.service?.name || 'Unknown Service'}</h3>
-                            <p className="text-sm text-gray-400">{booking.service?.category || 'No Category'}</p>
+                            <h3 className="text-lg font-semibold text-white">{renderSafe(booking.service?.name)}</h3>
+                            <p className="text-sm text-gray-400">{renderSafe(booking.service?.category)}</p>
                           </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-gray-400">Client</p>
-                            <p className="text-white font-medium">{booking.client?.name || 'Unknown Client'}</p>
-                            <p className="text-sm text-gray-400">{booking.client?.email || 'No Email'}</p>
+                            <p className="text-white font-medium">{renderSafe(booking.client?.name)}</p>
+                            <p className="text-sm text-gray-400">{renderSafe(booking.client?.email)}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-400">Scheduled Date</p>
@@ -579,18 +587,18 @@ function ProviderMainContent({
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="flex items-center text-gray-400">
                             <MapPin className="w-4 h-4 mr-1" />
-                            {booking.address || 'No Address'}
+                            {renderSafe(booking.address)}
                           </span>
                           <span className="flex items-center text-gray-400">
                             <DollarSign className="w-4 h-4 mr-1" />
-                            R{booking.totalAmount || 0}
+                            R{renderSafe(booking.totalAmount)}
                           </span>
                         </div>
                       </div>
                       
                       <div className="flex flex-col items-end space-y-2">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {booking.status || 'UNKNOWN'}
+                          {renderSafe(booking.status)}
                         </Badge>
                         {booking.status && typeof booking.status === 'string' && booking.status === 'PENDING' && (
                           <Button 
@@ -783,7 +791,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Total Earnings</p>
-                      <p className="text-3xl font-bold text-white">R{stats.totalEarnings.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-white">R{stats.totalEarnings?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="p-3 bg-green-400/20 rounded-full">
                       <DollarSign className="w-8 h-8 text-green-400" />
@@ -797,7 +805,7 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">This Month</p>
-                      <p className="text-3xl font-bold text-white">R{stats.thisMonthEarnings.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-white">R{stats.thisMonthEarnings?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="p-3 bg-blue-400/20 rounded-full">
                       <TrendingUp className="w-8 h-8 text-blue-400" />
@@ -811,8 +819,8 @@ function ProviderMainContent({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Average Rating</p>
-                      <p className="text-3xl font-bold text-white">{stats.averageRating.toFixed(1)}</p>
-                      <p className="text-sm text-gray-400">{stats.totalReviews} reviews</p>
+                      <p className="text-3xl font-bold text-white">{stats.averageRating?.toFixed(1) || '0.0'}</p>
+                      <p className="text-sm text-gray-400">{stats.totalReviews || 0} reviews</p>
                     </div>
                     <div className="p-3 bg-yellow-400/20 rounded-full">
                       <Star className="w-8 h-8 text-yellow-400" />
@@ -964,7 +972,7 @@ function ProviderMainContent({
             There was an error loading this section. Please try refreshing the page.
           </p>
           <div className="text-xs text-gray-500 mb-4">
-            Error: {error.message}
+            Error: {error?.message || error?.toString() || 'Unknown error'}
           </div>
           <Button 
             onClick={() => window.location.reload()}
@@ -1023,6 +1031,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   // Use refs to prevent infinite loops
   const isInitialized = useRef(false)
   const lastRefreshTime = useRef(Date.now())
+  const [mounted, setMounted] = useState(false)
   
   // Consolidated state management
   const [dashboardState, setDashboardState] = useState({
@@ -1052,9 +1061,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     },
     // UI state
     ui: {
-      loading: true,
+      loading: !initialUser, // Set to false when initialUser is provided to prevent hydration mismatch
       error: null as string | null,
-      lastRefresh: new Date(),
+      lastRefresh: new Date(0), // Use epoch time to prevent hydration mismatch
       selectedFilter: "all",
       activeSection: "overview",
       isCollapsed: false,
@@ -1140,11 +1149,11 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [router])
 
-  // WebSocket connection for real-time updates
+  // WebSocket connection for real-time updates - only initialize after mount
   const { connected, error: socketError, reconnect, isPolling } = useSocket({
-    userId: dashboardState.auth.user?.id || 'test_provider_123',
+    userId: mounted ? (dashboardState.auth.user?.id || 'test_provider_123') : undefined,
     role: 'PROVIDER',
-    enablePolling: true,
+    enablePolling: mounted, // Only enable polling after mount
     pollingInterval: 60000, // 60 seconds
     onBookingUpdate: (event) => {
       console.log('🔔 Provider booking update received:', event)
@@ -1172,7 +1181,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   const fetchProviderData = useCallback(async (retryCount = 0) => {
     const maxRetries = 3;
     
-    if (!dashboardState.auth.isAuthenticated) {
+    // Use initialUser or check authentication state without circular dependency
+    const isAuthenticated = initialUser || dashboardState.auth.isAuthenticated;
+    
+    if (!isAuthenticated) {
       console.log('Not authenticated, skipping provider data fetch')
       return
     }
@@ -1297,7 +1309,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         ui: { ...prev.ui, loading: false }
       }))
     }
-  }, [checkAuthentication]) // Remove dashboardState.auth.isAuthenticated to prevent loops
+  }, [checkAuthentication, initialUser]) // Remove dashboardState.auth.isAuthenticated to prevent loops
 
   // Check bank details - OPTIMIZED VERSION with debouncing and caching
   const lastBankDetailsCheck = useRef<number>(0)
@@ -1377,8 +1389,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     return safeData.bankDetails || null
   }, [dashboardState?.data?.bankDetails])
 
-  // Single initialization effect
+  // Single initialization effect - prevent hydration mismatch
   useEffect(() => {
+    setMounted(true)
+    
     if (isInitialized.current) return
     isInitialized.current = true
     
@@ -1396,11 +1410,14 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       }
     }
 
-    initializeDashboard()
+    // FIX: Use setTimeout to defer initialization until after hydration
+    setTimeout(initializeDashboard, 0)
   }, []) // Empty dependency array
 
-  // Auto-refresh effect - use ref to avoid dependency issues
+  // Auto-refresh effect - only run after mount to prevent hydration issues
   useEffect(() => {
+    if (!mounted) return // FIX: Only run after mount to prevent hydration mismatch
+    
     const pollInterval = setInterval(async () => {
       try {
         // Check authentication state directly instead of using dashboardState
@@ -1418,7 +1435,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }, 30000) // Check every 30 seconds
 
     return () => clearInterval(pollInterval)
-  }, []) // Empty dependency array to prevent loops
+  }, [mounted]) // FIX: Add mounted dependency to prevent hydration mismatch
 
   // Refresh function for manual refresh
   const refreshData = useCallback(async () => {
@@ -1647,6 +1664,18 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [fetchProviderData])
 
+  // Prevent hydration mismatch - don't render until mounted
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-400" />
+          <p className="text-gray-300">Loading provider dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
   // Loading state
   if (dashboardState.auth.isLoading || dashboardState.ui.loading) {
     return (
@@ -1731,14 +1760,15 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Brand Header - Desktop/Tablet Only */}
       <div className="hidden lg:block">
-        <BrandHeaderClient 
+        <BrandHeader 
           showAuth={false} 
           showUserMenu={true} 
+          user={dashboardState.auth.user}
           userStats={{
-            totalBookings: dashboardState.data.bookings.length,
-            pendingBookings: dashboardState.data.bookings.filter(b => b.status === "PENDING").length,
-            completedBookings: dashboardState.data.bookings.filter(b => b.status === "COMPLETED").length,
-            rating: dashboardState.data.stats.averageRating
+            totalBookings: dashboardState.data.bookings?.length || 0,
+            pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
+            completedBookings: dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0,
+            rating: dashboardState.data.stats?.averageRating || 0
           }}
         />
       </div>
@@ -1752,8 +1782,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, activeSection: section }
           }))}
           user={dashboardState.auth.user}
-          totalBookings={dashboardState.data.bookings.length}
-          pendingBookings={dashboardState.data.bookings.filter(b => b.status === "PENDING").length}
+          totalBookings={dashboardState.data.bookings?.length || 0}
+          pendingBookings={dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0}
           isCollapsed={dashboardState.ui.isCollapsed}
           setIsCollapsed={(collapsed) => setDashboardState(prev => ({
             ...prev,
@@ -1767,8 +1797,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, activeSection: section }
           }))}
           user={dashboardState.auth.user}
-          bookings={dashboardState.data.bookings}
-          stats={dashboardState.data.stats}
+          bookings={dashboardState.data.bookings || []}
+          stats={dashboardState.data.stats || {}}
           refreshData={refreshData}
           isRefreshing={dashboardState.ui.loading}
           lastRefresh={dashboardState.ui.lastRefresh}
@@ -1777,7 +1807,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ...prev,
             ui: { ...prev.ui, selectedFilter: filter }
           }))}
-          hasBankDetails={dashboardState.data.hasBankDetails}
+          hasBankDetails={dashboardState.data.hasBankDetails || false}
           acceptBooking={acceptBooking}
           acceptingBooking={dashboardState.ui.acceptingBooking}
           acceptError={dashboardState.ui.acceptError}
@@ -1820,8 +1850,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, activeSection: section }
           }))}
           user={dashboardState.auth.user}
-          bookings={dashboardState.data.bookings}
-          stats={dashboardState.data.stats}
+          bookings={dashboardState.data.bookings || []}
+          stats={dashboardState.data.stats || {}}
           refreshData={refreshData}
           isRefreshing={dashboardState.ui.loading}
           lastRefresh={dashboardState.ui.lastRefresh}
@@ -1830,7 +1860,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ...prev,
             ui: { ...prev.ui, selectedFilter: filter }
           }))}
-          hasBankDetails={dashboardState.data.hasBankDetails}
+          hasBankDetails={dashboardState.data.hasBankDetails || false}
           acceptBooking={acceptBooking}
           acceptingBooking={dashboardState.ui.acceptingBooking}
           acceptError={dashboardState.ui.acceptError}

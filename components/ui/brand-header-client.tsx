@@ -32,8 +32,12 @@ export function BrandHeaderClient({
 }: BrandHeaderClientProps) {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
+  // Prevent hydration mismatch by only running on client
   useEffect(() => {
+    setMounted(true)
+    
     async function fetchUser() {
       try {
         const response = await fetch('/api/auth/me')
@@ -48,9 +52,20 @@ export function BrandHeaderClient({
       }
     }
 
-    // Always check authentication status
     fetchUser()
   }, [])
+
+  // Prevent hydration mismatch - don't render until mounted
+  if (!mounted) {
+    return (
+      <header className={`border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50 ${className}`}>
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="animate-pulse bg-gray-200 h-8 w-48 rounded"></div>
+          <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
+        </div>
+      </header>
+    )
+  }
 
   // Don't render until we've checked authentication
   if (loading) {

@@ -3,10 +3,14 @@
 import React, { Component, ReactNode, useEffect } from 'react';
 import { CurrencyProvider } from '@/contexts/currency-context';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 // Client logger utility
 const logToServer = async (level: 'error' | 'info', message: string, data?: any) => {
   try {
+    // Prevent hydration mismatch by only running on client
+    if (typeof window === 'undefined') return
+    
     await fetch('/api/client-logs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -149,11 +153,13 @@ export function ClientRoot({ children }: ClientRootProps) {
   return (
     <ClientErrorBoundary>
       <HydrationProbe />
-      <LanguageProvider>
-        <CurrencyProvider>
-          {children}
-        </CurrencyProvider>
-      </LanguageProvider>
+      <AuthProvider>
+        <LanguageProvider>
+          <CurrencyProvider>
+            {children}
+          </CurrencyProvider>
+        </LanguageProvider>
+      </AuthProvider>
     </ClientErrorBoundary>
   );
 }

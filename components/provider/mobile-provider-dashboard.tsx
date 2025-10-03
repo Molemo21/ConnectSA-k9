@@ -37,6 +37,7 @@ import {
   Home
 } from "lucide-react"
 import { showToast, handleApiError } from "@/lib/toast"
+import { normalizeBookings } from "@/lib/normalize-booking"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
@@ -208,7 +209,7 @@ export function MobileProviderDashboard() {
       const response = await fetch("/api/provider/bookings")
       if (response.ok) {
         const data = await response.json()
-        setBookings(data.bookings || [])
+        setBookings(normalizeBookings(data.bookings || []))
         setStats(data.stats || {})
         setError(null) // Clear any previous errors
         
@@ -348,7 +349,7 @@ export function MobileProviderDashboard() {
         <div className="container mx-auto px-4 py-6 pb-20">
           <div className="text-center">
             <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-red-600 mb-4">{error?.message || error?.toString() || 'Unknown error'}</p>
             <Button onClick={fetchBookings} size="sm">Try Again</Button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { 
   DropdownMenu, 
@@ -46,9 +46,28 @@ interface UserMenuProps {
 export function UserMenu({ user, showNotifications = true, userStats }: UserMenuProps) {
   const { logout, isLoggingOut } = useLogout()
   const [isOpen, setIsOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch by only running on client
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   if (!user) {
     return null
+  }
+
+  // Prevent hydration mismatch - don't render until mounted
+  if (!mounted) {
+    return (
+      <div className="flex items-center space-x-3">
+        <div className="animate-pulse bg-gray-200 h-8 w-8 rounded-full"></div>
+        <div className="hidden lg:block">
+          <div className="animate-pulse bg-gray-200 h-4 w-24 rounded mb-1"></div>
+          <div className="animate-pulse bg-gray-200 h-3 w-16 rounded"></div>
+        </div>
+      </div>
+    )
   }
 
   const getRoleBadge = (role: string) => {

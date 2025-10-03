@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { normalizeBookings } from "@/lib/normalize-booking"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
@@ -138,15 +139,18 @@ export async function GET(request: NextRequest) {
 
     console.log('Stats calculated successfully:', stats);
 
+    // Normalize bookings before sending to frontend
+    const normalizedBookings = normalizeBookings(bookings);
+
     // Create response with cache-busting headers
     const response = NextResponse.json({ 
       success: true,
-      bookings, 
+      bookings: normalizedBookings, 
       stats, 
       providerId: provider.id,
-      message: bookings.length === 0 
+      message: normalizedBookings.length === 0 
         ? "No active bookings found. Your bookings will appear here when clients book your services."
-        : `Found ${bookings.length} active bookings`,
+        : `Found ${normalizedBookings.length} active bookings`,
       timestamp: new Date().toISOString()
     });
 
