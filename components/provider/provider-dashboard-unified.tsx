@@ -348,17 +348,29 @@ function ProviderMainContent({
   const inProgressBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "IN_PROGRESS").length
   const awaitingConfirmationBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "AWAITING_CONFIRMATION").length
 
-  // Filter bookings based on selected filter with defensive programming
+  // Filter and sort bookings based on selected filter with defensive programming
   const filteredBookings = useMemo(() => {
     if (!bookings || !Array.isArray(bookings)) return []
-    if (selectedFilter === "all") return safeBookings.filter(booking => booking && booking.id)
-    return safeBookings.filter(booking => 
-      booking && 
-      booking.id && 
-      booking.status && 
-      typeof booking.status === 'string' &&
-      booking.status.toLowerCase() === selectedFilter.toLowerCase()
-    )
+    
+    let filtered = []
+    if (selectedFilter === "all") {
+      filtered = safeBookings.filter(booking => booking && booking.id)
+    } else {
+      filtered = safeBookings.filter(booking => 
+        booking && 
+        booking.id && 
+        booking.status && 
+        typeof booking.status === 'string' &&
+        booking.status.toLowerCase() === selectedFilter.toLowerCase()
+      )
+    }
+    
+    // Sort by creation date (most recent first) to ensure recent bookings appear at the top
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.scheduledDate || 0)
+      const dateB = new Date(b.createdAt || b.scheduledDate || 0)
+      return dateB.getTime() - dateA.getTime() // Descending order (newest first)
+    })
   }, [safeBookings, selectedFilter])
 
   const renderSectionContent = () => {

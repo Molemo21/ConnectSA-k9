@@ -302,7 +302,7 @@ export function MobileProviderDashboard() {
     }
   }
 
-  // Filter bookings
+  // Filter and sort bookings
   const filteredBookings = bookings.filter(booking => {
     let matchesFilter = true
     if (selectedFilter !== "all") {
@@ -316,6 +316,11 @@ export function MobileProviderDashboard() {
                          booking.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          booking.address.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesFilter && matchesSearch
+  }).sort((a, b) => {
+    // Sort by creation date (most recent first) to ensure recent bookings appear at the top
+    const dateA = new Date(a.createdAt || a.scheduledDate || 0)
+    const dateB = new Date(b.createdAt || b.scheduledDate || 0)
+    return dateB.getTime() - dateA.getTime() // Descending order (newest first)
   })
 
   // Group bookings by status

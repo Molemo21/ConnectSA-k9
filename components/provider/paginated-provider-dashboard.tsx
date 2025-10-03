@@ -361,7 +361,7 @@ export function PaginatedProviderDashboard() {
     </div>
   )
 
-  // Filter bookings based on active tab
+  // Filter and sort bookings based on active tab
   const filteredBookings = bookings.filter(booking => {
     switch (activeTab) {
       case "pending":
@@ -375,6 +375,11 @@ export function PaginatedProviderDashboard() {
       default:
         return true
     }
+  }).sort((a, b) => {
+    // Sort by creation date (most recent first) to ensure recent bookings appear at the top
+    const dateA = new Date(a.createdAt || a.scheduledDate || 0)
+    const dateB = new Date(b.createdAt || b.scheduledDate || 0)
+    return dateB.getTime() - dateA.getTime() // Descending order (newest first)
   })
 
   // Get status badge color
