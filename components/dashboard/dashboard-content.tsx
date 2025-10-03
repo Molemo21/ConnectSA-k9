@@ -185,6 +185,10 @@ export function DashboardContent() {
     fetchDashboardData()
   }, [])
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This ensures hooks are called in the same order on every render
+
+  // Conditional rendering AFTER all hooks have been called
   if (loading) {
     return (
       <div className="h-screen bg-gray-950 text-gray-100 flex items-center justify-center">

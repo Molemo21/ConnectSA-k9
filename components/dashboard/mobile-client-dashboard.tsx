@@ -1232,6 +1232,10 @@ export function MobileClientDashboard() {
     fetchDashboardData()
   }, [])
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This ensures hooks are called in the same order on every render
+
+  // Conditional rendering AFTER all hooks have been called
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">

@@ -75,6 +75,9 @@ export function PaymentStatusSync({
     }
   }, [currentPayment?.status, onStatusChange]);
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This ensures hooks are called in the same order on every render
+
   // Handle manual refresh
   const handleManualRefresh = async () => {
     if (isManuallyRefreshing || isRefreshing) return;
@@ -107,6 +110,7 @@ export function PaymentStatusSync({
     }
   };
 
+  // Conditional rendering AFTER all hooks have been called
   // Show loading state
   if (isLoading && !currentPayment) {
     return (
