@@ -26,7 +26,7 @@ export function useLogout() {
           "Content-Type": "application/json",
           "Cache-Control": "no-cache, no-store, must-revalidate",
           "Pragma": "no-cache",
-          "User-Agent": navigator.userAgent // Include user agent for mobile detection
+          "User-Agent": typeof window !== 'undefined' ? navigator.userAgent : 'Server' // Include user agent for mobile detection
         },
       })
       
@@ -142,8 +142,10 @@ export function useLogout() {
         console.log('ALL client state cleared, forcing complete reload...')
         
         // Force complete page reload with cache busting
-        const timestamp = Date.now()
-        window.location.href = `/?_t=${timestamp}`
+        if (typeof window !== 'undefined') {
+          const timestamp = Date.now()
+          window.location.href = `/?_t=${timestamp}`
+        }
         
       } else {
         const error = await response.json()
