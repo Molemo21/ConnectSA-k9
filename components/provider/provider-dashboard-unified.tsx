@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { useWebSocket } from "@/hooks/use-websocket"
-import { providerApi } from "@/services/providerApi"
+// import { useWebSocket } from "@/hooks/use-websocket"
+// import { providerApi } from "@/services/providerApi"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -1068,6 +1068,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   })
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This ensures hooks are called in the same order on every render
+
   // Stable authentication check function
   const checkAuthentication = useCallback(async () => {
     try {
@@ -1144,32 +1147,32 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   }, [router])
 
   // WebSocket connection for real-time updates - only initialize after mount
-  const { connected, error: socketError, reconnect, isPolling } = useSocket({
-    userId: mounted ? (dashboardState.auth.user?.id || 'test_provider_123') : undefined,
-    role: 'PROVIDER',
-    enablePolling: mounted, // Only enable polling after mount
-    pollingInterval: 60000, // 60 seconds
-    onBookingUpdate: (event) => {
-      console.log('🔔 Provider booking update received:', event)
-      // Refresh data when booking status changes
-      fetchProviderData()
-    },
-    onPaymentUpdate: (event) => {
-      console.log('💳 Provider payment update received:', event)
-      // Refresh data when payment status changes
-      fetchProviderData()
-    },
-    onPayoutUpdate: (event) => {
-      console.log('💰 Provider payout update received:', event)
-      // Refresh data when payout status changes
-      fetchProviderData()
-    },
-    onNotification: (event) => {
-      console.log('🔔 Provider notification received:', event)
-      // Show notification to user
-      showToast.info(event.data.message || 'New notification')
-    }
-  })
+  // const { connected, error: socketError, reconnect, isPolling } = useSocket({
+  //   userId: mounted ? (dashboardState.auth.user?.id || 'test_provider_123') : undefined,
+  //   role: 'PROVIDER',
+  //   enablePolling: mounted, // Only enable polling after mount
+  //   pollingInterval: 60000, // 60 seconds
+  //   onBookingUpdate: (event) => {
+  //     console.log('🔔 Provider booking update received:', event)
+  //     // Refresh data when booking status changes
+  //     fetchProviderData()
+  //   },
+  //   onPaymentUpdate: (event) => {
+  //     console.log('💳 Provider payment update received:', event)
+  //     // Refresh data when payment status changes
+  //     fetchProviderData()
+  //   },
+  //   onPayoutUpdate: (event) => {
+  //     console.log('💰 Provider payout update received:', event)
+  //     // Refresh data when payout status changes
+  //     fetchProviderData()
+  //   },
+  //   onNotification: (event) => {
+  //     console.log('🔔 Provider notification received:', event)
+  //     // Show notification to user
+  //     showToast.info(event.data.message || 'New notification')
+  //   }
+  // })
 
   // Stable provider data fetch function with retry logic
   const fetchProviderData = useCallback(async (retryCount = 0) => {
@@ -1307,7 +1310,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
   // Check bank details - OPTIMIZED VERSION with debouncing and caching
   const lastBankDetailsCheck = useRef<number>(0)
-  const bankDetailsCache = useRef<{providerId: string, data: any} | null>(null)
+  const bankDetailsCache = useRef<{providerId: string, data: unknown} | null>(null)
   
   const checkBankDetails = useCallback(async (providerId: string) => {
     // Debounce: Don't check more than once every 10 seconds
@@ -1381,7 +1384,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     const safeDashboardState = dashboardState || {}
     const safeData = safeDashboardState.data || {}
     return safeData.bankDetails || null
-  }, [dashboardState?.data?.bankDetails])
+  }, [dashboardState.data.bankDetails])
 
   // Single initialization effect - prevent hydration mismatch
   useEffect(() => {
@@ -1406,7 +1409,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     // FIX: Use setTimeout to defer initialization until after hydration
     setTimeout(initializeDashboard, 0)
-  }, []) // Empty dependency array
+  }, [checkAuthentication, fetchProviderData, initialUser]) // Add dependencies
 
   // Auto-refresh effect - only run after mount to prevent hydration issues
   useEffect(() => {
@@ -1429,7 +1432,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }, 30000) // Check every 30 seconds
 
     return () => clearInterval(pollInterval)
-  }, [mounted]) // FIX: Add mounted dependency to prevent hydration mismatch
+  }, [mounted, fetchProviderData]) // Add fetchProviderData dependency
 
   // Refresh function for manual refresh
   const refreshData = useCallback(async () => {
@@ -1438,7 +1441,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   }, [fetchProviderData])
 
   // Handle bank details change with useCallback to prevent re-renders
-  const handleBankDetailsChange = useCallback((bankDetails: any) => {
+  const handleBankDetailsChange = useCallback((bankDetails: unknown) => {
     // Clear cache when bank details are updated
     bankDetailsCache.current = null
     lastBankDetailsCheck.current = 0
@@ -1478,7 +1481,6 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   // Memoize userStats to prevent infinite re-renders
   // FIX: Depend on array length and primitive values, not the array reference itself
   const bookingsLength = dashboardState.data.bookings?.length || 0
-  const bookingsJSON = JSON.stringify(dashboardState.data.bookings?.map(b => ({id: b.id, status: b.status})) || [])
   const averageRating = dashboardState.data.stats?.averageRating || 0
   
   const memoizedUserStats = useMemo(() => ({
@@ -1486,7 +1488,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
     completedBookings: dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0,
     rating: averageRating
-  }), [bookingsLength, bookingsJSON, averageRating, dashboardState.data.bookings])
+  }), [bookingsLength, averageRating, dashboardState.data.bookings])
 
   const clearAcceptError = useCallback(() => {
     setDashboardState(prev => ({
@@ -1707,6 +1709,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [fetchProviderData])
 
+  // CONDITIONAL RENDERING - All hooks have been called above
   // Prevent hydration mismatch - don't render until mounted
   if (!mounted) {
     return (
