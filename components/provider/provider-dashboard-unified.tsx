@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { BrandHeaderClient } from "@/components/ui/brand-header-client"
+import { BrandHeader } from "@/components/ui/brand-header"
 import { ConsolidatedMobileHeaderProvider } from "@/components/ui/consolidated-mobile-header-provider"
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
 import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
@@ -1752,9 +1752,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Brand Header - Desktop/Tablet Only */}
       <div className="hidden lg:block">
-        <BrandHeaderClient 
+        <BrandHeader 
           showAuth={false} 
           showUserMenu={true} 
+          user={dashboardState.auth.user}
           userStats={{
             totalBookings: dashboardState.data.bookings?.length || 0,
             pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
