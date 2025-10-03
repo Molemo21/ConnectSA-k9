@@ -76,8 +76,6 @@ import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
 import { BankDetailsForm } from "./bank-details-form"
 import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
-import { renderSafe, renderError, safeGet, safeMap } from "@/lib/render-safe"
-import { normalizeBooking, normalizeBookings, safeBooking } from "@/lib/normalize-booking"
 import Link from "next/link"
 
 interface Booking {
@@ -339,13 +337,7 @@ function ProviderMainContent({
   memoizedBankDetails: any
 }) {
   // Calculate derived stats with comprehensive validation
-  const safeBookings = useMemo(() => {
-    if (!Array.isArray(bookings)) {
-      console.warn('Bookings is not an array:', bookings);
-      return [];
-    }
-    return normalizeBookings(bookings).filter(booking => booking && booking.id && typeof booking.id === 'string');
-  }, [bookings])
+  const safeBookings = Array.isArray(bookings) ? bookings : []
   const totalBookings = safeBookings.length
   const completedBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "COMPLETED").length
   const pendingBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "PENDING").length
@@ -356,7 +348,7 @@ function ProviderMainContent({
 
   // Filter bookings based on selected filter with defensive programming
   const filteredBookings = useMemo(() => {
-    if (!Array.isArray(safeBookings)) return []
+    if (!bookings || !Array.isArray(bookings)) return []
     if (selectedFilter === "all") return safeBookings.filter(booking => booking && booking.id)
     return safeBookings.filter(booking => 
       booking && 
@@ -481,22 +473,22 @@ function ProviderMainContent({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {safeMap(safeBookings.slice(0, 3), (booking) => (
+                  {(bookings || []).filter(booking => booking && booking.id).slice(0, 3).map((booking) => (
                     <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-300/10">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 bg-blue-400/20 rounded-full">
                           <Calendar className="w-4 h-4 text-blue-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{renderSafe(booking.service?.name)}</p>
-                          <p className="text-sm text-gray-400">{renderSafe(booking.client?.name)}</p>
+                          <p className="text-white font-medium">{booking.service?.name || 'Unknown Service'}</p>
+                          <p className="text-sm text-gray-400">{booking.client?.name || 'Unknown Client'}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {renderSafe(booking.status)}
+                          {booking.status || 'UNKNOWN'}
                         </Badge>
-                        <p className="text-sm text-gray-400 mt-1">R{renderSafe(booking.totalAmount)}</p>
+                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount || 0}</p>
                       </div>
                     </div>
                   ))}
@@ -562,16 +554,16 @@ function ProviderMainContent({
                             <Calendar className="w-5 h-5 text-blue-400" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-white">{renderSafe(booking.service?.name)}</h3>
-                            <p className="text-sm text-gray-400">{renderSafe(booking.service?.category)}</p>
+                            <h3 className="text-lg font-semibold text-white">{booking.service?.name || 'Unknown Service'}</h3>
+                            <p className="text-sm text-gray-400">{booking.service?.category || 'No Category'}</p>
                           </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-gray-400">Client</p>
-                            <p className="text-white font-medium">{renderSafe(booking.client?.name)}</p>
-                            <p className="text-sm text-gray-400">{renderSafe(booking.client?.email)}</p>
+                            <p className="text-white font-medium">{booking.client?.name || 'Unknown Client'}</p>
+                            <p className="text-sm text-gray-400">{booking.client?.email || 'No Email'}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-400">Scheduled Date</p>
@@ -587,18 +579,18 @@ function ProviderMainContent({
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="flex items-center text-gray-400">
                             <MapPin className="w-4 h-4 mr-1" />
-                            {renderSafe(booking.address)}
+                            {booking.address || 'No Address'}
                           </span>
                           <span className="flex items-center text-gray-400">
                             <DollarSign className="w-4 h-4 mr-1" />
-                            R{renderSafe(booking.totalAmount)}
+                            R{booking.totalAmount || 0}
                           </span>
                         </div>
                       </div>
                       
                       <div className="flex flex-col items-end space-y-2">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {renderSafe(booking.status)}
+                          {booking.status || 'UNKNOWN'}
                         </Badge>
                         {booking.status && typeof booking.status === 'string' && booking.status === 'PENDING' && (
                           <Button 
@@ -1459,6 +1451,42 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }))
   }, [])
 
+  // Memoized state setters to prevent infinite re-renders
+  const setActiveSection = useCallback((section: string) => {
+    setDashboardState(prev => ({
+      ...prev,
+      ui: { ...prev.ui, activeSection: section }
+    }))
+  }, [])
+
+  const setSelectedFilter = useCallback((filter: string) => {
+    setDashboardState(prev => ({
+      ...prev,
+      ui: { ...prev.ui, selectedFilter: filter }
+    }))
+  }, [])
+
+  const setIsCollapsed = useCallback((collapsed: boolean) => {
+    setDashboardState(prev => ({
+      ...prev,
+      ui: { ...prev.ui, isCollapsed: collapsed }
+    }))
+  }, [])
+
+  const clearAcceptError = useCallback(() => {
+    setDashboardState(prev => ({
+      ...prev,
+      ui: { ...prev.ui, acceptError: null }
+    }))
+  }, [])
+
+  const clearAcceptSuccess = useCallback(() => {
+    setDashboardState(prev => ({
+      ...prev,
+      ui: { ...prev.ui, acceptSuccess: null }
+    }))
+  }, [])
+
   // Accept booking function
   const acceptBooking = useCallback(async (bookingId: string) => {
     try {
@@ -1777,25 +1805,16 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       <div className="hidden lg:flex min-h-screen">
         <ProviderDesktopSidebar
           activeSection={dashboardState.ui.activeSection}
-          setActiveSection={(section) => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, activeSection: section }
-          }))}
+          setActiveSection={setActiveSection}
           user={dashboardState.auth.user}
           totalBookings={dashboardState.data.bookings?.length || 0}
           pendingBookings={dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0}
           isCollapsed={dashboardState.ui.isCollapsed}
-          setIsCollapsed={(collapsed) => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, isCollapsed: collapsed }
-          }))}
+          setIsCollapsed={setIsCollapsed}
         />
         <ProviderMainContent
           activeSection={dashboardState.ui.activeSection}
-          setActiveSection={(section) => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, activeSection: section }
-          }))}
+          setActiveSection={setActiveSection}
           user={dashboardState.auth.user}
           bookings={dashboardState.data.bookings || []}
           stats={dashboardState.data.stats || {}}
@@ -1803,23 +1822,14 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           isRefreshing={dashboardState.ui.loading}
           lastRefresh={dashboardState.ui.lastRefresh}
           selectedFilter={dashboardState.ui.selectedFilter}
-          setSelectedFilter={(filter) => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, selectedFilter: filter }
-          }))}
+          setSelectedFilter={setSelectedFilter}
           hasBankDetails={dashboardState.data.hasBankDetails || false}
           acceptBooking={acceptBooking}
           acceptingBooking={dashboardState.ui.acceptingBooking}
           acceptError={dashboardState.ui.acceptError}
           acceptSuccess={dashboardState.ui.acceptSuccess}
-          clearAcceptError={() => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, acceptError: null }
-          }))}
-          clearAcceptSuccess={() => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, acceptSuccess: null }
-          }))}
+          clearAcceptError={clearAcceptError}
+          clearAcceptSuccess={clearAcceptSuccess}
           handleStartJob={handleStartJob}
           handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
@@ -1834,10 +1844,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         <ConsolidatedMobileHeaderProvider
           user={dashboardState.auth.user}
           activeSection={dashboardState.ui.activeSection}
-          setActiveSection={(section) => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, activeSection: section }
-          }))}
+          setActiveSection={setActiveSection}
           totalBookings={dashboardState.data.bookings.length}
           pendingBookings={dashboardState.data.bookings.filter(b => b.status === "PENDING").length}
           hasNotifications={dashboardState.data.bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status))}
@@ -1845,10 +1852,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         />
         <ProviderMainContent
           activeSection={dashboardState.ui.activeSection}
-          setActiveSection={(section) => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, activeSection: section }
-          }))}
+          setActiveSection={setActiveSection}
           user={dashboardState.auth.user}
           bookings={dashboardState.data.bookings || []}
           stats={dashboardState.data.stats || {}}
@@ -1856,23 +1860,14 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           isRefreshing={dashboardState.ui.loading}
           lastRefresh={dashboardState.ui.lastRefresh}
           selectedFilter={dashboardState.ui.selectedFilter}
-          setSelectedFilter={(filter) => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, selectedFilter: filter }
-          }))}
+          setSelectedFilter={setSelectedFilter}
           hasBankDetails={dashboardState.data.hasBankDetails || false}
           acceptBooking={acceptBooking}
           acceptingBooking={dashboardState.ui.acceptingBooking}
           acceptError={dashboardState.ui.acceptError}
           acceptSuccess={dashboardState.ui.acceptSuccess}
-          clearAcceptError={() => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, acceptError: null }
-          }))}
-          clearAcceptSuccess={() => setDashboardState(prev => ({
-            ...prev,
-            ui: { ...prev.ui, acceptSuccess: null }
-          }))}
+          clearAcceptError={clearAcceptError}
+          clearAcceptSuccess={clearAcceptSuccess}
           handleStartJob={handleStartJob}
           handleCompleteJob={handleCompleteJob}
           processingAction={dashboardState.ui.processingAction}
