@@ -53,6 +53,12 @@ export function UserMenu({ user, showNotifications = true, userStats }: UserMenu
     setMounted(true)
   }, [])
 
+  const handleLogout = useCallback(async () => {
+    setIsOpen(false)
+    await logout()
+  }, [logout])
+
+  // Early returns AFTER all hooks are called
   if (!user) {
     return null
   }
@@ -92,11 +98,6 @@ export function UserMenu({ user, showNotifications = true, userStats }: UserMenu
     }
     return "U"
   }
-
-  const handleLogout = useCallback(async () => {
-    setIsOpen(false)
-    await logout()
-  }, [logout])
 
   return (
     <div className="flex items-center space-x-3">
