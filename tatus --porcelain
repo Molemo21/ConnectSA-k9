@@ -1,0 +1,32 @@
+warning: in the working copy of 'app/api/provider/bookings/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/api/user/bookings/route.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/bookings/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/dashboard/realtime-client-dashboard.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/dashboard/synchronized-dashboard.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/error-boundaries/ComponentErrorBoundary.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/provider/mobile-provider-dashboard.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/provider/provider-booking-card.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/provider/provider-dashboard-content.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/provider/provider-dashboard-unified.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'hooks/use-smart-provider-booking.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/socket-client.ts', LF will be replaced by CRLF the next time Git touches it
+__tests__/components/ProviderBookingCard.test.tsx
+__tests__/e2e/react-error-185.test.ts
+__tests__/normalize-booking.test.ts
+__tests__/render-safe.test.ts
+app/api/provider/bookings/route.ts
+app/api/user/bookings/route.ts
+app/bookings/page.tsx
+components/dashboard/realtime-client-dashboard.tsx
+components/dashboard/synchronized-dashboard.tsx
+components/error-boundaries/ComponentErrorBoundary.tsx
+components/provider/mobile-provider-dashboard.tsx
+components/provider/provider-booking-card.tsx
+components/provider/provider-dashboard-content.tsx
+components/provider/provider-dashboard-unified.tsx
+hooks/use-smart-provider-booking.ts
+lib/normalize-booking.ts
+lib/react-error-logger.ts
+lib/render-safe.ts
+lib/socket-client.ts
+lib/validate-booking.ts

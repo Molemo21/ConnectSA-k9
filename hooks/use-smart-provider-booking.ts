@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { normalizeBookings } from '@/lib/normalize-booking'
 
 interface Booking {
   id: string
@@ -128,12 +127,12 @@ export function useSmartProviderBooking(): UseSmartProviderBookingReturn {
       
       // Update cache
       cachedData = {
-        bookings: normalizeBookings(data.bookings || []),
+        bookings: data.bookings || [],
         stats: data.stats || stats,
         timestamp: Date.now()
       }
 
-      setBookings(normalizeBookings(data.bookings || []))
+      setBookings(data.bookings || [])
       setStats(data.stats || stats)
       setLastRefresh(new Date())
       setError(null)

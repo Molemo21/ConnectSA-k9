@@ -67,8 +67,6 @@ import {
 } from "lucide-react"
 import { useSocket, SocketEvent } from "@/lib/socket-client"
 import { toast } from "react-hot-toast"
-import { renderSafe, safeMap } from "@/lib/render-safe"
-import { normalizeBookings } from "@/lib/normalize-booking"
 
 interface Booking {
   id: string
@@ -269,7 +267,7 @@ export function RealtimeClientDashboard() {
       const data = await response.json()
       
       if (data.success) {
-        setBookings(normalizeBookings(data.bookings || []))
+        setBookings(data.bookings || [])
         
         // Calculate stats
         const bookingsData = data.bookings || []
@@ -520,20 +518,20 @@ export function RealtimeClientDashboard() {
                 </p>
               </div>
             ) : (
-              safeMap(filteredBookings, (booking) => (
+              filteredBookings.map((booking) => (
                 <Card key={booking.id} className="border border-gray-200">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg font-semibold text-gray-900">
-                          {renderSafe(booking.service?.name)}
+                          {booking.service.name}
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 mt-1">
-                          {renderSafe(booking.provider?.businessName || booking.provider?.user?.name)}
+                          {booking.provider.businessName || booking.provider.user.name}
                         </CardDescription>
                       </div>
                       <Badge className={getStatusBadgeColor(booking.status)}>
-                        {renderSafe(booking.status)?.replace('_', ' ')}
+                        {booking.status.replace('_', ' ')}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -575,10 +573,10 @@ export function RealtimeClientDashboard() {
                       {booking.payment && (
                         <div className="flex items-center gap-2 text-sm">
                           <CreditCard className="h-4 w-4 text-gray-600" />
-                        <span className="text-gray-600">Payment:</span>
-                        <Badge className={getPaymentStatusBadgeColor(booking.payment?.status)}>
-                          {renderSafe(booking.payment?.status)}
-                        </Badge>
+                          <span className="text-gray-600">Payment:</span>
+                          <Badge className={getPaymentStatusBadgeColor(booking.payment.status)}>
+                            {booking.payment.status}
+                          </Badge>
                         </div>
                       )}
 
@@ -586,8 +584,8 @@ export function RealtimeClientDashboard() {
                         <div className="flex items-center gap-2 text-sm">
                           <TrendingUp className="h-4 w-4 text-gray-600" />
                           <span className="text-gray-600">Payout:</span>
-                          <Badge className={getPaymentStatusBadgeColor(booking.payment?.payout?.status)}>
-                            {renderSafe(booking.payment?.payout?.status)}
+                          <Badge className={getPaymentStatusBadgeColor(booking.payment.payout.status)}>
+                            {booking.payment.payout.status}
                           </Badge>
                         </div>
                       )}

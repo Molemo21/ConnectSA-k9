@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
 import { LoadingLink } from "@/components/ui/loading-link"
-import { UserMenu } from "@/components/ui/user-menu"
+import { SafeUserMenu } from "@/components/ui/safe-user-menu"
 import { LanguageSwitcher } from "./language-switcher"
 import { Mail, Phone, MapPin, Clock, Globe } from "lucide-react"
 import { useState, useEffect, useRef, useMemo } from "react"
@@ -115,7 +115,7 @@ export function BrandHeader({
       <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2 sm:py-3 md:py-4">
         <div className="flex items-center justify-between">
           {/* Brand - Mobile First */}
-          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
+          <Link href={user?.role === "PROVIDER" ? "/provider/dashboard" : "/"} className="flex items-center space-x-2 sm:space-x-3 group">
             <img 
               src="/handshake.png" 
               alt="ProLiink Connect Logo" 
@@ -149,7 +149,7 @@ export function BrandHeader({
             
             {/* User Menu - Show for authenticated users on all devices */}
             {user ? (
-              <UserMenu user={user} userStats={memoizedUserStats} />
+              <SafeUserMenu user={user} userStats={memoizedUserStats} />
             ) : showAuth ? (
               <div className="flex items-center space-x-2 sm:space-x-3">
                 {/* Contact Button with Popup - Desktop Only */}

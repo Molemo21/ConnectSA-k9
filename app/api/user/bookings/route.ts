@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { normalizeBookings } from "@/lib/normalize-booking";
 import { logDashboard } from "@/lib/logger";
 
 // Force dynamic rendering to prevent build-time static generation
@@ -243,17 +242,14 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Normalize bookings before sending to frontend
-    const normalizedBookings = normalizeBookings(transformedBookings);
-
     return NextResponse.json({
       success: true,
-      bookings: normalizedBookings,
+      bookings: transformedBookings,
       pagination: {
         hasMore,
         nextCursor,
         pageSize,
-        count: normalizedBookings.length
+        count: transformedBookings.length
       },
       userRole: user.role
     });

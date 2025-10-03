@@ -37,7 +37,6 @@ import {
   Home
 } from "lucide-react"
 import { showToast, handleApiError } from "@/lib/toast"
-import { normalizeBookings } from "@/lib/normalize-booking"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
@@ -209,7 +208,7 @@ export function MobileProviderDashboard() {
       const response = await fetch("/api/provider/bookings")
       if (response.ok) {
         const data = await response.json()
-        setBookings(normalizeBookings(data.bookings || []))
+        setBookings(data.bookings || [])
         setStats(data.stats || {})
         setError(null) // Clear any previous errors
         
