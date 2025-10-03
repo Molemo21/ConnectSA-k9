@@ -1409,7 +1409,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     // FIX: Use setTimeout to defer initialization until after hydration
     setTimeout(initializeDashboard, 0)
-  }, [checkAuthentication, fetchProviderData, initialUser]) // Add dependencies
+  }, []) // Empty dependency array to prevent infinite loop
 
   // Auto-refresh effect - only run after mount to prevent hydration issues
   useEffect(() => {
@@ -1424,6 +1424,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         const timeSinceLastRefresh = Date.now() - lastRefreshTime.current
         if (timeSinceLastRefresh > 60000) { // 1 minute
           lastRefreshTime.current = Date.now()
+          // Call fetchProviderData directly without dependency
           await fetchProviderData()
         }
       } catch (error) {
@@ -1432,7 +1433,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }, 30000) // Check every 30 seconds
 
     return () => clearInterval(pollInterval)
-  }, [mounted, fetchProviderData]) // Add fetchProviderData dependency
+  }, [mounted]) // Remove fetchProviderData dependency to prevent infinite loop
 
   // Refresh function for manual refresh
   const refreshData = useCallback(async () => {
@@ -1479,16 +1480,20 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   }, [])
 
   // Memoize userStats to prevent infinite re-renders
-  // FIX: Depend on array length and primitive values, not the array reference itself
+  // FIX: Calculate counts directly without array reference dependencies
   const bookingsLength = dashboardState.data.bookings?.length || 0
   const averageRating = dashboardState.data.stats?.averageRating || 0
   
+  // Calculate counts directly to avoid array reference issues
+  const pendingBookingsCount = dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0
+  const completedBookingsCount = dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0
+  
   const memoizedUserStats = useMemo(() => ({
     totalBookings: bookingsLength,
-    pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
-    completedBookings: dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0,
+    pendingBookings: pendingBookingsCount,
+    completedBookings: completedBookingsCount,
     rating: averageRating
-  }), [bookingsLength, averageRating, dashboardState.data.bookings])
+  }), [bookingsLength, pendingBookingsCount, completedBookingsCount, averageRating])
 
   const clearAcceptError = useCallback(() => {
     setDashboardState(prev => ({
