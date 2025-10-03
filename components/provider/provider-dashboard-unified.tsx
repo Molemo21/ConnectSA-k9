@@ -1141,11 +1141,11 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }
   }, [router])
 
-  // WebSocket connection for real-time updates
+  // WebSocket connection for real-time updates - only initialize after mount
   const { connected, error: socketError, reconnect, isPolling } = useSocket({
-    userId: dashboardState.auth.user?.id || 'test_provider_123',
+    userId: mounted ? (dashboardState.auth.user?.id || 'test_provider_123') : undefined,
     role: 'PROVIDER',
-    enablePolling: true,
+    enablePolling: mounted, // Only enable polling after mount
     pollingInterval: 60000, // 60 seconds
     onBookingUpdate: (event) => {
       console.log('🔔 Provider booking update received:', event)
@@ -1381,7 +1381,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     return safeData.bankDetails || null
   }, [dashboardState?.data?.bankDetails])
 
-  // Single initialization effect
+  // Single initialization effect - prevent hydration mismatch
   useEffect(() => {
     setMounted(true)
     
@@ -1402,11 +1402,14 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       }
     }
 
-    initializeDashboard()
+    // FIX: Use setTimeout to defer initialization until after hydration
+    setTimeout(initializeDashboard, 0)
   }, []) // Empty dependency array
 
-  // Auto-refresh effect - use ref to avoid dependency issues
+  // Auto-refresh effect - only run after mount to prevent hydration issues
   useEffect(() => {
+    if (!mounted) return // FIX: Only run after mount to prevent hydration mismatch
+    
     const pollInterval = setInterval(async () => {
       try {
         // Check authentication state directly instead of using dashboardState
@@ -1424,7 +1427,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }, 30000) // Check every 30 seconds
 
     return () => clearInterval(pollInterval)
-  }, []) // Empty dependency array to prevent loops
+  }, [mounted]) // FIX: Add mounted dependency to prevent hydration mismatch
 
   // Refresh function for manual refresh
   const refreshData = useCallback(async () => {
