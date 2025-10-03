@@ -5,7 +5,7 @@ import { LoadingLink } from "@/components/ui/loading-link"
 import { UserMenu } from "@/components/ui/user-menu"
 import { LanguageSwitcher } from "./language-switcher"
 import { Mail, Phone, MapPin, Clock, Globe } from "lucide-react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useLanguage } from "@/contexts/LanguageContext"
 
 interface BrandHeaderProps {
@@ -50,6 +50,9 @@ export function BrandHeader({
   const [isContactAnimating, setIsContactAnimating] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const contactRef = useRef<HTMLDivElement>(null)
+
+  // Memoize userStats to prevent infinite re-renders in UserMenu
+  const memoizedUserStats = useMemo(() => userStats, [userStats?.totalBookings, userStats?.pendingBookings, userStats?.completedBookings, userStats?.rating])
 
   const handleExploreClick = () => {
     if (isAnimating) return
@@ -146,7 +149,7 @@ export function BrandHeader({
             
             {/* User Menu - Show for authenticated users on all devices */}
             {user ? (
-              <UserMenu user={user} userStats={userStats} />
+              <UserMenu user={user} userStats={memoizedUserStats} />
             ) : showAuth ? (
               <div className="flex items-center space-x-2 sm:space-x-3">
                 {/* Contact Button with Popup - Desktop Only */}
