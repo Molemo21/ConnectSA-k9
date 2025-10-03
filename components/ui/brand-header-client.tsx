@@ -55,8 +55,10 @@ export function BrandHeaderClient({
     fetchUser()
   }, [])
 
-  // Early returns AFTER all hooks are called
-  // Prevent hydration mismatch - don't render until mounted
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This ensures hooks are called in the same order on every render
+
+  // Conditional rendering AFTER all hooks have been called
   if (!mounted) {
     return (
       <header className={`border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50 ${className}`}>
@@ -68,7 +70,6 @@ export function BrandHeaderClient({
     )
   }
 
-  // Don't render until we've checked authentication
   if (loading) {
     return (
       <header className={`border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50 ${className}`}>
