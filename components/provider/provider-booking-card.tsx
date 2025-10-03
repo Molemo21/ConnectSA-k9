@@ -18,6 +18,7 @@ import {
   User,
   FileText
 } from "lucide-react"
+import { renderSafe, safeGet } from "@/lib/render-safe"
 
 interface Booking {
   id: string
@@ -145,8 +146,8 @@ export function ProviderBookingCard({
               <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900 text-base sm:text-lg">{booking.service?.name || 'Unknown Service'}</h3>
-              <p className="text-xs sm:text-sm text-gray-600">{booking.service?.category || 'No Category'}</p>
+              <h3 className="font-semibold text-gray-900 text-base sm:text-lg">{renderSafe(booking.service?.name)}</h3>
+              <p className="text-xs sm:text-sm text-gray-600">{renderSafe(booking.service?.category)}</p>
             </div>
           </div>
           <Badge className={`${statusInfo.color} border text-xs`}>
@@ -163,12 +164,12 @@ export function ProviderBookingCard({
                 <User className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <p className="font-medium text-gray-900 text-sm sm:text-base">{booking.client?.name || 'Unknown Client'}</p>
-                <p className="text-xs sm:text-sm text-gray-600">{booking.client?.email || 'No Email'}</p>
+                <p className="font-medium text-gray-900 text-sm sm:text-base">{renderSafe(booking.client?.name)}</p>
+                <p className="text-xs sm:text-sm text-gray-600">{renderSafe(booking.client?.email)}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {booking.client.phone && (
+              {booking.client?.phone && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -212,13 +213,13 @@ export function ProviderBookingCard({
             </div>
             <div className="flex items-start space-x-2 text-sm">
               <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
-              <span className="text-gray-700">{booking.address}</span>
+              <span className="text-gray-700">{renderSafe(booking.address)}</span>
             </div>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Amount:</span>
-              <span className="font-semibold text-gray-900">R{booking.totalAmount?.toFixed(2) || '0.00'}</span>
+              <span className="font-semibold text-gray-900">R{typeof booking.totalAmount === 'number' ? booking.totalAmount.toFixed(2) : '0.00'}</span>
             </div>
             {hasPaymentInEscrowOrBeyond && (
               <div className="flex items-center space-x-2 text-sm">
@@ -229,7 +230,7 @@ export function ProviderBookingCard({
             {showReview && booking.review && (
               <div className="flex items-center space-x-2 text-sm">
                 <Star className="w-4 h-4 text-yellow-500" />
-                <span className="text-gray-700">{booking.review?.rating || 0}/5 stars</span>
+                <span className="text-gray-700">{typeof booking.review?.rating === 'number' ? booking.review.rating : 0}/5 stars</span>
               </div>
             )}
           </div>
@@ -293,7 +294,7 @@ export function ProviderBookingCard({
           <div className="mt-4 pt-4 border-t border-gray-100">
             <h5 className="font-semibold text-gray-900 mb-2">Client Notes</h5>
             <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-              {booking.description}
+              {renderSafe(booking.description)}
             </p>
           </div>
         )}
@@ -304,15 +305,15 @@ export function ProviderBookingCard({
             <h5 className="font-semibold text-gray-900 mb-2">Client Review</h5>
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="flex items-center mb-2">
-                {[...Array(booking.review.rating)].map((_, i) => (
+                {[...Array(typeof booking.review?.rating === 'number' ? booking.review.rating : 0)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                 ))}
                 <span className="ml-2 text-sm text-gray-600">
-                  {booking.review?.rating || 0}/5 stars
+                  {typeof booking.review?.rating === 'number' ? booking.review.rating : 0}/5 stars
                 </span>
               </div>
               {booking.review.comment && (
-                <p className="text-sm text-gray-700">{booking.review?.comment || 'No comment'}</p>
+                <p className="text-sm text-gray-700">{renderSafe(booking.review?.comment)}</p>
               )}
             </div>
           </div>

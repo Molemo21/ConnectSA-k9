@@ -21,6 +21,7 @@ import {
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { useSmartBooking } from "@/hooks/use-smart-booking"
 import { usePaymentCallback } from "@/hooks/use-payment-callback"
+import { normalizeBookings } from "@/lib/normalize-booking"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
 
 // Force dynamic rendering to prevent build-time static generation
@@ -67,8 +68,9 @@ export default function BookingsPage() {
         const response = await fetch('/api/bookings/my-bookings', { credentials: 'include' })
         if (response.ok) {
           const data = await response.json()
-          setInitialBookings(data.bookings || [])
-          setFilteredBookings(data.bookings || [])
+          const normalizedBookings = normalizeBookings(data.bookings || [])
+          setInitialBookings(normalizedBookings)
+          setFilteredBookings(normalizedBookings)
         }
       } catch (error) {
         console.error('Failed to fetch bookings:', error)

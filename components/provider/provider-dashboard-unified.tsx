@@ -76,6 +76,8 @@ import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
 import { BankDetailsForm } from "./bank-details-form"
 import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
+import { renderSafe, renderError, safeGet, safeMap } from "@/lib/render-safe"
+import { normalizeBooking, normalizeBookings, safeBooking } from "@/lib/normalize-booking"
 import Link from "next/link"
 
 interface Booking {
@@ -337,7 +339,13 @@ function ProviderMainContent({
   memoizedBankDetails: any
 }) {
   // Calculate derived stats with comprehensive validation
-  const safeBookings = Array.isArray(bookings) ? bookings : []
+  const safeBookings = useMemo(() => {
+    if (!Array.isArray(bookings)) {
+      console.warn('Bookings is not an array:', bookings);
+      return [];
+    }
+    return normalizeBookings(bookings).filter(booking => booking && booking.id && typeof booking.id === 'string');
+  }, [bookings])
   const totalBookings = safeBookings.length
   const completedBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "COMPLETED").length
   const pendingBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "PENDING").length
@@ -348,7 +356,7 @@ function ProviderMainContent({
 
   // Filter bookings based on selected filter with defensive programming
   const filteredBookings = useMemo(() => {
-    if (!bookings || !Array.isArray(bookings)) return []
+    if (!Array.isArray(safeBookings)) return []
     if (selectedFilter === "all") return safeBookings.filter(booking => booking && booking.id)
     return safeBookings.filter(booking => 
       booking && 
@@ -473,22 +481,22 @@ function ProviderMainContent({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(bookings || []).filter(booking => booking && booking.id).slice(0, 3).map((booking) => (
+                  {safeMap(safeBookings.slice(0, 3), (booking) => (
                     <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border border-gray-300/10">
                       <div className="flex items-center space-x-3">
                         <div className="p-2 bg-blue-400/20 rounded-full">
                           <Calendar className="w-4 h-4 text-blue-400" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">{booking.service?.name || 'Unknown Service'}</p>
-                          <p className="text-sm text-gray-400">{booking.client?.name || 'Unknown Client'}</p>
+                          <p className="text-white font-medium">{renderSafe(booking.service?.name)}</p>
+                          <p className="text-sm text-gray-400">{renderSafe(booking.client?.name)}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {booking.status || 'UNKNOWN'}
+                          {renderSafe(booking.status)}
                         </Badge>
-                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount || 0}</p>
+                        <p className="text-sm text-gray-400 mt-1">R{renderSafe(booking.totalAmount)}</p>
                       </div>
                     </div>
                   ))}
@@ -554,16 +562,16 @@ function ProviderMainContent({
                             <Calendar className="w-5 h-5 text-blue-400" />
                           </div>
                           <div>
-                            <h3 className="text-lg font-semibold text-white">{booking.service?.name || 'Unknown Service'}</h3>
-                            <p className="text-sm text-gray-400">{booking.service?.category || 'No Category'}</p>
+                            <h3 className="text-lg font-semibold text-white">{renderSafe(booking.service?.name)}</h3>
+                            <p className="text-sm text-gray-400">{renderSafe(booking.service?.category)}</p>
                           </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-gray-400">Client</p>
-                            <p className="text-white font-medium">{booking.client?.name || 'Unknown Client'}</p>
-                            <p className="text-sm text-gray-400">{booking.client?.email || 'No Email'}</p>
+                            <p className="text-white font-medium">{renderSafe(booking.client?.name)}</p>
+                            <p className="text-sm text-gray-400">{renderSafe(booking.client?.email)}</p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-400">Scheduled Date</p>
@@ -579,18 +587,18 @@ function ProviderMainContent({
                         <div className="flex items-center space-x-4 text-sm">
                           <span className="flex items-center text-gray-400">
                             <MapPin className="w-4 h-4 mr-1" />
-                            {booking.address || 'No Address'}
+                            {renderSafe(booking.address)}
                           </span>
                           <span className="flex items-center text-gray-400">
                             <DollarSign className="w-4 h-4 mr-1" />
-                            R{booking.totalAmount || 0}
+                            R{renderSafe(booking.totalAmount)}
                           </span>
                         </div>
                       </div>
                       
                       <div className="flex flex-col items-end space-y-2">
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                          {booking.status || 'UNKNOWN'}
+                          {renderSafe(booking.status)}
                         </Badge>
                         {booking.status && typeof booking.status === 'string' && booking.status === 'PENDING' && (
                           <Button 
