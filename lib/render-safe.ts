@@ -3,7 +3,7 @@
  * Ensures all values are valid React nodes before rendering
  */
 
-export function renderSafe(value: any): React.ReactNode {
+export function renderSafe(value: any): string {
   // Handle null/undefined
   if (value === null || value === undefined) {
     return '—';
@@ -14,14 +14,9 @@ export function renderSafe(value: any): React.ReactNode {
     return value;
   }
 
-  // Handle arrays - recursively render each item
+  // Handle arrays - join as comma-separated string
   if (Array.isArray(value)) {
-    return value.map((item, index) => (
-      <span key={index}>
-        {renderSafe(item)}
-        {index < value.length - 1 ? ', ' : ''}
-      </span>
-    ));
+    return value.map(item => renderSafe(item)).join(', ');
   }
 
   // Handle objects
