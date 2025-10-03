@@ -11,36 +11,56 @@ export async function GET() {
   }
 
   try {
+    // Only return services that have at least one approved provider
     const services = await db.service.findMany({
-      where: { isActive: true },
+      where: { 
+        isActive: true,
+        providers: {
+          some: {
+            provider: {
+              status: "APPROVED",
+              available: true
+            }
+          }
+        }
+      },
       select: {
         id: true,
         name: true,
         category: true,
         description: true,
+        _count: {
+          select: {
+            providers: {
+              where: {
+                provider: {
+                  status: "APPROVED",
+                  available: true
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: { name: 'asc' },
     });
 
-    // Temporary fix: Map invalid service IDs to proper UUIDs
-    const mappedServices = services.map(service => {
-      let mappedId = service.id;
-      
-      // Map the known invalid IDs to proper UUIDs
-      if (service.id === 'haircut-service') {
-        mappedId = '123e4567-e89b-12d3-a456-426614174000';
-      } else if (service.id === 'garden-service') {
-        mappedId = '987fcdeb-51a2-43d1-9f12-345678901234';
-      }
-      
-      return {
-        ...service,
-        id: mappedId
-      };
-    });
+    // Filter out services with zero providers (double-check)
+    const servicesWithProviders = services.filter(service => service._count.providers > 0);
 
-    return NextResponse.json(mappedServices);
+    // Remove the _count field from the response
+    const cleanServices = servicesWithProviders.map(service => ({
+      id: service.id,
+      name: service.name,
+      category: service.category,
+      description: service.description,
+    }));
+
+    console.log(`📊 Returning ${cleanServices.length} services with providers (filtered from ${services.length} total active services)`);
+
+    return NextResponse.json(cleanServices);
   } catch (error) {
+    console.error('❌ Error fetching services:', error);
     return NextResponse.json({ error: "Failed to fetch services" }, { status: 500 });
   }
 } 
