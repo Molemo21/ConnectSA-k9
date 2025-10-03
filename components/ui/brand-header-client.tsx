@@ -55,6 +55,7 @@ export function BrandHeaderClient({
     fetchUser()
   }, [])
 
+  // Early returns AFTER all hooks are called
   // Prevent hydration mismatch - don't render until mounted
   if (!mounted) {
     return (

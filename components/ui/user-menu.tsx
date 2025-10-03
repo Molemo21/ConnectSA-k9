@@ -58,6 +58,8 @@ export function UserMenu({ user, showNotifications = true, userStats }: UserMenu
     await logout()
   }, [logout])
 
+  const handleOpenChange = useCallback((open: boolean) => setIsOpen(open), [])
+
   // Early returns AFTER all hooks are called
   if (!user) {
     return null
@@ -138,7 +140,7 @@ export function UserMenu({ user, showNotifications = true, userStats }: UserMenu
       )}
 
       {/* Enhanced User Menu */}
-      <DropdownMenu open={isOpen} onOpenChange={useCallback((open: boolean) => setIsOpen(open), [])}>
+      <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 px-3 py-2 rounded-lg hover:bg-white/10 transition-all duration-200 group">
             <div className="flex items-center space-x-3">
