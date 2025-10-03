@@ -1756,10 +1756,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           showAuth={false} 
           showUserMenu={true} 
           userStats={{
-            totalBookings: dashboardState.data.bookings.length,
-            pendingBookings: dashboardState.data.bookings.filter(b => b.status === "PENDING").length,
-            completedBookings: dashboardState.data.bookings.filter(b => b.status === "COMPLETED").length,
-            rating: dashboardState.data.stats.averageRating
+            totalBookings: dashboardState.data.bookings?.length || 0,
+            pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
+            completedBookings: dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0,
+            rating: dashboardState.data.stats?.averageRating || 0
           }}
         />
       </div>
@@ -1773,8 +1773,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, activeSection: section }
           }))}
           user={dashboardState.auth.user}
-          totalBookings={dashboardState.data.bookings.length}
-          pendingBookings={dashboardState.data.bookings.filter(b => b.status === "PENDING").length}
+          totalBookings={dashboardState.data.bookings?.length || 0}
+          pendingBookings={dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0}
           isCollapsed={dashboardState.ui.isCollapsed}
           setIsCollapsed={(collapsed) => setDashboardState(prev => ({
             ...prev,
@@ -1788,8 +1788,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, activeSection: section }
           }))}
           user={dashboardState.auth.user}
-          bookings={dashboardState.data.bookings}
-          stats={dashboardState.data.stats}
+          bookings={dashboardState.data.bookings || []}
+          stats={dashboardState.data.stats || {}}
           refreshData={refreshData}
           isRefreshing={dashboardState.ui.loading}
           lastRefresh={dashboardState.ui.lastRefresh}
@@ -1798,7 +1798,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ...prev,
             ui: { ...prev.ui, selectedFilter: filter }
           }))}
-          hasBankDetails={dashboardState.data.hasBankDetails}
+          hasBankDetails={dashboardState.data.hasBankDetails || false}
           acceptBooking={acceptBooking}
           acceptingBooking={dashboardState.ui.acceptingBooking}
           acceptError={dashboardState.ui.acceptError}
@@ -1841,8 +1841,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ui: { ...prev.ui, activeSection: section }
           }))}
           user={dashboardState.auth.user}
-          bookings={dashboardState.data.bookings}
-          stats={dashboardState.data.stats}
+          bookings={dashboardState.data.bookings || []}
+          stats={dashboardState.data.stats || {}}
           refreshData={refreshData}
           isRefreshing={dashboardState.ui.loading}
           lastRefresh={dashboardState.ui.lastRefresh}
@@ -1851,7 +1851,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             ...prev,
             ui: { ...prev.ui, selectedFilter: filter }
           }))}
-          hasBankDetails={dashboardState.data.hasBankDetails}
+          hasBankDetails={dashboardState.data.hasBankDetails || false}
           acceptBooking={acceptBooking}
           acceptingBooking={dashboardState.ui.acceptingBooking}
           acceptError={dashboardState.ui.acceptError}
