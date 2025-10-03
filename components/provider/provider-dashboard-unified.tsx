@@ -1474,12 +1474,17 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   }, [])
 
   // Memoize userStats to prevent infinite re-renders
+  // FIX: Depend on array length and primitive values, not the array reference itself
+  const bookingsLength = dashboardState.data.bookings?.length || 0
+  const bookingsJSON = JSON.stringify(dashboardState.data.bookings?.map(b => ({id: b.id, status: b.status})) || [])
+  const averageRating = dashboardState.data.stats?.averageRating || 0
+  
   const memoizedUserStats = useMemo(() => ({
-    totalBookings: dashboardState.data.bookings?.length || 0,
+    totalBookings: bookingsLength,
     pendingBookings: dashboardState.data.bookings?.filter(b => b.status === "PENDING").length || 0,
     completedBookings: dashboardState.data.bookings?.filter(b => b.status === "COMPLETED").length || 0,
-    rating: dashboardState.data.stats?.averageRating || 0
-  }), [dashboardState.data.bookings, dashboardState.data.stats?.averageRating])
+    rating: averageRating
+  }), [bookingsLength, bookingsJSON, averageRating, dashboardState.data.bookings])
 
   const clearAcceptError = useCallback(() => {
     setDashboardState(prev => ({
