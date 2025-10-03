@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ArrowLeft, ArrowRight, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
 import { ProviderCard } from "./provider-card"
 import { ProviderDetailsModal } from "./provider-details-modal"
@@ -54,6 +55,7 @@ interface ProviderDiscoveryProps {
   onProviderSelected: (providerId: string) => void
   onBack: () => void
   onLoginSuccess?: () => void
+  onCancelBooking?: () => void
 }
 
 export function ProviderDiscovery({ 
@@ -64,7 +66,8 @@ export function ProviderDiscovery({
   notes, 
   onProviderSelected, 
   onBack,
-  onLoginSuccess
+  onLoginSuccess,
+  onCancelBooking
 }: ProviderDiscoveryProps) {
   const [providers, setProviders] = useState<Provider[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -78,6 +81,7 @@ export function ProviderDiscovery({
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isUnauthorized, setIsUnauthorized] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
 
   // Debug modal state changes
   useEffect(() => {
@@ -358,6 +362,23 @@ export function ProviderDiscovery({
     onBack()
   }
 
+  const handleCancelBooking = () => {
+    setShowCancelDialog(true)
+  }
+
+  const confirmCancelBooking = () => {
+    setShowCancelDialog(false)
+    showToast.info("Booking cancelled - starting over")
+    
+    // Use the onCancelBooking prop if provided, otherwise fall back to page reload
+    if (onCancelBooking) {
+      onCancelBooking()
+    } else {
+      // Fallback: Navigate to the book-service page to start fresh
+      window.location.href = '/book-service'
+    }
+  }
+
   if (loading) {
     return (
       <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
@@ -446,7 +467,7 @@ export function ProviderDiscovery({
                 Review and select from available providers for your service
               </CardDescription>
             </div>
-            <Button onClick={onBack} variant="outline" className="border-gray-600 text-white hover:bg-gray-800">
+            <Button onClick={onBack} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
@@ -519,15 +540,37 @@ export function ProviderDiscovery({
       <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <Button
-              onClick={goToPreviousProvider}
-              disabled={currentIndex === 0 || isProcessing}
-              variant="outline"
-              className="border-gray-600 text-white hover:bg-gray-800 disabled:opacity-50"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Previous
-            </Button>
+            <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  onClick={handleCancelBooking}
+                  disabled={isProcessing}
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg disabled:opacity-50"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Cancel Booking
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-black/90 border-gray-700">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-white">Cancel Booking</AlertDialogTitle>
+                  <AlertDialogDescription className="text-white/70">
+                    Are you sure you want to cancel this booking? This action cannot be undone and you'll need to start over.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-gray-600 hover:bg-gray-700 text-white border-gray-500">
+                    Keep Booking
+                  </AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={confirmCancelBooking}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Yes, Cancel Booking
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <div className="flex items-center space-x-2">
               {hasDeclinedProviders && (
@@ -543,13 +586,12 @@ export function ProviderDiscovery({
             </div>
 
             <Button
-              onClick={goToNextProvider}
-              disabled={isLastProvider || isProcessing}
-              variant="outline"
-              className="border-gray-600 text-white hover:bg-gray-800 disabled:opacity-50"
+              onClick={() => onProviderSelected(currentProvider.id)}
+              disabled={isProcessing}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg disabled:opacity-50"
             >
-              Next
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Complete Booking
             </Button>
           </div>
         </CardContent>

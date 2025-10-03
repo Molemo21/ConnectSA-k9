@@ -9,9 +9,10 @@ interface Props {
   onProviderSelected: (providerId: string) => void
   onBack: () => void
   onLoginSuccess?: () => void
+  onCancelBooking?: () => void
 }
 
-export function ProviderDiscoveryPanel({ form, onProviderSelected, onBack, onLoginSuccess }: Props) {
+export function ProviderDiscoveryPanel({ form, onProviderSelected, onBack, onLoginSuccess, onCancelBooking }: Props) {
   return (
     <div className="animate-fade-in">
       <ProviderDiscovery
@@ -23,6 +24,7 @@ export function ProviderDiscoveryPanel({ form, onProviderSelected, onBack, onLog
         onProviderSelected={onProviderSelected}
         onBack={onBack}
         onLoginSuccess={onLoginSuccess}
+        onCancelBooking={onCancelBooking}
       />
     </div>
   )

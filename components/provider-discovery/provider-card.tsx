@@ -166,23 +166,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-white">Recent Reviews</h4>
               <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCatalogue(true)}
-                  className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/20"
-                >
-                  <Package className="w-4 h-4 mr-1" />
-                  Catalogue
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowReviews(!showReviews)}
-                  className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
-                >
-                  {showReviews ? "Hide" : "Show"} Reviews
-                </Button>
+                {/* Buttons removed as requested */}
               </div>
             </div>
             
