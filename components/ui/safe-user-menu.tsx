@@ -96,7 +96,27 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
     }
   }, [router])
 
-  // Early returns AFTER all hooks are called
+  // Safe user data
+  const safeUser = {
+    id: safeRender(user?.id, ""),
+    name: safeRender(user?.name, "User"),
+    email: safeRender(user?.email, ""),
+    role: safeRender(user?.role, ""),
+    avatar: user?.avatar || undefined
+  }
+
+  // Safe user stats - ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  const safeStats = useMemo(() => ({
+    totalBookings: safeNumber(userStats?.totalBookings, 0),
+    pendingBookings: safeNumber(userStats?.pendingBookings, 0),
+    completedBookings: safeNumber(userStats?.completedBookings, 0),
+    rating: safeNumber(userStats?.rating, 0)
+  }), [userStats])
+
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  // This ensures hooks are called in the same order on every render
+
+  // Conditional rendering AFTER all hooks have been called
   if (!user || !user.id) {
     return null
   }
@@ -113,23 +133,6 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
       </div>
     )
   }
-
-  // Safe user data
-  const safeUser = {
-    id: safeRender(user.id, ""),
-    name: safeRender(user.name, "User"),
-    email: safeRender(user.email, ""),
-    role: safeRender(user.role, ""),
-    avatar: user.avatar || undefined
-  }
-
-  // Safe user stats
-  const safeStats = useMemo(() => ({
-    totalBookings: safeNumber(userStats?.totalBookings, 0),
-    pendingBookings: safeNumber(userStats?.pendingBookings, 0),
-    completedBookings: safeNumber(userStats?.completedBookings, 0),
-    rating: safeNumber(userStats?.rating, 0)
-  }), [userStats])
 
   const getRoleBadge = (role: string) => {
     switch (role) {
