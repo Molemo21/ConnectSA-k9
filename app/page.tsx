@@ -747,6 +747,9 @@ export default function HomePage() {
         isVisible={showGlobalLoader} 
         message="Processing your request..."
       />
+
     </div>
+
   )
+
 }

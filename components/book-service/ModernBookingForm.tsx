@@ -718,6 +718,17 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     setCurrentStep(4);
                   }}
                   onLoginSuccess={handleLoginSuccess}
+                  onCancelBooking={() => {
+                    // Reset form and go to first step
+                    onChange({
+                      serviceId: "",
+                      date: "",
+                      time: "",
+                      address: "",
+                      notes: ""
+                    });
+                    setCurrentStep(0);
+                  }}
                 />
               </div>
             )}
@@ -845,41 +856,48 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
         </CardContent>
       </Card>
 
-      {/* Navigation - Mobile Optimized */}
-      <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 sm:mt-8 space-y-3 sm:space-y-0 transition-all duration-300 ${
-        isTransitioning ? 'opacity-50 translate-y-2' : 'opacity-100 translate-y-0'
-      }`}>
-        <Button
-          variant="outline"
-          onClick={handleBack}
-          className="flex items-center px-4 sm:px-6 py-3 w-full sm:w-auto order-2 sm:order-1"
-        >
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          {currentStep === 0 ? 'Back' : 'Previous'}
-        </Button>
-
-        <Button
-          onClick={handleNext}
-          disabled={submitting}
-          className="flex items-center px-6 sm:px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base sm:text-lg shadow-lg w-full sm:w-auto order-1 sm:order-2"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-              Processing...
-            </>
-          ) : currentStep === steps.length - 1 ? (
-            'Complete Booking'
-          ) : currentStep === steps.length - 2 ? (
-            'Choose Provider'
-          ) : (
-            <>
-              Continue
-              <ChevronRight className="w-4 h-4 ml-2" />
-            </>
+      {/* Navigation - Mobile Optimized - Hidden on Provider Selection Step */}
+      {currentStep !== 5 && (
+        <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 sm:mt-8 space-y-3 sm:space-y-0 transition-all duration-300 ${
+          isTransitioning ? 'opacity-50 translate-y-2' : 'opacity-100 translate-y-0'
+        }`}>
+          {/* Back Button - Hidden on first step */}
+          {currentStep > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              className="flex items-center px-4 sm:px-6 py-3 w-full sm:w-auto order-2 sm:order-1"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              {currentStep === 0 ? 'Back' : 'Previous'}
+            </Button>
           )}
-        </Button>
-      </div>
+
+          <Button
+            onClick={handleNext}
+            disabled={submitting}
+            className={`flex items-center px-6 sm:px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base sm:text-lg shadow-lg w-full sm:w-auto ${
+              currentStep === 0 ? 'w-full' : 'order-1 sm:order-2'
+            }`}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : currentStep === steps.length - 1 ? (
+              'Complete Booking'
+            ) : currentStep === steps.length - 2 ? (
+              'Choose Provider'
+            ) : (
+              <>
+                Continue
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

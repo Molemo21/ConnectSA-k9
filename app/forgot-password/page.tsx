@@ -77,19 +77,17 @@ export default function ForgotPasswordPage() {
         
         <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <div className="w-full max-w-md">
-            {/* Home button */}
+            {/* Home button - Navbar Style */}
             <div className="absolute top-6 left-6 z-20">
-              <Link href="/" className="inline-flex items-center space-x-3 group">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200">
-                  <img 
-                    src="/handshake.png" 
-                    alt="ProLiink Connect" 
-                    className="w-6 h-6 object-contain"
-                  />
-                </div>
-                <div className="text-left">
-                  <div className="text-lg font-bold text-white">ProLiink</div>
-                  <div className="text-xs text-blue-300">Connect</div>
+              <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
+                <img 
+                  src="/handshake.png" 
+                  alt="ProLiink Connect Logo" 
+                  className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
+                />
+                <div className="flex flex-col">
+                  <span className="text-base xs:text-lg sm:text-xl font-bold text-white leading-tight">ProL<span className="text-blue-400">ii</span>nk</span>
+                  <span className="text-xs text-gray-300 leading-tight hidden xs:block">Connect</span>
                 </div>
               </Link>
             </div>
@@ -140,19 +138,17 @@ export default function ForgotPasswordPage() {
       
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          {/* Home button */}
+          {/* Home button - Navbar Style */}
           <div className="absolute top-6 left-6 z-20">
-            <Link href="/" className="inline-flex items-center space-x-3 group">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200">
-                <img 
-                  src="/handshake.png" 
-                  alt="ProLiink Connect" 
-                  className="w-6 h-6 object-contain"
-                />
-              </div>
-              <div className="text-left">
-                <div className="text-lg font-bold text-white">ProLiink</div>
-                <div className="text-xs text-blue-300">Connect</div>
+            <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
+              <img 
+                src="/handshake.png" 
+                alt="ProLiink Connect Logo" 
+                className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
+              />
+              <div className="flex flex-col">
+                <span className="text-base xs:text-lg sm:text-xl font-bold text-white leading-tight">ProL<span className="text-blue-400">ii</span>nk</span>
+                <span className="text-xs text-gray-300 leading-tight hidden xs:block">Connect</span>
               </div>
             </Link>
           </div>
