@@ -84,6 +84,12 @@ function VerifyEmailContent() {
                   const autoLoginData = await autoLoginResponse.json()
                   console.log('✅ Auto-login successful:', autoLoginData.user.email)
                   
+                  // Store draft data in sessionStorage for the booking page to pick up
+                  if (autoLoginData.draft) {
+                    console.log('📝 Storing merged draft data for booking page:', autoLoginData.draft.id)
+                    sessionStorage.setItem('resumeBookingData', JSON.stringify(autoLoginData.draft))
+                  }
+                  
                   // Start countdown and auto-redirect
                   setIsRedirecting(true)
                   setCountdown(3)
@@ -290,7 +296,20 @@ function VerifyEmailContent() {
                               
                               {/* Optional: Quick redirect button */}
                               <Button 
-                                onClick={() => {
+                                onClick={async () => {
+                                  // Ensure draft data is stored before redirecting
+                                  if (pendingDraftId) {
+                                    try {
+                                      const { getBookingDraft } = await import('@/lib/booking-draft')
+                                      const draft = await getBookingDraft(pendingDraftId)
+                                      if (draft) {
+                                        sessionStorage.setItem('resumeBookingData', JSON.stringify(draft))
+                                        console.log('📝 Stored draft data for manual redirect:', draft.id)
+                                      }
+                                    } catch (error) {
+                                      console.error('Failed to get draft for manual redirect:', error)
+                                    }
+                                  }
                                   router.push('/book-service?resume=true');
                                 }}
                                 variant="outline"
@@ -305,7 +324,20 @@ function VerifyEmailContent() {
                           return (
                             <div className="space-y-3">
                               <Button 
-                                onClick={() => {
+                                onClick={async () => {
+                                  // Ensure draft data is stored before redirecting
+                                  if (pendingDraftId) {
+                                    try {
+                                      const { getBookingDraft } = await import('@/lib/booking-draft')
+                                      const draft = await getBookingDraft(pendingDraftId)
+                                      if (draft) {
+                                        sessionStorage.setItem('resumeBookingData', JSON.stringify(draft))
+                                        console.log('📝 Stored draft data for manual redirect:', draft.id)
+                                      }
+                                    } catch (error) {
+                                      console.error('Failed to get draft for manual redirect:', error)
+                                    }
+                                  }
                                   router.push('/book-service?resume=true');
                                 }}
                                 className="w-full"
