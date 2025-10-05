@@ -238,9 +238,29 @@ export function BookingLoginModal({
                 <div className="text-center">
                   <p className="text-sm text-gray-300">
                     Don't have an account?{" "}
-                    <Link href="/signup" className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2">
+                    <button 
+                      type="button"
+                      onClick={async () => {
+                        // Save booking data as draft before redirecting to signup
+                        if (bookingData && typeof window !== "undefined") {
+                          try {
+                            const { saveBookingDraft } = await import('@/lib/booking-draft')
+                            const draft = await saveBookingDraft(bookingData)
+                            console.log('📝 Booking draft saved before signup redirect:', draft.id)
+                          } catch (error) {
+                            console.error('Failed to save booking draft:', error)
+                            // Fallback: save to sessionStorage
+                            sessionStorage.setItem("bookingDetails", JSON.stringify(bookingData))
+                          }
+                        }
+                        // Close modal and redirect to signup
+                        onClose()
+                        router.push('/signup')
+                      }}
+                      className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2 cursor-pointer"
+                    >
                       Sign up
-                    </Link>
+                    </button>
                   </p>
                 </div>
               </form>

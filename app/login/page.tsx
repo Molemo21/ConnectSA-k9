@@ -41,13 +41,19 @@ function LoginContent() {
       if (response.ok) {
         showToast.success("Welcome back! You've been successfully logged in.")
 
-        // Intent-based redirect
-        const intent = searchParams?.get("intent")
-        if (intent === "booking") {
-          router.push("/book-service?intent=booking")
+        // Check if there's a draft to resume
+        if (data.draft) {
+          console.log('✅ Draft merged successfully, redirecting to continue booking')
+          router.push("/book-service?resume=true")
         } else {
-          // Redirect based on user role and verification status
-          router.push(data.redirectUrl || "/dashboard")
+          // Intent-based redirect
+          const intent = searchParams?.get("intent")
+          if (intent === "booking") {
+            router.push("/book-service?intent=booking")
+          } else {
+            // Redirect based on user role and verification status
+            router.push(data.redirectUrl || "/dashboard")
+          }
         }
       } else {
         await handleApiError(response, "Login failed. Please check your credentials and try again.")
