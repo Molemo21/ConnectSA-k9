@@ -122,7 +122,17 @@ export async function POST(request: NextRequest) {
 
     // Send verification email
     const baseUrl = request.nextUrl.origin || "http://localhost:3000"
-    const verificationLink = `${baseUrl}/verify-email?token=${token}`
+    
+    // Check if there's a booking draft to preserve across devices
+    const draftId = request.headers.get('x-draft-id') || 
+                   request.cookies.get('booking_draft_id')?.value
+    
+    let verificationLink = `${baseUrl}/verify-email?token=${token}`
+    if (draftId) {
+      verificationLink += `&draftId=${draftId}`
+      console.log(`📝 Including draft ID in verification link: ${draftId}`)
+    }
+    
     console.log(`📧 Verification link for new user: ${verificationLink}`)
     
     await sendVerificationEmail(

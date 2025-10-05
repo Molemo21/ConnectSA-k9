@@ -50,10 +50,17 @@ function VerifyEmailContent() {
             localStorage.removeItem("pendingVerificationEmail");
             
             // Check if there's a pending booking draft to resume
-            const pendingDraftId = localStorage.getItem("pendingBookingDraftId");
+            // First check URL parameters for draft ID (cross-device support)
+            const urlDraftId = searchParams.get("draftId");
+            const localStorageDraftId = localStorage.getItem("pendingBookingDraftId");
+            const pendingDraftId = urlDraftId || localStorageDraftId;
+            
             if (pendingDraftId) {
               console.log('📝 Found pending booking draft, redirecting to resume page:', pendingDraftId)
-              localStorage.removeItem("pendingBookingDraftId");
+              // Clean up localStorage if it was used
+              if (localStorageDraftId) {
+                localStorage.removeItem("pendingBookingDraftId");
+              }
               // Redirect to resume page with draft ID
               setTimeout(() => {
                 router.push(`/booking/resume?draftId=${pendingDraftId}`)

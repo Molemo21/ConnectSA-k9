@@ -34,9 +34,18 @@ function SignupContent() {
     setIsLoading(true)
 
     try {
+      // Get current draft ID from cookie to send in headers
+      const draftId = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('booking_draft_id='))
+        ?.split('=')[1]
+
       const response = await fetch("/api/auth/signup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(draftId && { "x-draft-id": draftId })
+        },
         body: JSON.stringify(formData),
       })
 
