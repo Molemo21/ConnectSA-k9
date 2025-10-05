@@ -1,19 +1,15 @@
 "use client"
 
-import React, { useContext, useEffect } from "react"
+import React, { useEffect } from "react"
 import useSWR from "swr"
 import { z } from "zod"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, FileText, MapPin, ArrowRight, ArrowLeft, Search, CalendarDays, Clock, X, CheckCircle } from "lucide-react"
-import { BookingLoginModal } from "@/components/ui/booking-login-modal";
 import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel";
-import { useRouter } from 'next/navigation';
 import { reverseGeocode } from "@/lib/geocoding"
 
 const bookingFormSchema = z.object({
@@ -35,20 +31,13 @@ interface BookingFormProps {
   onNext: () => void
   onBack?: () => void
   submitting?: boolean
+  isAuthenticated?: boolean | null
+  onShowLoginModal?: () => void
 }
 
-export function BookingForm({ value, onChange, onNext, onBack, submitting }: BookingFormProps) {
-  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | null>(null);
-  const [showLoginModal, setShowLoginModal] = React.useState(false);
-  const router = useRouter();
-
-  // Function to handle successful login
-  const handleLoginSuccess = () => {
-    console.log("Login successful, setting isAuthenticated to true");
-    setIsAuthenticated(true);
-    setShowLoginModal(false);
-    console.log("Login modal closed");
-  };
+export function BookingForm({ value, onChange, onNext, onBack, submitting, isAuthenticated: parentIsAuthenticated, onShowLoginModal }: BookingFormProps) {
+  // Use parent's authentication state
+  const isAuthenticated = parentIsAuthenticated;
 
   const onProviderSelected = (providerId: string) => {
     console.log("Provider selected:", providerId);
@@ -56,7 +45,9 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
   };
 
   const handleSignInClick = () => {
-    setShowLoginModal(true);
+    if (onShowLoginModal) {
+      onShowLoginModal();
+    }
   };
 
   const handleSignInRequired = async () => {
@@ -80,8 +71,7 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
 
   useEffect(() => {
     console.log("isAuthenticated state changed:", isAuthenticated);
-    console.log("showLoginModal state:", showLoginModal);
-  }, [isAuthenticated, showLoginModal]);
+  }, [isAuthenticated]);
 
   const { data: services, error, isLoading } = useSWR('/api/services', (url) => {
     const ctrl = new AbortController()
@@ -218,7 +208,13 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
       }
       return
     }
-    onNext()
+    
+    // Check if user is authenticated before proceeding
+    if (isAuthenticated === false) {
+      handleSignInRequired();
+    } else {
+      onNext()
+    }
   }
 
   const filteredServices = React.useMemo(() => {
@@ -551,13 +547,6 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
           </Button>
         </div>
 
-        {/* Login Modal */}
-        <BookingLoginModal
-          isOpen={showLoginModal}
-          onClose={() => setShowLoginModal(false)}
-          onLoginSuccess={handleLoginSuccess}
-          bookingData={value}
-        />
 
         {/* Provider Discovery Panel */}
         {isAuthenticated && (
