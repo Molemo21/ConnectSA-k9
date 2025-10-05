@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DraftAwareBookingButton } from "@/components/ui/draft-aware-booking-button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { 
   Calendar, 
@@ -201,14 +202,13 @@ export function RecentBookingCard({
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center max-w-lg mx-auto">
-                <Button 
+                <DraftAwareBookingButton 
                   className="relative overflow-hidden bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 hover:from-blue-400 hover:via-blue-500 hover:to-blue-400 transition-all duration-500 ease-out hover:scale-105 text-base sm:text-lg px-8 py-4 rounded-2xl font-semibold shadow-2xl shadow-blue-500/30 hover:shadow-blue-400/50 group/btn"
-                  onClick={onViewAll}
+                  onNavigate={(url) => window.location.href = url}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-out"></div>
-                  <Plus className="w-5 h-5 mr-3 group-hover/btn:rotate-90 transition-transform duration-300" />
                   <span className="relative z-10">Book Your First Service</span>
-                </Button>
+                </DraftAwareBookingButton>
               </div>
             </div>
           </CardContent>

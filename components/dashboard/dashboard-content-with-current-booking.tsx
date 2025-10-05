@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DraftAwareBookingButton } from "@/components/ui/draft-aware-booking-button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { 
@@ -523,12 +524,9 @@ export function DashboardContent() {
 
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
-              <Button className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white transition-all duration-200 hover:scale-105" asChild>
-                <a href="/book-service">
-                  <Plus className="w-4 h-4 mr-2" />
-                  New Booking
-                </a>
-              </Button>
+              <DraftAwareBookingButton 
+                className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 text-white transition-all duration-200 hover:scale-105"
+              />
               <Button className="bg-gray-800 text-gray-200 hover:bg-gray-700 transition-all duration-200 border border-gray-700" asChild>
                 <a href="/payments">
                   <CreditCard className="w-4 h-4 mr-2" />
