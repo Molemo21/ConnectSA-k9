@@ -48,6 +48,17 @@ function VerifyEmailContent() {
             setVerifyResult({ success: true, message: data.message || "Email verified successfully!" })
             // Clean up localStorage here instead of in a separate useEffect
             localStorage.removeItem("pendingVerificationEmail");
+            
+            // Check if there's a pending booking draft to resume
+            const pendingDraftId = localStorage.getItem("pendingBookingDraftId");
+            if (pendingDraftId) {
+              console.log('📝 Found pending booking draft, redirecting to resume page:', pendingDraftId)
+              localStorage.removeItem("pendingBookingDraftId");
+              // Redirect to resume page with draft ID
+              setTimeout(() => {
+                router.push(`/booking/resume?draftId=${pendingDraftId}`)
+              }, 2000) // Give user time to see success message
+            }
           } else {
             console.log("❌ Frontend: Verification failed, setting error state")
             // Check if user is already verified (this can happen with double-clicks)

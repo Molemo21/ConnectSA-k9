@@ -70,6 +70,31 @@ export async function POST(request: NextRequest) {
     // Set auth cookie with enhanced configuration
     await setAuthCookie(authUser)
 
+    // Check for booking draft to merge
+    let draftData = null
+    try {
+      const draftId = request.headers.get('x-draft-id') || 
+                     request.cookies.get('booking_draft_id')?.value
+      
+      if (draftId) {
+        console.log(`🔗 Attempting to merge draft ${draftId} with user ${user.id}`)
+        
+        // Import the merge function
+        const { mergeDraftWithUser } = await import('@/lib/booking-draft')
+        const mergeResult = await mergeDraftWithUser(draftId, user.id)
+        
+        if (mergeResult.success && mergeResult.draft) {
+          draftData = mergeResult.draft
+          console.log(`✅ Successfully merged draft ${draftId} with user ${user.id}`)
+        } else {
+          console.warn(`⚠️ Failed to merge draft ${draftId}:`, mergeResult.error)
+        }
+      }
+    } catch (error) {
+      console.error('Error merging draft during login:', error)
+      // Don't fail login if draft merge fails
+    }
+
     // Determine redirect URL
     const redirectUrl = await getUserDashboardPath(
       user.role, 
@@ -82,7 +107,8 @@ export async function POST(request: NextRequest) {
       userEmail: user.email,
       userRole: user.role,
       redirectUrl,
-      providerStatus: user.provider?.status
+      providerStatus: user.provider?.status,
+      hasDraft: !!draftData
     })
 
     return NextResponse.json({
@@ -94,7 +120,8 @@ export async function POST(request: NextRequest) {
         role: user.role,
         emailVerified: user.emailVerified,
       },
-      redirectUrl
+      redirectUrl,
+      draft: draftData
     })
   } catch (error) {
     console.error('Login error:', error)

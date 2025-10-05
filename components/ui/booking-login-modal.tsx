@@ -50,9 +50,18 @@ export function BookingLoginModal({
     setIsLoading(true)
 
     try {
+      // Get current draft ID from cookie
+      const draftId = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('booking_draft_id='))
+        ?.split('=')[1]
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(draftId && { "x-draft-id": draftId })
+        },
         body: JSON.stringify(formData),
       })
 
@@ -61,8 +70,15 @@ export function BookingLoginModal({
       if (response.ok) {
         showToast.success("Welcome back! You've been successfully logged in.")
         
-        // Save booking data to sessionStorage for continuation
-        if (bookingData && typeof window !== "undefined") {
+        // If we have a draft, it will be automatically merged by the server
+        // and returned in the response. We can use that data.
+        if (data.draft) {
+          console.log('✅ Draft merged successfully:', data.draft)
+          // The draft is now associated with the user and will be available
+          // when they continue their booking
+        } else if (bookingData && typeof window !== "undefined") {
+          // Fallback: save booking data to sessionStorage for continuation
+          // This handles cases where the draft system isn't available
           sessionStorage.setItem("bookingDetails", JSON.stringify(bookingData))
         }
         

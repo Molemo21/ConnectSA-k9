@@ -47,6 +47,19 @@ function SignupContent() {
         await fetch("/api/auth/logout", { method: "POST" });
         // Store the signup email for verification page
         localStorage.setItem("pendingVerificationEmail", formData.email);
+        
+        // Check if there's a booking draft to preserve
+        const draftId = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('booking_draft_id='))
+          ?.split('=')[1]
+        
+        if (draftId) {
+          // Store draft ID for after verification
+          localStorage.setItem("pendingBookingDraftId", draftId);
+          console.log('📝 Preserving booking draft for after signup:', draftId)
+        }
+        
         showToast.success("Account created successfully! Please check your email to verify your account.")
         router.push("/verify-email")
       } else {

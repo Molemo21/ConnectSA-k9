@@ -193,18 +193,76 @@ function BookServiceContent() {
     checkAuth();
   }, []);
 
-  // Check for sessionStorage booking data after login
+  // Check for booking draft after login
   useEffect(() => {
-    addDebugInfo('Component mounted, checking sessionStorage');
-    if (typeof window !== "undefined" && searchParams?.get("intent") === "booking") {
-      const stored = sessionStorage.getItem("bookingDetails");
-      if (stored) {
-        addDebugInfo('Found stored booking details in sessionStorage');
-        setForm(JSON.parse(stored));
-        setActiveStep('FORM')
-        sessionStorage.removeItem("bookingDetails");
+    addDebugInfo('Component mounted, checking for booking draft');
+    
+    const checkForDraft = async () => {
+      try {
+        // First check if we're resuming from the resume page
+        if (typeof window !== "undefined" && searchParams?.get("resume") === "true") {
+          const resumeData = sessionStorage.getItem("resumeBookingData");
+          if (resumeData) {
+            addDebugInfo('Found resume booking data, restoring form');
+            const draft = JSON.parse(resumeData);
+            setForm({
+              serviceId: draft.serviceId,
+              date: draft.date,
+              time: draft.time,
+              address: draft.address,
+              notes: draft.notes || ""
+            });
+            setActiveStep('FORM')
+            sessionStorage.removeItem("resumeBookingData");
+            return;
+          }
+        }
+
+        // Check for booking draft
+        const { getBookingDraft } = await import('@/lib/booking-draft')
+        const draft = await getBookingDraft()
+        
+        if (draft) {
+          addDebugInfo('Found booking draft, restoring form data');
+          setForm({
+            serviceId: draft.serviceId,
+            date: draft.date,
+            time: draft.time,
+            address: draft.address,
+            notes: draft.notes || ""
+          });
+          setActiveStep('FORM')
+          
+          // Clear the draft after restoring
+          const { clearBookingDraft } = await import('@/lib/booking-draft')
+          await clearBookingDraft(draft.id)
+          addDebugInfo('Booking draft cleared after restoration');
+        } else if (typeof window !== "undefined" && searchParams?.get("intent") === "booking") {
+          // Fallback: check sessionStorage for legacy booking data
+          const stored = sessionStorage.getItem("bookingDetails");
+          if (stored) {
+            addDebugInfo('Found stored booking details in sessionStorage (legacy)');
+            setForm(JSON.parse(stored));
+            setActiveStep('FORM')
+            sessionStorage.removeItem("bookingDetails");
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for booking draft:', error)
+        // Fallback to sessionStorage check
+        if (typeof window !== "undefined" && searchParams?.get("intent") === "booking") {
+          const stored = sessionStorage.getItem("bookingDetails");
+          if (stored) {
+            addDebugInfo('Found stored booking details in sessionStorage (fallback)');
+            setForm(JSON.parse(stored));
+            setActiveStep('FORM')
+            sessionStorage.removeItem("bookingDetails");
+          }
+        }
       }
-    }
+    };
+    
+    checkForDraft();
   }, [searchParams]);
 
   useEffect(() => {

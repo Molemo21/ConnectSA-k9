@@ -434,3 +434,20 @@ model AuditLog {
   @@index([paymentId])
   @@map("audit_logs")
 }
+
+model BookingDraft {
+  id          String   @id @default(cuid())
+  serviceId   String
+  date        String
+  time        String
+  address     String
+  notes       String?
+  userId      String?  // Set after user authentication
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("booking_drafts")
+}

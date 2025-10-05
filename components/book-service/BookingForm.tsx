@@ -59,8 +59,18 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
     setShowLoginModal(true);
   };
 
-  const handleSignInRequired = () => {
+  const handleSignInRequired = async () => {
     if (!isAuthenticated) {
+      // Save current booking data as a draft before showing login modal
+      try {
+        const { saveBookingDraft } = await import('@/lib/booking-draft')
+        const draft = await saveBookingDraft(value)
+        console.log('📝 Booking draft saved before login:', draft.id)
+      } catch (error) {
+        console.error('Failed to save booking draft:', error)
+        // Continue with login even if draft save fails
+      }
+      
       handleSignInClick();
     }
   };
