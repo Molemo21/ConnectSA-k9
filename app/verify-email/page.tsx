@@ -59,7 +59,9 @@ function VerifyEmailContent() {
             
             if (pendingDraftId) {
               console.log('📝 Found pending booking draft, auto-redirecting to continue booking:', pendingDraftId)
-              // Clean up localStorage if it was used
+              // Don't clean up localStorage here - let the resume page handle it
+              // The draft is stored under 'booking_draft' key, not 'pendingBookingDraftId'
+              // Only clean up the temporary pendingBookingDraftId if it was used
               if (localStorageDraftId) {
                 localStorage.removeItem("pendingBookingDraftId");
               }

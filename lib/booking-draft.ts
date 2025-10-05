@@ -300,12 +300,19 @@ export async function saveBookingDraft(bookingData: {
   // Set cookie for server-side access
   setDraftIdCookie(draft.id)
   
-  // Try to save to server (non-blocking)
+  // Save to server (blocking - required for cross-device compatibility)
   try {
-    await saveDraftToServer(draft)
+    const serverResult = await saveDraftToServer(draft)
+    if (!serverResult.success) {
+      throw new Error(serverResult.error || 'Failed to save draft to server')
+    }
     console.log('✅ Draft saved to server successfully')
   } catch (error) {
-    console.warn('⚠️ Failed to save draft to server, but local copy is available:', error)
+    console.error('❌ Failed to save draft to server:', error)
+    // Clean up local storage and cookie since server save failed
+    clearDraftFromLocalStorage()
+    clearDraftIdCookie()
+    throw new Error(`Failed to save booking draft: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
   
   return draft

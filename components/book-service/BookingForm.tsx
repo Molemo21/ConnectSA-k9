@@ -66,12 +66,15 @@ export function BookingForm({ value, onChange, onNext, onBack, submitting }: Boo
         const { saveBookingDraft } = await import('@/lib/booking-draft')
         const draft = await saveBookingDraft(value)
         console.log('📝 Booking draft saved before login:', draft.id)
+        handleSignInClick();
       } catch (error) {
         console.error('Failed to save booking draft:', error)
-        // Continue with login even if draft save fails
+        // Show error to user
+        alert('Failed to save your booking. Please try again.')
+        // Fallback: save to sessionStorage for same-device flow
+        sessionStorage.setItem("bookingDetails", JSON.stringify(value))
+        handleSignInClick();
       }
-      
-      handleSignInClick();
     }
   };
 

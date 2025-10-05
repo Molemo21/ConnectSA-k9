@@ -247,15 +247,24 @@ export function BookingLoginModal({
                             const { saveBookingDraft } = await import('@/lib/booking-draft')
                             const draft = await saveBookingDraft(bookingData)
                             console.log('📝 Booking draft saved before signup redirect:', draft.id)
+                            
+                            // Close modal and redirect to signup
+                            onClose()
+                            router.push('/signup')
                           } catch (error) {
                             console.error('Failed to save booking draft:', error)
-                            // Fallback: save to sessionStorage
+                            // Show error to user
+                            alert('Failed to save your booking. Please try again.')
+                            // Fallback: save to sessionStorage for same-device flow
                             sessionStorage.setItem("bookingDetails", JSON.stringify(bookingData))
+                            onClose()
+                            router.push('/signup')
                           }
+                        } else {
+                          // Close modal and redirect to signup
+                          onClose()
+                          router.push('/signup')
                         }
-                        // Close modal and redirect to signup
-                        onClose()
-                        router.push('/signup')
                       }}
                       className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2 cursor-pointer"
                     >
