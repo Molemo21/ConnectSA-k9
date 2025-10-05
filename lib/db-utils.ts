@@ -184,6 +184,16 @@ const createDbWrapper = () => {
         delete: () => Promise.resolve(null),
         deleteMany: () => Promise.resolve({ count: 0 }),
       },
+      bookingDraft: {
+        findFirst: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        deleteMany: () => Promise.resolve({ count: 0 }),
+      },
     };
   }
 
@@ -299,6 +309,18 @@ const createDbWrapper = () => {
       create: (args: any) => withRetry(() => prisma.passwordResetToken.create(args), 'passwordResetToken.create'),
       delete: (args: any) => withRetry(() => prisma.passwordResetToken.delete(args), 'passwordResetToken.delete'),
       deleteMany: (args: any) => withRetry(() => prisma.passwordResetToken.deleteMany(args), 'passwordResetToken.deleteMany'),
+    },
+
+    // BookingDraft operations
+    bookingDraft: {
+      findFirst: (args: any) => withRetry(() => prisma.bookingDraft.findFirst(args), 'bookingDraft.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.bookingDraft.findMany(args), 'bookingDraft.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.bookingDraft.findUnique(args), 'bookingDraft.findUnique'),
+      count: (args: any) => withRetry(() => prisma.bookingDraft.count(args), 'bookingDraft.count'),
+      create: (args: any) => withRetry(() => prisma.bookingDraft.create(args), 'bookingDraft.create'),
+      update: (args: any) => withRetry(() => prisma.bookingDraft.update(args), 'bookingDraft.update'),
+      delete: (args: any) => withRetry(() => prisma.bookingDraft.delete(args), 'bookingDraft.delete'),
+      deleteMany: (args: any) => withRetry(() => prisma.bookingDraft.deleteMany(args), 'bookingDraft.deleteMany'),
     },
   };
 };
