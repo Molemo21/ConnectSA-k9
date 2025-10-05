@@ -30,9 +30,15 @@ function LoginContent() {
     setIsLoading(true)
 
     try {
+      // Check for draft ID in URL parameters
+      const draftId = searchParams?.get("draftId")
+      
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(draftId && { "x-draft-id": draftId })
+        },
         body: JSON.stringify(formData),
       })
 
@@ -48,7 +54,8 @@ function LoginContent() {
         } else {
           // Intent-based redirect
           const intent = searchParams?.get("intent")
-          if (intent === "booking") {
+          if (intent === "booking" || draftId) {
+            // If there's a draft ID or booking intent, go to booking page
             router.push("/book-service?intent=booking")
           } else {
             // Redirect based on user role and verification status

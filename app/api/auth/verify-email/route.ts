@@ -157,12 +157,17 @@ export async function GET(request: NextRequest) {
       // Don't fail verification if cleanup fails
     }
 
+    // Return user data for potential auto-login
     return NextResponse.json({ 
       message: "Email verified successfully",
       user: {
+        id: verificationToken.user.id,
         email: verificationToken.user.email,
+        name: verificationToken.user.name,
+        role: verificationToken.user.role,
         emailVerified: true
-      }
+      },
+      autoLogin: true // Flag to indicate auto-login is possible
     })
   } catch (error) {
     console.error("❌ Error during email verification:", error)

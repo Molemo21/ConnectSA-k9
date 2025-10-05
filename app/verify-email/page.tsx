@@ -58,29 +58,58 @@ function VerifyEmailContent() {
             const pendingDraftId = urlDraftId || localStorageDraftId;
             
             if (pendingDraftId) {
-              console.log('📝 Found pending booking draft, auto-redirecting to continue booking:', pendingDraftId)
+              console.log('📝 Found pending booking draft, auto-logging in and redirecting to continue booking:', pendingDraftId)
               // Don't clean up localStorage here - let the resume page handle it
               // The draft is stored under 'booking_draft' key, not 'pendingBookingDraftId'
               // Only clean up the temporary pendingBookingDraftId if it was used
               if (localStorageDraftId) {
                 localStorage.removeItem("pendingBookingDraftId");
               }
-              // Start countdown and auto-redirect
-              setIsRedirecting(true)
-              setCountdown(3)
               
-              // Countdown timer
-              const countdownInterval = setInterval(() => {
-                setCountdown(prev => {
-                  if (prev === null || prev <= 1) {
-                    clearInterval(countdownInterval)
-                    // Redirect to booking resume
-                    router.push(`/booking/resume?draftId=${pendingDraftId}`)
-                    return null
-                  }
-                  return prev - 1
+              // Auto-login the user first
+              try {
+                const autoLoginResponse = await fetch('/api/auth/auto-login', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-draft-id': pendingDraftId
+                  },
+                  body: JSON.stringify({
+                    userId: data.user.id,
+                    email: data.user.email
+                  })
                 })
-              }, 1000)
+
+                if (autoLoginResponse.ok) {
+                  const autoLoginData = await autoLoginResponse.json()
+                  console.log('✅ Auto-login successful:', autoLoginData.user.email)
+                  
+                  // Start countdown and auto-redirect
+                  setIsRedirecting(true)
+                  setCountdown(3)
+                  
+                  // Countdown timer
+                  const countdownInterval = setInterval(() => {
+                    setCountdown(prev => {
+                      if (prev === null || prev <= 1) {
+                        clearInterval(countdownInterval)
+                        // Redirect directly to booking page with resume flag
+                        router.push('/book-service?resume=true')
+                        return null
+                      }
+                      return prev - 1
+                    })
+                  }, 1000)
+                } else {
+                  console.error('❌ Auto-login failed, falling back to manual login')
+                  // Fallback to manual login flow
+                  router.push(`/login?intent=booking&draftId=${pendingDraftId}`)
+                }
+              } catch (error) {
+                console.error('❌ Auto-login error:', error)
+                // Fallback to manual login flow
+                router.push(`/login?intent=booking&draftId=${pendingDraftId}`)
+              }
             }
           } else {
             console.log("❌ Frontend: Verification failed, setting error state")
@@ -251,19 +280,18 @@ function VerifyEmailContent() {
                                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                                 </div>
-                                <p className="text-sm text-blue-700 mb-2">
-                                  🎉 Great! Your booking is ready to continue.
-                                </p>
-                                <p className="text-lg font-semibold text-blue-800 mb-4">
-                                  Redirecting in {countdown} second{countdown !== 1 ? 's' : ''}...
-                                </p>
+                <p className="text-sm text-blue-700 mb-2">
+                  🎉 Great! You're now logged in and your booking is ready to continue.
+                </p>
+                <p className="text-lg font-semibold text-blue-800 mb-4">
+                  Redirecting to booking page in {countdown} second{countdown !== 1 ? 's' : ''}...
+                </p>
                               </div>
                               
                               {/* Optional: Quick redirect button */}
                               <Button 
                                 onClick={() => {
-                                  const draftId = urlDraftId || localStorageDraftId;
-                                  router.push(`/booking/resume?draftId=${draftId}`);
+                                  router.push('/book-service?resume=true');
                                 }}
                                 variant="outline"
                                 className="w-full"
@@ -278,11 +306,7 @@ function VerifyEmailContent() {
                             <div className="space-y-3">
                               <Button 
                                 onClick={() => {
-                                  const draftId = urlDraftId || localStorageDraftId;
-                                  if (localStorageDraftId) {
-                                    localStorage.removeItem("pendingBookingDraftId");
-                                  }
-                                  router.push(`/booking/resume?draftId=${draftId}`);
+                                  router.push('/book-service?resume=true');
                                 }}
                                 className="w-full"
                               >
