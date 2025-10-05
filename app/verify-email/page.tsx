@@ -56,15 +56,9 @@ function VerifyEmailContent() {
             const pendingDraftId = urlDraftId || localStorageDraftId;
             
             if (pendingDraftId) {
-              console.log('📝 Found pending booking draft, redirecting to resume page:', pendingDraftId)
-              // Clean up localStorage if it was used
-              if (localStorageDraftId) {
-                localStorage.removeItem("pendingBookingDraftId");
-              }
-              // Redirect to resume page with draft ID
-              setTimeout(() => {
-                router.push(`/booking/resume?draftId=${pendingDraftId}`)
-              }, 2000) // Give user time to see success message
+              console.log('📝 Found pending booking draft, user can continue booking:', pendingDraftId)
+              // Note: We'll show a "Continue Your Booking" button instead of auto-redirect
+              // This gives users control and works better on mobile devices
             }
           } else {
             console.log("❌ Frontend: Verification failed, setting error state")
@@ -221,14 +215,49 @@ function VerifyEmailContent() {
                       </div>
                       <h2 className="text-xl font-semibold text-green-900 mb-2">Email Verified!</h2>
                       <p className="text-green-700 mb-6">{verifyResult.message}</p>
-                      <div className="space-y-3">
-                        <Button asChild className="w-full">
-                          <Link href="/dashboard">Go to Dashboard</Link>
-                        </Button>
-                        <Button asChild variant="outline" className="w-full">
-                          <Link href="/login">Back to Login</Link>
-                        </Button>
-                      </div>
+                      
+                      {/* Check if there's a booking draft to resume */}
+                      {(() => {
+                        const urlDraftId = searchParams.get("draftId");
+                        const localStorageDraftId = localStorage.getItem("pendingBookingDraftId");
+                        const hasBookingDraft = urlDraftId || localStorageDraftId;
+                        
+                        if (hasBookingDraft) {
+                          return (
+                            <div className="space-y-3">
+                              <p className="text-sm text-blue-700 mb-4">
+                                🎉 Great! Your booking is ready to continue. We're redirecting you now...
+                              </p>
+                              <Button 
+                                onClick={() => {
+                                  const draftId = urlDraftId || localStorageDraftId;
+                                  if (localStorageDraftId) {
+                                    localStorage.removeItem("pendingBookingDraftId");
+                                  }
+                                  router.push(`/booking/resume?draftId=${draftId}`);
+                                }}
+                                className="w-full"
+                              >
+                                Continue Your Booking
+                              </Button>
+                              <Button asChild variant="outline" className="w-full">
+                                <Link href="/dashboard">Go to Dashboard Instead</Link>
+                              </Button>
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div className="space-y-3">
+                              <Button asChild className="w-full">
+                                <Link href="/dashboard">Go to Dashboard</Link>
+                              </Button>
+                              <Button asChild variant="outline" className="w-full">
+                                <Link href="/login">Back to Login</Link>
+                              </Button>
+                            </div>
+                          );
+                        }
+                      })()}
                     </>
                   ) : (
                     <>
