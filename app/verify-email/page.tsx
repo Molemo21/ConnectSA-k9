@@ -3,12 +3,13 @@
 import { useState, useEffect, Suspense, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Mail, CheckCircle, XCircle, Loader2, Shield, Clock, Users } from "lucide-react"
+import { Mail, CheckCircle, XCircle, Loader2 } from "lucide-react"
 
 function VerifyEmailContent() {
   const router = useRouter()
@@ -152,7 +153,7 @@ function VerifyEmailContent() {
       console.log("🔍 Frontend: VerifyResult:", verifyResult)
       console.log("🔍 Frontend: Already attempted:", verificationAttempted.current.has(token))
     }
-  }, [token]) // Only depend on token - run once per token
+  }, [token, router, searchParams, verifyResult, verifying]) // Include all dependencies
 
   // Fetch user info for the 'check your email' state
   useEffect(() => {
@@ -186,7 +187,7 @@ function VerifyEmailContent() {
   const handleResendEmail = async () => {
     setIsResending(true)
     try {
-      let email = user?.email || emailInput
+      const email = user?.email || emailInput
       if (!email) {
         setShowEmailPrompt(true)
         setIsResending(false)
@@ -211,7 +212,7 @@ function VerifyEmailContent() {
           variant: "destructive",
         })
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -222,23 +223,7 @@ function VerifyEmailContent() {
     }
   }
 
-  const features = [
-    {
-      icon: Shield,
-      title: "Secure & Verified",
-      description: "All providers are background-checked and verified"
-    },
-    {
-      icon: Clock,
-      title: "Quick Booking",
-      description: "Book services in minutes with instant confirmation"
-    },
-    {
-      icon: Users,
-      title: "Trusted Community",
-      description: "Join thousands of satisfied customers"
-    }
-  ]
+  // Removed unused features array
 
   // Render token verification result if token is present
   if (token) {
@@ -247,9 +232,11 @@ function VerifyEmailContent() {
         <div className="w-full max-w-md mx-auto">
           <div className="text-center mb-8 animate-slide-in-up">
             <Link href="/" className="flex items-center space-x-2 sm:space-x-3 mb-6 group animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <img 
+              <Image 
                 src="/handshake.png" 
                 alt="ProLiink Connect Logo" 
+                width={40}
+                height={40}
                 className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
               />
               <div className="flex flex-col">
@@ -291,7 +278,7 @@ function VerifyEmailContent() {
                                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                                 </div>
                 <p className="text-sm text-blue-700 mb-2">
-                  🎉 Great! You're now logged in and your booking is ready to continue.
+                  🎉 Great! You&apos;re now logged in and your booking is ready to continue.
                 </p>
                 <p className="text-lg font-semibold text-blue-800 mb-4">
                   Redirecting to booking page in {countdown} second{countdown !== 1 ? 's' : ''}...
@@ -302,10 +289,11 @@ function VerifyEmailContent() {
                               <Button 
                                 onClick={async () => {
                                   // Ensure draft data is stored before redirecting
-                                  if (pendingDraftId) {
+                                  const currentDraftId = urlDraftId || localStorageDraftId;
+                                  if (currentDraftId) {
                                     try {
                                       const { getBookingDraft } = await import('@/lib/booking-draft')
-                                      const draft = await getBookingDraft(pendingDraftId)
+                                      const draft = await getBookingDraft(currentDraftId)
                                       if (draft) {
                                         sessionStorage.setItem('resumeBookingData', JSON.stringify(draft))
                                         console.log('📝 Stored draft data for manual redirect:', draft.id)
@@ -330,10 +318,11 @@ function VerifyEmailContent() {
                               <Button 
                                 onClick={async () => {
                                   // Ensure draft data is stored before redirecting
-                                  if (pendingDraftId) {
+                                  const currentDraftId = urlDraftId || localStorageDraftId;
+                                  if (currentDraftId) {
                                     try {
                                       const { getBookingDraft } = await import('@/lib/booking-draft')
-                                      const draft = await getBookingDraft(pendingDraftId)
+                                      const draft = await getBookingDraft(currentDraftId)
                                       if (draft) {
                                         sessionStorage.setItem('resumeBookingData', JSON.stringify(draft))
                                         console.log('📝 Stored draft data for manual redirect:', draft.id)
@@ -406,9 +395,11 @@ function VerifyEmailContent() {
           {/* Header - Mobile First */}
           <div className="text-center mb-6 sm:mb-8">
             <Link href="/" className="flex items-center space-x-2 sm:space-x-3 mb-4 sm:mb-6 group animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <img 
+              <Image 
                 src="/handshake.png" 
                 alt="ProLiink Connect Logo" 
+                width={40}
+                height={40}
                 className="w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
               />
               <div className="flex flex-col">
@@ -435,7 +426,7 @@ function VerifyEmailContent() {
                     </div>
                     <h2 className="text-xl font-semibold text-white mb-2">Check Your Email</h2>
                     <p className="text-gray-300">
-                      We've sent a verification link to{" "}
+                      We&apos;ve sent a verification link to{" "}
                       <span className="font-medium text-white">
                         {pendingEmail || user?.email || "your email"}
                       </span>
@@ -444,12 +435,12 @@ function VerifyEmailContent() {
 
                   <div className="space-y-4">
                     <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
-                      <h3 className="font-semibold text-blue-300 mb-2">What's next?</h3>
+                      <h3 className="font-semibold text-blue-300 mb-2">What&apos;s next?</h3>
                       <ul className="text-sm text-blue-200 space-y-1">
                         <li>• Check your email inbox (and spam folder)</li>
                         <li>• Look for emails from <strong className="text-blue-100">no-reply@app.proliinkconnect.co.za</strong></li>
                         <li>• Click the verification link in the email</li>
-                        <li>• You'll be redirected back here to complete setup</li>
+                        <li>• You&apos;ll be redirected back here to complete setup</li>
                       </ul>
                     </div>
 
