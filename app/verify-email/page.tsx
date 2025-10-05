@@ -22,6 +22,8 @@ function VerifyEmailContent() {
   const [emailInput, setEmailInput] = useState("")
   const [showEmailPrompt, setShowEmailPrompt] = useState(false)
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   // Use a ref to track if verification has been attempted for this token
   // This prevents multiple API calls even if the component re-renders
@@ -56,9 +58,27 @@ function VerifyEmailContent() {
             const pendingDraftId = urlDraftId || localStorageDraftId;
             
             if (pendingDraftId) {
-              console.log('📝 Found pending booking draft, user can continue booking:', pendingDraftId)
-              // Note: We'll show a "Continue Your Booking" button instead of auto-redirect
-              // This gives users control and works better on mobile devices
+              console.log('📝 Found pending booking draft, auto-redirecting to continue booking:', pendingDraftId)
+              // Clean up localStorage if it was used
+              if (localStorageDraftId) {
+                localStorage.removeItem("pendingBookingDraftId");
+              }
+              // Start countdown and auto-redirect
+              setIsRedirecting(true)
+              setCountdown(3)
+              
+              // Countdown timer
+              const countdownInterval = setInterval(() => {
+                setCountdown(prev => {
+                  if (prev === null || prev <= 1) {
+                    clearInterval(countdownInterval)
+                    // Redirect to booking resume
+                    router.push(`/booking/resume?draftId=${pendingDraftId}`)
+                    return null
+                  }
+                  return prev - 1
+                })
+              }, 1000)
             }
           } else {
             console.log("❌ Frontend: Verification failed, setting error state")
@@ -222,12 +242,38 @@ function VerifyEmailContent() {
                         const localStorageDraftId = localStorage.getItem("pendingBookingDraftId");
                         const hasBookingDraft = urlDraftId || localStorageDraftId;
                         
-                        if (hasBookingDraft) {
+                        if (hasBookingDraft && isRedirecting) {
+                          return (
+                            <div className="space-y-4">
+                              <div className="text-center">
+                                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                                </div>
+                                <p className="text-sm text-blue-700 mb-2">
+                                  🎉 Great! Your booking is ready to continue.
+                                </p>
+                                <p className="text-lg font-semibold text-blue-800 mb-4">
+                                  Redirecting in {countdown} second{countdown !== 1 ? 's' : ''}...
+                                </p>
+                              </div>
+                              
+                              {/* Optional: Quick redirect button */}
+                              <Button 
+                                onClick={() => {
+                                  const draftId = urlDraftId || localStorageDraftId;
+                                  router.push(`/booking/resume?draftId=${draftId}`);
+                                }}
+                                variant="outline"
+                                className="w-full"
+                              >
+                                Continue Now (Skip Countdown)
+                              </Button>
+                            </div>
+                          );
+                        } else if (hasBookingDraft && !isRedirecting) {
+                          // Fallback: Manual button if auto-redirect didn't start
                           return (
                             <div className="space-y-3">
-                              <p className="text-sm text-blue-700 mb-4">
-                                🎉 Great! Your booking is ready to continue. We're redirecting you now...
-                              </p>
                               <Button 
                                 onClick={() => {
                                   const draftId = urlDraftId || localStorageDraftId;
