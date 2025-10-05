@@ -87,7 +87,11 @@ function VerifyEmailContent() {
                   // Store draft data in sessionStorage for the booking page to pick up
                   if (autoLoginData.draft) {
                     console.log('📝 Storing merged draft data for booking page:', autoLoginData.draft.id)
+                    console.log('📝 Draft data:', autoLoginData.draft)
                     sessionStorage.setItem('resumeBookingData', JSON.stringify(autoLoginData.draft))
+                    console.log('📝 Stored in sessionStorage as resumeBookingData')
+                  } else {
+                    console.log('⚠️ No draft data received from auto-login')
                   }
                   
                   // Start countdown and auto-redirect
