@@ -221,9 +221,12 @@ function BookServiceContent() {
               address: draft.address,
               notes: draft.notes || ""
             });
-            setActiveStep('FORM')
+            // Determine the correct step based on draft data
+            // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
+            const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
+            setActiveStep(isFormComplete ? 'DISCOVERY' : 'FORM');
             sessionStorage.removeItem("resumeBookingData");
-            addDebugInfo('Form restored and resume data cleared');
+            addDebugInfo(`Form restored and resume data cleared. Set step to: ${isFormComplete ? 'DISCOVERY' : 'FORM'}`);
             return;
           } else {
             addDebugInfo('No resume booking data found in sessionStorage');
@@ -247,8 +250,11 @@ function BookServiceContent() {
                   address: draft.address,
                   notes: draft.notes || ""
                 });
-                setActiveStep('FORM')
-                addDebugInfo('Form restored from server draft');
+                // Determine the correct step based on draft data
+                // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
+                const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
+                setActiveStep(isFormComplete ? 'DISCOVERY' : 'FORM');
+                addDebugInfo(`Form restored from server draft. Set step to: ${isFormComplete ? 'DISCOVERY' : 'FORM'}`);
                 return;
               } else {
                 addDebugInfo('No draft found with provided draftId');
@@ -274,12 +280,15 @@ function BookServiceContent() {
               address: draft.address,
               notes: draft.notes || ""
             });
-            setActiveStep('FORM')
+            // Determine the correct step based on draft data
+            // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
+            const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
+            setActiveStep(isFormComplete ? 'DISCOVERY' : 'FORM');
             
             // Clear the draft after restoring
             const { clearBookingDraft } = await import('@/lib/booking-draft')
             await clearBookingDraft(draft.id)
-            addDebugInfo('Booking draft cleared after restoration');
+            addDebugInfo(`Form restored from draft. Set step to: ${isFormComplete ? 'DISCOVERY' : 'FORM'}`);
             return;
           }
         }
