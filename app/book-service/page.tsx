@@ -228,6 +228,36 @@ function BookServiceContent() {
           } else {
             addDebugInfo('No resume booking data found in sessionStorage');
           }
+
+          // Check if we have a draftId in the URL (cross-device resume)
+          const urlDraftId = searchParams?.get("draftId");
+          if (urlDraftId) {
+            addDebugInfo(`Found draftId in URL: ${urlDraftId}, fetching draft from server`);
+            try {
+              const { getBookingDraft } = await import('@/lib/booking-draft')
+              const draft = await getBookingDraft(urlDraftId)
+              
+              if (draft) {
+                addDebugInfo('Found draft from server, restoring form data');
+                console.log('📖 Draft data from server:', draft);
+                setForm({
+                  serviceId: draft.serviceId,
+                  date: draft.date,
+                  time: draft.time,
+                  address: draft.address,
+                  notes: draft.notes || ""
+                });
+                setActiveStep('FORM')
+                addDebugInfo('Form restored from server draft');
+                return;
+              } else {
+                addDebugInfo('No draft found with provided draftId');
+              }
+            } catch (error) {
+              console.error('Error fetching draft from server:', error);
+              addDebugInfo('Error fetching draft from server');
+            }
+          }
         }
 
         // Check for booking draft (only if user is authenticated)

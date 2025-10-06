@@ -68,15 +68,42 @@ export async function POST(request: NextRequest) {
       if (draftId) {
         console.log(`🔗 Attempting to merge draft ${draftId} with user ${user.id}`)
         
-        // Import the merge function
-        const { mergeDraftWithUser } = await import('@/lib/booking-draft')
-        const mergeResult = await mergeDraftWithUser(draftId, user.id)
-        
-        if (mergeResult.success && mergeResult.draft) {
-          draftData = mergeResult.draft
-          console.log(`✅ Successfully merged draft ${draftId} with user ${user.id}`)
+        // Check if draft exists
+        const draft = await db.bookingDraft.findUnique({
+          where: { id: draftId }
+        })
+
+        if (!draft) {
+          console.warn(`⚠️ Draft ${draftId} not found`)
+        } else if (new Date(draft.expiresAt) < new Date()) {
+          console.warn(`⚠️ Draft ${draftId} has expired`)
+          // Delete expired draft
+          await db.bookingDraft.delete({
+            where: { id: draftId }
+          })
         } else {
-          console.warn(`⚠️ Failed to merge draft ${draftId}:`, mergeResult.error)
+          // Update draft with user ID
+          const updatedDraft = await db.bookingDraft.update({
+            where: { id: draftId },
+            data: {
+              userId: user.id,
+              updatedAt: new Date()
+            }
+          })
+
+          draftData = {
+            id: updatedDraft.id,
+            serviceId: updatedDraft.serviceId,
+            date: updatedDraft.date,
+            time: updatedDraft.time,
+            address: updatedDraft.address,
+            notes: updatedDraft.notes,
+            userId: updatedDraft.userId,
+            createdAt: updatedDraft.createdAt.toISOString(),
+            expiresAt: updatedDraft.expiresAt.toISOString()
+          }
+          
+          console.log(`✅ Successfully merged draft ${draftId} with user ${user.id}`)
         }
       }
     } catch (error) {

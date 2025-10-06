@@ -17,36 +17,63 @@ export interface DraftStatus {
  */
 export async function checkDraftStatus(): Promise<DraftStatus> {
   try {
-    // Check localStorage for draft ID
-    const draftId = typeof window !== 'undefined' 
+    // First, check localStorage for draft ID (local device)
+    const localDraftId = typeof window !== 'undefined' 
       ? document.cookie
           .split('; ')
           .find(row => row.startsWith('booking_draft_id='))
           ?.split('=')[1]
       : null
 
-    if (!draftId) {
-      return { hasDraft: false }
+    if (localDraftId) {
+      const draft = await getBookingDraft(localDraftId)
+      
+      if (draft) {
+        // Check if draft is expired
+        const now = new Date()
+        const expiresAt = new Date(draft.expiresAt)
+        const isExpired = now > expiresAt
+
+        return {
+          hasDraft: !isExpired,
+          draftId: localDraftId,
+          draftData: draft,
+          isExpired
+        }
+      }
     }
 
-    // Get the draft data
-    const draft = await getBookingDraft(draftId)
-    
-    if (!draft) {
-      return { hasDraft: false, isExpired: true }
+    // If no local draft found, check server for user's drafts (cross-device)
+    try {
+      const response = await fetch('/api/bookings/drafts/user-drafts', {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success && data.drafts && data.drafts.length > 0) {
+          // Get the most recent draft
+          const latestDraft = data.drafts[0]
+          
+          // Check if draft is expired
+          const now = new Date()
+          const expiresAt = new Date(latestDraft.expiresAt)
+          const isExpired = now > expiresAt
+
+          return {
+            hasDraft: !isExpired,
+            draftId: latestDraft.id,
+            draftData: latestDraft,
+            isExpired
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check server drafts:', error)
     }
 
-    // Check if draft is expired
-    const now = new Date()
-    const expiresAt = new Date(draft.expiresAt)
-    const isExpired = now > expiresAt
-
-    return {
-      hasDraft: !isExpired,
-      draftId,
-      draftData: draft,
-      isExpired
-    }
+    return { hasDraft: false }
   } catch (error) {
     console.error('Error checking draft status:', error)
     return { hasDraft: false }
@@ -61,7 +88,7 @@ export async function getBookingUrl(): Promise<{ url: string; isResume: boolean;
   
   if (draftStatus.hasDraft) {
     return {
-      url: `/booking/resume?draftId=${draftStatus.draftId}`,
+      url: `/book-service?resume=true&draftId=${draftStatus.draftId}`,
       isResume: true,
       label: 'Resume Booking'
     }
