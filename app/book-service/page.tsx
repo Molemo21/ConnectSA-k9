@@ -224,9 +224,16 @@ function BookServiceContent() {
             // Determine the correct step based on draft data
             // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
             const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
-            setActiveStep(isFormComplete ? 'DISCOVERY' : 'FORM');
+            if (isFormComplete) {
+              // Skip the form entirely and go directly to provider discovery
+              setShowProviderDiscovery(true);
+              setActiveStep('DISCOVERY');
+              addDebugInfo('Form complete - skipping to provider discovery');
+            } else {
+              setActiveStep('FORM');
+              addDebugInfo('Form incomplete - showing form to complete missing fields');
+            }
             sessionStorage.removeItem("resumeBookingData");
-            addDebugInfo(`Form restored and resume data cleared. Set step to: ${isFormComplete ? 'DISCOVERY' : 'FORM'}`);
             return;
           } else {
             addDebugInfo('No resume booking data found in sessionStorage');
@@ -253,8 +260,15 @@ function BookServiceContent() {
                 // Determine the correct step based on draft data
                 // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
                 const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
-                setActiveStep(isFormComplete ? 'DISCOVERY' : 'FORM');
-                addDebugInfo(`Form restored from server draft. Set step to: ${isFormComplete ? 'DISCOVERY' : 'FORM'}`);
+                if (isFormComplete) {
+                  // Skip the form entirely and go directly to provider discovery
+                  setShowProviderDiscovery(true);
+                  setActiveStep('DISCOVERY');
+                  addDebugInfo('Form complete - skipping to provider discovery');
+                } else {
+                  setActiveStep('FORM');
+                  addDebugInfo('Form incomplete - showing form to complete missing fields');
+                }
                 return;
               } else {
                 addDebugInfo('No draft found with provided draftId');
@@ -283,12 +297,19 @@ function BookServiceContent() {
             // Determine the correct step based on draft data
             // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
             const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
-            setActiveStep(isFormComplete ? 'DISCOVERY' : 'FORM');
+            if (isFormComplete) {
+              // Skip the form entirely and go directly to provider discovery
+              setShowProviderDiscovery(true);
+              setActiveStep('DISCOVERY');
+              addDebugInfo('Form complete - skipping to provider discovery');
+            } else {
+              setActiveStep('FORM');
+              addDebugInfo('Form incomplete - showing form to complete missing fields');
+            }
             
             // Clear the draft after restoring
             const { clearBookingDraft } = await import('@/lib/booking-draft')
             await clearBookingDraft(draft.id)
-            addDebugInfo(`Form restored from draft. Set step to: ${isFormComplete ? 'DISCOVERY' : 'FORM'}`);
             return;
           }
         }
