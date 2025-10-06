@@ -95,7 +95,7 @@ function VerifyEmailContent() {
                     console.log('⚠️ No draft data received from auto-login')
                   }
                   
-                  // Start countdown and auto-redirect
+                  // Start countdown and auto-redirect to dashboard
                   setIsRedirecting(true)
                   setCountdown(3)
                   
@@ -104,8 +104,8 @@ function VerifyEmailContent() {
                     setCountdown(prev => {
                       if (prev === null || prev <= 1) {
                         clearInterval(countdownInterval)
-                        // Redirect directly to booking page with resume flag
-                        router.push('/book-service?resume=true')
+                        // Redirect to dashboard where user can see "Resume Booking" button
+                        router.push('/dashboard')
                         return null
                       }
                       return prev - 1
@@ -114,12 +114,12 @@ function VerifyEmailContent() {
                 } else {
                   console.error('❌ Auto-login failed, falling back to manual login')
                   // Fallback to manual login flow
-                  router.push(`/login?intent=booking&draftId=${pendingDraftId}`)
+                  router.push(`/login?intent=dashboard&draftId=${pendingDraftId}`)
                 }
               } catch (error) {
                 console.error('❌ Auto-login error:', error)
                 // Fallback to manual login flow
-                router.push(`/login?intent=booking&draftId=${pendingDraftId}`)
+                router.push(`/login?intent=dashboard&draftId=${pendingDraftId}`)
               }
             }
           } else {
@@ -277,11 +277,11 @@ function VerifyEmailContent() {
                                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                                 </div>
-                <p className="text-sm text-blue-700 mb-2">
-                  🎉 Great! You&apos;re now logged in and your booking is ready to continue.
-                </p>
+                  <p className="text-sm text-blue-700 mb-2">
+                    🎉 Great! You&apos;re now logged in. You can continue your booking from the dashboard.
+                  </p>
                 <p className="text-lg font-semibold text-blue-800 mb-4">
-                  Redirecting to booking page in {countdown} second{countdown !== 1 ? 's' : ''}...
+                  Redirecting to dashboard in {countdown} second{countdown !== 1 ? 's' : ''}...
                 </p>
                               </div>
                               
@@ -302,12 +302,12 @@ function VerifyEmailContent() {
                                       console.error('Failed to get draft for manual redirect:', error)
                                     }
                                   }
-                                  router.push('/book-service?resume=true');
+                                      router.push('/dashboard');
                                 }}
                                 variant="outline"
                                 className="w-full"
                               >
-                                Continue Now (Skip Countdown)
+                                Go to Dashboard (Skip Countdown)
                               </Button>
                             </div>
                           );
@@ -331,14 +331,14 @@ function VerifyEmailContent() {
                                       console.error('Failed to get draft for manual redirect:', error)
                                     }
                                   }
-                                  router.push('/book-service?resume=true');
+                                      router.push('/dashboard');
                                 }}
                                 className="w-full"
                               >
-                                Continue Your Booking
+                                Go to Dashboard
                               </Button>
                               <Button asChild variant="outline" className="w-full">
-                                <Link href="/dashboard">Go to Dashboard Instead</Link>
+                                <Link href="/book-service">Start New Booking</Link>
                               </Button>
                             </div>
                           );

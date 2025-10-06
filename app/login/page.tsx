@@ -57,6 +57,9 @@ function LoginContent() {
           if (intent === "booking" || draftId) {
             // If there's a draft ID or booking intent, go to booking page
             router.push("/book-service?intent=booking")
+          } else if (intent === "dashboard") {
+            // If dashboard intent, go to dashboard
+            router.push("/dashboard")
           } else {
             // Redirect based on user role and verification status
             router.push(data.redirectUrl || "/dashboard")
