@@ -708,9 +708,13 @@ function BookServiceContent() {
         </div>
       </div>
       
-        {/* Mobile Navigation */}
-        <MobileBottomNav userRole="CLIENT" />
-        <MobileFloatingActionButton userRole="CLIENT" />
+        {/* Mobile Navigation - Only show when authenticated */}
+        {isAuthenticated && (
+          <>
+            <MobileBottomNav userRole="CLIENT" />
+            <MobileFloatingActionButton userRole="CLIENT" />
+          </>
+        )}
         
         {/* Login Modal */}
         <BookingLoginModal
