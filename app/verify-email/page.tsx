@@ -6,8 +6,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Mail, CheckCircle, XCircle, Loader2 } from "lucide-react"
 
@@ -20,8 +18,6 @@ function VerifyEmailContent() {
   const [verifying, setVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<null | { success: boolean; message: string }>(null)
   const token = searchParams.get("token")
-  const [emailInput, setEmailInput] = useState("")
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false)
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -201,14 +197,18 @@ function VerifyEmailContent() {
     setIsResending(true)
     try {
       // Try to get email in this priority:
-      // 1. Email from token verification response
-      // 2. User's email from context
-      // 3. Email input from form
-      // 4. Show email prompt if none available
-      const email = tokenEmail || user?.email || emailInput;
+      // 1. Pending email (from localStorage or UI state)
+      // 2. Email from token verification response
+      // 3. User's email from context
+      // 4. Email input from form
+      const email = pendingEmail || tokenEmail || user?.email || emailInput;
       
       if (!email) {
-        setShowEmailPrompt(true)
+        toast({
+          title: "Error",
+          description: "Could not determine email address. Please try logging in again.",
+          variant: "destructive",
+        });
         setIsResending(false)
         return
       }
@@ -539,42 +539,42 @@ function VerifyEmailContent() {
                       </ul>
                     </div>
 
-                    {showEmailPrompt && (
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label htmlFor="email" className="text-sm font-medium text-white">Email Address</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            placeholder="Enter your email address"
-                            value={emailInput}
-                            onChange={(e) => setEmailInput(e.target.value)}
-                            className="h-11 sm:h-12 text-base bg-white/10 border-white/20 text-white placeholder-gray-400"
-                          />
-                        </div>
+                    <div className="space-y-4">
+                      {/* Show current email status */}
+                      <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
+                        <h3 className="font-semibold text-blue-300 mb-2">Verification Email Status</h3>
+                        <p className="text-sm text-blue-200">
+                          A verification link has been sent to{" "}
+                          <strong className="text-blue-100">
+                            {pendingEmail || tokenEmail || user?.email || "your email"}
+                          </strong>
+                        </p>
                       </div>
-                    )}
 
-                    <div className="space-y-3">
-                      <Button
-                        onClick={handleResendEmail}
-                        disabled={isResending}
-                        variant="outline"
-                        className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
-                      >
-                        {isResending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Sending...
-                          </>
-                        ) : (
-                          "Resend Verification Email"
-                        )}
-                      </Button>
+                      <div className="space-y-3">
+                        <Button
+                          onClick={handleResendEmail}
+                          disabled={isResending}
+                          variant="outline"
+                          className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
+                        >
+                          {isResending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Sending verification email...
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4 mr-2" />
+                              Resend Verification Email
+                            </>
+                          )}
+                        </Button>
 
-                      <Button asChild variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-white/10">
-                        <Link href="/login">Back to Login</Link>
-                      </Button>
+                        <Button asChild variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-white/10">
+                          <Link href="/login">Back to Login</Link>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
