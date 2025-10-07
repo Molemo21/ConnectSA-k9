@@ -125,21 +125,66 @@ export async function POST(request: NextRequest) {
     const verificationLink = `${baseUrl}/verify-email?token=${token}`
     console.log(`📧 Verification link for resend: ${verificationLink}`)
 
+    // Send verification email with proper error handling
+    let emailSent = false
+    let emailError = null
     try {
-      await sendVerificationEmail(
+      const emailResult = await sendVerificationEmail(
         user.email,
         user.name,
         verificationLink
       )
-      console.log(`📤 Verification email sent successfully to ${email}`)
-    } catch (emailError) {
-      console.error('❌ Failed to send verification email:', emailError)
-      // Don't fail the request if email fails, but log the error
-      // The user can still use the verification link from console in dev mode
+      
+      if (emailResult.success) {
+        console.log(`✅ Verification email resent successfully to ${email}`)
+        if (emailResult.messageId) {
+          console.log(`✅ Email Message ID: ${emailResult.messageId}`)
+        }
+        emailSent = true
+      } else {
+        console.error(`❌ Failed to resend verification email to ${email}:`, emailResult.error)
+        emailError = emailResult.error
+        // Log to database for admin tracking
+        try {
+          await db.auditLog.create({
+            data: {
+              action: 'EMAIL_RESEND_FAILED',
+              performedBy: 'SYSTEM',
+              entityType: 'USER',
+              entityId: user.id,
+              details: JSON.stringify({
+                email: user.email,
+                emailType: 'verification_resend',
+                error: emailResult.error,
+                timestamp: new Date().toISOString()
+              })
+            }
+          }).catch(auditError => {
+            console.error('Failed to log email failure to audit log:', auditError)
+          })
+        } catch (auditError) {
+          console.error('Failed to create audit log for email failure:', auditError)
+        }
+      }
+    } catch (emailException) {
+      console.error('❌ Exception sending verification email:', emailException)
+      emailError = emailException instanceof Error ? emailException.message : 'Unknown error'
+    }
+
+    // Return appropriate response based on email sending success
+    if (!emailSent) {
+      console.error(`🚨 Failed to resend verification email to ${email}`)
+      return NextResponse.json({ 
+        error: "Failed to send verification email. Please try again later or contact support.",
+        details: process.env.NODE_ENV === 'development' ? {
+          error: emailError,
+          verificationLink
+        } : undefined
+      }, { status: 500 })
     }
 
     return NextResponse.json({ 
-      message: "Verification email sent successfully",
+      message: "Verification email sent successfully. Please check your inbox and spam folder.",
       details: process.env.NODE_ENV === 'development' ? `Verification link: ${verificationLink}` : undefined
     })
 

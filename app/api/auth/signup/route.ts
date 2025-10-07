@@ -135,16 +135,57 @@ export async function POST(request: NextRequest) {
     
     console.log(`📧 Verification link for new user: ${verificationLink}`)
     
-    await sendVerificationEmail(
-      user.email,
-      user.name,
-      verificationLink
-    )
-    
-    console.log(`📤 Verification email sent to new user ${user.email}`)
+    // Send verification email with proper error handling
+    let emailSent = false
+    let emailError = null
+    try {
+      const emailResult = await sendVerificationEmail(
+        user.email,
+        user.name,
+        verificationLink
+      )
+      
+      if (emailResult.success) {
+        console.log(`✅ Verification email sent successfully to ${user.email}`)
+        if (emailResult.messageId) {
+          console.log(`✅ Email Message ID: ${emailResult.messageId}`)
+        }
+        emailSent = true
+      } else {
+        console.error(`❌ Failed to send verification email to ${user.email}:`, emailResult.error)
+        emailError = emailResult.error
+        // Log to database for admin tracking
+        try {
+          await db.auditLog.create({
+            data: {
+              action: 'EMAIL_SEND_FAILED',
+              performedBy: 'SYSTEM',
+              entityType: 'USER',
+              entityId: user.id,
+              details: JSON.stringify({
+                email: user.email,
+                emailType: 'verification',
+                error: emailResult.error,
+                timestamp: new Date().toISOString()
+              })
+            }
+          }).catch(auditError => {
+            console.error('Failed to log email failure to audit log:', auditError)
+          })
+        } catch (auditError) {
+          console.error('Failed to create audit log for email failure:', auditError)
+        }
+      }
+    } catch (emailException) {
+      console.error(`❌ Exception sending verification email to ${user.email}:`, emailException)
+      emailError = emailException instanceof Error ? emailException.message : 'Unknown error'
+    }
 
-    return NextResponse.json({
-      message: "Account created successfully",
+    // Return success with warning if email failed
+    const response: any = {
+      message: emailSent 
+        ? "Account created successfully. Please check your email to verify your account."
+        : "Account created successfully, but we couldn't send the verification email. Please contact support or try resending the verification email.",
       user: {
         id: user.id,
         name: user.name,
@@ -152,7 +193,22 @@ export async function POST(request: NextRequest) {
         role: user.role,
         emailVerified: user.emailVerified,
       },
-    })
+    }
+    
+    // Include email status for debugging (dev only)
+    if (process.env.NODE_ENV === 'development') {
+      response.emailStatus = {
+        sent: emailSent,
+        error: emailError
+      }
+    }
+    
+    // If email failed, include a flag so frontend can offer to resend
+    if (!emailSent) {
+      response.emailFailed = true
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors[0]?.message || "Invalid input" }, { status: 400 })

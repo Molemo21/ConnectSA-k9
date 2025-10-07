@@ -53,35 +53,65 @@ export async function sendEmail(data: EmailData): Promise<EmailResponse> {
       };
       if (text) emailData.text = text;
 
+      console.log(`📤 Attempting to send email to: ${to}`);
+      console.log(`📤 From: ${from}`);
+      console.log(`📤 Subject: ${subject}`);
+      
       const result = await resend.emails.send(emailData);
 
       if (result.error) {
-        console.error('❌ Email sending failed:', result.error);
+        console.error('❌ Email sending failed via Resend API:', result.error);
+        console.error('❌ Error details:', JSON.stringify(result.error, null, 2));
+        console.error('❌ Recipient:', to);
+        console.error('❌ Subject:', subject);
         return {
           success: false,
-          error: result.error.message || 'Failed to send email'
+          error: result.error.message || 'Failed to send email via Resend'
         };
       }
 
-      console.log('✅ Email sent successfully:', result.data?.id);
+      console.log('✅ Email sent successfully via Resend');
+      console.log('✅ Message ID:', result.data?.id);
+      console.log('✅ Recipient:', to);
       return {
         success: true,
         messageId: result.data?.id
       };
     } catch (error) {
-      console.error('❌ Email sending error:', error);
-      // Fall through to dev logging so flows continue during issues
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Email sending exception:', errorMessage);
+      console.error('❌ Full error:', error);
+      console.error('❌ Recipient:', to);
+      console.error('❌ Subject:', subject);
+      
+      // Return error instead of falling through
+      return {
+        success: false,
+        error: `Email service exception: ${errorMessage}`
+      };
     }
   }
 
-  // Fallback: log email to console (useful when no email provider configured)
-  console.log('📧 EMAIL LOG (no provider configured or fallback):');
-  console.log('To:', to);
-  console.log('From:', from);
-  console.log('Subject:', subject);
-  console.log('HTML:', html);
-  if (text) console.log('Text:', text);
-  return { success: true, dev: true };
+  // No email service configured - only allowed in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('⚠️ EMAIL PROVIDER NOT CONFIGURED - Development Mode');
+    console.log('📧 EMAIL LOG (no provider configured):');
+    console.log('To:', to);
+    console.log('From:', from);
+    console.log('Subject:', subject);
+    console.log('HTML Preview:', html.substring(0, 200) + '...');
+    if (text) console.log('Text Preview:', text.substring(0, 200) + '...');
+    return { success: true, dev: true };
+  }
+
+  // Production environment without email service configured - critical error
+  console.error('🚨 CRITICAL: Email service not configured in production!');
+  console.error('🚨 Attempted to send to:', to);
+  console.error('🚨 Subject:', subject);
+  return {
+    success: false,
+    error: 'Email service not configured'
+  };
 }
 
 /**
@@ -100,6 +130,47 @@ export async function sendPasswordResetEmail(
 }
 
 /**
+ * Send email with retry logic
+ */
+async function sendEmailWithRetry(data: EmailData, maxRetries = 3): Promise<EmailResponse> {
+  let lastError: EmailResponse | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.log(`📧 Email send attempt ${attempt}/${maxRetries} to ${data.to}`);
+    
+    const result = await sendEmail(data);
+    
+    if (result.success) {
+      if (attempt > 1) {
+        console.log(`✅ Email sent successfully on attempt ${attempt}/${maxRetries}`);
+      }
+      return result;
+    }
+    
+    lastError = result;
+    console.error(`❌ Email send attempt ${attempt}/${maxRetries} failed:`, result.error);
+    
+    // Don't retry on certain errors (invalid email, authentication issues)
+    if (result.error?.includes('authentication') || 
+        result.error?.includes('invalid') || 
+        result.error?.includes('not configured')) {
+      console.error(`⛔ Non-retryable error detected, stopping retry attempts`);
+      break;
+    }
+    
+    // Wait before retrying (exponential backoff)
+    if (attempt < maxRetries) {
+      const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Max 5 seconds
+      console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+  
+  console.error(`❌ All ${maxRetries} email send attempts failed for ${data.to}`);
+  return lastError || { success: false, error: 'All retry attempts failed' };
+}
+
+/**
  * Send email verification email
  */
 export async function sendVerificationEmail(
@@ -111,7 +182,8 @@ export async function sendVerificationEmail(
   const html = VerificationEmailHTML({ name, verificationLink });
   const text = VerificationEmailText({ name, verificationLink });
 
-  return sendEmail({ to, subject, html, text });
+  // Use retry logic for verification emails (critical)
+  return sendEmailWithRetry({ to, subject, html, text }, 3);
 }
 
 /**
