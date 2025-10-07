@@ -102,7 +102,11 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json({ 
         error: "Token has expired",
-        details: process.env.NODE_ENV === 'development' ? "Token expired, please request a new one" : undefined
+        details: process.env.NODE_ENV === 'development' ? "Token expired, please request a new one" : undefined,
+        user: {
+          email: verificationToken.user.email,
+          name: verificationToken.user.name
+        }
       }, { status: 400 })
     }
 

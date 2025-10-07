@@ -130,8 +130,18 @@ function VerifyEmailContent() {
             } else if (res.status === 429) {
               setVerifyResult({ success: false, message: "Too many attempts. Please wait 30 seconds and try again." })
             } else if (res.status === 400 && data.error && data.error.includes('expired')) {
+              // Store the email from the response for resend functionality
+              if (data.user?.email) {
+                setTokenEmail(data.user.email);
+                console.log('📧 Stored email from expired token:', data.user.email);
+              }
               setVerifyResult({ success: false, message: "Verification link has expired. Please request a new one." })
             } else if (res.status === 400 && data.error && data.error.includes('Invalid or expired token')) {
+              // Also try to get email from invalid token response
+              if (data.user?.email) {
+                setTokenEmail(data.user.email);
+                console.log('📧 Stored email from invalid token:', data.user.email);
+              }
               setVerifyResult({ success: false, message: "Invalid verification link. Please check your email or request a new one." })
             } else {
               setVerifyResult({ success: false, message: data.error || "Verification failed. Please try again." })
@@ -184,35 +194,69 @@ function VerifyEmailContent() {
   // Remove the conflicting useEffect that was causing re-renders
   // We'll handle localStorage cleanup in the verification success handler instead
 
+  // Track the email from token verification response
+  const [tokenEmail, setTokenEmail] = useState<string | null>(null);
+
   const handleResendEmail = async () => {
     setIsResending(true)
     try {
-      const email = user?.email || emailInput
+      // Try to get email in this priority:
+      // 1. Email from token verification response
+      // 2. User's email from context
+      // 3. Email input from form
+      // 4. Show email prompt if none available
+      const email = tokenEmail || user?.email || emailInput;
+      
       if (!email) {
         setShowEmailPrompt(true)
         setIsResending(false)
         return
       }
+
+      console.log('📧 Resending verification email to:', email);
+      
       const response = await fetch("/api/auth/resend-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       })
+
       const data = await response.json()
+      console.log('📧 Resend response:', data);
+
       if (response.ok) {
+        // Clear any previous verification result
+        setVerifyResult(null);
+        setVerifying(false);
+        verificationAttempted.current.clear();
+
         toast({
-          title: "Email sent!",
-          description: data.message || "We've sent a new verification email to your inbox.",
+          title: "Verification email sent!",
+          description: "Please check your inbox for the new verification link.",
         })
         setShowEmailPrompt(false)
+
+        // Update UI to show check email state
+        setPendingEmail(email);
+        setTokenEmail(null); // Clear token email as we're now in check email state
       } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to resend verification email. Please try again.",
-          variant: "destructive",
-        })
+        // Handle specific error cases
+        if (response.status === 429) {
+          toast({
+            title: "Please wait",
+            description: "Too many attempts. Please wait a few minutes before trying again.",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: data.error || "Failed to send verification email. Please try again.",
+            variant: "destructive",
+          })
+        }
       }
-    } catch {
+    } catch (error) {
+      console.error('❌ Error resending verification email:', error);
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -366,24 +410,34 @@ function VerifyEmailContent() {
                       
                       {/* Show resend button for expired tokens */}
                       {verifyResult.message.includes('expired') ? (
-                        <div className="space-y-3">
-                          <Button
-                            onClick={handleResendEmail}
-                            disabled={isResending}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            {isResending ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Sending...
-                              </>
-                            ) : (
-                              "Get New Verification Link"
-                            )}
-                          </Button>
-                          <Button asChild variant="outline" className="w-full">
-                            <Link href="/login">Back to Login</Link>
-                          </Button>
+                        <div className="space-y-4">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <h3 className="font-semibold text-blue-900 mb-2">Need a new verification link?</h3>
+                            <p className="text-sm text-blue-700 mb-4">
+                              Click below to get a new verification link sent to your email address.
+                            </p>
+                            <Button
+                              onClick={handleResendEmail}
+                              disabled={isResending}
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              {isResending ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Sending verification email...
+                                </>
+                              ) : (
+                                "Get New Verification Link"
+                              )}
+                            </Button>
+                          </div>
+                          
+                          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
+                            <span>or</span>
+                            <Button asChild variant="link" className="h-auto p-0">
+                              <Link href="/login">return to login</Link>
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -396,7 +450,7 @@ function VerifyEmailContent() {
                             {isResending ? (
                               <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Sending...
+                                Sending verification email...
                               </>
                             ) : (
                               "Resend Verification Email"
