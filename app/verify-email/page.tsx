@@ -363,9 +363,50 @@ function VerifyEmailContent() {
                       </div>
                       <h2 className="text-xl font-semibold text-red-900 mb-2">Verification Failed</h2>
                       <p className="text-red-700 mb-6">{verifyResult.message}</p>
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href="/login">Back to Login</Link>
-                      </Button>
+                      
+                      {/* Show resend button for expired tokens */}
+                      {verifyResult.message.includes('expired') ? (
+                        <div className="space-y-3">
+                          <Button
+                            onClick={handleResendEmail}
+                            disabled={isResending}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            {isResending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              "Get New Verification Link"
+                            )}
+                          </Button>
+                          <Button asChild variant="outline" className="w-full">
+                            <Link href="/login">Back to Login</Link>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <Button
+                            onClick={handleResendEmail}
+                            disabled={isResending}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            {isResending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              "Resend Verification Email"
+                            )}
+                          </Button>
+                          <Button asChild variant="outline" className="w-full">
+                            <Link href="/login">Back to Login</Link>
+                          </Button>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
