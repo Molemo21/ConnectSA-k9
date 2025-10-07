@@ -14,6 +14,7 @@ interface ModernHeroSectionProps {
   onBookServiceClick?: () => void
   onBecomeProviderClick?: () => void
   onGetStartedClick?: () => void
+  showGetStarted?: boolean
 }
 
 export function ModernHeroSection({ 
@@ -22,7 +23,8 @@ export function ModernHeroSection({
   getStartedLoading = false,
   onBookServiceClick,
   onBecomeProviderClick,
-  onGetStartedClick
+  onGetStartedClick,
+  showGetStarted = true
 }: ModernHeroSectionProps) {
   const [isVisible, setIsVisible] = useState(false)
   const { t } = useLanguage()
@@ -79,20 +81,22 @@ export function ModernHeroSection({
             }}
           >
             {t('hero.subtitle')}{" "}
-            <button 
-              onClick={onGetStartedClick}
-              disabled={getStartedLoading}
-              className="text-blue-400 hover:text-blue-300 underline underline-offset-2 sm:underline-offset-4 hover:underline-offset-4 sm:hover:underline-offset-8 transition-all duration-300 font-medium text-sm xs:text-base sm:text-lg md:text-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-blue-400"
-            >
-              {getStartedLoading ? (
-                <span className="flex items-center space-x-2">
-                  <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  <span>Loading...</span>
-                </span>
-              ) : (
-                t('hero.getStarted')
-              )}
-            </button>
+            {showGetStarted && (
+              <button 
+                onClick={onGetStartedClick}
+                disabled={getStartedLoading}
+                className="text-blue-400 hover:text-blue-300 underline underline-offset-2 sm:underline-offset-4 hover:underline-offset-4 sm:hover:underline-offset-8 transition-all duration-300 font-medium text-sm xs:text-base sm:text-lg md:text-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-blue-400"
+              >
+                {getStartedLoading ? (
+                  <span className="flex items-center space-x-2">
+                    <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    <span>Loading...</span>
+                  </span>
+                ) : (
+                  t('hero.getStarted')
+                )}
+              </button>
+            )}
           </p>
 
           {/* CTA Buttons - Mobile First */}

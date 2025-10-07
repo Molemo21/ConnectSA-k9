@@ -1,10 +1,8 @@
 "use client"
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import Image from "next/image"
 import { 
-  CheckCircle,
   Shield,
   Clock,
   Star,
@@ -14,20 +12,15 @@ import {
   Paintbrush,
   Flower,
   ArrowRight,
-  Calendar,
   MessageSquare,
-  Globe,
-  Smartphone,
   Facebook,
   Twitter,
   Instagram,
   Linkedin,
   Hammer,
   ChevronLeft,
-  ChevronRight,
 } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
-import { LoadingButton } from "@/components/ui/loading-button"
 import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
 import { LoadingLink } from "@/components/ui/loading-link"
 import { GlobalLoadingOverlay } from "@/components/ui/global-loading-overlay"
@@ -44,7 +37,24 @@ export default function HomePage() {
   const [showSplash, setShowSplash] = useState(true)
   const [fadeSplash, setFadeSplash] = useState(false)
   const [contentReady, setContentReady] = useState(false)
+  const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null)
   const { t } = useLanguage()
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (response.ok) {
+          const data = await response.json()
+          setUser(data.user)
+        }
+      } catch {
+        console.log("User not authenticated")
+      }
+    }
+    fetchUser()
+  }, [])
   // Loading states for different buttons
   const [loadingStates, setLoadingStates] = useState({
     bookService: false,
@@ -78,12 +88,10 @@ export default function HomePage() {
     headerServices: false,
     headerSignIn: false
   })
-  const [showGlobalLoader, setShowGlobalLoader] = useState(false)
+  const [showGlobalLoader] = useState(false)
 
   // Scroll animations
-  const heroAnimation = useScrollAnimation({ threshold: 0.1 })
   const servicesAnimation = useScrollAnimation({ threshold: 0.2 })
-  const featuresAnimation = useScrollAnimation({ threshold: 0.1 })
   const howItWorksAnimation = useScrollAnimation({ threshold: 0.2 })
   const testimonialsAnimation = useScrollAnimation({ threshold: 0.3 })
   const scrollProgress = useScrollProgress()
@@ -99,31 +107,6 @@ export default function HomePage() {
     }, 1000) // 1 second loading simulation
   }
 
-  const photos = [
-    '/services/car%20m3.jpg',
-    '/services/Cleaner%202.jpg',
-    '/services/electrician%205.jpg',
-    '/services/electricity.jpg',
-    '/services/hairdresser.webp',
-    '/services/IMG-20250813-WA0039.jpg',
-    '/services/IMG-20250813-WA0043.jpg',
-    '/services/IMG-20250813-WA0044.jpg',
-    '/services/IMG-20250813-WA0046.jpg',
-    '/services/IMG-20250813-WA0054.jpg',
-    '/services/IMG-20250813-WA0057.jpg',
-    '/services/laundry.jpg',
-    '/services/makeup.jpg',
-    '/services/Mobile%20carwash%206.jpg',
-    '/services/moving%203.jpg',
-    '/services/nails.jpg',
-    '/services/paint.jpg',
-    '/services/pest.jpg',
-    '/services/plank.jpg',
-    '/services/Plumber%202.jpg',
-    '/services/security%203.jpg',
-  ]
-
-  const collagePhotos = Array.from({ length: 100 }, (_, i) => photos[i % photos.length])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -157,22 +140,6 @@ export default function HomePage() {
     { name: "Garden Services", category: "Home Services", price: "From R200", icon: Flower, color: "from-green-500 to-green-600", image: "/services/skere.jpg" },
   ]
 
-  const features = [
-    { icon: CheckCircle, title: "Verified Professionals", description: "All service providers are background-checked and verified for your safety", color: "text-blue-400" },
-    { icon: Calendar, title: "Fast & Flexible Booking", description: "Schedule services exactly when you need them — no hassle", color: "text-green-400" },
-    { icon: Smartphone, title: "User-Friendly Platform", description: "Seamlessly browse, book, and manage services from your phone or computer", color: "text-blue-400" },
-    { icon: MessageSquare, title: "Clear Communication", description: "Chat directly with service providers for updates and details", color: "text-purple-400" },
-    { icon: Shield, title: "Secure & Transparent Payments", description: "Pay safely online with clear pricing and no surprise fees", color: "text-yellow-400" },
-    { icon: Globe, title: "Wide Service Coverage", description: "Find qualified professionals in your region — with more joining every day", color: "text-cyan-400" },
-  ]
-
-  const stats = [
-    { number: "10,000+", label: "Happy Customers" },
-    { number: "500+", label: "Verified Providers" },
-    { number: "50,000+", label: "Services Completed" },
-    { number: "4.8★", label: "Average Rating" },
-  ]
-
   const whyChooseUs = [
     { icon: Clock, title: t('whyChooseUs.saveTime.title'), description: t('whyChooseUs.saveTime.description') },
     { icon: Shield, title: t('whyChooseUs.guaranteedQuality.title'), description: t('whyChooseUs.guaranteedQuality.description') },
@@ -203,9 +170,11 @@ export default function HomePage() {
         <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="flex flex-col items-center justify-center">
             <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mb-4 animate-pulse animate-breathe">
-              <img 
+              <Image 
                 src="/handshake.png" 
                 alt="Loading" 
+                width={48}
+                height={48}
                 className="h-12 w-auto filter brightness-0 invert"
               />
             </div>
@@ -243,17 +212,18 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Hero Content */}
-        <div className="relative z-10">
-          <ModernHeroSection 
-            bookServiceLoading={loadingStates.bookService}
-            becomeProviderLoading={loadingStates.becomeProvider}
-            getStartedLoading={loadingStates.getStarted}
-            onBookServiceClick={() => handleButtonClick('bookService', () => window.location.href = '/book-service')}
-            onBecomeProviderClick={() => handleButtonClick('becomeProvider', () => window.location.href = '/become-provider')}
-            onGetStartedClick={() => handleButtonClick('getStarted', () => window.location.href = '/signup')}
-          />
-        </div>
+          {/* Hero Content */}
+          <div className="relative z-10">
+            <ModernHeroSection 
+              bookServiceLoading={loadingStates.bookService}
+              becomeProviderLoading={loadingStates.becomeProvider}
+              getStartedLoading={loadingStates.getStarted}
+              onBookServiceClick={() => handleButtonClick('bookService', () => window.location.href = '/book-service')}
+              onBecomeProviderClick={() => handleButtonClick('becomeProvider', () => window.location.href = '/become-provider')}
+              onGetStartedClick={() => handleButtonClick('getStarted', () => window.location.href = '/signup')}
+              showGetStarted={!user}
+            />
+          </div>
       </div>
 
       {/* Modern Services Section - Bolt-Inspired Design */}
@@ -300,9 +270,11 @@ export default function HomePage() {
                     <Card className="relative overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl h-full hover:bg-white/10">
                       {/* Service Image */}
                       <div className="relative h-48 sm:h-56 overflow-hidden">
-                        <img 
+                        <Image 
                           src={service.image} 
                           alt={service.name}
+                          width={400}
+                          height={300}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
@@ -535,7 +507,7 @@ export default function HomePage() {
                 </span>
               </h3>
               <p className="mt-2 text-xs sm:text-sm text-gray-400">The smart way to link professionals and clients.</p>
-              <img src="/handshake.png" alt="Handshake" className="mt-3 sm:mt-4 h-8 sm:h-10 w-auto opacity-80 hover:opacity-100 transition-opacity" />
+              <Image src="/handshake.png" alt="Handshake" width={40} height={40} className="mt-3 sm:mt-4 h-8 sm:h-10 w-auto opacity-80 hover:opacity-100 transition-opacity" />
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold">Quick Links</h3>
