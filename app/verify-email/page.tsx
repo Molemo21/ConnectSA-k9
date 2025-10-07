@@ -201,7 +201,7 @@ function VerifyEmailContent() {
       // 2. Email from token verification response
       // 3. User's email from context
       // 4. Email input from form
-      const email = pendingEmail || tokenEmail || user?.email || emailInput;
+      const email = pendingEmail || tokenEmail || user?.email;
       
       if (!email) {
         toast({
@@ -234,8 +234,6 @@ function VerifyEmailContent() {
           title: "Verification email sent!",
           description: "Please check your inbox for the new verification link.",
         })
-        setShowEmailPrompt(false)
-
         // Update UI to show check email state
         setPendingEmail(email);
         setTokenEmail(null); // Clear token email as we're now in check email state
@@ -539,42 +537,29 @@ function VerifyEmailContent() {
                       </ul>
                     </div>
 
-                    <div className="space-y-4">
-                      {/* Show current email status */}
-                      <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
-                        <h3 className="font-semibold text-blue-300 mb-2">Verification Email Status</h3>
-                        <p className="text-sm text-blue-200">
-                          A verification link has been sent to{" "}
-                          <strong className="text-blue-100">
-                            {pendingEmail || tokenEmail || user?.email || "your email"}
-                          </strong>
-                        </p>
-                      </div>
+                    <div className="space-y-3">
+                      <Button
+                        onClick={handleResendEmail}
+                        disabled={isResending}
+                        variant="outline"
+                        className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
+                      >
+                        {isResending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Sending verification email...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Resend Verification Email
+                          </>
+                        )}
+                      </Button>
 
-                      <div className="space-y-3">
-                        <Button
-                          onClick={handleResendEmail}
-                          disabled={isResending}
-                          variant="outline"
-                          className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
-                        >
-                          {isResending ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Sending verification email...
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="w-4 h-4 mr-2" />
-                              Resend Verification Email
-                            </>
-                          )}
-                        </Button>
-
-                        <Button asChild variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-white/10">
-                          <Link href="/login">Back to Login</Link>
-                        </Button>
-                      </div>
+                      <Button asChild variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-white/10">
+                        <Link href="/login">Back to Login</Link>
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
