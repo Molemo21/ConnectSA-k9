@@ -19,10 +19,12 @@ import {
   CalendarDays, 
   Clock,
   CheckCircle,
+  CheckCircle,
   ChevronRight,
   ChevronLeft
 } from "lucide-react"
 import { reverseGeocode } from "@/lib/geocoding"
+import { ServiceSelection } from "./ServiceSelection"
 import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel"
 
 const bookingFormSchema = z.object({
@@ -51,7 +53,7 @@ interface ModernBookingFormProps {
 }
 
 const steps = [
-  { id: 'service', title: 'Service Type', icon: FileText },
+  { id: 'service', title: 'Choose Service', icon: FileText },
   { id: 'datetime', title: 'Date & Time', icon: CalendarDays },
   { id: 'address', title: 'Address', icon: MapPin },
   { id: 'notes', title: 'Notes', icon: FileText },
@@ -391,92 +393,11 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     switch (currentStep) {
       case 0: // Service Type
         return (
-          <div className="space-y-4 sm:space-y-6 animate-fade-in">
-            <div className="text-center animate-slide-in-up">
-              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">What service do you need?</h3>
-              <p className="text-sm sm:text-base text-white/80">Choose from our verified service providers</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="relative animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
-                <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3 border border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl text-base sm:text-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  placeholder="Search services..."
-                  value={serviceQuery}
-                  onChange={(e) => setServiceQuery(e.target.value)}
-                />
-              </div>
-
-              <div className="max-h-64 sm:max-h-80 overflow-y-auto space-y-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                {/* Show selected service prominently */}
-                {value.serviceId && selectedService && (
-                  <div className="px-2 py-1 text-xs uppercase tracking-wide text-green-600 font-medium">Selected Service</div>
-                )}
-                {value.serviceId && selectedService && (
-                  <div className="w-full text-left p-3 sm:p-4 rounded-xl border-2 border-green-500 bg-green-50 transition-all duration-200">
-                    <div className="font-medium text-gray-900 text-sm sm:text-base flex items-center">
-                      <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
-                      {selectedService.name}
-                    </div>
-                    <div className="text-xs sm:text-sm text-gray-500 ml-6">{selectedService.category}</div>
-                    <button
-                      onClick={() => {
-                        handleFieldChange('serviceId', '')
-                        setShowRecentServices(true)
-                        setServiceQuery('')
-                      }}
-                      className="text-xs text-blue-600 hover:text-blue-800 ml-6 mt-1 underline"
-                    >
-                      Change selection
-                    </button>
-                  </div>
-                )}
-
-                {/* Show recent services only if no service selected and recent tab is enabled */}
-                {!value.serviceId && showRecentServices && recentServiceIds.length > 0 && (
-                  <div className="px-2 py-1 text-xs uppercase tracking-wide text-gray-500 font-medium">Recent</div>
-                )}
-                {!value.serviceId && showRecentServices && recentServiceIds.map((id) => {
-                  const s = services?.find((x: any) => x.id === id)
-                  if (!s) return null
-                  return (
-                    <button
-                      key={`recent-${id}`}
-                      onClick={() => handleFieldChange('serviceId', id)}
-                      className="w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 border-gray-600 hover:border-gray-500 hover:bg-gray-700/50"
-                    >
-                      <div className="font-medium text-white text-sm sm:text-base">{s.name}</div>
-                      <div className="text-xs sm:text-sm text-gray-300">{s.category}</div>
-                    </button>
-                  )
-                })}
-                
-                {/* Show all services only if no service selected */}
-                {!value.serviceId && filteredServices && filteredServices.length > 0 && (
-                  <>
-                    {!serviceQuery && (
-                      <div className="px-2 py-1 text-xs uppercase tracking-wide text-white/70 font-medium">All Services</div>
-                    )}
-                    {filteredServices.map((service: any) => (
-                      <button
-                        key={service.id}
-                        onClick={() => handleFieldChange('serviceId', service.id)}
-                        className="w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all duration-200 border-gray-600 hover:border-gray-500 hover:bg-gray-700/50"
-                      >
-                        <div className="font-medium text-white text-sm sm:text-base">{service.name}</div>
-                        <div className="text-xs sm:text-sm text-gray-300">{service.category}</div>
-                      </button>
-                    ))}
-                  </>
-                )}
-                
-                {!value.serviceId && (!filteredServices || filteredServices.length === 0) && (
-                  <div className="text-center py-6 sm:py-8 text-gray-500 text-sm sm:text-base">No services found</div>
-                )}
-              </div>
-            </div>
-          </div>
+          <ServiceSelection
+            value={value.serviceId}
+            onChange={(serviceId) => handleFieldChange('serviceId', serviceId)}
+            onNext={() => handleNext()}
+          />
         )
 
       case 1: // Date & Time
@@ -858,45 +779,45 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
 
       {/* Navigation - Mobile Optimized - Hidden on Provider Selection Step */}
       {currentStep !== 5 && (
-        <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 sm:mt-8 space-y-3 sm:space-y-0 transition-all duration-300 ${
-          isTransitioning ? 'opacity-50 translate-y-2' : 'opacity-100 translate-y-0'
-        }`}>
+      <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 sm:mt-8 space-y-3 sm:space-y-0 transition-all duration-300 ${
+        isTransitioning ? 'opacity-50 translate-y-2' : 'opacity-100 translate-y-0'
+      }`}>
           {/* Back Button - Hidden on first step */}
           {currentStep > 0 && (
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              className="flex items-center px-4 sm:px-6 py-3 w-full sm:w-auto order-2 sm:order-1"
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              {currentStep === 0 ? 'Back' : 'Previous'}
-            </Button>
+        <Button
+          variant="outline"
+          onClick={handleBack}
+          className="flex items-center px-4 sm:px-6 py-3 w-full sm:w-auto order-2 sm:order-1"
+        >
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          {currentStep === 0 ? 'Back' : 'Previous'}
+        </Button>
           )}
 
-          <Button
-            onClick={handleNext}
-            disabled={submitting}
+        <Button
+          onClick={handleNext}
+          disabled={submitting}
             className={`flex items-center px-6 sm:px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base sm:text-lg shadow-lg w-full sm:w-auto ${
               currentStep === 0 ? 'w-full' : 'order-1 sm:order-2'
             }`}
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : currentStep === steps.length - 1 ? (
-              'Complete Booking'
-            ) : currentStep === steps.length - 2 ? (
-              'Choose Provider'
-            ) : (
-              <>
-                Continue
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </>
-            )}
-          </Button>
-        </div>
+        >
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : currentStep === steps.length - 1 ? (
+            'Complete Booking'
+          ) : currentStep === steps.length - 2 ? (
+            'Choose Provider'
+          ) : (
+            <>
+              Continue
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </>
+          )}
+        </Button>
+      </div>
       )}
     </div>
   )

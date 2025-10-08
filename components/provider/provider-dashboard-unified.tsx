@@ -369,10 +369,10 @@ function ProviderMainContent({
       const targetStatus = statusMap[selectedFilter]
       
       filtered = safeBookings.filter(booking => 
-        booking && 
-        booking.id && 
-        booking.status && 
-        typeof booking.status === 'string' &&
+      booking && 
+      booking.id && 
+      booking.status && 
+      typeof booking.status === 'string' &&
         booking.status === targetStatus
       )
     }
@@ -1424,9 +1424,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         console.log('Using initialUser from server, skipping auth check')
         await fetchProviderData()
       } else {
-        const authSuccess = await checkAuthentication()
-        if (authSuccess) {
-          await fetchProviderData()
+      const authSuccess = await checkAuthentication()
+      if (authSuccess) {
+        await fetchProviderData()
         }
       }
     }
