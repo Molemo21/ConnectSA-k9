@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { createSADateTime } from "@/lib/date-utils";
 import { db } from "@/lib/db-utils";
 import { z } from "zod";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
@@ -15,7 +16,7 @@ export const runtime = 'nodejs'
 const bookingSchema = z.object({
   serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
   date: z.string(), // ISO date string
-  time: z.string(), // e.g. "14:00"
+  time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:mm format"), // e.g. "14:00"
   address: z.string().min(1),
   notes: z.string().optional(),
 });
@@ -41,6 +42,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validated = bookingSchema.parse(body);
+    
+    // Create a date object in the South African time zone
+    const scheduledDateUTC = createSADateTime(validated.date, validated.time);
 
     logBooking.success('create', 'Booking creation started', {
       userId: user.id,

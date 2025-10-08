@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -541,7 +542,7 @@ export function RealtimeClientDashboard() {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          {new Date(booking.scheduledDate).toLocaleDateString('en-ZA', {
+                          {formatSADate(booking.scheduledDate, {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -553,10 +554,7 @@ export function RealtimeClientDashboard() {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Clock className="h-4 w-4" />
                         <span>
-                          {new Date(booking.scheduledDate).toLocaleTimeString('en-ZA', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {formatSATime(booking.scheduledDate)}
                         </span>
                       </div>
                       

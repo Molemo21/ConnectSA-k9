@@ -12,7 +12,7 @@
 
 const apiKey = process.env.RESEND_API_KEY || 're_SDXQnpH5_EhXAJihxYgJRRgug7xjs6qcX';
 const fromEmail = process.env.FROM_EMAIL || 'no-reply@app.proliinkconnect.co.za';
-const testEmail = process.argv[2];
+const testEmailAddress = process.argv[2];
 
 const colors = {
   reset: '\x1b[0m',
@@ -26,7 +26,7 @@ function log(msg, color = 'reset') {
   console.log(`${colors[color]}${msg}${colors.reset}`);
 }
 
-async function testEmail(toEmail) {
+async function runEmailTest(toEmail) {
   log('\n📧 QUICK EMAIL DELIVERY TEST', 'blue');
   log('=' .repeat(60), 'blue');
   
@@ -186,11 +186,11 @@ Powered by Resend
 
 // Run the test
 if (require.main === module) {
-  testEmail(testEmail).catch(error => {
+  runEmailTest(testEmailAddress).catch(error => {
     log(`\n❌ Test failed: ${error.message}`, 'red');
     process.exit(1);
   });
 }
 
-module.exports = { testEmail };
+module.exports = { runEmailTest };
 

@@ -711,8 +711,8 @@ function BookServiceContent() {
         {/* Mobile Navigation - Only show when authenticated */}
         {isAuthenticated && (
           <>
-            <MobileBottomNav userRole="CLIENT" />
-            <MobileFloatingActionButton userRole="CLIENT" />
+        <MobileBottomNav userRole="CLIENT" />
+        <MobileFloatingActionButton userRole="CLIENT" />
           </>
         )}
         
