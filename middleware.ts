@@ -26,6 +26,8 @@ const PUBLIC_FILES = [
 const PUBLIC_API_ENDPOINTS = [
   '/api/services',
   '/api/service-categories',
+  '/api/book-service/discover-providers',
+  '/api/test-provider-discovery',
   '/api/auth/login',
   '/api/auth/me',
   '/api/auth/signup',

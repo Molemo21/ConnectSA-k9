@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { z } from "zod";
 
@@ -7,10 +6,10 @@ export const dynamic = 'force-dynamic'
 
 
 const discoverProvidersSchema = z.object({
-  serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
-  date: z.string(), // ISO date string
-  time: z.string(), // e.g. "14:00"
-  address: z.string().min(1),
+  serviceId: z.string().min(1, "Service ID is required"),
+  date: z.string().min(1, "Date is required"),
+  time: z.string().min(1, "Time is required"),
+  address: z.string().min(1, "Address is required"),
 });
 
 export async function POST(request: NextRequest) {
@@ -22,22 +21,24 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const user = await getCurrentUser();
-    if (!user || user.role !== "CLIENT") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    // Provider discovery should be accessible without authentication
+    // Users need to discover providers before they can book
+    
     const body = await request.json();
     
     // Log the incoming request for debugging
     console.log('Discover providers request body:', JSON.stringify(body, null, 2));
     
-    // Validate serviceId format (Prisma custom ID format) before Zod validation
-    if (body.serviceId && !/^[a-z0-9]{25}$/i.test(body.serviceId)) {
-      console.error('Invalid serviceId format received:', body.serviceId);
-      return NextResponse.json({ 
-        error: `Invalid serviceId format: ${body.serviceId}. Expected 25 alphanumeric characters.` 
-      }, { status: 400 });
+    // Validate serviceId format (accept both CUID and UUID formats) before Zod validation
+    if (body.serviceId) {
+      const cuidRegex = /^[a-z0-9]{25}$/i;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!cuidRegex.test(body.serviceId) && !uuidRegex.test(body.serviceId)) {
+        console.error('Invalid serviceId format received:', body.serviceId);
+        return NextResponse.json({ 
+          error: `Invalid serviceId format: ${body.serviceId}. Expected CUID (25 chars) or UUID (36 chars) format.` 
+        }, { status: 400 });
+      }
     }
 
     const validated = discoverProvidersSchema.parse(body);
