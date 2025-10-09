@@ -376,40 +376,128 @@ export default function HomePage() {
         subtitle=""
       />
 
-      {/* How It Works - Phone Background with Steps Overlay */}
+      {/* How It Works - Mobile First */}
       <section 
         ref={howItWorksAnimation.ref as React.RefObject<HTMLElement>}
         id="how-it-works" 
-        className={`w-full py-20 sm:py-24 md:py-32 lg:py-40 relative overflow-hidden ${howItWorksAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
-        style={{
-          backgroundImage: "url('/phone.png')",
-          backgroundSize: "contain",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat"
-        }}
+        className={`w-full py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32 relative overflow-hidden bg-black ${howItWorksAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
       >
+        {/* Mobile: Simple background, Desktop: Phone background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-800 sm:hidden" />
+        
+        {/* Mobile: Decorative visual elements */}
+        <div className="absolute inset-0 sm:hidden overflow-hidden">
+          {/* Floating geometric shapes */}
+          <div className="absolute top-20 left-4 w-16 h-16 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
+          <div className="absolute top-40 right-8 w-12 h-12 bg-purple-500/20 rounded-full blur-lg animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute bottom-32 left-8 w-20 h-20 bg-cyan-500/20 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute bottom-20 right-4 w-14 h-14 bg-green-500/20 rounded-full blur-lg animate-pulse" style={{ animationDelay: '0.5s' }} />
+          
+          {/* Subtle grid pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="w-full h-full" style={{
+              backgroundImage: `
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '20px 20px'
+            }} />
+          </div>
+        </div>
+        
+        {/* Desktop: Phone background */}
+        <div 
+          className="hidden sm:block absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: "url('/phone.png')",
+            backgroundSize: "contain",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat"
+          }}
+        />
+        
         {/* Dark overlay for better text readability */}
         <div className="absolute inset-0 bg-black/60" />
 
         <div className="container px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Header */}
-          <div className="text-center mb-20 sm:mb-24">
+          <div className="text-center mb-12 sm:mb-16 md:mb-20">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 tracking-tight">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 sm:mb-6 md:mb-8 tracking-tight">
                 {t('howItWorks.title')}
               </h2>
-              <p className="text-gray-300 text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed">
+              <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl max-w-4xl mx-auto leading-relaxed px-4">
                 {t('howItWorks.subtitle')}
               </p>
             </motion.div>
-                </div>
+          </div>
 
-          <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+          {/* Mobile: Single column layout */}
+          <div className="sm:hidden space-y-6">
+            {[
+              {
+                step: "01",
+                title: t('howItWorks.step1.title'),
+                description: t('howItWorks.step1.description'),
+                color: "from-blue-600 to-blue-700"
+              },
+              {
+                step: "02", 
+                title: t('howItWorks.step2.title'),
+                description: t('howItWorks.step2.description'),
+                color: "from-blue-700 to-blue-800"
+              },
+              {
+                step: "03",
+                title: t('howItWorks.step3.title'),
+                description: t('howItWorks.step3.description'),
+                color: "from-blue-800 to-blue-900"
+              }
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.6, 
+                  delay: 0.1 * index,
+                  ease: "easeOut"
+                }}
+                viewport={{ once: true }}
+                className="group relative"
+              >
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 hover:bg-white/15 shadow-xl">
+                  <div className="flex items-start space-x-4">
+                    <div className={`w-12 h-12 bg-gradient-to-r ${item.color} rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                      <span className="text-white font-bold text-lg">{item.step}</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-gray-300 text-sm leading-relaxed">
+                        {item.description}
+                      </p>
+                    </div>
+                    {/* Mobile: Add a subtle arrow indicator */}
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center">
+                        <ArrowRight className="w-3 h-3 text-white/60" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Desktop: Two column layout */}
+          <div className="hidden sm:grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
             {/* Phone Background Area - Left Side */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
@@ -479,7 +567,6 @@ export default function HomePage() {
               ))}
             </motion.div>
           </div>
-
         </div>
       </section>
 
