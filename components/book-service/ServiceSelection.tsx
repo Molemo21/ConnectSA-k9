@@ -65,17 +65,44 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
               setSelectedCategory(data[0]);
             }
           } else {
-            // Fallback to config data if API returns empty
-            const cleaningCategory = {
-              id: 'cat_cleaning',
-              name: 'Cleaning Services',
-              description: 'Professional cleaning services for homes and offices',
-              icon: '🧹',
-              isActive: true,
-              services: SERVICE_CATEGORIES.HOME_SERVICES.categories.CLEANING?.services || []
-            };
-            setCategories([cleaningCategory]);
-            setSelectedCategory(cleaningCategory);
+            // Fallback: fetch services directly from services API
+            try {
+              const servicesResponse = await fetch('/api/services');
+              if (servicesResponse.ok) {
+                const servicesData = await servicesResponse.json();
+                if (Array.isArray(servicesData) && servicesData.length > 0) {
+                  const cleaningCategory = {
+                    id: 'cat_cleaning',
+                    name: 'Cleaning Services',
+                    description: 'Professional cleaning services for homes and offices',
+                    icon: '🧹',
+                    isActive: true,
+                    services: servicesData.map(service => ({
+                      id: service.id, // Use actual database ID
+                      name: service.name,
+                      description: service.description,
+                      basePrice: service.basePrice,
+                      features: [
+                        'Professional service',
+                        'Quality guarantee',
+                        'Satisfaction guaranteed',
+                        'Experienced staff'
+                      ],
+                      duration: 60
+                    }))
+                  };
+                  setCategories([cleaningCategory]);
+                  setSelectedCategory(cleaningCategory);
+                } else {
+                  throw new Error('No services available');
+                }
+              } else {
+                throw new Error('Failed to fetch services');
+              }
+            } catch (serviceError) {
+              console.error("Failed to fetch services for fallback:", serviceError);
+              setError("Unable to load services. Please refresh the page.");
+            }
           }
         }
       } catch (err) {
@@ -86,18 +113,45 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
               setRetryCount(prev => prev + 1);
             }, retryDelay);
           } else {
-            // After max retries, use fallback data
-            const cleaningCategory = {
-              id: 'cat_cleaning',
-              name: 'Cleaning Services',
-              description: 'Professional cleaning services for homes and offices',
-              icon: '🧹',
-              isActive: true,
-              services: SERVICE_CATEGORIES.HOME_SERVICES.categories.CLEANING?.services || []
-            };
-            setCategories([cleaningCategory]);
-            setSelectedCategory(cleaningCategory);
-            setError(null); // Clear error since we have fallback data
+            // After max retries, try to fetch services directly
+            try {
+              const servicesResponse = await fetch('/api/services');
+              if (servicesResponse.ok) {
+                const servicesData = await servicesResponse.json();
+                if (Array.isArray(servicesData) && servicesData.length > 0) {
+                  const cleaningCategory = {
+                    id: 'cat_cleaning',
+                    name: 'Cleaning Services',
+                    description: 'Professional cleaning services for homes and offices',
+                    icon: '🧹',
+                    isActive: true,
+                    services: servicesData.map(service => ({
+                      id: service.id, // Use actual database ID
+                      name: service.name,
+                      description: service.description,
+                      basePrice: service.basePrice,
+                      features: [
+                        'Professional service',
+                        'Quality guarantee',
+                        'Satisfaction guaranteed',
+                        'Experienced staff'
+                      ],
+                      duration: 60
+                    }))
+                  };
+                  setCategories([cleaningCategory]);
+                  setSelectedCategory(cleaningCategory);
+                  setError(null); // Clear error since we have data
+                } else {
+                  setError("No services available. Please try again later.");
+                }
+              } else {
+                setError("Unable to load services. Please refresh the page.");
+              }
+            } catch (serviceError) {
+              console.error("Failed to fetch services after retries:", serviceError);
+              setError("Unable to load services. Please refresh the page.");
+            }
           }
         }
       } finally {
