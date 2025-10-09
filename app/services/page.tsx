@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, ChevronRight, Clock, DollarSign, Lock, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 
 interface Service {
   id: number
@@ -28,29 +29,7 @@ interface Service {
 
 // Services data with images and coming soon status
 const services: (Service & { comingSoon?: boolean })[] = [
-  // Services with images
-  {
-    id: 1,
-    slug: "plumbing",
-    title: "Plumbing",
-    description: "Professional plumbing services for homes and businesses.",
-    category: "Home Services",
-    subcategories: ["Leak repairs", "Pipe installation", "Drain cleaning", "Toilet repair"],
-    price: "From R300",
-    image: "/services/Plumber 2.jpg",
-    icon: "🔧"
-  },
-  {
-    id: 2,
-    slug: "electrical",
-    title: "Electrical",
-    description: "Certified electricians for all your electrical needs.",
-    category: "Home Services",
-    subcategories: ["Wiring", "Lighting installation", "Fuse box upgrades", "Appliance repair"],
-    price: "From R400",
-    image: "/services/electricity.jpg",
-    icon: "⚡"
-  },
+  // Priority Services - Starting with these
   {
     id: 3,
     slug: "cleaning",
@@ -61,17 +40,6 @@ const services: (Service & { comingSoon?: boolean })[] = [
     price: "From R250",
     image: "/services/Cleaner 2.jpg",
     icon: "🧹"
-  },
-  {
-    id: 4,
-    slug: "carpentry",
-    title: "Carpentry",
-    description: "Custom woodwork and furniture building services.",
-    category: "Home Services",
-    subcategories: ["Furniture making", "Cabinets", "Shelving", "Door installation"],
-    price: "From R350",
-    image: "/services/plank.jpg",
-    icon: "🔨"
   },
   {
     id: 5,
@@ -85,83 +53,6 @@ const services: (Service & { comingSoon?: boolean })[] = [
     icon: "✂️"
   },
   {
-    id: 7,
-    slug: "it-support",
-    title: "IT Support",
-    description: "Professional IT support and computer services.",
-    category: "Technology",
-    subcategories: ["Virus removal", "Hardware repair", "Network setup", "Data recovery"],
-    price: "From R350",
-    image: "/services/support.jpg",
-    icon: "💻"
-  },
-  {
-    id: 8,
-    slug: "gardening",
-    title: "Gardening",
-    description: "Landscaping and garden maintenance services.",
-    category: "Home Services",
-    subcategories: ["Lawn mowing", "Hedge trimming", "Garden design", "Tree surgery"],
-    price: "From R200",
-    image: "/services/skere.jpg",
-    icon: "🌱"
-  },
-  {
-    id: 10,
-    slug: "painting",
-    title: "Painting",
-    description: "Professional interior and exterior painting services.",
-    category: "Home Services",
-    subcategories: ["Wall painting", "Wallpaper installation", "Color consultation", "Surface preparation"],
-    price: "From R350",
-    image: "/services/paint.jpg",
-    icon: "🎨"
-  },
-  {
-    id: 11,
-    slug: "security-systems",
-    title: "Security System Installation",
-    description: "Professional installation of home and business security systems.",
-    category: "Home Services",
-    subcategories: ["CCTV installation", "Alarm systems", "Access control", "Smart home security"],
-    price: "From R1500",
-    image: "/services/security 3.jpg",
-    icon: "🔒"
-  },
-  {
-    id: 12,
-    slug: "mobile-car-wash",
-    title: "Mobile Car Wash",
-    description: "Professional car washing services at your location.",
-    category: "Automotive",
-    subcategories: ["Exterior wash", "Interior cleaning", "Waxing", "Detailing"],
-    price: "From R150",
-    image: "/services/Mobile carwash 6.jpg",
-    icon: "🚗"
-  },
-  {
-    id: 13,
-    slug: "laundry",
-    title: "Laundry Services",
-    description: "Professional laundry and dry cleaning services.",
-    category: "Home Services",
-    subcategories: ["Wash & fold", "Dry cleaning", "Ironing", "Specialty fabric care"],
-    price: "From R80/kg",
-    image: "/services/laundry.jpg",
-    icon: "👕"
-  },
-  {
-    id: 14,
-    slug: "moving-delivery",
-    title: "Moving & Delivery",
-    description: "Reliable moving and delivery services for homes and businesses.",
-    category: "Transportation",
-    subcategories: ["Local moves", "Furniture delivery", "Office relocation", "Packing services"],
-    price: "From R300",
-    image: "/services/moving 3.jpg",
-    icon: "🚚"
-  },
-  {
     id: 15,
     slug: "makeup",
     title: "Makeup Services",
@@ -172,6 +63,128 @@ const services: (Service & { comingSoon?: boolean })[] = [
     image: "/services/makeup.jpg",
     icon: "💄"
   },
+  
+  // Coming Soon Services
+  {
+    id: 1,
+    slug: "plumbing",
+    title: "Plumbing",
+    description: "Professional plumbing services for homes and businesses.",
+    category: "Home Services",
+    subcategories: ["Leak repairs", "Pipe installation", "Drain cleaning", "Toilet repair"],
+    price: "From R300",
+    image: "/services/Plumber 2.jpg",
+    icon: "🔧",
+    comingSoon: true
+  },
+  {
+    id: 2,
+    slug: "electrical",
+    title: "Electrical",
+    description: "Certified electricians for all your electrical needs.",
+    category: "Home Services",
+    subcategories: ["Wiring", "Lighting installation", "Fuse box upgrades", "Appliance repair"],
+    price: "From R400",
+    image: "/services/electricity.jpg",
+    icon: "⚡",
+    comingSoon: true
+  },
+  {
+    id: 4,
+    slug: "carpentry",
+    title: "Carpentry",
+    description: "Custom woodwork and furniture building services.",
+    category: "Home Services",
+    subcategories: ["Furniture making", "Cabinets", "Shelving", "Door installation"],
+    price: "From R350",
+    image: "/services/plank.jpg",
+    icon: "🔨",
+    comingSoon: true
+  },
+  {
+    id: 7,
+    slug: "it-support",
+    title: "IT Support",
+    description: "Professional IT support and computer services.",
+    category: "Technology",
+    subcategories: ["Virus removal", "Hardware repair", "Network setup", "Data recovery"],
+    price: "From R350",
+    image: "/services/support.jpg",
+    icon: "💻",
+    comingSoon: true
+  },
+  {
+    id: 8,
+    slug: "gardening",
+    title: "Gardening",
+    description: "Landscaping and garden maintenance services.",
+    category: "Home Services",
+    subcategories: ["Lawn mowing", "Hedge trimming", "Garden design", "Tree surgery"],
+    price: "From R200",
+    image: "/services/skere.jpg",
+    icon: "🌱",
+    comingSoon: true
+  },
+  {
+    id: 10,
+    slug: "painting",
+    title: "Painting",
+    description: "Professional interior and exterior painting services.",
+    category: "Home Services",
+    subcategories: ["Wall painting", "Wallpaper installation", "Color consultation", "Surface preparation"],
+    price: "From R350",
+    image: "/services/paint.jpg",
+    icon: "🎨",
+    comingSoon: true
+  },
+  {
+    id: 11,
+    slug: "security-systems",
+    title: "Security System Installation",
+    description: "Professional installation of home and business security systems.",
+    category: "Home Services",
+    subcategories: ["CCTV installation", "Alarm systems", "Access control", "Smart home security"],
+    price: "From R1500",
+    image: "/services/security 3.jpg",
+    icon: "🔒",
+    comingSoon: true
+  },
+  {
+    id: 12,
+    slug: "mobile-car-wash",
+    title: "Mobile Car Wash",
+    description: "Professional car washing services at your location.",
+    category: "Automotive",
+    subcategories: ["Exterior wash", "Interior cleaning", "Waxing", "Detailing"],
+    price: "From R150",
+    image: "/services/Mobile carwash 6.jpg",
+    icon: "🚗",
+    comingSoon: true
+  },
+  {
+    id: 13,
+    slug: "laundry",
+    title: "Laundry Services",
+    description: "Professional laundry and dry cleaning services.",
+    category: "Home Services",
+    subcategories: ["Wash & fold", "Dry cleaning", "Ironing", "Specialty fabric care"],
+    price: "From R80/kg",
+    image: "/services/laundry.jpg",
+    icon: "👕",
+    comingSoon: true
+  },
+  {
+    id: 14,
+    slug: "moving-delivery",
+    title: "Moving & Delivery",
+    description: "Reliable moving and delivery services for homes and businesses.",
+    category: "Transportation",
+    subcategories: ["Local moves", "Furniture delivery", "Office relocation", "Packing services"],
+    price: "From R300",
+    image: "/services/moving 3.jpg",
+    icon: "🚚",
+    comingSoon: true
+  },
   {
     id: 16,
     slug: "nails",
@@ -181,7 +194,8 @@ const services: (Service & { comingSoon?: boolean })[] = [
     subcategories: ["Manicures", "Pedicures", "Gel nails", "Nail art"],
     price: "From R150",
     image: "/services/nails.jpg",
-    icon: "💅"
+    icon: "💅",
+    comingSoon: true
   },
   {
     id: 17,
@@ -192,7 +206,8 @@ const services: (Service & { comingSoon?: boolean })[] = [
     subcategories: ["Massage", "Facials", "Body wraps", "Aromatherapy"],
     price: "From R350",
     image: "/services/spa treatment 5.jpg",
-    icon: "🧖"
+    icon: "🧖",
+    comingSoon: true
   },
   {
     id: 18,
@@ -203,7 +218,8 @@ const services: (Service & { comingSoon?: boolean })[] = [
     subcategories: ["Oil changes", "Brake service", "Tire rotation", "Engine diagnostics"],
     price: "From R400",
     image: "/services/car m3.jpg",
-    icon: "🔧"
+    icon: "🔧",
+    comingSoon: true
   },
   {
     id: 19,
@@ -214,19 +230,20 @@ const services: (Service & { comingSoon?: boolean })[] = [
     subcategories: ["Termite control", "Rodent removal", "Fumigation", "Preventative treatments"],
     price: "From R500",
     image: "/services/pest.jpg",
-    icon: "🐜"
+    icon: "🐜",
+    comingSoon: true
   }
 ]
 
 // Categories for filtering
 const categories = ["All", "Home Services", "Beauty", "Technology", "Automotive", "Transportation"]
 
-// Sort services: ones with images first
+// Sort services: active services first, then coming soon services
 const sortedServices = [...services].sort((a, b) => {
-  // Services with images come first
-  if (a.image && !b.image) return -1;
-  if (!a.image && b.image) return 1;
-  // Then sort by ID
+  // Active services (no comingSoon flag) come first
+  if (!a.comingSoon && b.comingSoon) return -1;
+  if (a.comingSoon && !b.comingSoon) return 1;
+  // Within each group, sort by ID
   return a.id - b.id;
 });
 
@@ -289,16 +306,10 @@ export default function ServicesPage() {
       />
       {/* Overlay for better text readability */}
       <div className="absolute inset-0 bg-black/60" />
-      {/* Top right navigation buttons */}
-      <div className="absolute top-6 right-6 z-20 flex gap-3">
-        <Button variant="outline" onClick={() => router.back()} className="border border-white/30 bg-black/60 text-white hover:bg-blue-900/20">
-          Back
-        </Button>
-        <Link href="/">
-          <Button variant="outline" className="border border-white/30 bg-black/60 text-white hover:bg-blue-900/20">
-            Home
-          </Button>
-        </Link>
+      
+      {/* Consistent Brand Header */}
+      <div className="relative z-10">
+        <BrandHeaderClient showAuth={true} showUserMenu={true} className="bg-transparent border-none" />
       </div>
       <main className="flex-1">
         {/* Hero Section */}
@@ -313,7 +324,11 @@ export default function ServicesPage() {
                   From plumbing emergencies to electrical installations, ProLiink Connect has you covered.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button size="lg" className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                    onClick={() => router.push('/book-service')}
+                  >
                     Book a Service
                   </Button>
                 </div>
@@ -388,57 +403,97 @@ export default function ServicesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredServices.length > 0 ? (
                 filteredServices.map((service, index) => (
-                  <Card key={service.id} className="group hover:shadow-lg transition-all duration-300 overflow-hidden bg-white/10 backdrop-blur-sm border-white/20 hover:border-white/30">
+                  <Card 
+                    key={service.id} 
+                    className={`group transition-all duration-300 overflow-hidden backdrop-blur-sm border-white/20 hover:border-white/30 ${
+                      service.comingSoon 
+                        ? 'bg-white/5 opacity-60 grayscale hover:opacity-70 hover:grayscale-[0.8]' 
+                        : 'bg-white/10 hover:shadow-lg hover:bg-white/15'
+                    }`}
+                  >
                     <div className="relative">
                       {service.image ? (
                         <div className="h-48 overflow-hidden">
                           <img
                             src={service.image}
                             alt={service.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className={`w-full h-full object-cover transition-transform duration-300 ${
+                              service.comingSoon 
+                                ? 'grayscale group-hover:grayscale-[0.8]' 
+                                : 'group-hover:scale-105'
+                            }`}
                           />
                         </div>
                       ) : (
-                        <div className="h-48 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                          <div className="text-6xl">{service.icon}</div>
+                        <div className={`h-48 flex items-center justify-center ${
+                          service.comingSoon 
+                            ? 'bg-gradient-to-br from-gray-700 to-gray-800 grayscale' 
+                            : 'bg-gradient-to-br from-gray-800 to-gray-900'
+                        }`}>
+                          <div className={`text-6xl ${service.comingSoon ? 'grayscale' : ''}`}>{service.icon}</div>
                         </div>
                       )}
                       {service.comingSoon && (
-                        <Badge className="absolute top-2 right-2 bg-yellow-500 text-yellow-900">
+                        <Badge className="absolute top-2 right-2 bg-gray-600 text-gray-200 border-gray-500">
                           Coming Soon
                         </Badge>
                       )}
                     </div>
                     <CardHeader>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">{service.icon}</span>
-                        <CardTitle className="text-xl text-white">{service.title}</CardTitle>
+                        <span className={`text-2xl ${service.comingSoon ? 'grayscale' : ''}`}>{service.icon}</span>
+                        <CardTitle className={`text-xl ${service.comingSoon ? 'text-gray-400' : 'text-white'}`}>
+                          {service.title}
+                        </CardTitle>
                       </div>
-                      <CardDescription className="text-gray-300">{service.description}</CardDescription>
+                      <CardDescription className={service.comingSoon ? 'text-gray-500' : 'text-gray-300'}>
+                        {service.description}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
                         <div className="flex flex-wrap gap-1">
                           {service.subcategories.slice(0, 3).map((sub, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
+                            <Badge 
+                              key={idx} 
+                              variant="secondary" 
+                              className={`text-xs border-white/30 ${
+                                service.comingSoon 
+                                  ? 'bg-gray-600/20 text-gray-400 border-gray-500' 
+                                  : 'bg-white/20 text-white'
+                              }`}
+                            >
                               {sub}
                             </Badge>
                           ))}
                           {service.subcategories.length > 3 && (
-                            <Badge variant="outline" className="text-xs border-white/30 text-white">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs border-white/30 ${
+                                service.comingSoon 
+                                  ? 'border-gray-500 text-gray-400' 
+                                  : 'text-white'
+                              }`}
+                            >
                               +{service.subcategories.length - 3} more
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-lg font-semibold text-blue-400">
+                          <span className={`text-lg font-semibold ${
+                            service.comingSoon ? 'text-gray-500' : 'text-blue-400'
+                          }`}>
                             {service.price}
                           </span>
                           <Button 
                             size="sm" 
-                            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                            className={`${
+                              service.comingSoon 
+                                ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
+                                : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white'
+                            }`}
                             disabled={service.comingSoon}
-                            onClick={() => router.push(`/book-service?service=${service.slug}`)}
+                            onClick={() => !service.comingSoon && router.push(`/book-service?service=${service.slug}`)}
                           >
                             {service.comingSoon ? "Coming Soon" : "Book Now"}
                           </Button>
@@ -554,11 +609,9 @@ export default function ServicesPage() {
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
-                  asChild
+                  onClick={() => router.push('/book-service')}
                 >
-                  <Link href="/book-service">
-                    Get Started <ChevronRight className="ml-2 h-4 w-4" />
-                  </Link>
+                  Get Started <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
 
