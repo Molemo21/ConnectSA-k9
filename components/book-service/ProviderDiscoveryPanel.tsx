@@ -1,8 +1,7 @@
 "use client"
 
 import React from "react"
-import { ProviderDiscovery } from "@/components/provider-discovery/provider-discovery"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { MultiProviderSelection } from "@/components/provider-discovery/multi-provider-selection"
 
 interface Props {
   form: { serviceId: string; date: string; time: string; address: string; notes?: string }
@@ -15,7 +14,7 @@ interface Props {
 export function ProviderDiscoveryPanel({ form, onProviderSelected, onBack, onLoginSuccess, onCancelBooking }: Props) {
   return (
     <div className="animate-fade-in">
-      <ProviderDiscovery
+      <MultiProviderSelection
         serviceId={form.serviceId}
         date={form.date}
         time={form.time}

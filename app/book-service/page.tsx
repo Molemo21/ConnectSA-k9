@@ -14,7 +14,6 @@ import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { ProviderDiscovery } from "@/components/provider-discovery/provider-discovery"
 import { BookingLoginModal } from "@/components/ui/booking-login-modal"
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
-import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
 import { z } from "zod"
 import { StepIndicator as Stepper } from "@/components/book-service/StepIndicator"
 import { ModernBookingForm as BookingFormPanel } from "@/components/book-service/ModernBookingForm"
@@ -710,10 +709,7 @@ function BookServiceContent() {
       
         {/* Mobile Navigation - Only show when authenticated */}
         {isAuthenticated && (
-          <>
-            <MobileBottomNav userRole="CLIENT" />
-            <MobileFloatingActionButton userRole="CLIENT" />
-          </>
+          <MobileBottomNav userRole="CLIENT" />
         )}
         
         {/* Login Modal */}
