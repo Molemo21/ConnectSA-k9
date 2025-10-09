@@ -25,6 +25,8 @@ import {
   Hammer,
   ChevronLeft,
   ChevronRight,
+  Scissors,
+  Sparkles,
 } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -149,12 +151,15 @@ export default function HomePage() {
   }, [showSplash])
 
   const services = [
-    { name: "Plumbing", category: "Home Services", price: "From R300", icon: Wrench, color: "from-blue-500 to-blue-600", image: "/services/Plumber%202.jpg" },
-    { name: "Electrical Work", category: "Home Services", price: "From R400", icon: Zap, color: "from-yellow-500 to-yellow-600", image: "/services/electricity.jpg" },
-    { name: "House Cleaning", category: "Home Services", price: "From R250", icon: SprayCan, color: "from-green-500 to-green-600", image: "/services/Cleaner%202.jpg" },
-    { name: "Carpentry", category: "Home Services", price: "From R350", icon: Hammer, color: "from-orange-500 to-orange-600", image: "/services/plank.jpg" },
-    { name: "Painting", category: "Home Services", price: "From R350", icon: Paintbrush, color: "from-purple-500 to-purple-600", image: "/services/paint.jpg" },
-    { name: "Garden Services", category: "Home Services", price: "From R200", icon: Flower, color: "from-green-500 to-green-600", image: "/services/skere.jpg" },
+    // Priority Services - Starting with these
+    { name: "House Cleaning", category: "Home Services", price: "From R250", icon: SprayCan, color: "from-green-500 to-green-600", image: "/services/Cleaner%202.jpg", comingSoon: false },
+    { name: "Hairdressing", category: "Beauty", price: "From R200", icon: Scissors, color: "from-pink-500 to-pink-600", image: "/services/hairdresser.webp", comingSoon: false },
+    { name: "Makeup Services", category: "Beauty", price: "From R250", icon: Sparkles, color: "from-purple-500 to-purple-600", image: "/services/makeup.jpg", comingSoon: false },
+    
+    // Additional Services
+    { name: "Plumbing", category: "Home Services", price: "From R300", icon: Wrench, color: "from-blue-500 to-blue-600", image: "/services/Plumber%202.jpg", comingSoon: true },
+    { name: "Electrical Work", category: "Home Services", price: "From R400", icon: Zap, color: "from-yellow-500 to-yellow-600", image: "/services/electricity.jpg", comingSoon: true },
+    { name: "Carpentry", category: "Home Services", price: "From R350", icon: Hammer, color: "from-orange-500 to-orange-600", image: "/services/plank.jpg", comingSoon: true },
   ]
 
   const features = [
@@ -297,19 +302,31 @@ export default function HomePage() {
                     viewport={{ once: true }}
                     className="group flex-shrink-0 w-full sm:w-80 lg:w-96 snap-center"
                   >
-                    <Card className="relative overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl h-full hover:bg-white/10">
+                    <Card className={`relative overflow-hidden backdrop-blur-sm border transition-all duration-300 h-full ${
+                      service.comingSoon 
+                        ? 'bg-white/5 border-white/10 opacity-60 grayscale hover:opacity-70 hover:grayscale-[0.8]' 
+                        : 'bg-white/5 border-white/10 hover:border-white/20 hover:scale-105 hover:shadow-2xl hover:bg-white/10'
+                    }`}>
                       {/* Service Image */}
                       <div className="relative h-48 sm:h-56 overflow-hidden">
                         <img 
                           src={service.image} 
                           alt={service.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
+                            service.comingSoon 
+                              ? 'grayscale group-hover:grayscale-[0.8]' 
+                              : 'group-hover:scale-110'
+                          }`}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
 
                         {/* Category Badge */}
                         <div className="absolute top-4 left-4">
-                          <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs font-medium border border-white/30">
+                          <span className={`px-3 py-1 backdrop-blur-sm rounded-full text-xs font-medium border ${
+                            service.comingSoon 
+                              ? 'bg-gray-600/20 text-gray-300 border-gray-500' 
+                              : 'bg-white/20 text-white border-white/30'
+                          }`}>
                             {service.category}
                           </span>
                         </div>
@@ -319,29 +336,37 @@ export default function HomePage() {
                       <CardContent className="p-6">
                         <div className="space-y-4">
                           <div>
-                            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                            <h3 className={`text-xl font-bold mb-2 transition-colors ${
+                              service.comingSoon 
+                                ? 'text-gray-400' 
+                                : 'text-white group-hover:text-blue-300'
+                            }`}>
                               {service.name}
                             </h3>
-                            <p className="text-gray-300 text-sm leading-relaxed">
+                            <p className={`text-sm leading-relaxed ${
+                              service.comingSoon ? 'text-gray-500' : 'text-gray-300'
+                            }`}>
                               Professional {service.name.toLowerCase()} services delivered by verified experts in your area.
                             </p>
           </div>
 
                           <div className="flex items-center justify-between">
-                            <div className="text-blue-400 font-semibold text-lg">
+                            <div className={`font-semibold text-lg ${
+                              service.comingSoon ? 'text-gray-500' : 'text-blue-400'
+                            }`}>
                               {service.price}
                             </div>
                             <EnhancedButton 
                               size="sm"
-                              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-105"
-                              onClick={() => handleButtonClick('browseServices', () => window.location.href = '/book-service')}
-                              loading={loadingStates.browseServices}
-                              loadingText="Booking..."
+                              className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                                service.comingSoon 
+                                  ? 'bg-gray-600 text-gray-300 cursor-not-allowed' 
+                                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white hover:scale-105'
+                              }`}
+                              onClick={() => !service.comingSoon && handleButtonClick('browseServices', () => window.location.href = '/book-service')}
+                              disabled={service.comingSoon}
                             >
-                                <div className="flex items-center space-x-2">
-                                  <span>{t('services.bookNow')}</span>
-                                  <ArrowRight className="w-4 h-4" />
-                        </div>
+                              {service.comingSoon ? "Coming Soon" : "Book Now"}
                             </EnhancedButton>
                       </div>
                         </div>
