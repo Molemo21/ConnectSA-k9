@@ -1,18 +1,11 @@
 "use client"
 
-import { useState, useMemo } from 'react'
-import { Search, Filter, X, CheckCircle, Plus, Minus } from 'lucide-react'
-import { Button } from './button'
-import { Input } from './input'
-import { Badge } from './badge'
-import { cn } from '@/lib/utils'
-
-interface Service {
-  id: string
-  name: string
-  category: string
-  description?: string
-}
+import { useState, useMemo } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Search, CheckCircle, DollarSign, X } from "lucide-react"
+import { Service } from "@/types/services"
 
 interface MobileServiceSelectorProps {
   services: Service[]
@@ -32,36 +25,18 @@ export function MobileServiceSelector({
   disabled = false
 }: MobileServiceSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [showFilters, setShowFilters] = useState(false)
 
-  // Get unique categories
-  const categories = useMemo(() => {
-    const cats = [...new Set(services.map(s => s.category))]
-    return ['all', ...cats]
-  }, [services])
-
-  // Filter services based on search and category
+  // Filter services based on search
   const filteredServices = useMemo(() => {
+    const term = searchTerm.toLowerCase()
     return services.filter(service => {
-      const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           service.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory
-      return matchesSearch && matchesCategory
+      const matchesSearch = 
+        service.name.toLowerCase().includes(term) ||
+        service.description?.toLowerCase().includes(term) ||
+        service.features.some(feature => feature.toLowerCase().includes(term))
+      return matchesSearch
     })
-  }, [services, searchTerm, selectedCategory])
-
-  // Group services by category for better organization
-  const servicesByCategory = useMemo(() => {
-    const grouped: Record<string, Service[]> = {}
-    filteredServices.forEach(service => {
-      if (!grouped[service.category]) {
-        grouped[service.category] = []
-      }
-      grouped[service.category].push(service)
-    })
-    return grouped
-  }, [filteredServices])
+  }, [services, searchTerm])
 
   const handleServiceToggle = (serviceId: string) => {
     if (disabled) return
@@ -73,233 +48,111 @@ export function MobileServiceSelector({
     }
   }
 
-  const clearFilters = () => {
+  const clearSearch = () => {
     setSearchTerm('')
-    setSelectedCategory('all')
   }
 
-  const hasActiveFilters = searchTerm || selectedCategory !== 'all'
-
   return (
-    <div className={cn("space-y-4", className)}>
-      {/* Search and Filter Header */}
-      <div className="space-y-3">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <Input
-            placeholder="Search services..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-12 text-base"
-            disabled={disabled}
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Filter Toggle */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
-            disabled={disabled}
+    <div className={`space-y-6 ${className}`}>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <Input
+          type="text"
+          placeholder="Search cleaning services..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+        />
+        {searchTerm && (
+          <button
+            onClick={clearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
           >
-            <Filter className="w-4 h-4" />
-            Filters
-            {hasActiveFilters && (
-              <Badge variant="secondary" className="ml-1">
-                {searchTerm ? '1' : '0'}
-                {selectedCategory !== 'all' ? '+1' : ''}
-              </Badge>
-            )}
-          </Button>
-
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="text-gray-500 hover:text-gray-700"
-              disabled={disabled}
-            >
-              Clear all
-            </Button>
-          )}
-        </div>
-
-        {/* Category Filter */}
-        {showFilters && (
-          <div className="p-4 bg-gray-50 rounded-lg space-y-3">
-            <h4 className="text-sm font-medium text-gray-700">Categories</h4>
-            <div className="flex flex-wrap gap-2">
-              {categories.map(category => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                  disabled={disabled}
-                  className="text-xs"
-                >
-                  {category === 'all' ? 'All Categories' : category}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Selection Counter */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
-        <span>
-          {selectedServices.length} of {maxSelections} services selected
-        </span>
-        {selectedServices.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => selectedServices.forEach(id => onServiceToggle(id))}
-            className="text-red-600 hover:text-red-700"
-            disabled={disabled}
-          >
-            Clear all
-          </Button>
+            <X className="h-5 w-5" />
+          </button>
         )}
       </div>
 
       {/* Services List */}
       <div className="space-y-4">
-        {Object.entries(servicesByCategory).map(([category, categoryServices]) => (
-          <div key={category} className="space-y-3">
-            {categories.length > 2 && (
-              <h3 className="text-lg font-semibold text-gray-800 capitalize">
-                {category === 'all' ? 'All Services' : category}
-              </h3>
-            )}
-            
-            <div className="grid gap-3">
-              {categoryServices.map(service => {
-                const isSelected = selectedServices.includes(service.id)
-                const isDisabled = disabled || (!isSelected && selectedServices.length >= maxSelections)
-                
-                return (
-                  <div
-                    key={service.id}
-                    className={cn(
-                      "relative p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer",
-                      "touch-manipulation", // Optimize for touch
-                      isSelected
-                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
-                        : isDisabled
-                          ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
-                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+        {filteredServices.map(service => {
+          const isSelected = selectedServices.includes(service.id)
+
+          return (
+            <Card
+              key={service.id}
+              className={`cursor-pointer transition-all duration-300 ${
+                isSelected
+                  ? "bg-primary/10 border-primary"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
+              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+              onClick={() => handleServiceToggle(service.id)}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between">
+                  <span className="text-white group-hover:text-primary transition-colors">
+                    {service.name}
+                  </span>
+                  {isSelected && (
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                  )}
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  {service.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {/* Features */}
+                  <div className="space-y-2">
+                    {service.features.slice(0, 3).map((feature, index) => (
+                      <div key={index} className="flex items-center text-sm text-gray-300">
+                        <CheckCircle className="h-4 w-4 mr-2 text-primary/70" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                    {service.features.length > 3 && (
+                      <p className="text-sm text-gray-400 pl-6">
+                        +{service.features.length - 3} more features
+                      </p>
                     )}
-                    onClick={() => handleServiceToggle(service.id)}
-                  >
-                    <div className="flex items-start space-x-3">
-                      {/* Selection Indicator */}
-                      <div className={cn(
-                        "w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5",
-                        isSelected
-                          ? "border-blue-500 bg-blue-500"
-                          : "border-gray-300"
-                      )}>
-                        {isSelected ? (
-                          <CheckCircle className="w-4 h-4 text-white" />
-                        ) : (
-                          <span className="text-xs text-gray-400">+</span>
-                        )}
-                      </div>
-
-                      {/* Service Details */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className={cn(
-                          "font-medium text-gray-900 mb-1",
-                          isSelected && "text-blue-900"
-                        )}>
-                          {service.name}
-                        </h4>
-                        {service.description && (
-                          <p className={cn(
-                            "text-sm text-gray-600 line-clamp-2",
-                            isSelected && "text-blue-700"
-                          )}>
-                            {service.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Action Button */}
-                      <Button
-                        size="sm"
-                        variant={isSelected ? "destructive" : "outline"}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleServiceToggle(service.id)
-                        }}
-                        disabled={isDisabled}
-                        className={cn(
-                          "flex-shrink-0 w-8 h-8 p-0",
-                          isSelected ? "bg-red-500 hover:bg-red-600" : ""
-                        )}
-                      >
-                        {isSelected ? (
-                          <Minus className="w-4 h-4" />
-                        ) : (
-                          <Plus className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Empty State */}
-      {filteredServices.length === 0 && (
-        <div className="text-center py-8">
-          <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
-          <p className="text-gray-600 mb-4">
-            Try adjusting your search terms or category filters
+                  {/* Base Price */}
+                  <div className="flex items-center text-sm text-gray-300">
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    <span>From R{service.basePrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+
+        {/* No Results */}
+        {filteredServices.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-gray-400">
+              No services found matching "{searchTerm}"
+            </p>
+            <Button
+              variant="ghost"
+              onClick={clearSearch}
+              className="mt-2 text-primary hover:text-primary/90"
+            >
+              Clear Search
+            </Button>
+          </div>
+        )}
+
+        {/* Selection Limit Warning */}
+        {!disabled && selectedServices.length >= maxSelections && (
+          <p className="text-amber-400 text-sm text-center mt-4">
+            Maximum {maxSelections} services can be selected
           </p>
-          <Button variant="outline" onClick={clearFilters}>
-            Clear filters
-          </Button>
-        </div>
-      )}
-
-      {/* Selection Limit Warning */}
-      {selectedServices.length >= maxSelections && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start space-x-3">
-            <div className="w-5 h-5 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-xs font-medium text-yellow-800">!</span>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-yellow-800 mb-1">
-                Selection limit reached
-              </h4>
-              <p className="text-sm text-yellow-700">
-                You've selected the maximum number of services ({maxSelections}). 
-                Remove some services to add new ones.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

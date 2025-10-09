@@ -1,98 +1,55 @@
-"use client"
-
-import { SERVICE_CATEGORIES, MainCategory, ServiceCategory } from '@/config/service-categories'
-
-export interface ServiceData {
-  id?: string
-  name: string
-  description: string
-  basePrice: number
-  duration: number
-  features: string[]
-  mainCategory?: MainCategory
-  category?: ServiceCategory
-}
+import { ServiceData } from '@/types/services';
 
 export async function getAllServices(): Promise<ServiceData[]> {
   try {
-    // Fetch services from the API
-    const response = await fetch('/api/services')
-    const dbServices = await response.json()
+    const response = await fetch('/api/services');
+    if (!response.ok) {
+      throw new Error('Failed to fetch services from API');
+    }
 
-    // Get configured services
-    const configuredServices = Object.entries(SERVICE_CATEGORIES).flatMap(
-      ([mainCategory, mainCategoryData]) =>
-        Object.entries(mainCategoryData.categories).flatMap(
-          ([category, categoryData]) =>
-            categoryData.services.map(service => ({
-              ...service,
-              mainCategory: mainCategory as MainCategory,
-              category: category as ServiceCategory
-            }))
-        )
-    )
-
-    // Merge database services with configured services
-    const mergedServices = [
-      ...configuredServices,
-      ...dbServices.map((dbService: any) => ({
-        id: dbService.id,
-        name: dbService.name,
-        description: dbService.description,
-        basePrice: dbService.basePrice,
-        duration: dbService.duration || 60,
-        features: dbService.features || [],
-        mainCategory: determineMainCategory(dbService),
-        category: determineCategory(dbService)
-      }))
-    ]
-
-    return mergedServices
+    const services = await response.json();
+    
+    // Transform the data to match the ServiceData type
+    return services.map((service: any) => ({
+      id: service.id,
+      name: service.name,
+      description: service.description || '',
+      basePrice: service.basePrice || 0,
+      categoryId: service.categoryId,
+      categoryName: service.categoryName,
+      categoryIcon: service.categoryIcon,
+      features: [
+        'Professional service',
+        'Quality guarantee',
+        'Satisfaction guaranteed',
+        'Experienced staff'
+      ],
+      duration: 60 // Default duration in minutes
+    }));
   } catch (error) {
-    console.error('Error fetching services:', error)
-    return []
+    console.error('Error fetching services:', error);
+    return [];
   }
 }
 
-function determineMainCategory(service: any): MainCategory {
-  // Logic to determine main category based on service name/category
-  if (service.name.toLowerCase().includes('plumb') || 
-      service.name.toLowerCase().includes('electric')) {
-    return 'HOME_SERVICES'
-  }
-  if (service.name.toLowerCase().includes('computer') || 
-      service.name.toLowerCase().includes('it')) {
-    return 'TECHNICAL_SERVICES'
-  }
-  return 'HOME_SERVICES' // Default category
-}
+export function groupServicesByCategory(services: ServiceData[]): Record<string, ServiceData[]> {
+  const grouped: Record<string, ServiceData[]> = {};
 
-function determineCategory(service: any): ServiceCategory {
-  // Logic to determine category based on service name/category
-  if (service.name.toLowerCase().includes('plumb')) {
-    return 'PLUMBING'
-  }
-  if (service.name.toLowerCase().includes('electric')) {
-    return 'ELECTRICAL'
-  }
-  if (service.name.toLowerCase().includes('computer') || 
-      service.name.toLowerCase().includes('it')) {
-    return 'IT_SUPPORT'
-  }
-  return 'PLUMBING' // Default category
-}
-
-export function groupServicesByCategory(services: ServiceData[]) {
-  return services.reduce((acc, service) => {
-    if (!service.mainCategory || !service.category) return acc
-
-    if (!acc[service.mainCategory]) {
-      acc[service.mainCategory] = {}
+  services.forEach(service => {
+    const categoryId = service.categoryId;
+    if (!grouped[categoryId]) {
+      grouped[categoryId] = [];
     }
-    if (!acc[service.mainCategory][service.category]) {
-      acc[service.mainCategory][service.category] = []
-    }
-    acc[service.mainCategory][service.category].push(service)
-    return acc
-  }, {} as Record<MainCategory, Record<ServiceCategory, ServiceData[]>>)
+    grouped[categoryId].push(service);
+  });
+
+  return grouped;
+}
+
+export function getServiceById(id: string, services: ServiceData[]): ServiceData | undefined {
+  return services.find(service => service.id === id);
+}
+
+export function getServicesByCategory(categoryId: string, services: ServiceData[]): ServiceData[] {
+  return services.filter(service => service.categoryId === categoryId);
 }

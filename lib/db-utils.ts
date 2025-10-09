@@ -148,6 +148,15 @@ const createDbWrapper = () => {
         findUnique: () => Promise.resolve(null), 
         count: () => Promise.resolve(0) 
       },
+      serviceCategory: { 
+        findFirst: () => Promise.resolve(null), 
+        findMany: () => Promise.resolve([]), 
+        findUnique: () => Promise.resolve(null), 
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null)
+      },
       providerService: { 
         findFirst: () => Promise.resolve(null), 
         findMany: () => Promise.resolve([]), 
@@ -265,6 +274,17 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.service.findMany(args), 'service.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.service.findUnique(args), 'service.findUnique'),
       count: (args: any) => withRetry(() => prisma.service.count(args), 'service.count'),
+    },
+
+    // ServiceCategory operations
+    serviceCategory: {
+      findFirst: (args: any) => withRetry(() => prisma.serviceCategory.findFirst(args), 'serviceCategory.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.serviceCategory.findMany(args), 'serviceCategory.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.serviceCategory.findUnique(args), 'serviceCategory.findUnique'),
+      count: (args: any) => withRetry(() => prisma.serviceCategory.count(args), 'serviceCategory.count'),
+      create: (args: any) => withRetry(() => prisma.serviceCategory.create(args), 'serviceCategory.create'),
+      update: (args: any) => withRetry(() => prisma.serviceCategory.update(args), 'serviceCategory.update'),
+      delete: (args: any) => withRetry(() => prisma.serviceCategory.delete(args), 'serviceCategory.delete'),
     },
 
     // ProviderService operations

@@ -10,103 +10,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  CLIENT
-  PROVIDER
-  ADMIN
-}
+model ServiceCategory {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  isActive    Boolean   @default(true)
+  services    Service[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-enum ProviderStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  SUSPENDED
-}
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  DISPUTED
-}
-
-enum MainCategory {
-  BEAUTY_AND_WELLNESS
-  HOME_SERVICES
-  TECHNICAL_SERVICES
-}
-
-enum ServiceCategory {
-  // Beauty & Wellness
-  HAIR_SERVICES
-  NAILS
-  
-  // Home Services
-  RESIDENTIAL_CLEANING
-  PLUMBING
-  ELECTRICAL
-  
-  // Technical Services
-  IT_SUPPORT
-  SECURITY_SYSTEMS
-}
-
-model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  password            String?
-  name                String
-  phone               String?
-  avatar              String?
-  role                UserRole             @default(CLIENT)
-  emailVerified       Boolean              @default(false)
-  isActive            Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  googleId            String?              @unique
-  appleId             String?              @unique
-  provider            Provider?
-  clientBookings      Booking[]            @relation("ClientBookings")
-  notifications       Notification[]
-  payments            Payment[]
-
-  @@map("users")
-}
-
-model Provider {
-  id              String            @id @default(cuid())
-  userId          String            @unique
-  user            User              @relation(fields: [userId], references: [id])
-  businessName    String?
-  description     String?
-  experience      Int?
-  hourlyRate      Float?
-  location        String?
-  idDocument      String?
-  proofOfAddress  String?
-  certifications  String[]
-  profileImages   String[]
-  status          ProviderStatus    @default(PENDING)
-  available       Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  services        ProviderService[]
-  bookings        Booking[]         @relation("ProviderBookings")
-
-  @@map("providers")
+  @@map("service_categories")
 }
 
 model Service {
-  id            String           @id @default(cuid())
+  id            String          @id @default(cuid())
   name          String
   description   String?
-  mainCategory  MainCategory
-  category      ServiceCategory
+  categoryId    String
+  category      ServiceCategory @relation(fields: [categoryId], references: [id])
   basePrice     Float?
-  duration      Int             @default(60) // Duration in minutes
-  features      String[]        // Array of included features
   isActive      Boolean         @default(true)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -117,62 +40,22 @@ model Service {
 }
 
 model ProviderService {
-  id          String    @id @default(cuid())
-  providerId  String
-  provider    Provider  @relation(fields: [providerId], references: [id])
-  serviceId   String
-  service     Service   @relation(fields: [serviceId], references: [id])
-  customRate  Float?
+  id         String   @id @default(cuid())
+  providerId String
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  @@unique([providerId, serviceId])
   @@map("provider_services")
 }
 
 model Booking {
-  id             String        @id @default(cuid())
-  clientId       String
-  client         User          @relation("ClientBookings", fields: [clientId], references: [id])
-  providerId     String
-  provider       Provider      @relation("ProviderBookings", fields: [providerId], references: [id])
-  serviceId      String
-  service        Service       @relation(fields: [serviceId], references: [id])
-  scheduledDate  DateTime
-  address        String
-  status         BookingStatus @default(PENDING)
-  notes          String?
-  totalAmount    Float
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  payment        Payment?
+  id          String   @id @default(cuid())
+  serviceId   String
+  service     Service @relation(fields: [serviceId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("bookings")
-}
-
-model Payment {
-  id          String    @id @default(cuid())
-  bookingId   String    @unique
-  booking     Booking   @relation(fields: [bookingId], references: [id])
-  amount      Float
-  paystackRef String    @unique
-  status      String
-  paidAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-
-  @@map("payments")
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  title     String
-  message   String
-  type      String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@map("notifications")
 }

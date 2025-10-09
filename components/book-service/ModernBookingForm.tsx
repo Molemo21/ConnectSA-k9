@@ -19,7 +19,6 @@ import {
   CalendarDays, 
   Clock,
   CheckCircle,
-  CheckCircle,
   ChevronRight,
   ChevronLeft
 } from "lucide-react"

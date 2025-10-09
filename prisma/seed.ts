@@ -40,53 +40,29 @@ async function main() {
   
   const serviceCategories = [
     {
-      name: 'Cleaning Services',
-      description: 'Professional cleaning services for homes and offices',
+      name: 'House Cleaning',
+      description: 'Professional house cleaning services including dusting, vacuuming, and sanitizing',
       category: 'cleaning',
-      basePrice: 150.00,
-    },
-    {
-      name: 'Plumbing Services',
-      description: 'Plumbing repairs, installations, and maintenance',
-      category: 'plumbing',
-      basePrice: 300.00,
-    },
-    {
-      name: 'Hair Styling & Beauty',
-      description: 'Haircuts, styling, and beauty treatments',
-      category: 'beauty',
-      basePrice: 200.00,
-    },
-    {
-      name: 'Electrical Services',
-      description: 'Electrical repairs, installations, and maintenance',
-      category: 'electrical',
       basePrice: 350.00,
     },
     {
-      name: 'Gardening & Landscaping',
-      description: 'Garden maintenance, landscaping, and tree services',
-      category: 'gardening',
-      basePrice: 250.00,
+      name: 'Window Cleaning',
+      description: 'Interior and exterior window cleaning services',
+      category: 'cleaning',
+      basePrice: 300.00,
     },
     {
-      name: 'Home Repairs',
-      description: 'General home maintenance and repair services',
-      category: 'home-repairs',
-      basePrice: 275.00,
+      name: 'Deep Cleaning',
+      description: 'Comprehensive deep cleaning for move-in/move-out or special occasions',
+      category: 'cleaning',
+      basePrice: 600.00,
     },
     {
-      name: 'Tutoring & Education',
-      description: 'Private tutoring and educational services',
-      category: 'education',
-      basePrice: 180.00,
-    },
-    {
-      name: 'Transport & Delivery',
-      description: 'Transportation and delivery services',
-      category: 'transport',
-      basePrice: 120.00,
-    },
+      name: 'Carpet Cleaning',
+      description: 'Professional carpet and upholstery cleaning services',
+      category: 'cleaning',
+      basePrice: 400.00,
+    }
   ];
 
   let createdServices = 0;
@@ -113,6 +89,7 @@ async function main() {
             description: serviceData.description,
             category: serviceData.category,
             basePrice: serviceData.basePrice,
+            mainCategory: 'HOME_SERVICES',
             isActive: true,
           },
         });

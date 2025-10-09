@@ -1,53 +1,110 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/lib/auth-middleware';
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
+
+// Paths that don't require authentication
+const PUBLIC_PATHS = [
+  '/',
+  '/services',
+  '/book-service',
+  '/api/services',
+  '/api/service-categories',
+  '/api/auth/signin',
+  '/api/auth/signup',
+  '/api/auth/providers',
+  '/verify-email',
+  '/reset-password',
+];
+
+// File paths that should always be public
+const PUBLIC_FILES = [
+  '/favicon.ico',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/manifest.json',
+];
+
+// API endpoints that should be public
+const PUBLIC_API_ENDPOINTS = [
+  '/api/services',
+  '/api/service-categories',
+  '/api/auth/signin',
+  '/api/auth/signup',
+  '/api/auth/providers'
+];
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl
 
-  // Skip middleware during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return NextResponse.next();
+  // Allow public files
+  if (PUBLIC_FILES.some(file => pathname.startsWith(file))) {
+    return NextResponse.next()
   }
 
-  // Always allow these paths without checks
-  const publicPaths = [
-    '/',
-    '/login',
-    '/signup',
-    '/verify-email',
-    '/forgot-password',
-    '/reset-password',
-  ];
+  // Allow static files and images
   if (
-    pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
-    pathname === '/favicon.ico' ||
-    publicPaths.includes(pathname)
+    pathname.startsWith('/images') ||
+    pathname.startsWith('/assets') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.svg')
   ) {
-    return NextResponse.next();
+    return NextResponse.next()
   }
 
-  // Read auth token (if any) and check verification state
-  const token = request.cookies.get('auth-token')?.value;
-  if (token) {
-    const decoded: any = await verifyToken(token);
-    if (decoded && decoded.emailVerified === false) {
-      const verifyUrl = request.nextUrl.clone();
-      verifyUrl.pathname = '/verify-email';
-      // Preserve origin for proper absolute redirect
-      return NextResponse.redirect(verifyUrl);
+  // Check if path is public
+  const isPublicPath = PUBLIC_PATHS.some(path => 
+    pathname === path || pathname.startsWith(`${path}/`)
+  )
+
+  // Check if API endpoint is public
+  const isPublicApi = PUBLIC_API_ENDPOINTS.some(endpoint =>
+    pathname.startsWith(endpoint)
+  )
+
+  try {
+    // For API routes
+    if (pathname.startsWith('/api/')) {
+      // Allow public API endpoints
+      if (isPublicApi) {
+        return NextResponse.next()
+      }
+
+      // Check authentication for protected API endpoints
+      const token = await getToken({ req: request })
+      if (!token) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
     }
-  }
 
-  // Protect admin routes - simplified for Edge runtime compatibility
-  if (pathname.startsWith('/admin')) {
-    return NextResponse.next();
-  }
+    // For public paths, always allow access
+    if (isPublicPath) {
+      return NextResponse.next()
+    }
 
-  return NextResponse.next();
+    // For protected routes, check authentication
+    const token = await getToken({ req: request })
+    if (!token) {
+      const url = new URL('/api/auth/signin', request.url)
+      url.searchParams.set('callbackUrl', encodeURI(request.url))
+      return NextResponse.redirect(url)
+    }
+
+    return NextResponse.next()
+  } catch (error) {
+    console.error('Middleware error:', error)
+    // For API routes, return error response
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Internal Server Error' },
+        { status: 500 }
+      )
+    }
+    // For other routes, continue
+    return NextResponse.next()
+  }
 }
-
-export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-};
