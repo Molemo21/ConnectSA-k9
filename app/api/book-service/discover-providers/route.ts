@@ -82,32 +82,25 @@ export async function POST(request: NextRequest) {
             }
           }
         },
-        reviews: {
-          include: {
-            booking: {
-              include: {
-                client: {
-                  select: {
-                    name: true,
-                  }
-                }
-              }
-            }
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 5, // Last 5 reviews
-        },
         bookings: {
           where: { status: { not: "CANCELLED" } },
           select: {
             id: true,
             scheduledDate: true,
             status: true,
+            review: {
+              select: {
+                rating: true,
+                comment: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: 'desc' },
+              take: 5,
+            }
           }
         },
         _count: {
           select: {
-            reviews: true,
             bookings: {
               where: { status: "COMPLETED" }
             }
@@ -139,22 +132,25 @@ export async function POST(request: NextRequest) {
 
     // Calculate provider ratings and stats
     const providersWithStats = availableProviders.map(provider => {
-      const totalRating = provider.reviews.reduce((sum, review) => sum + review.rating, 0);
-      const averageRating = provider.reviews.length > 0 ? totalRating / provider.reviews.length : 0;
+      // Get reviews from bookings
+      const allReviews = provider.bookings
+        .filter(booking => booking.review && booking.review.length > 0)
+        .flatMap(booking => booking.review);
+      
+      const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
+      const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
       
       const providerData = {
         id: provider.id,
         businessName: provider.businessName,
-        description: provider.description,
-        experience: provider.experience,
         location: provider.location,
-        hourlyRate: provider.services[0]?.customRate || 0,
+        hourlyRate: provider.hourlyRate || 0,
         user: provider.user,
         service: provider.services[0]?.service,
         averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
-        totalReviews: provider._count.reviews,
+        totalReviews: allReviews.length,
         completedJobs: provider._count.bookings,
-        recentReviews: provider.reviews.slice(0, 3), // Show only 3 recent reviews
+        recentReviews: allReviews.slice(0, 3), // Show only 3 recent reviews
         isAvailable: true,
       };
 
