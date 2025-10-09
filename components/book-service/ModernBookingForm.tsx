@@ -85,8 +85,8 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   const getServiceSuggestions = (service: any) => {
     if (!service) return ['Parking info', 'Gate/Access code', 'Pet on premises', 'Preferred time window']
     
-    const serviceName = service.name.toLowerCase()
-    const category = service.category.toLowerCase()
+    const serviceName = service.name?.toLowerCase() || ''
+    const category = service.categoryName?.toLowerCase() || service.category?.toLowerCase() || ''
     
     // Common suggestions for all services
     const commonSuggestions = ['Parking info', 'Gate/Access code', 'Pet on premises', 'Preferred time window']
@@ -371,7 +371,11 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     if (!services) return []
     const q = serviceQuery.trim().toLowerCase()
     if (!q) return services
-    return services.filter((s: any) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
+    return services.filter((s: any) => 
+      s.name?.toLowerCase().includes(q) || 
+      s.categoryName?.toLowerCase().includes(q) || 
+      s.category?.toLowerCase().includes(q)
+    )
   }, [services, serviceQuery])
 
   const timeSlots = React.useMemo(() => {
