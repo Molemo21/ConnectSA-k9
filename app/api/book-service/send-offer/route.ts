@@ -13,7 +13,7 @@ export const runtime = 'nodejs'
 
 const sendOfferSchema = z.object({
   providerId: z.string().min(1), // Accept any non-empty string, not just UUIDs
-  serviceId: z.string().regex(/^[a-z0-9]{25}$/i, "Service ID must be 25 alphanumeric characters"),
+  serviceId: z.string().min(1, "Service ID is required"), // Accept both CUID and UUID formats
   date: z.string(), // ISO date string
   time: z.string(), // e.g. "14:00"
   address: z.string().min(1),

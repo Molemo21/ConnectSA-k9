@@ -68,8 +68,6 @@ export async function POST(request: NextRequest) {
           select: {
             name: true,
             email: true,
-            phone: true,
-            avatar: true,
           }
         },
         services: {
@@ -79,7 +77,7 @@ export async function POST(request: NextRequest) {
               select: {
                 name: true,
                 description: true,
-                category: true,
+                basePrice: true,
               }
             }
           }
