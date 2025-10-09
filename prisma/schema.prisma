@@ -10,6 +10,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  role          UserRole  @default(CLIENT)
+  emailVerified Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  provider      Provider?
+  bookings      Booking[]
+  reviews       Review[]
+  payments      Payment[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  CLIENT
+  PROVIDER
+  ADMIN
+}
+
+model Provider {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id])
+  businessName String?
+  status       ProviderStatus @default(PENDING)
+  location     String?
+  hourlyRate   Float?
+  available    Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  services     ProviderService[]
+  bookings     Booking[]
+  payouts      Payout[]
+
+  @@map("providers")
+}
+
+enum ProviderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
 model ServiceCategory {
   id          String    @id @default(cuid())
   name        String
@@ -44,6 +93,7 @@ model ProviderService {
   providerId String
   serviceId  String
   service    Service  @relation(fields: [serviceId], references: [id])
+  provider   Provider @relation(fields: [providerId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -51,11 +101,78 @@ model ProviderService {
 }
 
 model Booking {
-  id          String   @id @default(cuid())
-  serviceId   String
-  service     Service @relation(fields: [serviceId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String        @id @default(cuid())
+  serviceId     String
+  service       Service       @relation(fields: [serviceId], references: [id])
+  clientId      String
+  client        User         @relation(fields: [clientId], references: [id])
+  providerId    String
+  provider      Provider     @relation(fields: [providerId], references: [id])
+  scheduledDate DateTime
+  status        BookingStatus @default(PENDING)
+  totalAmount   Float
+  payment       Payment[]
+  review        Review[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@map("bookings")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  bookingId String
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  amount    Float
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  payout    Payout[]
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reviews")
+}
+
+model Payout {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  paymentId  String
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+  amount     Float
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("payouts")
 }

@@ -342,6 +342,11 @@ const createDbWrapper = () => {
       delete: (args: any) => withRetry(() => prisma.bookingDraft.delete(args), 'bookingDraft.delete'),
       deleteMany: (args: any) => withRetry(() => prisma.bookingDraft.deleteMany(args), 'bookingDraft.deleteMany'),
     },
+    
+    // Raw query operations
+    $queryRaw: (args: any) => withRetry(() => prisma.$queryRaw(args), 'db.$queryRaw'),
+    $executeRaw: (args: any) => withRetry(() => prisma.$executeRaw(args), 'db.$executeRaw'),
+    $disconnect: () => prisma.$disconnect(),
   };
 };
 

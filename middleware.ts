@@ -7,13 +7,11 @@ const PUBLIC_PATHS = [
   '/',
   '/services',
   '/book-service',
-  '/api/services',
-  '/api/service-categories',
-  '/api/auth/signin',
-  '/api/auth/signup',
-  '/api/auth/providers',
+  '/login',
+  '/signup',
   '/verify-email',
   '/reset-password',
+  '/forgot-password',
 ];
 
 // File paths that should always be public
@@ -28,9 +26,18 @@ const PUBLIC_FILES = [
 const PUBLIC_API_ENDPOINTS = [
   '/api/services',
   '/api/service-categories',
-  '/api/auth/signin',
+  '/api/auth/login',
+  '/api/auth/me',
   '/api/auth/signup',
-  '/api/auth/providers'
+  '/api/auth/logout',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/auth/verify-email',
+  '/api/auth/resend-verification',
+  '/api/auth/auto-login',
+  '/api/auth/debug',
+  '/api/auth/test-login-simple',
+  '/api/client-logs'
 ];
 
 export async function middleware(request: NextRequest) {
@@ -89,7 +96,7 @@ export async function middleware(request: NextRequest) {
     // For protected routes, check authentication
     const token = await getToken({ req: request })
     if (!token) {
-      const url = new URL('/api/auth/signin', request.url)
+      const url = new URL('/login', request.url)
       url.searchParams.set('callbackUrl', encodeURI(request.url))
       return NextResponse.redirect(url)
     }
