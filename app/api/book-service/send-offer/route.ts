@@ -227,11 +227,7 @@ export async function POST(request: NextRequest) {
         providerId: validated.providerId,
         serviceId: actualServiceId,
         scheduledDate: new Date(`${validated.date}T${validated.time}`),
-        duration: 2, // default duration, can be adjusted
         totalAmount: provider.hourlyRate || 0,
-        platformFee: (provider.hourlyRate || 0) * 0.1, // 10% platform fee
-        description: validated.notes || null,
-        address: validated.address,
         status: "PENDING", // This means waiting for provider to accept/decline
       },
     });
@@ -239,7 +235,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Booking created:', { 
       bookingId: booking.id, 
       totalAmount: booking.totalAmount,
-      platformFee: booking.platformFee
+      status: booking.status
     });
 
     // Note: Proposal creation removed - table doesn't exist in database
