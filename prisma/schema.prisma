@@ -57,6 +57,7 @@ enum ProviderStatus {
   APPROVED
   REJECTED
   SUSPENDED
+  INCOMPLETE
 }
 
 model ServiceCategory {
