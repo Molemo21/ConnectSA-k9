@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db-utils";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     console.log('=== DEBUG PROVIDER BOOKINGS ===');
     
     // Get all providers (simplified)
-    const providers = await db.provider.findMany({
+    const providers = await prisma.provider.findMany({
       select: {
         id: true,
         businessName: true,
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get all bookings (simplified)
-    const allBookings = await db.booking.findMany({
+    const allBookings = await prisma.booking.findMany({
       select: {
         id: true,
         status: true,
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get all users
-    const users = await db.user.findMany({
+    const users = await prisma.user.findMany({
       select: {
         id: true,
         name: true,
