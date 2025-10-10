@@ -1,42 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { logDashboard } from "@/lib/logger";
+import { db } from "@/lib/db-utils";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
-  
-  // Skip during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return NextResponse.json({
-      error: "Service temporarily unavailable during deployment"
-    }, { status: 503 });
-  }
-
   try {
-    // Parse query parameters for pagination
-    const { searchParams } = new URL(request.url);
-    const cursor = searchParams.get('cursor');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const pageSize = Math.min(limit, 50); // Max 50 items per page
-
-    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Starting request', {
-      metadata: { cursor, pageSize }
-    });
+    console.log('🔍 Provider Dashboard API: Starting');
     
-    // Get current user
     const user = await getCurrentUser();
-    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: User fetched', {
-      userId: user?.id, 
-      metadata: { userRole: user?.role, userEmail: user?.email }
-    });
+    console.log('🔍 Provider Dashboard API: User fetched', { hasUser: !!user, userId: user?.id, role: user?.role });
     
     if (!user) {
-      logDashboard.warn('provider', 'dashboard_load', 'Provider dashboard API: No user found - returning empty data', {
-        error_code: 'NOT_AUTHENTICATED'
-      });
+      console.log('🔍 Provider Dashboard API: No user');
       return NextResponse.json({ 
         success: false,
         message: "No authenticated user found",
@@ -52,11 +30,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (user.role !== "PROVIDER") {
-      logDashboard.warn('provider', 'dashboard_load', 'Provider dashboard API: User is not a provider', {
-        userId: user.id,
-        userRole: user.role,
-        error_code: 'UNAUTHORIZED_ROLE'
-      });
+      console.log('🔍 Provider Dashboard API: Not provider role');
       return NextResponse.json({ 
         success: false,
         message: "User is not a provider",
@@ -71,279 +45,66 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
     }
 
-    // Get provider profile
-    const provider = await prisma.provider.findUnique({
+    console.log('🔍 Provider Dashboard API: Finding provider...');
+    const provider = await db.provider.findUnique({
       where: { userId: user.id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        }
+      select: {
+        id: true,
+        businessName: true,
+        status: true
       }
     });
+    console.log('🔍 Provider Dashboard API: Provider found', { hasProvider: !!provider, providerId: provider?.id });
 
     if (!provider) {
-      logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: Provider profile not found', new Error('Provider profile not found'), {
-        userId: user.id,
-        error_code: 'PROVIDER_NOT_FOUND'
-      });
+      console.log('🔍 Provider Dashboard API: No provider found');
       return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
     }
 
-    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Provider found', {
-      userId: user.id,
-      providerId: provider.id,
-      metadata: { businessName: provider.businessName, status: provider.status }
-    });
-
-    // Fetch bookings for this provider with cursor-based pagination
-    const whereClause = {
-        providerId: provider.id,
-      ...(cursor && { createdAt: { lt: new Date(cursor) } })
-    };
-
-    let bookings;
-    try {
-      bookings = await prisma.booking.findMany({
-        where: whereClause,
-      include: {
-        service: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            category: true,
-            basePrice: true
-          }
-        },
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true
-          }
-        },
-        payment: {
-          select: {
-            id: true,
-            status: true,
-            amount: true,
-              escrowAmount: true,
-              platformFee: true,
-            paystackRef: true,
-            paidAt: true,
-              authorizationUrl: true,
-              payout: {
-                select: {
-                  id: true,
-                  status: true,
-                  transferCode: true,
-                  createdAt: true,
-                  updatedAt: true
-                }
-              }
-          }
-        },
-        review: {
-          select: {
-            id: true,
-            rating: true,
-            comment: true,
-            createdAt: true
-          }
-        }
+    console.log('🔍 Provider Dashboard API: Querying bookings...');
+    const bookings = await db.booking.findMany({
+      where: {
+        providerId: provider.id
       },
-      orderBy: {
-        createdAt: 'desc'
-        },
-        take: pageSize + 1 // Take one extra to check if there are more items
-      });
-    } catch (error) {
-      // Handle the case where payoutStatus column doesn't exist
-      if (error.message.includes('payoutStatus')) {
-        logDashboard.warn('provider', 'dashboard_load', 'payoutStatus column missing, fetching without it', {
-          error_code: 'MISSING_COLUMN',
-          metadata: { errorMessage: error.message }
-        });
-        
-        // Try without the payoutStatus field by using select instead of include
-        bookings = await prisma.booking.findMany({
-          where: whereClause,
-          select: {
-            id: true,
-            clientId: true,
-            providerId: true,
-            serviceId: true,
-            scheduledDate: true,
-            duration: true,
-            totalAmount: true,
-            platformFee: true,
-            description: true,
-            address: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-            service: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
-                category: true,
-                basePrice: true
-              }
-            },
-            client: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true
-              }
-            },
-            payment: {
-              select: {
-                id: true,
-                status: true,
-                amount: true,
-                escrowAmount: true,
-                platformFee: true,
-                paystackRef: true,
-                paidAt: true,
-                authorizationUrl: true,
-                payout: {
-                  select: {
-                    id: true,
-                    status: true,
-                    transferCode: true,
-                    createdAt: true,
-                    updatedAt: true
-                  }
-                }
-              }
-            },
-            review: {
-              select: {
-                id: true,
-                rating: true,
-                comment: true,
-                createdAt: true
-              }
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: pageSize + 1
-        });
-      } else {
-        throw error;
-      }
-    }
-
-    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Bookings fetched', {
-      userId: user.id,
-      providerId: provider.id, 
-      metadata: { bookingCount: bookings.length }
+      select: {
+        id: true,
+        status: true,
+        totalAmount: true
+      },
+      take: 10
     });
+    console.log('🔍 Provider Dashboard API: Bookings queried', { count: bookings.length });
 
-    // Calculate stats including payout information
     const stats = {
       totalBookings: bookings.length,
       pendingBookings: bookings.filter(b => b.status === 'PENDING').length,
       confirmedBookings: bookings.filter(b => b.status === 'CONFIRMED').length,
-      pendingExecutionBookings: bookings.filter(b => b.status === 'PENDING_EXECUTION').length,
-      inProgressBookings: bookings.filter(b => b.status === 'IN_PROGRESS').length,
       completedBookings: bookings.filter(b => b.status === 'COMPLETED').length,
       totalEarnings: bookings
-        .filter(b => b.payment?.status === 'RELEASED')
-        .reduce((sum, b) => sum + (b.payment?.escrowAmount || 0), 0),
-      pendingEarnings: bookings
-        .filter(b => b.payment?.status === 'ESCROW')
-        .reduce((sum, b) => sum + (b.payment?.escrowAmount || 0), 0),
-      processingEarnings: bookings
-        .filter(b => b.payment?.payout?.status === 'PROCESSING')
-        .reduce((sum, b) => sum + (b.payment?.escrowAmount || 0), 0),
-      failedPayouts: bookings
-        .filter(b => b.payment?.payout?.status === 'FAILED')
-        .length,
-      completedPayouts: bookings
-        .filter(b => b.payment?.payout?.status === 'COMPLETED')
-        .length,
-      averageRating: bookings
-        .filter(b => b.review?.rating)
-        .reduce((sum, b, _, arr) => sum + (b.review?.rating || 0) / arr.length, 0)
+        .filter(b => b.status === 'COMPLETED')
+        .reduce((sum, b) => sum + (b.totalAmount || 0), 0)
     };
 
-    // Check if there are more items
-    const hasMore = bookings.length > pageSize;
-    const items = hasMore ? bookings.slice(0, pageSize) : bookings;
-    const nextCursor = hasMore ? items[items.length - 1].createdAt.toISOString() : null;
-
-    // Transform bookings for frontend
-    const transformedBookings = items.map(booking => ({
-      id: booking.id,
-      status: booking.status,
-      scheduledDate: booking.scheduledDate,
-      duration: booking.duration,
-      totalAmount: booking.totalAmount,
-      platformFee: booking.platformFee,
-      description: booking.description,
-      address: booking.address,
-      createdAt: booking.createdAt,
-      updatedAt: booking.updatedAt,
-      service: booking.service,
-      client: booking.client,
-      payment: booking.payment,
-      review: booking.review
-    }));
-
-    logDashboard.success('provider', 'dashboard_load', 'Provider dashboard API: Pagination response prepared', {
-      userId: user.id,
-      providerId: provider.id,
-      metadata: { 
-        itemCount: transformedBookings.length,
-        hasMore,
-        nextCursor: nextCursor ? 'present' : 'null',
-        pageSize
-      }
-    });
+    console.log('🔍 Provider Dashboard API: Stats calculated', stats);
 
     return NextResponse.json({
       success: true,
       provider: {
         id: provider.id,
         businessName: provider.businessName,
-        description: provider.description,
-        location: provider.location,
-        status: provider.status,
-        user: provider.user
+        status: provider.status
       },
-      bookings: transformedBookings,
-      stats: stats,
-      pagination: {
-        hasMore,
-        nextCursor,
-        pageSize,
-      count: transformedBookings.length
-      }
+      bookings: bookings,
+      stats: stats
     });
 
   } catch (error) {
-    logDashboard.error('provider', 'dashboard_load', 'Provider dashboard API: Error fetching data', error as Error, {
-      error_code: 'INTERNAL_ERROR',
-      metadata: { errorMessage: (error as Error).message }
-    });
+    console.error('❌ Provider dashboard error:', error);
     
-    // Return empty data instead of error to prevent dashboard crashes
     return NextResponse.json({ 
       success: false,
       message: "Failed to fetch provider dashboard data",
-      error: (error as Error).message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       bookings: [],
       stats: {
         totalBookings: 0,
