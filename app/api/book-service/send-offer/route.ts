@@ -246,7 +246,11 @@ export async function POST(request: NextRequest) {
     console.log('ℹ️ Skipping proposal creation (table not available)');
 
     // Create notifications for both client and provider
+    // Note: Notification system temporarily disabled - model not available in database
     try {
+      console.log('ℹ️ Skipping notification creation (Notification model not available)');
+      // TODO: Re-enable when Notification model is added to database
+      /*
       // Get the full booking data with relations for notifications
       const fullBooking = await db.booking.findUnique({
         where: { id: booking.id },
@@ -257,7 +261,12 @@ export async function POST(request: NextRequest) {
               user: { select: { id: true, name: true, email: true } }
             }
           },
-          service: { select: { name: true, category: true } }
+          service: { 
+            select: { 
+              name: true, 
+              category: { select: { name: true } }
+            } 
+          }
         }
       });
 
@@ -281,6 +290,7 @@ export async function POST(request: NextRequest) {
 
         console.log(`🔔 Notifications sent: Provider ${fullBooking.provider.user.email}, Client ${fullBooking.client.email}`);
       }
+      */
     } catch (notificationError) {
       console.error('❌ Failed to create booking notifications:', notificationError);
       // Don't fail the request if notification fails
