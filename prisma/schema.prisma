@@ -107,8 +107,12 @@ model Booking {
   providerId    String
   provider      Provider     @relation(fields: [providerId], references: [id])
   scheduledDate DateTime
-  status        BookingStatus @default(PENDING)
+  duration      Int
   totalAmount   Float
+  platformFee   Float
+  description   String?
+  address       String
+  status        BookingStatus @default(PENDING)
   payment       Payment[]
   review        Review[]
   createdAt     DateTime      @default(now())
