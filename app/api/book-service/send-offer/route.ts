@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    console.log('🚀 Send-offer API called');
+    console.log('🚀 Send-offer API called - Updated Schema Version');
     
     const user = await getCurrentUser();
     if (!user || user.role !== "CLIENT") {
