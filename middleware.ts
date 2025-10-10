@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { verifyToken } from '@/lib/auth'
 
 // Paths that don't require authentication
 const PUBLIC_PATHS = [
@@ -81,8 +81,28 @@ export async function middleware(request: NextRequest) {
       }
 
       // Check authentication for protected API endpoints
-      const token = await getToken({ req: request })
+      const cookieHeader = request.headers.get("cookie")
+      if (!cookieHeader) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
+
+      const token = cookieHeader
+        .split(";")
+        .find(c => c.trim().startsWith("auth-token="))
+        ?.split("=")[1]
+
       if (!token) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        )
+      }
+
+      const decoded = await verifyToken(token)
+      if (!decoded) {
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }
@@ -96,8 +116,26 @@ export async function middleware(request: NextRequest) {
     }
 
     // For protected routes, check authentication
-    const token = await getToken({ req: request })
+    const cookieHeader = request.headers.get("cookie")
+    if (!cookieHeader) {
+      const url = new URL('/login', request.url)
+      url.searchParams.set('callbackUrl', encodeURI(request.url))
+      return NextResponse.redirect(url)
+    }
+
+    const token = cookieHeader
+      .split(";")
+      .find(c => c.trim().startsWith("auth-token="))
+      ?.split("=")[1]
+
     if (!token) {
+      const url = new URL('/login', request.url)
+      url.searchParams.set('callbackUrl', encodeURI(request.url))
+      return NextResponse.redirect(url)
+    }
+
+    const decoded = await verifyToken(token)
+    if (!decoded) {
       const url = new URL('/login', request.url)
       url.searchParams.set('callbackUrl', encodeURI(request.url))
       return NextResponse.redirect(url)
