@@ -62,7 +62,7 @@ export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: s
     if (!decoded) return null
 
     // Verify user still exists and is active
-    const user = await prisma.user.findFirst({
+    const user = await db.user.findFirst({
       where: { id: decoded.id as string, isActive: true },
       select: {
         id: true,
@@ -70,7 +70,6 @@ export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: s
         name: true,
         role: true,
         emailVerified: true,
-        avatar: true,
         provider: { select: { id: true } },
       },
     })

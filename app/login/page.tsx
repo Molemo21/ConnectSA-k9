@@ -1,22 +1,19 @@
 "use client"
 
 import type React from "react"
-import { useState, Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { useToast } from "@/hooks/use-toast"
-import { showToast, handleApiError } from "@/lib/toast"
+import { showToast } from "@/lib/toast"
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from "lucide-react"
 
-function LoginContent() {
+export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const { toast } = useToast()
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -30,14 +27,10 @@ function LoginContent() {
     setIsLoading(true)
 
     try {
-      // Check for draft ID in URL parameters
-      const draftId = searchParams?.get("draftId")
-      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
-          ...(draftId && { "x-draft-id": draftId })
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(formData),
       })
@@ -46,27 +39,11 @@ function LoginContent() {
 
       if (response.ok) {
         showToast.success("Welcome back! You've been successfully logged in.")
-
-        // Check if there's a draft to resume
-        if (data.draft) {
-          console.log('✅ Draft merged successfully, redirecting to continue booking')
-          router.push("/book-service?resume=true")
-        } else {
-          // Intent-based redirect
-          const intent = searchParams?.get("intent")
-          if (intent === "booking" || draftId) {
-            // If there's a draft ID or booking intent, go to booking page
-            router.push("/book-service?intent=booking")
-          } else if (intent === "dashboard") {
-            // If dashboard intent, go to dashboard
-            router.push("/dashboard")
-          } else {
-            // Redirect based on user role and verification status
-            router.push(data.redirectUrl || "/dashboard")
-          }
-        }
+        
+        // Redirect based on user role
+        router.push(data.redirectUrl || "/dashboard")
       } else {
-        await handleApiError(response, "Login failed. Please check your credentials and try again.")
+        showToast.error(data.error || "Login failed. Please check your credentials and try again.")
       }
     } catch (error) {
       console.error("Login error:", error)
@@ -75,7 +52,6 @@ function LoginContent() {
       setIsLoading(false)
     }
   }
-
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden animate-fade-in gradient-bg-dark">
@@ -90,9 +66,11 @@ function LoginContent() {
       {/* Home button in top left */}
       <div className="absolute top-6 left-6 z-20 animate-slide-in-left">
         <Link href="/" className="inline-flex items-center space-x-3 group">
-          <img 
+          <Image 
             src="/handshake.png" 
             alt="ProLiink Connect Logo" 
+            width={48}
+            height={48}
             className="w-12 h-12 rounded-xl object-cover shadow-lg group-hover:shadow-xl transition-all duration-200"
           />
           <div className="text-left">
@@ -181,11 +159,9 @@ function LoginContent() {
                   )}
                 </Button>
 
-                <Separator className="bg-gradient-to-r from-blue-500 to-purple-500 h-0.5" />
-
                 <div className="text-center">
                   <p className="text-sm text-gray-300">
-                    Don't have an account?{" "}
+                    Don&apos;t have an account?{" "}
                     <Link href="/signup" className="text-blue-400 hover:text-blue-300 font-medium underline underline-offset-2">
                       Sign up
                     </Link>
@@ -197,32 +173,5 @@ function LoginContent() {
         </div>
       </div>
     </div>
-  )
-}
-
-// Add breathing keyframes to global styles if not present
-if (typeof window !== "undefined") {
-  const styleId = "breathing-keyframes-style";
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement("style");
-    style.id = styleId;
-    style.innerHTML = `@keyframes breathing { 0% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } 100% { opacity: 0.7; transform: scale(1); } } .animate-breathing { animation: breathing 2.5s ease-in-out infinite; }`;
-    document.head.appendChild(style);
-  }
-}
-
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p>Loading login page...</p>
-        </div>
-      </div>
-    }>
-      <LoginContent />
-    </Suspense>
   )
 }
