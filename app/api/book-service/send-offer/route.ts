@@ -13,7 +13,9 @@ export const runtime = 'nodejs'
 
 const sendOfferSchema = z.object({
   providerId: z.string().min(1), // Accept any non-empty string, not just UUIDs
-  serviceId: z.string().min(1, "Service ID is required"), // Accept both CUID and UUID formats
+  serviceId: z.string()
+    .min(1, "Service ID is required")
+    .regex(/^([a-z0-9]{25}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i, "Invalid serviceId format. Expected CUID (25 chars) or UUID (36 chars) format."),
   date: z.string(), // ISO date string
   time: z.string(), // e.g. "14:00"
   address: z.string().min(1),
@@ -59,18 +61,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: `Missing required fields: ${missingFields.join(', ')}` 
       }, { status: 400 });
-    }
-
-    // Validate serviceId format (accept both CUID and UUID formats) before Zod validation
-    if (body.serviceId) {
-      const cuidRegex = /^[a-z0-9]{25}$/i;
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!cuidRegex.test(body.serviceId) && !uuidRegex.test(body.serviceId)) {
-        console.error('❌ Invalid serviceId format:', body.serviceId);
-        return NextResponse.json({ 
-          error: `Invalid serviceId format: ${body.serviceId}. Expected CUID (25 chars) or UUID (36 chars) format.` 
-        }, { status: 400 });
-      }
     }
 
     const validated = sendOfferSchema.parse(body);

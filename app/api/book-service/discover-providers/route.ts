@@ -6,7 +6,9 @@ export const dynamic = 'force-dynamic'
 
 
 const discoverProvidersSchema = z.object({
-  serviceId: z.string().min(1, "Service ID is required"),
+  serviceId: z.string()
+    .min(1, "Service ID is required")
+    .regex(/^([a-z0-9]{25}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i, "Invalid serviceId format. Expected CUID (25 chars) or UUID (36 chars) format."),
   date: z.string().min(1, "Date is required"),
   time: z.string().min(1, "Time is required"),
   address: z.string().min(1, "Address is required"),
@@ -29,18 +31,6 @@ export async function POST(request: NextRequest) {
     // Log the incoming request for debugging
     console.log('Discover providers request body:', JSON.stringify(body, null, 2));
     
-    // Validate serviceId format (accept both CUID and UUID formats) before Zod validation
-    if (body.serviceId) {
-      const cuidRegex = /^[a-z0-9]{25}$/i;
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!cuidRegex.test(body.serviceId) && !uuidRegex.test(body.serviceId)) {
-        console.error('Invalid serviceId format received:', body.serviceId);
-        return NextResponse.json({ 
-          error: `Invalid serviceId format: ${body.serviceId}. Expected CUID (25 chars) or UUID (36 chars) format.` 
-        }, { status: 400 });
-      }
-    }
-
     const validated = discoverProvidersSchema.parse(body);
     
     console.log('Validated request:', {
