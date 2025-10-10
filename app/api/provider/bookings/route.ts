@@ -65,19 +65,6 @@ export async function GET(request: NextRequest) {
         where: {
           providerId: provider.id,
         },
-        include: {
-          service: true,
-          client: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-            }
-          },
-          payment: true,
-          review: true,
-        },
         orderBy: { scheduledDate: "desc" },
       }),
       new Promise((_, reject) => 
