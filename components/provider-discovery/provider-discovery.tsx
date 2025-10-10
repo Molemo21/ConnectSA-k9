@@ -240,6 +240,14 @@ export function ProviderDiscovery({
           headers: Object.fromEntries(response.headers.entries())
         });
         
+        // Handle authentication errors by showing login modal
+        if (response.status === 401) {
+          console.log('🔐 Authentication required, showing login modal');
+          setShowLoginModal(true);
+          setIsUnauthorized(true);
+          return;
+        }
+        
         // Try to get more details about the error
         let errorMessage = 'Failed to send job offer';
         let alternativeTimes = null;
