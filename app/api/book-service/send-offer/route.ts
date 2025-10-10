@@ -158,8 +158,7 @@ export async function POST(request: NextRequest) {
       status: provider.status,
       serviceCount: provider.services.length,
       services: provider.services.map(s => ({
-        serviceId: s.serviceId,
-        customRate: s.customRate
+        serviceId: s.serviceId
       }))
     });
 
