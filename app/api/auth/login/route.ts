@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         role: user.role,
         emailVerified: user.emailVerified,
+        isActive: user.isActive,
       },
       redirectUrl
     })

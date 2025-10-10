@@ -133,6 +133,8 @@ export async function POST(request: NextRequest) {
       const providerData = {
         id: provider.id,
         businessName: provider.businessName,
+        status: provider.status,
+        available: provider.available,
         location: provider.location,
         hourlyRate: provider.hourlyRate || 0,
         user: provider.user,
