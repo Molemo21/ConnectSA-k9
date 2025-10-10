@@ -7,107 +7,62 @@ export async function GET(request: NextRequest) {
   try {
     console.log('=== DEBUG PROVIDER BOOKINGS ===');
     
-    // Get all providers
+    // Get all providers (simplified)
     const providers = await db.provider.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true
-          }
-        },
-        bookings: {
-          include: {
-            client: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            service: {
-              select: {
-                id: true,
-                name: true
-              }
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
+      select: {
+        id: true,
+        businessName: true,
+        status: true,
+        available: true,
+        userId: true
       }
     });
 
-    // Get all bookings
+    // Get all bookings (simplified)
     const allBookings = await db.booking.findMany({
-      include: {
-        client: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        },
-        provider: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        service: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+      select: {
+        id: true,
+        status: true,
+        scheduledDate: true,
+        clientId: true,
+        providerId: true,
+        serviceId: true,
+        createdAt: true
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
 
+    // Get all users
+    const users = await db.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true
+      }
+    });
+
     console.log('Providers found:', providers.length);
     console.log('All bookings found:', allBookings.length);
+    console.log('Users found:', users.length);
 
     return NextResponse.json({
       success: true,
-      providers: providers.map(p => ({
-        id: p.id,
-        businessName: p.businessName,
-        status: p.status,
-        available: p.available,
-        user: p.user,
-        bookingCount: p.bookings.length,
-        recentBookings: p.bookings.slice(0, 3).map(b => ({
-          id: b.id,
-          status: b.status,
-          scheduledDate: b.scheduledDate,
-          client: b.client,
-          service: b.service
-        }))
-      })),
-      allBookings: allBookings.map(b => ({
-        id: b.id,
-        status: b.status,
-        scheduledDate: b.scheduledDate,
-        client: b.client,
-        provider: b.provider,
-        service: b.service,
-        createdAt: b.createdAt
-      })),
+      providers: providers,
+      allBookings: allBookings,
+      users: users,
       summary: {
         totalProviders: providers.length,
         totalBookings: allBookings.length,
+        totalUsers: users.length,
         bookingsByStatus: allBookings.reduce((acc, b) => {
           acc[b.status] = (acc[b.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+        providersByStatus: providers.reduce((acc, p) => {
+          acc[p.status] = (acc[p.status] || 0) + 1;
           return acc;
         }, {} as Record<string, number>)
       }
