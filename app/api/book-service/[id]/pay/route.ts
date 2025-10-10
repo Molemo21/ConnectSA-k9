@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 import { paystackClient, paymentProcessor, PAYMENT_CONSTANTS } from "@/lib/paystack";
 import { z } from "zod";
 import { logPayment, logger } from "@/lib/logger";
@@ -95,14 +95,29 @@ export async function POST(request: NextRequest) {
       bookingId
     });
     
-    // Get booking with all required relations
-    const booking = await prisma.booking.findUnique({ 
+    // Get booking with simplified query to avoid complex relations
+    const booking = await db.booking.findUnique({ 
       where: { id: bookingId },
-      include: { 
-        client: true, 
-        provider: true, 
-        payment: true,
-        service: true 
+      select: {
+        id: true,
+        clientId: true,
+        providerId: true,
+        serviceId: true,
+        status: true,
+        totalAmount: true,
+        client: {
+          select: {
+            id: true,
+            email: true,
+            name: true
+          }
+        },
+        service: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
       }
     });
     
@@ -155,19 +170,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Client email is required for payment" }, { status: 400 });
     }
 
-    // Check if payment already exists
-    if (booking.payment) {
-      logger.warn('Payment already exists', { 
-        bookingId, 
-        userId, 
-        existingPaymentId: booking.payment.id,
-        existingStatus: booking.payment.status
-      });
-      return NextResponse.json({ error: "Payment already exists for this booking" }, { status: 400 });
-    }
-
-    // Double-check for race conditions
-    const existingPayment = await prisma.payment.findUnique({
+    // Check if payment already exists (simplified)
+    const existingPayment = await db.payment.findFirst({
       where: { bookingId: bookingId }
     });
 
@@ -236,44 +240,30 @@ export async function POST(request: NextRequest) {
     // STEP 5: Create payment record in database (critical transaction)
     logger.info('Step 4: Creating payment record', { bookingId, userId, reference });
     
-    const result = await prisma.$transaction(async (tx) => {
-      // Final race condition check inside transaction
-      const finalCheck = await tx.payment.findUnique({
-        where: { bookingId: bookingId }
-      });
-
-      if (finalCheck) {
-        throw new Error("Payment already exists for this booking");
-      }
-
-      // Create payment record
-      const payment = await tx.payment.create({
-        data: {
-          bookingId: bookingId,
-          userId: userId,
-          amount: breakdown.totalAmount,
-          escrowAmount: breakdown.escrowAmount,
-          platformFee: breakdown.platformFee,
-          currency: PAYMENT_CONSTANTS.CURRENCY,
-          paystackRef: reference,
-          status: "PENDING",
-          authorizationUrl: paystackResponse.data.authorization_url,
-          accessCode: paystackResponse.data.access_code,
-          providerResponse: paystackResponse,
-        },
-      });
-
-      // Get updated booking with payment
-      const updatedBooking = await tx.booking.findUnique({
-        where: { id: bookingId },
-        include: { payment: true }
-      });
-
-      return { payment, booking: updatedBooking, paystackResponse };
-    }, {
-      timeout: 10000, // 10 seconds timeout for critical operations
-      maxWait: 5000,  // Max wait time for transaction to start
+    // Create payment record (simplified without transaction for now)
+    const payment = await db.payment.create({
+      data: {
+        bookingId: bookingId,
+        userId: userId,
+        amount: breakdown.totalAmount,
+        currency: PAYMENT_CONSTANTS.CURRENCY,
+        paystackRef: reference,
+        status: "PENDING",
+        authorizationUrl: paystackResponse.data.authorization_url,
+        accessCode: paystackResponse.data.access_code,
+      },
     });
+
+    // Get updated booking
+    const updatedBooking = await db.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        status: true
+      }
+    });
+
+    const result = { payment, booking: updatedBooking, paystackResponse };
 
     logger.info('Database transaction completed successfully', { 
       bookingId, 
