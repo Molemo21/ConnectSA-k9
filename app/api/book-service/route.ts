@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     try {
       // Create booking
       const booking = await BookingService.createBooking({
-        userId: user.id,
-        serviceId: validated.serviceId,
+      userId: user.id,
+      serviceId: validated.serviceId,
         date: validated.date,
         time: validated.time,
         address: validated.address,
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         address: validated.address
       });
 
-      return NextResponse.json({
+      return NextResponse.json({ 
         booking,
         availableProviders: providers
       });
@@ -85,4 +85,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+} 

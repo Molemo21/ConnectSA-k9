@@ -39,9 +39,7 @@ const PUBLIC_API_ENDPOINTS = [
   '/api/auth/auto-login',
   '/api/auth/debug',
   '/api/auth/test-login-simple',
-  '/api/client-logs',
-  '/api/debug/schema-check',
-  '/api/debug/send-offer'
+  '/api/client-logs'
 ];
 
 export async function middleware(request: NextRequest) {
