@@ -27,36 +27,17 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Admin fetching pending payments...')
 
-    // Fetch all pending payments with related booking and provider information
+    // Simplified query to avoid complex relations
     const pendingPayments = await db.payment.findMany({
       where: {
         status: "PENDING"
       },
-      include: {
-        booking: {
-          include: {
-            provider: {
-              select: {
-                id: true,
-                businessName: true,
-                user: {
-                  select: {
-                    id: true,
-                    email: true,
-                    name: true
-                  }
-                }
-              }
-            },
-            client: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        }
+      select: {
+        id: true,
+        amount: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true
       },
       orderBy: {
         createdAt: 'desc'
