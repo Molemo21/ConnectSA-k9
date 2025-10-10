@@ -192,9 +192,10 @@ export function ProviderDiscovery({
         return
       }
 
-      // Validate serviceId format (Prisma custom ID format)
-      const serviceIdRegex = /^[a-z0-9]{25}$/i;
-      if (!serviceIdRegex.test(serviceId)) {
+      // Validate serviceId format (accept both CUID and UUID formats)
+      const cuidRegex = /^[a-z0-9]{25}$/i;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!cuidRegex.test(serviceId) && !uuidRegex.test(serviceId)) {
         console.error('Invalid serviceId format:', serviceId);
         showToast.error('Invalid service selection. Please try again.')
         return

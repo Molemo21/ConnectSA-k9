@@ -36,8 +36,8 @@ export async function validateCleaningService(serviceId: string) {
 
 // Base schema for service ID validation
 export const serviceIdSchema = z.string().regex(
-  /^[a-z0-9]{25}$/i, 
-  "Service ID must be 25 alphanumeric characters"
+  /^([a-z0-9]{25}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i, 
+  "Service ID must be CUID (25 chars) or UUID (36 chars) format"
 );
 
 // Schema for booking requests
