@@ -228,8 +228,8 @@ export async function POST(request: NextRequest) {
         serviceId: actualServiceId,
         scheduledDate: new Date(`${validated.date}T${validated.time}`),
         duration: 2, // default duration, can be adjusted
-        totalAmount: provider.services[0]?.customRate || 0,
-        platformFee: (provider.services[0]?.customRate || 0) * 0.1, // 10% platform fee
+        totalAmount: provider.hourlyRate || 0,
+        platformFee: (provider.hourlyRate || 0) * 0.1, // 10% platform fee
         description: validated.notes || null,
         address: validated.address,
         status: "PENDING", // This means waiting for provider to accept/decline
