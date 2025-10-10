@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { db } from "@/lib/db-utils"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 });
     }
 
-    const provider = await prisma.provider.findUnique({
+    const provider = await db.provider.findUnique({
       where: { userId: user.id },
     });
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     console.log('Fetching bookings for provider:', provider.id);
     
     const bookings = await Promise.race([
-      prisma.booking.findMany({
+      db.booking.findMany({
         where: {
           providerId: provider.id,
         },
