@@ -24,7 +24,6 @@ model User {
   bookings      Booking[]
   reviews       Review[]
   payments      Payment[]
-  providerReviews ProviderReview[]
 
   @@map("users")
 }
@@ -44,19 +43,11 @@ model Provider {
   location     String?
   hourlyRate   Float?
   available    Boolean   @default(true)
-  verificationStatus VerificationStatus @default(PENDING)
-  verificationDocuments Json?
-  phoneVerified Boolean @default(false)
-  emailVerified Boolean @default(false)
-  addressVerified Boolean @default(false)
-  verifiedAt   DateTime?
-  verificationNotes String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   services     ProviderService[]
   bookings     Booking[]
   payouts      Payout[]
-  reviews      ProviderReview[]
 
   @@map("providers")
 }
@@ -66,13 +57,6 @@ enum ProviderStatus {
   APPROVED
   REJECTED
   SUSPENDED
-}
-
-enum VerificationStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-  EXPIRED
 }
 
 model ServiceCategory {
@@ -112,19 +96,6 @@ model ProviderService {
   provider   Provider @relation(fields: [providerId], references: [id])
 
   @@map("provider_services")
-}
-
-model ProviderReview {
-  id         String         @id @default(cuid())
-  providerId String
-  provider   Provider       @relation(fields: [providerId], references: [id])
-  adminId    String
-  admin      User           @relation(fields: [adminId], references: [id])
-  comment    String
-  status     ProviderStatus
-  createdAt  DateTime       @default(now())
-
-  @@map("ProviderReview")
 }
 
 model Booking {
