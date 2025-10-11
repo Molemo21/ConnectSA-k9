@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
-import { CheckCircle, Search, UserPlus, ArrowRight, Hammer } from "lucide-react"
+import { CheckCircle, Search, UserPlus, ArrowRight, Hammer, LayoutDashboard } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useLanguage } from "@/contexts/LanguageContext"
@@ -11,22 +11,28 @@ interface ModernHeroSectionProps {
   bookServiceLoading?: boolean
   becomeProviderLoading?: boolean
   getStartedLoading?: boolean
+  dashboardLoading?: boolean
   onBookServiceClick?: () => void
   onBecomeProviderClick?: () => void
   onGetStartedClick?: () => void
+  onDashboardClick?: () => void
   showGetStarted?: boolean
   isUnderConstruction?: boolean
+  user?: { id: string; email: string; name: string } | null
 }
 
 export function ModernHeroSection({ 
   bookServiceLoading = false, 
   becomeProviderLoading = false,
   getStartedLoading = false,
+  dashboardLoading = false,
   onBookServiceClick,
   onBecomeProviderClick,
   onGetStartedClick,
+  onDashboardClick,
   showGetStarted = true,
-  isUnderConstruction = false
+  isUnderConstruction = false,
+  user = null
 }: ModernHeroSectionProps) {
   const [isVisible, setIsVisible] = useState(false)
   const { t } = useLanguage()
@@ -173,7 +179,7 @@ export function ModernHeroSection({
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
               >
-                {/* Primary CTA */}
+                {/* Primary CTA - Always show Book Service */}
                 <EnhancedButton
                   size="lg"
                   className="w-full xs:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
@@ -188,20 +194,38 @@ export function ModernHeroSection({
                   <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </EnhancedButton>
 
-                {/* Secondary CTA */}
-                <EnhancedButton
-                  variant="outline"
-                  size="lg"
-                  className="w-full xs:w-auto bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 hover:border-white/50 font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
-                  href="/become-provider"
-                  loading={becomeProviderLoading}
-                  loadingText="Loading..."
-                  onClick={onBecomeProviderClick}
-                  disabled={becomeProviderLoading}
-                >
-                  <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  {t('hero.becomeProvider')}
-                </EnhancedButton>
+                {/* Secondary CTA - Conditional based on login status */}
+                {user ? (
+                  /* Dashboard Button for logged-in users */
+                  <EnhancedButton
+                    variant="outline"
+                    size="lg"
+                    className="w-full xs:w-auto bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 hover:border-white/50 font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
+                    href="/dashboard"
+                    loading={dashboardLoading}
+                    loadingText="Loading..."
+                    onClick={onDashboardClick}
+                    disabled={dashboardLoading}
+                  >
+                    <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                    Dashboard
+                  </EnhancedButton>
+                ) : (
+                  /* Become Provider Button for non-logged-in users */
+                  <EnhancedButton
+                    variant="outline"
+                    size="lg"
+                    className="w-full xs:w-auto bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 hover:border-white/50 font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
+                    href="/become-provider"
+                    loading={becomeProviderLoading}
+                    loadingText="Loading..."
+                    onClick={onBecomeProviderClick}
+                    disabled={becomeProviderLoading}
+                  >
+                    <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                    {t('hero.becomeProvider')}
+                  </EnhancedButton>
+                )}
               </div>
 
               {/* Trust Badge - Mobile First */}

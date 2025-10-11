@@ -24,9 +24,9 @@ export function ScrollParallaxSection({
     offset: ["start end", "end start"]
   })
 
-  // Transform values for parallax effect
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"])
-  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [1.2, 1, 0.8])
+  // Transform values for parallax effect - reduced on mobile for better performance
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"])
+  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [1.1, 1, 0.9])
   const opacity = useTransform(scrollYProgress, [0, 0.3, 0.7, 1], [0, 1, 1, 0])
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export function ScrollParallaxSection({
   return (
     <section 
       ref={containerRef}
-      className={`relative h-screen overflow-hidden ${className}`}
+      className={`relative h-[60vh] sm:h-[70vh] md:h-[80vh] lg:h-screen overflow-hidden ${className}`}
     >
       {/* Parallax Background Image */}
       <motion.div
@@ -93,10 +93,10 @@ export function ScrollParallaxSection({
                 delay: 0.3,
                 ease: "easeOut"
               }}
-              className="bg-white/10 backdrop-blur-md rounded-3xl p-8 sm:p-12 border border-white/20 shadow-xl"
+              className="bg-white/10 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12 border border-white/20 shadow-xl"
             >
               <motion.h2 
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight"
+                className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-3 sm:mb-4 md:mb-6 tracking-tight"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ 
                   opacity: isVisible ? 1 : 0,
@@ -112,7 +112,7 @@ export function ScrollParallaxSection({
               </motion.h2>
               
               <motion.p 
-                className="text-gray-300 text-lg sm:text-xl md:text-2xl leading-relaxed max-w-4xl mx-auto"
+                className="text-gray-300 text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl leading-relaxed max-w-4xl mx-auto"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ 
                   opacity: isVisible ? 1 : 0,
@@ -131,9 +131,9 @@ export function ScrollParallaxSection({
         </div>
       </div>
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator - Hidden on mobile */}
       <motion.div
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
+        className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 transform -translate-x-1/2 hidden sm:block"
         initial={{ opacity: 0 }}
         animate={{ opacity: isVisible ? 1 : 0 }}
         transition={{ delay: 1 }}
@@ -150,7 +150,7 @@ export function ScrollParallaxSection({
               }}
             />
           </div>
-          <span className="text-white/70 text-sm">Scroll</span>
+          <span className="text-white/70 text-xs sm:text-sm">Scroll</span>
         </div>
       </motion.div>
     </section>

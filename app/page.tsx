@@ -75,6 +75,7 @@ export default function HomePage() {
     bookService: false,
     becomeProvider: false,
     getStarted: false,
+    dashboard: false,
     browseServices: false,
     viewAllServices: false,
     scrollLeft: false,
@@ -234,11 +235,14 @@ export default function HomePage() {
               bookServiceLoading={loadingStates.bookService}
               becomeProviderLoading={loadingStates.becomeProvider}
               getStartedLoading={loadingStates.getStarted}
+              dashboardLoading={loadingStates.dashboard}
               onBookServiceClick={() => handleButtonClick('bookService', () => window.location.href = '/book-service')}
               onBecomeProviderClick={() => handleButtonClick('becomeProvider', () => window.location.href = '/become-provider')}
               onGetStartedClick={() => handleButtonClick('getStarted', () => window.location.href = '/signup')}
+              onDashboardClick={() => handleButtonClick('dashboard', () => window.location.href = '/dashboard')}
               showGetStarted={!user}
               isUnderConstruction={isUnderConstruction}
+              user={user}
             />
           </div>
       </div>
@@ -246,21 +250,21 @@ export default function HomePage() {
       {/* Modern Services Section - Bolt-Inspired Design */}
       <section 
         ref={servicesAnimation.ref as React.RefObject<HTMLElement>}
-        className={`w-full py-16 sm:py-20 md:py-24 lg:py-32 bg-black ${servicesAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
+        className={`w-full py-12 sm:py-16 md:py-20 lg:py-24 bg-black ${servicesAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
       >
         <div className="container px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="text-center mb-16 sm:mb-20">
+          <div className="text-center mb-12 sm:mb-16 md:mb-20">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 tracking-tight">
                 {t('services.title')}
               </h2>
-              <p className="text-gray-300 text-lg sm:text-xl max-w-3xl mx-auto leading-relaxed">
+              <p className="text-gray-300 text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
                 {t('services.subtitle')}
               </p>
             </motion.div>
@@ -282,7 +286,7 @@ export default function HomePage() {
                       ease: "easeOut"
                     }}
                     viewport={{ once: true }}
-                    className="group flex-shrink-0 w-full sm:w-80 lg:w-96 snap-center"
+                    className="group flex-shrink-0 w-72 xs:w-80 sm:w-80 lg:w-96 snap-center"
                   >
                     <Card className="relative overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl h-full hover:bg-white/10">
                       {/* Service Image */}
@@ -305,34 +309,34 @@ export default function HomePage() {
             </div>
 
                       {/* Service Content */}
-                      <CardContent className="p-6">
-                        <div className="space-y-4">
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="space-y-3 sm:space-y-4">
                           <div>
-                            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                            <h3 className="text-lg sm:text-xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
                               {service.name}
                             </h3>
-                            <p className="text-gray-300 text-sm leading-relaxed">
+                            <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
                               Professional {service.name.toLowerCase()} services delivered by verified experts in your area.
                             </p>
-          </div>
+                          </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="text-blue-400 font-semibold text-lg">
+                          <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3 xs:gap-0">
+                            <div className="text-blue-400 font-semibold text-base sm:text-lg">
                               {service.price}
                             </div>
                             <EnhancedButton 
                               size="sm"
-                              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-105"
+                              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-105 text-xs sm:text-sm"
                               onClick={() => handleButtonClick('browseServices', () => window.location.href = '/book-service')}
                               loading={loadingStates.browseServices}
                               loadingText="Booking..."
                             >
-                                <div className="flex items-center space-x-2">
-                                  <span>{t('services.bookNow')}</span>
-                                  <ArrowRight className="w-4 h-4" />
-                        </div>
+                              <div className="flex items-center space-x-1 sm:space-x-2">
+                                <span>{t('services.bookNow')}</span>
+                                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                              </div>
                             </EnhancedButton>
-                      </div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -369,7 +373,7 @@ export default function HomePage() {
       <section 
         ref={howItWorksAnimation.ref as React.RefObject<HTMLElement>}
         id="how-it-works" 
-        className={`w-full py-20 sm:py-24 md:py-32 lg:py-40 relative overflow-hidden ${howItWorksAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
+        className={`w-full py-12 sm:py-16 md:py-20 lg:py-32 relative overflow-hidden ${howItWorksAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
         style={{
           backgroundImage: "url('/phone.png')",
           backgroundSize: "contain",
@@ -382,30 +386,30 @@ export default function HomePage() {
 
         <div className="container px-4 sm:px-6 lg:px-8 relative z-10">
           {/* Header */}
-          <div className="text-center mb-20 sm:mb-24">
+          <div className="text-center mb-12 sm:mb-16 md:mb-20">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 md:mb-8 tracking-tight">
                 {t('howItWorks.title')}
               </h2>
-              <p className="text-gray-300 text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed">
+              <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl max-w-4xl mx-auto leading-relaxed">
                 {t('howItWorks.subtitle')}
               </p>
             </motion.div>
-                </div>
+          </div>
 
-          <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
-            {/* Phone Background Area - Left Side */}
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
+            {/* Phone Background Area - Hidden on mobile, shown on desktop */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
               viewport={{ once: true }}
-              className="relative"
+              className="relative hidden lg:block"
             >
               {/* This space is intentionally left for the phone background to show through */}
               <div className="h-96 lg:h-[32rem]">
@@ -413,13 +417,13 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            {/* Steps - Right Side Overlay */}
+            {/* Steps - Full width on mobile, right side on desktop */}
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
               viewport={{ once: true }}
-              className="space-y-8"
+              className="space-y-4 sm:space-y-6 lg:space-y-8"
             >
               {[
                 {
@@ -454,12 +458,12 @@ export default function HomePage() {
                   className="group relative"
                 >
                   {/* Glassy card background */}
-                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:bg-white/15 shadow-xl hover:shadow-2xl hover:scale-105">
+                  <div className="bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 border border-white/20 hover:border-white/30 transition-all duration-300 hover:bg-white/15 shadow-xl hover:shadow-2xl hover:scale-105">
                     <div>
-                      <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">
+                      <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 group-hover:text-blue-300 transition-colors">
                         {item.title}
                       </h3>
-                      <p className="text-gray-300 text-lg leading-relaxed">
+                      <p className="text-gray-300 text-sm sm:text-base lg:text-lg leading-relaxed">
                         {item.description}
                       </p>
                     </div>
@@ -475,7 +479,7 @@ export default function HomePage() {
       {/* Why Choose Us - Mobile First */}
       <section 
         ref={testimonialsAnimation.ref as React.RefObject<HTMLElement>}
-        className={`w-full py-8 sm:py-12 md:py-24 lg:py-32 bg-black relative overflow-hidden ${testimonialsAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
+        className={`w-full py-8 sm:py-12 md:py-16 lg:py-24 bg-black relative overflow-hidden ${testimonialsAnimation.isVisible ? 'scroll-fade-in visible' : 'scroll-fade-in'}`}
       >
         {/* Background Image with Black and White Filter */}
         <div 

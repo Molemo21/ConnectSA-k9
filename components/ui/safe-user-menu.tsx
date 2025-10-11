@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
 import { useRouter } from "next/navigation"
+import { NotificationPopup } from "./notification-popup"
 
 interface SafeUserMenuProps {
   user: {
@@ -67,6 +68,35 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+  
+  // Mock notification data - in a real app, this would come from an API
+  const mockNotifications = [
+    {
+      id: '1',
+      title: 'Booking Confirmed',
+      message: 'Your plumbing service booking has been confirmed for tomorrow at 2:00 PM.',
+      type: 'success' as const,
+      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
+      read: false
+    },
+    {
+      id: '2',
+      title: 'Payment Received',
+      message: 'Payment of R450 has been received for your electrical work booking.',
+      type: 'success' as const,
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+      read: true
+    },
+    {
+      id: '3',
+      title: 'Service Reminder',
+      message: 'Don\'t forget! Your cleaning service is scheduled for today at 10:00 AM.',
+      type: 'info' as const,
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+      read: false
+    }
+  ]
 
   // Prevent hydration mismatch by only running on client
   useEffect(() => {
@@ -202,7 +232,7 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
           variant="ghost" 
           size="sm" 
           className="relative text-white/80 hover:text-white hover:bg-white/10"
-          onClick={() => handleNavigation("/notifications")}
+          onClick={() => setShowNotificationPopup(true)}
         >
           <Bell className="w-4 h-4" />
           {safeStats.pendingBookings > 0 && (
@@ -355,6 +385,13 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      {/* Notification Popup */}
+      <NotificationPopup
+        isOpen={showNotificationPopup}
+        onClose={() => setShowNotificationPopup(false)}
+        notifications={mockNotifications}
+      />
     </div>
   )
 }

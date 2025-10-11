@@ -70,6 +70,9 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   const [notesCount, setNotesCount] = useState(value.notes?.length || 0)
   const [showRecentServices, setShowRecentServices] = useState(true)
   const [addressPlaceholder, setAddressPlaceholder] = useState("")
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const NOTES_MAX = 500
 
   // Address placeholder examples
@@ -80,6 +83,125 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     "12 Elm Street, Port Elizabeth, 6001",
     "90 Maple Drive, Pretoria, 0001"
   ]
+
+  // Mthatha detailed address database with streets and townships
+  const commonAddresses = [
+    // Mthatha CBD Streets
+    "123 Nelson Mandela Drive, Mthatha CBD, 5100",
+    "45 Sutherland Street, Mthatha CBD, 5100",
+    "78 Victoria Street, Mthatha CBD, 5100",
+    "12 Madeira Street, Mthatha CBD, 5100",
+    "90 Owen Street, Mthatha CBD, 5100",
+    "34 York Road, Mthatha CBD, 5100",
+    "56 Durham Street, Mthatha CBD, 5100",
+    "23 Leeds Road, Mthatha CBD, 5100",
+    "67 Leeds Street, Mthatha CBD, 5100",
+    "89 Leeds Road, Mthatha CBD, 5100",
+    
+    // Mthatha Townships and Areas
+    "Ngangelizwe, Mthatha, 5100",
+    "Zimbane, Mthatha, 5100",
+    "Norwood, Mthatha, 5100",
+    "Ilinge, Mthatha, 5100",
+    "Ncambedlana, Mthatha, 5100",
+    "Mthatha CBD, Eastern Cape, 5100",
+    "Mthatha Airport, Eastern Cape, 5100",
+    "Mthatha University, Eastern Cape, 5100",
+    "Mthatha Hospital, Eastern Cape, 5100",
+    "Mthatha Mall, Eastern Cape, 5100",
+    
+    // Specific Township Streets
+    "Ngangelizwe Main Road, Mthatha, 5100",
+    "Zimbane Road, Mthatha, 5100",
+    "Norwood Road, Mthatha, 5100",
+    "Ilinge Road, Mthatha, 5100",
+    "Ncambedlana Road, Mthatha, 5100",
+    
+    // Mthatha Suburbs
+    "Southernwood, Mthatha, 5100",
+    "Northcrest, Mthatha, 5100",
+    "Riverside, Mthatha, 5100",
+    "Westbrook, Mthatha, 5100",
+    "Eastbrook, Mthatha, 5100",
+    
+    // Major Roads
+    "N2 Highway, Mthatha, 5100",
+    "R61 Road, Mthatha, 5100",
+    "R409 Road, Mthatha, 5100",
+    
+    // General Mthatha
+    "Mthatha, Eastern Cape, 5100"
+  ]
+
+  // Address search function
+  const searchAddresses = async (query: string) => {
+    if (query.length < 2) {
+      setAddressSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    setIsSearchingAddress(true)
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      const lowerQuery = query.toLowerCase()
+      
+      // Enhanced search algorithm - prioritize exact matches and street-level addresses
+      const filtered = commonAddresses.filter(address => {
+        const lowerAddress = address.toLowerCase()
+        
+        // Exact street number match (e.g., "123" matches "123 Long Street")
+        if (lowerQuery.match(/^\d+$/) && lowerAddress.startsWith(lowerQuery)) {
+          return true
+        }
+        
+        // Street name match (e.g., "long" matches "Long Street")
+        if (lowerAddress.includes(lowerQuery)) {
+          return true
+        }
+        
+        // City/suburb match (e.g., "cape town" matches any Cape Town address)
+        const cityMatch = lowerAddress.includes(lowerQuery)
+        return cityMatch
+      })
+      
+      // Sort results: exact matches first, then street-level addresses, then city-level
+      const sorted = filtered.sort((a, b) => {
+        const aLower = a.toLowerCase()
+        const bLower = b.toLowerCase()
+        
+        // Exact query match gets highest priority
+        if (aLower.startsWith(lowerQuery) && !bLower.startsWith(lowerQuery)) return -1
+        if (bLower.startsWith(lowerQuery) && !aLower.startsWith(lowerQuery)) return 1
+        
+        // Street-level addresses (with numbers) get priority over city-level
+        const aHasNumber = /\d/.test(a)
+        const bHasNumber = /\d/.test(b)
+        if (aHasNumber && !bHasNumber) return -1
+        if (bHasNumber && !aHasNumber) return 1
+        
+        return 0
+      })
+      
+      setAddressSuggestions(sorted.slice(0, 8)) // Show top 8 suggestions
+      setShowSuggestions(true)
+      setIsSearchingAddress(false)
+    }, 300)
+  }
+
+  // Handle address input change
+  const handleAddressChange = (newAddress: string) => {
+    handleFieldChange('address', newAddress)
+    searchAddresses(newAddress)
+  }
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = (suggestion: string) => {
+    handleFieldChange('address', suggestion)
+    setShowSuggestions(false)
+    setAddressSuggestions([])
+  }
 
   // Service-specific suggestions
   const getServiceSuggestions = (service: any) => {
@@ -424,6 +546,9 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+                <div className="text-xs text-white/60 bg-white/5 p-2 rounded-lg">
+                  💡 <strong>Tip:</strong> You can click the calendar icon or type the date directly (e.g., "2024-01-15")
+                </div>
                 {errors.date ? (
                   <p className="text-xs sm:text-sm text-red-400">{errors.date}</p>
                 ) : value.date ? (
@@ -446,6 +571,9 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     onChange={(e) => handleFieldChange('time', e.target.value)}
                     className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                </div>
+                <div className="text-xs text-white/60 bg-white/5 p-2 rounded-lg">
+                  💡 <strong>Tip:</strong> You can click the time picker or type the time directly (e.g., "14:30" for 2:30 PM)
                 </div>
                 {value.date && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
@@ -491,20 +619,48 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
                 <Label className="text-sm sm:text-base font-medium text-white">Service Address</Label>
                 <div className="relative">
-                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10" />
                   <Input
                     value={value.address}
-                    onChange={(e) => handleFieldChange('address', e.target.value)}
-                    placeholder={addressPlaceholder || "Enter your full address"}
+                    onChange={(e) => handleAddressChange(e.target.value)}
+                    onFocus={() => value.address.length >= 2 && setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    placeholder={addressPlaceholder || "Start typing your address..."}
                     className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     autoComplete="street-address"
                   />
+                  
+                  {/* Loading indicator */}
+                  {isSearchingAddress && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                  
+                  {/* Address suggestions dropdown */}
+                  {showSuggestions && addressSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                      {addressSuggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSuggestionSelect(suggestion)}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-700 text-white text-sm border-b border-gray-700 last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-center">
+                            <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                            <span>{suggestion}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Address format guidance */}
                 <div className="text-xs sm:text-sm text-white/70 bg-gray-800/50 p-3 rounded-lg animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                  <p className="font-medium mb-1">Address format example:</p>
-                  <p>Street number + Street name, City, Postal code</p>
+                  <p className="font-medium mb-1">💡 Address search tips:</p>
+                  <p>• Start typing to see suggestions (e.g., "Cape Town", "Johannesburg")</p>
+                  <p>• Include street number + street name, City, Postal code</p>
                   <p className="text-white/60 mt-1">e.g., 123 Main Street, Cape Town, 8001</p>
                 </div>
                 
@@ -595,10 +751,6 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                   <span className="font-medium text-white text-sm sm:text-base">Service</span>
                   <span className="text-white/80 text-sm sm:text-base">{selectedService?.name || 'Not selected'}</span>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
-                  <span className="font-medium text-white text-sm sm:text-base">Category</span>
-                  <span className="text-white/80 text-sm sm:text-base">{selectedService?.category || 'N/A'}</span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                   <span className="font-medium text-white text-sm sm:text-base">Date</span>

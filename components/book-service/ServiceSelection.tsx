@@ -168,25 +168,38 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
     };
   }, [retryCount]);
 
-  // Filter based on search term
+  // Filter based on search term - only filter services when a category is selected
   const filteredItems = selectedCategory
     ? selectedCategory.services.filter(service =>
         service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase()))
       )
-    : categories.filter(category =>
-        category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        category.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    : [];
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-12 bg-gray-100 rounded-lg w-1/3" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-40 bg-gray-100 rounded-lg" />
+      <div className="space-y-6 animate-pulse">
+        {/* Search bar skeleton */}
+        <div className="h-12 bg-white/10 rounded-lg" />
+        
+        {/* Category tabs skeleton */}
+        <div className="space-y-4">
+          <div className="text-center">
+            <div className="h-6 bg-white/10 rounded w-48 mx-auto mb-2" />
+            <div className="h-4 bg-white/10 rounded w-64 mx-auto" />
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-10 bg-white/10 rounded-lg w-24" />
+            ))}
+          </div>
+        </div>
+        
+        {/* Services grid skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-white/10 rounded-lg" />
           ))}
         </div>
       </div>
@@ -217,115 +230,160 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
         <Input
           type="text"
-          placeholder={selectedCategory ? "Search services..." : "Search categories..."}
+          placeholder="Search services..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
         />
       </div>
 
-      {/* Back Button */}
-      {selectedCategory && (
-        <Button
-          variant="ghost"
-          className="mb-4 text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => {
-            setSelectedCategory(null);
-            setSearchTerm("");
-          }}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Categories
-        </Button>
-      )}
-
-      {/* Categories or Services Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {selectedCategory ? (
-          // Show services for selected category
-          filteredItems.map((service) => (
-            <Card
-              key={service.id}
-              className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${
-                value === service.id
-                  ? "border-primary bg-primary/5"
-                  : "hover:border-primary/50 bg-white/5 border-white/10"
-              }`}
-              onClick={() => {
-                onChange(service.id);
-                onNext();
-              }}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{service.name}</span>
-                  <span className="text-lg">R{service.basePrice.toFixed(2)}</span>
-                </CardTitle>
-                <CardDescription>{service.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {service.features.slice(0, 3).map((feature, index) => (
-                    <div key={index} className="flex items-center text-sm">
-                      <CheckCircle className="h-4 w-4 mr-2 text-primary" />
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                  {service.features.length > 3 && (
-                    <p className="text-sm text-gray-400 pl-6">
-                      +{service.features.length - 3} more features
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          // Show categories
-          filteredItems.map((category) => (
-            <Card
-              key={category.id}
-              className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] bg-white/5 border-white/10 hover:border-primary/50"
-              onClick={() => {
-                setSelectedCategory(category);
-                setSearchTerm("");
-              }}
-            >
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{category.icon}</span>
-                  <div className="flex-1">
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{category.name}</span>
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
-                    </CardTitle>
-                    <CardDescription>{category.description}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-400">
-                  {category.services.length} services available
-                </p>
-              </CardContent>
-            </Card>
-          ))
-        )}
+      {/* Category Tabs */}
+      <div className="space-y-6">
+        <div className="text-center">
+          <h3 className="text-xl font-semibold text-white mb-2">Select Service Category</h3>
+          <p className="text-sm text-white/70">Choose the type of service you need</p>
+        </div>
+        
+        <div className="flex flex-wrap justify-center gap-6">
+          {/* Hardcoded categories */}
+          <button
+            onClick={() => {
+              setSelectedCategory({
+                id: 'cleaning',
+                name: 'Cleaning Services',
+                description: 'Professional cleaning services',
+                icon: '🧹',
+                isActive: true,
+                services: categories.find(c => c.name.includes('Cleaning'))?.services || []
+              });
+              setSearchTerm("");
+            }}
+            className={`text-base font-medium transition-all duration-300 ${
+              selectedCategory?.name === 'Cleaning Services'
+                ? 'text-white border-b-2 border-white pb-1'
+                : 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/50 pb-1'
+            }`}
+          >
+            Cleaning Services
+          </button>
+          
+          <button
+            onClick={() => {
+              setSelectedCategory({
+                id: 'hairstyling',
+                name: 'Hairstyling',
+                description: 'Professional hairstyling services',
+                icon: '💇‍♀️',
+                isActive: true,
+                services: []
+              });
+              setSearchTerm("");
+            }}
+            className={`text-base font-medium transition-all duration-300 ${
+              selectedCategory?.name === 'Hairstyling'
+                ? 'text-white border-b-2 border-white pb-1'
+                : 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/50 pb-1'
+            }`}
+          >
+            Hairstyling
+          </button>
+          
+          <button
+            onClick={() => {
+              setSelectedCategory({
+                id: 'makeup',
+                name: 'Makeup',
+                description: 'Professional makeup services',
+                icon: '💄',
+                isActive: true,
+                services: []
+              });
+              setSearchTerm("");
+            }}
+            className={`text-base font-medium transition-all duration-300 ${
+              selectedCategory?.name === 'Makeup'
+                ? 'text-white border-b-2 border-white pb-1'
+                : 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/50 pb-1'
+            }`}
+          >
+            Makeup
+          </button>
+        </div>
       </div>
 
+      {/* Services Dropdown */}
+      {selectedCategory && (
+        <div className="space-y-4">
+          {selectedCategory.services.length > 0 ? (
+            <div className="max-w-md mx-auto">
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {filteredItems.map((service) => (
+                  <button
+                    key={service.id}
+                    onClick={() => {
+                      onChange(service.id);
+                      onNext();
+                    }}
+                    className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+                      value === service.id
+                        ? 'bg-blue-500/20 border border-blue-500/50 text-white'
+                        : 'hover:bg-white/10 text-white/80 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{service.name}</span>
+                      <span className="text-sm text-blue-400 font-semibold">
+                        R{service.basePrice.toFixed(0)}
+                      </span>
+                    </div>
+                    {service.description && (
+                      <p className="text-xs text-white/60 mt-1">
+                        {service.description}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-4">
+                {selectedCategory.name === 'Hairstyling' ? '💇‍♀️' : '💄'}
+              </div>
+              <h4 className="text-lg font-medium text-white mb-2">
+                {selectedCategory.name} Services Coming Soon
+              </h4>
+              <p className="text-white/60">
+                We're working on adding {selectedCategory.name.toLowerCase()} services. Check back soon!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* No Results */}
-      {filteredItems.length === 0 && (
+      {selectedCategory && filteredItems.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-400">
-            No {selectedCategory ? 'services' : 'categories'} found matching "{searchTerm}"
+          <p className="text-white/60">
+            No services found matching "{searchTerm}"
           </p>
           <Button
             variant="ghost"
             onClick={() => setSearchTerm("")}
-            className="mt-2"
+            className="mt-2 text-white/80 hover:text-white"
           >
             Clear Search
           </Button>
+        </div>
+      )}
+
+      {/* No Category Selected State */}
+      {!selectedCategory && (
+        <div className="text-center py-12">
+          <div className="text-4xl mb-4">🔍</div>
+          <p className="text-white/60">
+            Select a category above to see available services
+          </p>
         </div>
       )}
     </div>
