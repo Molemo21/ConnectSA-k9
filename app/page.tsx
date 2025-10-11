@@ -38,6 +38,7 @@ export default function HomePage() {
   const [fadeSplash, setFadeSplash] = useState(false)
   const [contentReady, setContentReady] = useState(false)
   const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null)
+  const [isUnderConstruction, setIsUnderConstruction] = useState(true) // Set to true to enable construction mode
   const { t } = useLanguage()
 
   // Fetch user data
@@ -55,6 +56,20 @@ export default function HomePage() {
     }
     fetchUser()
   }, [])
+
+  // Keyboard shortcut for construction mode toggle (Ctrl+Shift+C)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+        event.preventDefault()
+        setIsUnderConstruction(prev => !prev)
+        console.log('Construction mode toggled:', !isUnderConstruction)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isUnderConstruction])
   // Loading states for different buttons
   const [loadingStates, setLoadingStates] = useState({
     bookService: false,
@@ -148,7 +163,7 @@ export default function HomePage() {
   ]
 
   return (
-    <div className={`flex min-h-screen flex-col gradient-bg-dark text-white transition-all duration-700 ${showSplash ? 'opacity-0 blur-sm' : contentReady ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}>
+    <div className={`flex min-h-screen flex-col gradient-bg-dark text-white transition-all duration-700 ${showSplash ? 'opacity-0 blur-sm' : contentReady ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'} ${isUnderConstruction ? 'grayscale pointer-events-none' : ''}`}>
       {/* Scroll Progress Indicator */}
       <ScrollProgressIndicator />
       
@@ -164,6 +179,7 @@ export default function HomePage() {
           </span>
         </div>
       )}
+
 
       {/* Global Breathing Loader */}
       {showGlobalLoader && (
@@ -222,6 +238,7 @@ export default function HomePage() {
               onBecomeProviderClick={() => handleButtonClick('becomeProvider', () => window.location.href = '/become-provider')}
               onGetStartedClick={() => handleButtonClick('getStarted', () => window.location.href = '/signup')}
               showGetStarted={!user}
+              isUnderConstruction={isUnderConstruction}
             />
           </div>
       </div>
