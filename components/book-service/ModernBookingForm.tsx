@@ -20,7 +20,15 @@ import {
   Clock,
   CheckCircle,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  Plus,
+  Minus,
+  Home,
+  Bath,
+  ChefHat,
+  Sofa,
+  Bed,
+  Car
 } from "lucide-react"
 import { reverseGeocode } from "@/lib/geocoding"
 import { ServiceSelection } from "./ServiceSelection"
@@ -55,7 +63,7 @@ const steps = [
   { id: 'service', title: 'Choose Service', icon: FileText },
   { id: 'datetime', title: 'Date & Time', icon: CalendarDays },
   { id: 'address', title: 'Address', icon: MapPin },
-  { id: 'notes', title: 'Notes', icon: FileText },
+  { id: 'details', title: 'Service Details', icon: Home },
   { id: 'review', title: 'Review', icon: CheckCircle },
   { id: 'provider', title: 'Choose Provider', icon: CheckCircle },
 ]
@@ -74,6 +82,13 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const NOTES_MAX = 500
+
+  // Service-specific information state
+  const [serviceInfo, setServiceInfo] = useState({
+    selectedRooms: [] as string[],
+    roomQuantities: {} as Record<string, number>,
+    additionalServices: [] as string[]
+  })
 
   // Address placeholder examples
   const addressExamples = [
@@ -201,6 +216,75 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     handleFieldChange('address', suggestion)
     setShowSuggestions(false)
     setAddressSuggestions([])
+  }
+
+  // Service-specific room options
+  const getServiceRooms = (service: any) => {
+    if (!service) return []
+    
+    const serviceName = service.name?.toLowerCase() || ''
+    const category = service.categoryName?.toLowerCase() || service.category?.toLowerCase() || ''
+    
+    if (serviceName.includes('clean') || category.includes('clean')) {
+      return [
+        { id: 'kitchen', name: 'Kitchen', icon: ChefHat, defaultQuantity: 1 },
+        { id: 'bathroom', name: 'Bathroom', icon: Bath, defaultQuantity: 1 },
+        { id: 'living_room', name: 'Living Room', icon: Sofa, defaultQuantity: 1 },
+        { id: 'bedroom', name: 'Bedroom', icon: Bed, defaultQuantity: 1 },
+        { id: 'dining_room', name: 'Dining Room', icon: Home, defaultQuantity: 1 },
+        { id: 'garage', name: 'Garage', icon: Car, defaultQuantity: 1 }
+      ]
+    } else if (serviceName.includes('paint') || category.includes('paint')) {
+      return [
+        { id: 'living_room', name: 'Living Room', icon: Sofa, defaultQuantity: 1 },
+        { id: 'bedroom', name: 'Bedroom', icon: Bed, defaultQuantity: 1 },
+        { id: 'kitchen', name: 'Kitchen', icon: ChefHat, defaultQuantity: 1 },
+        { id: 'bathroom', name: 'Bathroom', icon: Bath, defaultQuantity: 1 },
+        { id: 'dining_room', name: 'Dining Room', icon: Home, defaultQuantity: 1 }
+      ]
+    }
+    
+    return []
+  }
+
+  // Handle room selection
+  const handleRoomToggle = (roomId: string) => {
+    setServiceInfo(prev => {
+      const isSelected = prev.selectedRooms.includes(roomId)
+      const newSelectedRooms = isSelected 
+        ? prev.selectedRooms.filter(id => id !== roomId)
+        : [...prev.selectedRooms, roomId]
+      
+      const newQuantities = { ...prev.roomQuantities }
+      if (!isSelected) {
+        const room = getServiceRooms(selectedService).find(r => r.id === roomId)
+        newQuantities[roomId] = room?.defaultQuantity || 1
+      } else {
+        delete newQuantities[roomId]
+      }
+      
+      return {
+        ...prev,
+        selectedRooms: newSelectedRooms,
+        roomQuantities: newQuantities
+      }
+    })
+  }
+
+  // Handle quantity change
+  const handleQuantityChange = (roomId: string, change: number) => {
+    setServiceInfo(prev => {
+      const currentQuantity = prev.roomQuantities[roomId] || 1
+      const newQuantity = Math.max(1, currentQuantity + change)
+      
+      return {
+        ...prev,
+        roomQuantities: {
+          ...prev.roomQuantities,
+          [roomId]: newQuantity
+        }
+      }
+    })
   }
 
   // Service-specific suggestions
@@ -690,19 +774,115 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
           </div>
         )
 
-      case 3: // Notes
+      case 3: // Service Details
+        const serviceRooms = getServiceRooms(selectedService)
+        
         return (
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className="text-center animate-slide-in-up">
-              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Any special requirements?</h3>
-              <p className="text-sm sm:text-base text-white/80">Add any additional details (optional)</p>
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Service Details</h3>
+              <p className="text-sm sm:text-base text-white/80">
+                {selectedService ? `Customize your ${selectedService.name} service` : 'Select a service to see customization options'}
+              </p>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Service-specific room selection */}
+              {serviceRooms.length > 0 && (
+                <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                  <h4 className="text-sm sm:text-base font-semibold text-white mb-4 flex items-center">
+                    <Home className="w-4 h-4 mr-2" />
+                    Select Areas to {selectedService?.name || 'Service'}
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {serviceRooms.map((room) => {
+                      const Icon = room.icon
+                      const isSelected = serviceInfo.selectedRooms.includes(room.id)
+                      const quantity = serviceInfo.roomQuantities[room.id] || room.defaultQuantity
+                      
+                      return (
+                        <div
+                          key={room.id}
+                          className={`p-3 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
+                            isSelected 
+                              ? 'border-blue-500 bg-blue-500/10' 
+                              : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
+                          }`}
+                          onClick={() => handleRoomToggle(room.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                isSelected ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-300'
+                              }`}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <span className={`text-sm sm:text-base font-medium ${
+                                isSelected ? 'text-white' : 'text-gray-300'
+                              }`}>
+                                {room.name}
+                              </span>
+                            </div>
+                            
+                            {isSelected && (
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleQuantityChange(room.id, -1)
+                                  }}
+                                  className="w-6 h-6 p-0 border-gray-500 text-gray-300 hover:bg-gray-600"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </Button>
+                                <span className="text-sm font-semibold text-white min-w-[20px] text-center">
+                                  {quantity}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleQuantityChange(room.id, 1)
+                                  }}
+                                  className="w-6 h-6 p-0 border-gray-500 text-gray-300 hover:bg-gray-600"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  
+                  {serviceInfo.selectedRooms.length > 0 && (
+                    <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                      <p className="text-xs text-blue-200 mb-2">Selected areas:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {serviceInfo.selectedRooms.map(roomId => {
+                          const room = serviceRooms.find(r => r.id === roomId)
+                          const quantity = serviceInfo.roomQuantities[roomId]
+                          return (
+                            <span key={roomId} className="px-2 py-1 bg-blue-500/20 text-blue-200 rounded text-xs">
+                              {room?.name} ({quantity})
+                            </span>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Service-specific suggestions */}
-              <div className="bg-blue-900/30 p-3 rounded-lg animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+              <div className="bg-blue-900/30 p-3 rounded-lg animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
                 <p className="text-xs sm:text-sm text-blue-200 font-medium mb-2">
-                  {selectedService ? `Suggestions for ${selectedService.name}:` : 'Common requirements:'}
+                  {selectedService ? `Additional requirements for ${selectedService.name}:` : 'Common requirements:'}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {getServiceSuggestions(selectedService).map((chip) => (
@@ -722,7 +902,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                 )}
               </div>
               
-              <div className="space-y-2 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
+              <div className="space-y-2 animate-slide-in-up" style={{ animationDelay: '0.3s' }}>
                 <Label className="text-sm sm:text-base font-medium text-white">Additional Notes</Label>
                 <Textarea
                   value={value.notes || ''}
