@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ArrowLeft, ArrowRight, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
-import { ProviderCard } from "./provider-card"
-import { ProviderDetailsModal } from "./provider-details-modal"
+import { ProviderGrid } from "./provider-grid"
 import { BookingLoginModal } from "@/components/ui/booking-login-modal"
 import { showToast, handleApiError } from "@/lib/toast"
 
@@ -467,45 +466,14 @@ export function ProviderDiscovery({
       />
 
       <div className="space-y-6 animate-fade-in">
-        {/* Header */}
-        <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-2xl text-white">Choose Your Provider</CardTitle>
-              <CardDescription className="text-white/80">
-                Review and select from available providers for your service
-              </CardDescription>
-            </div>
-            <Button onClick={onBack} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between text-sm text-white/70">
-            <span>
-              Provider {currentIndex + 1} of {providers.length}
-            </span>
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                {currentProvider.service.name}
-              </Badge>
-              <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30">
-                {currentProvider.service.category}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Current Provider */}
-      <ProviderCard
-        provider={currentProvider}
-        onAccept={handleAcceptProvider}
-        onDecline={handleDeclineProvider}
-        onViewDetails={handleViewDetails}
+      {/* Providers Grid */}
+      <ProviderGrid
+        providers={providers}
+        onProviderSelected={handleAcceptProvider}
+        onBack={onBack}
+        isProcessing={isProcessing}
+        declinedProviders={declinedProviders}
+        onRetryDeclined={retryDeclinedProviders}
       />
 
       {/* Alternative Times Display */}
@@ -546,66 +514,6 @@ export function ProviderDiscovery({
         </Card>
       )}
 
-      {/* Navigation */}
-      <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  onClick={handleCancelBooking}
-                  disabled={isProcessing}
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg disabled:opacity-50"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Cancel Booking
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-black/90 border-gray-700">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-white">Cancel Booking</AlertDialogTitle>
-                  <AlertDialogDescription className="text-white/70">
-                    Are you sure you want to cancel this booking? This action cannot be undone and you'll need to start over.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="bg-gray-600 hover:bg-gray-700 text-white border-gray-500">
-                    Keep Booking
-                  </AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={confirmCancelBooking}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    Yes, Cancel Booking
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <div className="flex items-center space-x-2">
-              {hasDeclinedProviders && (
-                <Button
-                  onClick={retryDeclinedProviders}
-                  variant="outline"
-                  className="text-orange-400 border-orange-500/50 hover:bg-orange-500/20"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Retry Declined ({declinedProviders.length})
-                </Button>
-              )}
-            </div>
-
-            <Button
-              onClick={() => onProviderSelected(currentProvider.id)}
-              disabled={isProcessing}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg disabled:opacity-50"
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Complete Booking
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Processing State */}
       {isProcessing && (
@@ -618,27 +526,6 @@ export function ProviderDiscovery({
         </Card>
       )}
 
-      {/* Provider Count and Progress */}
-      {providers.length > 0 && (
-        <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-sm text-white/70">
-              <span>
-                Provider {currentIndex + 1} of {providers.length}
-              </span>
-              <span className="text-purple-400 font-medium">
-                {Math.round(((currentIndex + 1) / providers.length) * 100)}% Complete
-              </span>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-              <div 
-                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${((currentIndex + 1) / providers.length) * 100}%` }}
-              ></div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Provider Details Modal */}
       {selectedProvider && (

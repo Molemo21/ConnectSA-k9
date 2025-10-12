@@ -162,7 +162,7 @@ export default function ProviderList() {
                 <strong>Experience:</strong> {selectedProvider.experience || 'N/A'} years
               </div>
               <div>
-                <strong>Hourly Rate:</strong> {selectedProvider.hourlyRate ? `₦${selectedProvider.hourlyRate}` : 'N/A'}
+                <strong>Hourly Rate:</strong> {selectedProvider.hourlyRate ? `R${selectedProvider.hourlyRate}` : 'N/A'}
               </div>
               <div>
                 <strong>Location:</strong> {selectedProvider.location || 'N/A'}

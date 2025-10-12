@@ -16,12 +16,8 @@ export function MobileFloatingActionButton({ userRole, className }: MobileFloati
   const getFloatingAction = () => {
     switch (userRole) {
       case "CLIENT":
-        return {
-          href: "/search",
-          icon: Search,
-          label: "Search Services",
-          isActive: pathname.startsWith("/search") || pathname === "/book-service"
-        }
+        // Don't show floating action button for clients
+        return null
       
       case "PROVIDER":
         return {

@@ -828,7 +828,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-0 animate-fade-in">
+    <div className="max-w-2xl mx-auto px-4 sm:px-0 animate-fade-in pb-20 sm:pb-8">
       {/* Progress Bar - Mobile Optimized */}
       <div className={`mb-6 sm:mb-8 transition-all duration-300 ${
         isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
@@ -942,10 +942,10 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
         <Button
           variant="outline"
           onClick={handleBack}
-          className="flex items-center px-4 sm:px-6 py-3 w-full sm:w-auto order-2 sm:order-1"
+          className="flex items-center px-4 sm:px-6 py-3 w-full sm:w-auto order-2 sm:order-1 border-gray-300 text-gray-700 hover:bg-gray-50"
         >
           <ChevronLeft className="w-4 h-4 mr-2" />
-          {currentStep === 0 ? 'Back' : 'Previous'}
+          Previous
         </Button>
           )}
 

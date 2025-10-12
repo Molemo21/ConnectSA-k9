@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Star, MapPin, Clock, DollarSign, CheckCircle, XCircle, Eye, Package } from "lucide-react"
+import { Star, MapPin, Clock, CheckCircle, XCircle, Eye, Package } from "lucide-react"
 import { showToast } from "@/lib/toast"
-import { ProviderCatalogueModal } from "./provider-catalogue-modal"
+import { ServiceCatalogueModal } from "./provider-catalogue-modal"
 
 interface Provider {
   id: string
@@ -127,8 +127,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
             <span>{formatExperience(provider.experience)} experience</span>
           </div>
           <div className="flex items-center space-x-2 text-sm text-white/70">
-            <DollarSign className="w-4 h-4 text-green-400" />
-            <span>${provider.hourlyRate}/hr</span>
+            <span className="text-green-400 font-semibold">R{provider.hourlyRate}/hr</span>
           </div>
           <div className="flex items-center space-x-2 text-sm text-white/70">
             <Star className="w-4 h-4 text-yellow-400" />
@@ -208,15 +207,26 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-4 border-t border-white/10">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onViewDetails(provider)}
-            className="text-purple-400 border-purple-500/50 hover:bg-purple-500/20 hover:border-purple-400"
-          >
-            <Eye className="w-4 h-4 mr-1" />
-            View Details
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCatalogue(true)}
+              className="text-blue-400 border-blue-500/50 hover:bg-blue-500/20 hover:border-blue-400"
+            >
+              <Package className="w-4 h-4 mr-1" />
+              View Catalogue
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onViewDetails(provider)}
+              className="text-purple-400 border-purple-500/50 hover:bg-purple-500/20 hover:border-purple-400"
+            >
+              <Eye className="w-4 h-4 mr-1" />
+              View Details
+            </Button>
+          </div>
           
           <div className="flex items-center space-x-2">
             <Button
@@ -243,8 +253,8 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
       </CardContent>
     </Card>
 
-    {/* Provider Catalogue Modal */}
-    <ProviderCatalogueModal
+    {/* Service Catalogue Modal */}
+    <ServiceCatalogueModal
       provider={provider}
       isOpen={showCatalogue}
       onClose={() => setShowCatalogue(false)}

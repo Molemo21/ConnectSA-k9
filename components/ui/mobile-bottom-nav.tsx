@@ -98,22 +98,6 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             isLogout: false
           },
           {
-            href: "/search",
-            icon: Search,
-            label: "Search",
-            active: pathname.startsWith("/search") || pathname === "/book-service",
-            isPrimary: true, // Primary action - Search/Book
-            isLogout: false
-          },
-          {
-            href: "/bookings",
-            icon: Calendar,
-            label: "Bookings",
-            active: pathname.startsWith("/bookings"),
-            isPrimary: false,
-            isLogout: false
-          },
-          {
             href: "/profile",
             icon: User,
             label: "Profile",
@@ -232,7 +216,7 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
       "sm:hidden", // Only show on mobile
       className
     )}>
-      <div className="flex items-center justify-around">
+      <div className="flex items-center justify-around max-w-sm mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon
           const isPrimary = item.isPrimary

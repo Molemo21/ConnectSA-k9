@@ -9,7 +9,6 @@ import {
   Star, 
   MapPin, 
   Clock, 
-  DollarSign, 
   CheckCircle, 
   XCircle, 
   Award, 
@@ -294,7 +293,7 @@ export function ProviderDetailsModal({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Rate</span>
-                    <span className="font-semibold text-green-600">${provider.hourlyRate}/hr</span>
+                    <span className="font-semibold text-green-600">R{provider.hourlyRate}/hr</span>
                   </div>
                 </CardContent>
               </Card>
