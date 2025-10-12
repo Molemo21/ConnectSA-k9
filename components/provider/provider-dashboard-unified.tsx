@@ -391,6 +391,114 @@ function ProviderMainContent({
       case "overview":
         return (
           <div className="space-y-6">
+            {/* Current Bookings Card - Priority at Top */}
+            <Card className="bg-black/60 backdrop-blur-sm border-gray-300/20 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-blue-400" />
+                  Current Bookings
+                </CardTitle>
+                <CardDescription className="text-gray-300">
+                  Urgent bookings that need your attention
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Pending Bookings */}
+                  {pendingBookings > 0 && (
+                    <div className="bg-gray-800/50 border border-yellow-500/30 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-yellow-500/20 rounded-full">
+                            <Clock className="w-5 h-5 text-yellow-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-semibold">Pending Approval</h4>
+                            <p className="text-gray-300 text-sm">{pendingBookings} job{pendingBookings !== 1 ? 's' : ''} waiting for your response</p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm"
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                          onClick={() => setActiveSection('jobs')}
+                        >
+                          Review Now
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirmed Bookings */}
+                  {confirmedBookings > 0 && (
+                    <div className="bg-gray-800/50 border border-green-500/30 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-green-500/20 rounded-full">
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-semibold">Confirmed Jobs</h4>
+                            <p className="text-gray-300 text-sm">{confirmedBookings} job{confirmedBookings !== 1 ? 's' : ''} ready to start</p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm"
+                          className="bg-green-500 hover:bg-green-600 text-white"
+                          onClick={() => setActiveSection('jobs')}
+                        >
+                          View Jobs
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* In Progress Bookings */}
+                  {inProgressBookings > 0 && (
+                    <div className="bg-gray-800/50 border border-blue-500/30 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-500/20 rounded-full">
+                            <Play className="w-5 h-5 text-blue-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-white font-semibold">In Progress</h4>
+                            <p className="text-gray-300 text-sm">{inProgressBookings} job{inProgressBookings !== 1 ? 's' : ''} currently active</p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm"
+                          className="bg-blue-500 hover:bg-blue-600 text-white"
+                          onClick={() => setActiveSection('jobs')}
+                        >
+                          Manage Jobs
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Current Bookings */}
+                  {pendingBookings === 0 && confirmedBookings === 0 && inProgressBookings === 0 && (
+                    <div className="text-center py-8">
+                      <div className="p-4 bg-gray-800/50 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                        <Calendar className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h4 className="text-white font-semibold mb-2">No Current Bookings</h4>
+                      <p className="text-gray-400 text-sm mb-4">
+                        You're all caught up! New bookings will appear here when they come in.
+                      </p>
+                      <Button 
+                        variant="outline"
+                        className="border-gray-300/30 text-gray-300 hover:bg-gray-700"
+                        onClick={() => setActiveSection('jobs')}
+                      >
+                        View All Jobs
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
@@ -1840,6 +1948,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           showUserMenu={true} 
           user={dashboardState.auth.user}
           userStats={memoizedUserStats}
+          showNotifications={true}
         />
       </div>
       

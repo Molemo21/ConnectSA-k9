@@ -19,6 +19,6 @@ export function CurrencyDisplay({ amount, className = "" }: CurrencyDisplayProps
 
 // Example usage in components:
 // <CurrencyDisplay amount={150.50} className="text-lg font-bold" />
-// This will display: "R150.50" (if ZAR is selected) or "$150.50" (if USD is selected)
+// This will display: "R150.50" (if ZAR is selected) or "R150.50" (if USD is selected)
 
 

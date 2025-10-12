@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLogout } from "@/hooks/use-logout"
+import { ProviderNotificationPopup } from "./provider-notification-popup"
 import Link from "next/link"
 
 interface ConsolidatedMobileHeaderProviderProps {
@@ -49,9 +50,83 @@ export function ConsolidatedMobileHeaderProvider({
   const [isOpen, setIsOpen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const { logout, isLoggingOut } = useLogout()
+
+  // Mock provider notifications - in a real app, this would come from an API
+  const [notifications, setNotifications] = useState([
+    {
+      id: '1',
+      title: 'New Booking Request',
+      message: 'John Smith requested carpet cleaning for tomorrow at 2:00 PM. Amount: R450',
+      type: 'booking' as const,
+      timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago
+      read: false,
+      priority: 'high' as const,
+      actionUrl: '/provider/dashboard?section=jobs',
+      actionText: 'Review Booking'
+    },
+    {
+      id: '2',
+      title: 'Payment Received',
+      message: 'Payment of R450 has been processed for your plumbing service booking.',
+      type: 'payment' as const,
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+      read: false,
+      priority: 'medium' as const,
+      actionUrl: '/provider/dashboard?section=earnings',
+      actionText: 'View Earnings'
+    },
+    {
+      id: '3',
+      title: 'New Review Received',
+      message: 'Sarah Johnson left a 5-star review for your cleaning service: "Excellent work!"',
+      type: 'review' as const,
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+      read: true,
+      priority: 'low' as const,
+      actionUrl: '/provider/dashboard?section=reviews',
+      actionText: 'View Review'
+    },
+    {
+      id: '4',
+      title: 'Booking Reminder',
+      message: 'You have a cleaning service scheduled for today at 10:00 AM at 123 Main Street.',
+      type: 'urgent' as const,
+      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+      read: false,
+      priority: 'high' as const,
+      actionUrl: '/provider/dashboard?section=jobs',
+      actionText: 'View Details'
+    },
+    {
+      id: '5',
+      title: 'System Update',
+      message: 'New features added to your provider dashboard. Check out the improved booking management.',
+      type: 'system' as const,
+      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+      read: true,
+      priority: 'low' as const
+    }
+  ])
+
+  const unreadCount = notifications.filter(n => !n.read).length
+
+  const handleMarkAsRead = (notificationId: string) => {
+    setNotifications(prev => 
+      prev.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      )
+    )
+  }
+
+  const handleMarkAllAsRead = () => {
+    setNotifications(prev => 
+      prev.map(n => ({ ...n, read: true }))
+    )
+  }
 
   // Prevent hydration mismatch by only running on client
   useEffect(() => {
@@ -177,10 +252,13 @@ export function ConsolidatedMobileHeaderProvider({
               variant="ghost"
               size="sm"
               className="relative p-2 text-gray-300 hover:text-white hover:bg-white/10"
+              onClick={() => setShowNotificationPopup(true)}
             >
               <Bell className="w-5 h-5" />
-              {hasNotifications && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+              {unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                </div>
               )}
             </Button>
 
@@ -403,6 +481,15 @@ export function ConsolidatedMobileHeaderProvider({
           </div>
         </div>
       )}
+
+      {/* Provider Notification Popup */}
+      <ProviderNotificationPopup
+        isOpen={showNotificationPopup}
+        onClose={() => setShowNotificationPopup(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+      />
     </>
   )
 }

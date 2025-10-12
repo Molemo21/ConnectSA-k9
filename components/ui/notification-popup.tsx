@@ -12,6 +12,8 @@ interface Notification {
   type: 'success' | 'warning' | 'info' | 'error'
   timestamp: string
   read: boolean
+  actionUrl?: string
+  actionText?: string
 }
 
 interface NotificationPopupProps {
@@ -148,13 +150,27 @@ export function NotificationPopup({
                 /* Notifications List */
                 <div className="divide-y divide-gray-100">
                   {notifications.map((notification) => (
-                    <motion.div
+                    <div
                       key={notification.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className={`p-4 hover:bg-gray-50 transition-colors ${
+                      className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer border-l-4 border-transparent hover:border-blue-500 ${
                         !notification.read ? 'bg-blue-50/50' : ''
                       }`}
+                      onClick={() => {
+                        console.log('Notification clicked:', notification.title)
+                        console.log('Action URL:', notification.actionUrl)
+                        console.log('Action Text:', notification.actionText)
+                        
+                        if (notification.actionUrl) {
+                          console.log('Navigating to:', notification.actionUrl)
+                          // Use router.push instead of window.location.href for better Next.js integration
+                          window.location.href = notification.actionUrl
+                          onClose()
+                        } else {
+                          console.log('No action URL found')
+                          // Still close the popup even if no action URL
+                          onClose()
+                        }
+                      }}
                     >
                       <div className="flex items-start space-x-3">
                         <div className="flex-shrink-0 mt-0.5">
@@ -173,9 +189,23 @@ export function NotificationPopup({
                           <p className="text-sm text-gray-600 mt-1">
                             {notification.message}
                           </p>
+                          {notification.actionText && notification.actionUrl && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                              onClick={(e) => {
+                                e.stopPropagation() // Prevent triggering the parent onClick
+                                window.location.href = notification.actionUrl!
+                                onClose()
+                              }}
+                            >
+                              {notification.actionText}
+                            </Button>
+                          )}
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               )}

@@ -56,18 +56,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const formatCurrency = (amount: number): string => {
     const currencyCode = selectedRegion.currencyCode
     
-    // Format based on currency
+    // Format based on currency - Only Rand supported
     switch (currencyCode) {
       case 'ZAR':
         return `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      case 'USD':
-        return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      case 'GBP':
-        return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      case 'EUR':
-        return `€${amount.toLocaleString('en-EU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       default:
-        return `${selectedRegion.currencyCode} ${amount.toLocaleString()}`
+        return `R${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     }
   }
 
@@ -75,14 +69,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     switch (selectedRegion.currencyCode) {
       case 'ZAR':
         return 'R'
-      case 'USD':
-        return '$'
-      case 'GBP':
-        return '£'
-      case 'EUR':
-        return '€'
       default:
-        return selectedRegion.currencyCode
+        return 'R'
     }
   }
 

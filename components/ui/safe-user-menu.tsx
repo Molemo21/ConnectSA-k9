@@ -70,38 +70,131 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
   const [mounted, setMounted] = useState(false)
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   
-  // Mock notification data - in a real app, this would come from an API
-  const mockNotifications = [
-    {
-      id: '1',
-      title: 'Booking Confirmed',
-      message: 'Your plumbing service booking has been confirmed for tomorrow at 2:00 PM.',
-      type: 'success' as const,
-      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-      read: false
-    },
-    {
-      id: '2',
-      title: 'Payment Received',
-      message: 'Payment of R450 has been received for your electrical work booking.',
-      type: 'success' as const,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-      read: true
-    },
-    {
-      id: '3',
-      title: 'Service Reminder',
-      message: 'Don\'t forget! Your cleaning service is scheduled for today at 10:00 AM.',
-      type: 'info' as const,
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-      read: false
+  // Provider-specific notifications - in a real app, this would come from an API
+  const getProviderNotifications = () => {
+    if (user?.role !== 'PROVIDER') return []
+    
+    return [
+      {
+        id: 'provider-1',
+        title: 'New Booking Request',
+        message: 'John Smith requested carpet cleaning for tomorrow at 2:00 PM. Amount: R450',
+        type: 'success' as const,
+        timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago
+        read: false,
+        actionUrl: '/provider/dashboard?section=jobs',
+        actionText: 'Review Booking'
+      },
+      {
+        id: 'provider-2',
+        title: 'Current Job Update',
+        message: 'Your cleaning service at 123 Main Street is in progress. Client is satisfied.',
+        type: 'info' as const,
+        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(), // 45 minutes ago
+        read: false,
+        actionUrl: '/provider/dashboard?section=jobs',
+        actionText: 'View Job Details'
+      },
+      {
+        id: 'provider-3',
+        title: 'Payment Received',
+        message: 'Payment of R450 has been processed for your plumbing service booking.',
+        type: 'success' as const,
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+        read: true,
+        actionUrl: '/provider/dashboard?section=earnings',
+        actionText: 'View Earnings'
+      },
+      {
+        id: 'provider-4',
+        title: 'Job Reminder',
+        message: 'You have a cleaning service scheduled for today at 10:00 AM at 123 Main Street.',
+        type: 'info' as const,
+        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+        read: false,
+        actionUrl: '/provider/dashboard?section=jobs',
+        actionText: 'View Schedule'
+      },
+      {
+        id: 'provider-5',
+        title: 'New Review Received',
+        message: 'Sarah Johnson left a 5-star review for your cleaning service: "Excellent work!"',
+        type: 'success' as const,
+        timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+        read: true,
+        actionUrl: '/provider/dashboard?section=reviews',
+        actionText: 'View Review'
+      }
+    ]
+  }
+
+  // Client-specific notifications
+  const getClientNotifications = () => {
+    if (user?.role !== 'CLIENT') return []
+    
+    return [
+      {
+        id: 'client-1',
+        title: 'Booking Confirmed',
+        message: 'Your plumbing service booking has been confirmed for tomorrow at 2:00 PM.',
+        type: 'success' as const,
+        timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
+        read: false,
+        actionUrl: '/dashboard',
+        actionText: 'View Booking'
+      },
+      {
+        id: 'client-2',
+        title: 'Service Provider En Route',
+        message: 'Your cleaning service provider is on their way. ETA: 15 minutes.',
+        type: 'info' as const,
+        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
+        read: false,
+        actionUrl: '/dashboard',
+        actionText: 'Track Service'
+      },
+      {
+        id: 'client-3',
+        title: 'Service Completed',
+        message: 'Your electrical work has been completed. Please rate your experience.',
+        type: 'success' as const,
+        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+        read: true,
+        actionUrl: '/dashboard',
+        actionText: 'Rate Service'
+      }
+    ]
+  }
+
+  // Get notifications based on user role
+  const notifications = user?.role === 'PROVIDER' ? getProviderNotifications() : 
+                       user?.role === 'CLIENT' ? getClientNotifications() : []
+
+  // Debug logging
+  useEffect(() => {
+    if (mounted && notifications.length > 0) {
+      console.log('Notifications loaded:', notifications)
+      console.log('User role:', user?.role)
     }
-  ]
+  }, [mounted, notifications, user?.role])
 
   // Prevent hydration mismatch by only running on client
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Simulate real-time notifications for providers
+  useEffect(() => {
+    if (!mounted || user?.role !== 'PROVIDER') return
+
+    // Simulate real-time updates every 30 seconds
+    const interval = setInterval(() => {
+      // In a real app, this would fetch from an API
+      console.log('Checking for new provider notifications...')
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [mounted, user?.role])
 
   const handleLogout = useCallback(async () => {
     try {
@@ -235,7 +328,7 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
           onClick={() => setShowNotificationPopup(true)}
         >
           <Bell className="w-4 h-4" />
-          {safeStats.pendingBookings > 0 && (
+          {notifications.filter(n => !n.read).length > 0 && (
             <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
           )}
         </Button>
@@ -390,7 +483,7 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
       <NotificationPopup
         isOpen={showNotificationPopup}
         onClose={() => setShowNotificationPopup(false)}
-        notifications={mockNotifications}
+        notifications={notifications}
       />
     </div>
   )

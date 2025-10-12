@@ -26,27 +26,6 @@ const regions: Region[] = [
     flag: "🇿🇦",
     currency: "South African Rand",
     currencyCode: "ZAR"
-  },
-  {
-    id: "us",
-    name: "United States",
-    flag: "🇺🇸",
-    currency: "US Dollar",
-    currencyCode: "USD"
-  },
-  {
-    id: "gb",
-    name: "United Kingdom",
-    flag: "🇬🇧",
-    currency: "British Pound",
-    currencyCode: "GBP"
-  },
-  {
-    id: "eu",
-    name: "Europe",
-    flag: "🇪🇺",
-    currency: "Euro",
-    currencyCode: "EUR"
   }
 ]
 

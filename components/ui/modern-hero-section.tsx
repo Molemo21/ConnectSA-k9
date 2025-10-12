@@ -119,9 +119,9 @@ export function ModernHeroSection({
                 </p>
               </div>
 
-              {/* Admin Toggle Hint */}
+              {/* Admin Toggle Hint - Hidden */}
               <div 
-                className={`mt-6 text-xs text-gray-500 transition-all duration-1000 delay-800 ${
+                className={`mt-6 text-xs text-gray-500 transition-all duration-1000 delay-800 hidden ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
               >
