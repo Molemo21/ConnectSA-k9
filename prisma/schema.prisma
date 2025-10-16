@@ -34,6 +34,8 @@ enum BookingStatus {
   COMPLETED
   CANCELLED
   PENDING_EXECUTION
+  PAYMENT_PROCESSING
+  DISPUTED
 }
 
 enum PaymentStatus {
