@@ -53,6 +53,7 @@ import {
 } from "lucide-react"
 import { showToast } from "@/lib/toast"
 import { useBookingData } from "@/hooks/use-booking-data"
+import { usePaymentCallback } from "@/hooks/use-payment-callback"
 import { EnhancedBookingCard } from "@/components/dashboard/enhanced-booking-card"
 import { CompactBookingCard } from "@/components/dashboard/compact-booking-card"
 import { RecentBookingCard } from "@/components/dashboard/recent-booking-card"
@@ -1105,29 +1106,11 @@ export function MobileClientDashboard() {
     error: refreshError 
   } = useBookingData(initialBookings)
 
-  // Handle payment success callback
-  useEffect(() => {
-    const paymentSuccess = searchParams.get('payment')
-    const bookingId = searchParams.get('booking')
-    
-    if (paymentSuccess === 'success' && bookingId) {
-      if (sessionStorage.getItem('payment_callback_any') !== '1') {
-        showToast.success('Payment completed successfully! Refreshing booking status...')
-        sessionStorage.setItem('payment_callback_any', '1')
-      }
-      
-      if (refreshBooking) {
-        refreshBooking(bookingId)
-      }
-      
-      setTimeout(() => {
-        if (refreshAllBookings) {
-          refreshAllBookings()
-          setLastRefresh(new Date())
-        }
-      }, 1000)
-    }
-  }, [searchParams, refreshBooking, refreshAllBookings])
+  // Handle payment callback automatically using the proper hook
+  usePaymentCallback({
+    onRefreshBooking: refreshBooking,
+    onRefreshAll: refreshAllBookings
+  })
 
   // Auto-refresh mechanism for payment status updates
   useEffect(() => {
@@ -1173,12 +1156,16 @@ export function MobileClientDashboard() {
       try {
         setLoading(true)
         
-        const userRes = await fetch('/api/auth/me')
+        const userRes = await fetch('/api/auth/me', {
+          credentials: 'include' // Ensure cookies are sent
+        })
         if (!userRes.ok) {
+          console.log('Authentication failed, redirecting to login')
           window.location.href = '/login'
           return
         }
         const userData = await userRes.json()
+        console.log('User authenticated:', userData.user?.email)
         setUser(userData.user)
 
         if (userData.user.role === "PROVIDER") {
