@@ -118,11 +118,11 @@ export async function POST(request: NextRequest) {
         bookings: {
           where: { 
             status: { 
-              notIn: ["CANCELLED", "PENDING_EXECUTION"] 
+              in: ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "AWAITING_CONFIRMATION", "PAYMENT_PROCESSING", "DISPUTED"] 
             } 
           },
-          // Note: Excluding PENDING_EXECUTION to avoid Prisma enum validation issues
-          // in production where the Prisma client may not recognize this enum value
+          // Note: Only including known valid enum values to avoid Prisma validation issues
+          // in production where the Prisma client may not recognize PENDING_EXECUTION
           select: {
             id: true,
             scheduledDate: true,
