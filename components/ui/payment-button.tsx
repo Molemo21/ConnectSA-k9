@@ -88,7 +88,20 @@ export function PaymentButton({ bookingId, amount, onSuccess, onError }: Payment
         // Handle authentication errors specifically
         if (response.status === 401) {
           logger.warn('Authentication error, redirecting to login', { bookingId });
-          window.location.href = '/login';
+          
+          // Show error message before redirect
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to complete your payment.",
+            variant: "destructive",
+          });
+          
+          // Small delay to show the message, then redirect
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1500);
+          
+          // Don't reset loading state - keep button in loading state during redirect
           return;
         }
         
@@ -177,8 +190,10 @@ export function PaymentButton({ bookingId, amount, onSuccess, onError }: Payment
       onError?.(errorMessage);
       
     } finally {
-      setIsLoading(false);
-      setRedirecting(false);
+      // Only reset loading state if we're not redirecting
+      if (!redirecting) {
+        setIsLoading(false);
+      }
     }
   };
 
