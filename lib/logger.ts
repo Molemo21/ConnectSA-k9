@@ -68,3 +68,44 @@ export const logService = {
   success: (action: string, message: string, data?: LogData) => 
     logInfo('service', `✓ [${action}] ${message}`, data)
 };
+
+export const logPayment = {
+  error: (action: string, message: string, error: Error, data?: LogData) => 
+    logError('payment', `[${action}] ${message}`, error, data),
+  warning: (action: string, message: string, data?: LogData) => 
+    logWarning('payment', `[${action}] ${message}`, data),
+  info: (action: string, message: string, data?: LogData) => 
+    logInfo('payment', `[${action}] ${message}`, data),
+  success: (action: string, message: string, data?: LogData) => 
+    logInfo('payment', `✓ [${action}] ${message}`, data)
+};
+
+export const logDashboard = {
+  error: (action: string, message: string, error: Error, data?: LogData) => 
+    logError('dashboard', `[${action}] ${message}`, error, data),
+  warning: (action: string, message: string, data?: LogData) => 
+    logWarning('dashboard', `[${action}] ${message}`, data),
+  info: (action: string, message: string, data?: LogData) => 
+    logInfo('dashboard', `[${action}] ${message}`, data),
+  success: (action: string, message: string, data?: LogData) => 
+    logInfo('dashboard', `✓ [${action}] ${message}`, data)
+};
+
+export const logSystem = {
+  error: (action: string, message: string, error: Error, data?: LogData) => 
+    logError('system', `[${action}] ${message}`, error, data),
+  warning: (action: string, message: string, data?: LogData) => 
+    logWarning('system', `[${action}] ${message}`, data),
+  info: (action: string, message: string, data?: LogData) => 
+    logInfo('system', `[${action}] ${message}`, data),
+  success: (action: string, message: string, data?: LogData) => 
+    logInfo('system', `✓ [${action}] ${message}`, data)
+};
+
+// Default logger export for backward compatibility
+export const logger = {
+  error: logError,
+  warning: logWarning,
+  info: logInfo,
+  debug: logDebug
+};
