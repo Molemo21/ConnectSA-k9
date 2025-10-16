@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db-utils";
+import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
+
+// Create Prisma client instance with working configuration
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: "postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=15&pool_timeout=60&connection_limit=5"
+    }
+  },
+  log: ['error'],
+  errorFormat: 'pretty'
+});
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +56,7 @@ export async function POST(request: NextRequest) {
     console.log('Using service ID:', actualServiceId);
 
     // Find available providers for the service
-    const providers = await db.provider.findMany({
+    const providers = await prisma.provider.findMany({
       where: {
         services: {
           some: { serviceId: actualServiceId },
@@ -83,9 +94,7 @@ export async function POST(request: NextRequest) {
                 rating: true,
                 comment: true,
                 createdAt: true,
-              },
-              orderBy: { createdAt: 'desc' },
-              take: 5,
+              }
             }
           }
         },
@@ -124,8 +133,10 @@ export async function POST(request: NextRequest) {
     const providersWithStats = availableProviders.map(provider => {
       // Get reviews from bookings
       const allReviews = provider.bookings
-        .filter(booking => booking.review && booking.review.length > 0)
-        .flatMap(booking => booking.review);
+        .filter(booking => booking.review)
+        .map(booking => booking.review)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5); // Take only the 5 most recent reviews
       
       const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
       const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
@@ -180,9 +191,21 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Validation error:", error.errors);
       return NextResponse.json({ error: error.errors[0]?.message || "Invalid input" }, { status: 400 });
     }
-    console.error("Provider discovery error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    
+    console.error("Provider discovery error:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error: error
+    });
+    
+    return NextResponse.json({ 
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 } 
