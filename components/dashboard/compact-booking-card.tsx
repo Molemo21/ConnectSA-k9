@@ -18,7 +18,12 @@ interface Booking {
   id: string
   service: {
     name: string
-    category: string
+    category: {
+      id: string
+      name: string
+      description?: string
+      icon?: string
+    }
   }
   provider?: {
     businessName: string
@@ -75,7 +80,11 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
   const canPay = (booking.status === "CONFIRMED") && (!booking.payment || booking.payment.status === 'PENDING' || booking.payment.status === 'FAILED')
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
-  const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
+  const canConfirmCompletion = (booking.status === "AWAITING_CONFIRMATION") || 
+    (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
+  
+  // Hide button if payment is already released
+  const isPaymentReleased = booking.payment && ["RELEASED", "COMPLETED"].includes(booking.payment.status)
   const canDispute = ["COMPLETED", "CANCELLED"].includes(booking.status) && !booking.review
 
   const handlePay = async () => {
@@ -143,20 +152,34 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
 
   const handleConfirmCompletion = async () => {
     try {
+      console.log(`🚀 Attempting to confirm completion for booking ${booking.id}`);
+      
       const response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include' // Ensure cookies are sent
       })
       
+      console.log(`📡 Response status: ${response.status}`);
+      
       if (response.ok) {
-        showToast.success("Completion confirmed! Payment will be released to the provider.")
+        const data = await response.json();
+        console.log(`✅ Success response:`, data);
+        showToast.success(data.message || "Completion confirmed! Payment will be released to the provider.")
         onUpdate()
       } else {
         const errorData = await response.json()
+        console.error(`❌ Error response:`, errorData);
         showToast.error(errorData.error || "Failed to confirm completion")
+        
+        // If it's an authentication error, redirect to login
+        if (response.status === 401) {
+          console.log('🔐 Authentication error, redirecting to login');
+          window.location.href = '/login';
+        }
       }
     } catch (error) {
-      console.error("Confirm completion error:", error)
+      console.error("❌ Confirm completion error:", error)
       showToast.error("Network error. Please try again.")
     }
   }
@@ -253,7 +276,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                   )}
                 </div>
                 <p className="text-sm sm:text-base md:text-lg text-gray-300 truncate font-medium flex items-center space-x-2">
-                  <span>{booking.service.category}</span>
+                  <span>{booking.service.category?.name || 'No Category'}</span>
                   <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
                 </p>
               </div>
@@ -305,6 +328,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
             isProcessing={isProcessingPayment}
             onCheckStatus={handleCheckStatus}
             allowContinue={booking.status === 'CONFIRMED'}
+            bookingStatus={booking.status}
           />
           
           {/* Details - Enhanced Grid for Large Screens */}
@@ -467,7 +491,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                   </Button>
                 )}
                 
-                {canConfirmCompletion && (
+                {canConfirmCompletion && !isPaymentReleased && (
                   <Button 
                     size="sm" 
                     onClick={handleConfirmCompletion} 
@@ -476,6 +500,13 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                     <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
                     Confirm
                   </Button>
+                )}
+                
+                {isPaymentReleased && (
+                  <div className="flex items-center text-green-600 text-xs sm:text-sm md:text-base font-medium px-3 sm:px-4 md:px-6">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
+                    Released
+                  </div>
                 )}
               </div>
             </div>
@@ -511,7 +542,13 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
       <BookingActionsModal
         isOpen={showActionsModal}
         onClose={() => setShowActionsModal(false)}
-        booking={booking}
+        booking={{
+          ...booking,
+          service: {
+            name: booking.service.name,
+            category: booking.service.category?.name || 'No Category'
+          }
+        }}
         onUpdate={onUpdate}
       />
 

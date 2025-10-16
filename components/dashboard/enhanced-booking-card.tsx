@@ -5,8 +5,7 @@ import { useSafeTime } from "@/hooks/use-safe-time"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle } from "lucide-react"
+import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertTriangle } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
@@ -19,7 +18,12 @@ interface Booking {
   id: string
   service: {
     name: string
-    category: string
+    category: {
+      id: string
+      name: string
+      description?: string
+      icon?: string
+    }
   }
   provider?: {
     id: string
@@ -49,93 +53,42 @@ interface Booking {
   createdAt: Date // Add creation date
 }
 
+interface ModalBooking {
+  id: string
+  service: {
+    name: string
+    category: string
+  }
+  provider?: {
+    businessName: string
+    user: {
+      name: string
+      phone: string
+    }
+  }
+  scheduledDate: string
+  duration: number
+  totalAmount: number
+  status: string
+  address: string
+  description?: string
+  payment?: {
+    status: string
+    amount: number
+  }
+}
+
 interface EnhancedBookingCardProps {
   booking: Booking
   onStatusChange?: (bookingId: string, newStatus: string) => void
   onRefresh?: (bookingId: string) => Promise<void>
 }
 
-const getStatusInfo = (status: string, hasPayment?: boolean) => {
-  switch (status) {
-    case "PENDING":
-      return {
-        label: "Waiting for Provider",
-        color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        icon: Clock,
-        description: "We're finding the best provider for you"
-      }
-    case "CONFIRMED":
-      if (hasPayment) {
-        return {
-          label: "Confirmed & Paid",
-          color: "bg-green-100 text-green-800 border-green-200",
-          icon: CheckCircle,
-          description: "Payment completed - waiting for provider to start"
-        }
-      }
-      return {
-        label: "Confirmed",
-        color: "bg-blue-100 text-blue-800 border-blue-200",
-        icon: CheckCircle,
-        description: "Provider has confirmed your booking"
-      }
-    case "PENDING_EXECUTION":
-      return {
-        label: "Payment Received",
-        color: "bg-green-100 text-green-800 border-green-200",
-        icon: CheckCircle,
-        description: "Payment completed - funds held in escrow, waiting for execution"
-      }
-    case "IN_PROGRESS":
-      return {
-        label: "In Progress",
-        color: "bg-purple-100 text-purple-800 border-purple-200",
-        icon: Loader2,
-        description: "Provider is working on your service"
-      }
-    case "AWAITING_CONFIRMATION":
-      return {
-        label: "Awaiting Confirmation",
-        color: "bg-orange-100 text-orange-800 border-orange-200",
-        icon: AlertCircle,
-        description: "Provider has completed the job. Please confirm completion to release payment."
-      }
-    case "COMPLETED":
-      return {
-        label: "Completed",
-        color: "bg-green-100 text-green-800 border-green-200",
-        icon: CheckCircle,
-        description: "Service has been completed and payment released"
-      }
-    case "CANCELLED":
-      return {
-        label: "Cancelled",
-        color: "bg-red-100 text-red-800 border-red-200",
-        icon: X,
-        description: "Booking has been cancelled"
-      }
-    case "DISPUTED":
-      return {
-        label: "Disputed",
-        color: "bg-red-100 text-red-800 border-red-200",
-        icon: AlertTriangle,
-        description: "A dispute has been raised for this booking"
-      }
-    default:
-      return {
-        label: status.replace("_", " "),
-        color: "bg-gray-500/20 text-gray-300 border-gray-500/50",
-        icon: AlertCircle,
-        description: "Unknown status"
-      }
-  }
-}
-
-const getTimelineSteps = (status: string, hasPayment?: boolean) => {
+const getTimelineSteps = (status: string, payment?: { status: string } | null) => {
   const steps = [
     { id: "booked", label: "Booked", completed: true },
     { id: "confirmed", label: "Provider Confirmed", completed: ["CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
-    { id: "payment", label: "Payment Processing", completed: hasPayment && ["PENDING_EXECUTION", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+    { id: "payment", label: "Paid", completed: payment && ["ESCROW", "HELD_IN_ESCROW", "RELEASED", "COMPLETED"].includes(payment.status) },
     { id: "in_progress", label: "In Progress", completed: ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
     { id: "awaiting_confirmation", label: "Awaiting Confirmation", completed: ["AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
     { id: "completed", label: "Completed", completed: status === "COMPLETED" }
@@ -160,7 +113,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const [showDetails, setShowDetails] = useState(false)
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
   const [isFlipping, setIsFlipping] = useState(false)
   const [previousStatus, setPreviousStatus] = useState(booking.status)
 
@@ -186,12 +138,11 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return hoursDiff < 24
   }
 
-  const timelineSteps = getTimelineSteps(booking.status, Boolean(booking.payment))
+  const timelineSteps = getTimelineSteps(booking.status, booking.payment)
   
   // Enhanced payment status checking with better logic
   const hasPayment = booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(booking.payment.status)
   const isPaymentProcessing = booking.payment && ['PENDING'].includes(booking.payment.status)
-  const isPaymentFailed = booking.payment && ['FAILED'].includes(booking.payment.status)
   const isPaymentInEscrow = booking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)
 
   // Check if payment is stuck in processing state (more than 8 minutes)
@@ -208,26 +159,13 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return minutesDiff > 8
   }
 
-  // Check if payment is taking longer than expected (but not necessarily stuck)
-  const isPaymentDelayed = () => {
-    if (!booking.payment || !isPaymentProcessing) return false
-    if (!booking.payment.createdAt) return false
-    
-    const now = new Date()
-    const created = new Date(booking.payment.createdAt)
-    const minutesDiff = (now.getTime() - created.getTime()) / (1000 * 60)
-    
-    // Show gentle warning after 5 minutes
-    return minutesDiff > 5 && minutesDiff <= 8
-  }
-
   // Use the provided refresh function instead of making direct API calls
   const handleCheckStatus = async () => {
     if (onRefresh) {
       try {
         await onRefresh(booking.id)
         showToast.success("Payment status checked successfully!")
-      } catch (error) {
+      } catch {
         showToast.error("Unable to check payment status. Please try again.")
       }
     }
@@ -257,7 +195,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     }
 
     setIsProcessingPayment(true)
-    setPaymentStatus('PENDING')
     
     try {
       const result = await processPayment(booking.id)
@@ -275,7 +212,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
           setTimeout(() => {
             if (isPaymentProcessing) {
               setIsProcessingPayment(false)
-              setPaymentStatus(null)
               showToast.info("Payment processing timeout. Please check your payment status.")
             }
           }, 300000) // 5 minutes timeout
@@ -283,13 +219,11 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
           // Redirect failed, show manual option
           showToast.warning("Redirect failed. Please manually navigate to the payment gateway.")
           setIsProcessingPayment(false)
-          setPaymentStatus(null)
         }
         
       } else if (result.success) {
         // Payment processed without redirect (e.g., already paid)
         handlePaymentResult(result, onStatusChange, booking.id)
-        setPaymentStatus('COMPLETED')
         setIsProcessingPayment(false)
         
         // Only refresh if payment was actually completed
@@ -311,7 +245,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
           }
         } catch {}
         showToast.error(result.message || "Payment failed. Please try again.")
-        setPaymentStatus('FAILED')
         setIsProcessingPayment(false)
       }
     } catch (error) {
@@ -329,7 +262,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
         }
       } catch {}
       showToast.error("Network error. Please try again.")
-      setPaymentStatus('FAILED')
       setIsProcessingPayment(false)
     }
   }
@@ -339,7 +271,11 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   // If booking is confirmed and no completed/escrowed payment, allow pay/continue
   const canPay = (booking.status === "CONFIRMED") && (!booking.payment || booking.payment.status === 'PENDING' || booking.payment.status === 'FAILED')
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
-  const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
+  const canConfirmCompletion = (booking.status === "AWAITING_CONFIRMATION") || 
+    (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
+  
+  // Hide button if payment is already released
+  const isPaymentReleased = booking.payment && ["RELEASED", "COMPLETED"].includes(booking.payment.status)
   const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)
   
   // Prevent payment if already processing or stuck
@@ -347,23 +283,36 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
   const handleConfirmCompletion = async () => {
     try {
+      console.log(`🚀 Attempting to confirm completion for booking ${booking.id}`);
+      
       const response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include' // Ensure cookies are sent
       })
+      
+      console.log(`📡 Response status: ${response.status}`);
       
       if (response.ok) {
         const data = await response.json()
+        console.log(`✅ Success response:`, data);
         showToast.success(data.message || "Job completion confirmed! Payment will be released to provider.")
         onStatusChange?.(booking.id, "COMPLETED")
         // Refresh the page to update the status
         window.location.reload()
       } else {
         const errorData = await response.json()
+        console.error(`❌ Error response:`, errorData);
         showToast.error(errorData.error || "Failed to confirm completion")
+        
+        // If it's an authentication error, redirect to login
+        if (response.status === 401) {
+          console.log('🔐 Authentication error, redirecting to login');
+          window.location.href = '/login';
+        }
       }
     } catch (error) {
-      console.error("Confirm completion error:", error)
+      console.error("❌ Confirm completion error:", error)
       showToast.error("Network error. Please try again.")
     }
   }
@@ -374,9 +323,12 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   }
 
   // Normalize booking for BookingActionsModal expected shape
-  const modalBooking = {
+  const modalBooking: ModalBooking = {
     id: booking.id,
-    service: booking.service,
+    service: {
+      name: booking.service.name,
+      category: booking.service.category?.name || 'No Category'
+    },
     provider: booking.provider
       ? {
           businessName: booking.provider.businessName,
@@ -445,7 +397,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   )}
                 </div>
                 <p className="text-base text-gray-300 truncate font-medium flex items-center space-x-2">
-                  <span>{booking.service.category}</span>
+                  <span>{booking.service.category?.name || 'No Category'}</span>
                   <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
                 </p>
               </div>
@@ -472,32 +424,25 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             <div className="flex items-center space-x-4 overflow-x-auto pb-3">
               {timelineSteps.map((step, index) => (
                 <div key={step.id} className="flex items-center flex-shrink-0">
-                  {/* Flipping Card */}
-                  <div className="relative w-16 h-16 perspective-1000">
-                    <div 
-                      className={`absolute inset-0 w-full h-full transition-transform duration-700 transform-style-preserve-3d ${
-                        step.completed ? 'rotate-y-180' : ''
-                      }`}
-                    >
-                      {/* Front of card (incomplete state) */}
-                      <div className="absolute inset-0 w-full h-full backface-hidden rounded-lg bg-white/10 backdrop-blur-sm border-2 border-gray-300/20 flex flex-col items-center justify-center">
-                        <div className="w-6 h-6 rounded-full bg-gray-600 text-white flex items-center justify-center text-xs font-bold mb-1">
-                          {index + 1}
-                        </div>
-                        <span className="text-xs text-gray-300 text-center leading-tight px-1">
-                          {step.label.split(' ').slice(0, 2).join(' ')}
-                        </span>
+                  {/* Simple Timeline Step */}
+                  <div className="relative w-16 h-16">
+                    <div className={`w-full h-full rounded-lg border-2 flex flex-col items-center justify-center transition-all duration-300 ${
+                      step.completed 
+                        ? 'bg-gradient-to-br from-green-400 to-green-500 border-green-400 shadow-lg shadow-green-400/30' 
+                        : 'bg-white/10 backdrop-blur-sm border-gray-300/20'
+                    }`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${
+                        step.completed 
+                          ? 'bg-white text-green-600' 
+                          : 'bg-gray-600 text-white'
+                      }`}>
+                        {step.completed ? '✓' : index + 1}
                       </div>
-                      
-                      {/* Back of card (completed state) */}
-                      <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-lg bg-gradient-to-br from-blue-400 to-blue-500 border-2 border-blue-400 flex flex-col items-center justify-center shadow-lg">
-                        <div className="w-6 h-6 rounded-full bg-white text-blue-600 flex items-center justify-center text-xs font-bold mb-1">
-                          ✓
-                        </div>
-                        <span className="text-xs text-white text-center leading-tight px-1 font-medium">
-                          {step.label.split(' ').slice(0, 2).join(' ')}
-                        </span>
-                      </div>
+                      <span className={`text-xs text-center leading-tight px-1 font-medium ${
+                        step.completed ? 'text-white' : 'text-gray-300'
+                      }`}>
+                        {step.label.split(' ').slice(0, 2).join(' ')}
+                      </span>
                     </div>
                   </div>
                   
@@ -514,10 +459,11 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
           {/* Payment Status Display */}
           <PaymentStatusDisplay
-            payment={(booking.payment ?? null) as any}
+            payment={booking.payment ?? null}
             isProcessing={isProcessingPayment}
             onCheckStatus={handleCheckStatus}
             allowContinue={booking.status === 'CONFIRMED'}
+            bookingStatus={booking.status}
           />
           
           {/* Premium Details Grid */}
@@ -633,7 +579,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 </Button>
               )}
               
-              {canConfirmCompletion && (
+              {canConfirmCompletion && !isPaymentReleased && (
                 <Button 
                   size="sm" 
                   onClick={handleConfirmCompletion} 
@@ -642,6 +588,13 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   <CheckCircle className="w-4 h-4 mr-1" />
                   Confirm Completion
                 </Button>
+              )}
+              
+              {isPaymentReleased && (
+                <div className="flex items-center text-green-600 text-sm font-medium">
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  Payment Released
+                </div>
               )}
               
               {canDispute && (
@@ -737,7 +690,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             <div className="mt-4 pt-4 border-t border-white/20">
               <ReviewSection
                 bookingId={booking.id}
-                existingReview={booking.review ? { ...booking.review, createdAt: new Date(booking.createdAt) } as any : null}
+                existingReview={booking.review ? { ...booking.review, createdAt: new Date(booking.createdAt) } : null}
               />
             </div>
           )}
@@ -747,7 +700,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       
       {/* Booking Actions Modal */}
       <BookingActionsModal
-        booking={modalBooking as any}
+        booking={modalBooking}
         isOpen={showActionsModal}
         onClose={() => setShowActionsModal(false)}
         onUpdate={(bookingId, updates) => {

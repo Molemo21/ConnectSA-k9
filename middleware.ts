@@ -41,7 +41,12 @@ const PUBLIC_API_ENDPOINTS = [
   '/api/auth/test-login-simple',
   '/api/client-logs',
   '/api/debug/provider-bookings',
-  '/api/debug/simple-check'
+  '/api/debug/simple-check',
+  '/api/admin/assign-services',
+  '/api/payment/verify',
+  '/api/webhooks/paystack',
+  '/api/book-service/discover-providers',
+  '/api/book-service/refresh'
 ];
 
 export async function middleware(request: NextRequest) {

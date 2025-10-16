@@ -233,29 +233,48 @@ export function RecentBookingCard({
 
   // Determine if confirm completion button should be shown
   const canConfirmCompletion = () => {
-    return booking.status === 'AWAITING_CONFIRMATION'
+    return (booking.status === "AWAITING_CONFIRMATION") || 
+      (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
+  }
+  
+  // Hide button if payment is already released
+  const isPaymentReleased = () => {
+    return booking.payment && ["RELEASED", "COMPLETED"].includes(booking.payment.status)
   }
 
   // Handle confirm completion
   const handleConfirmCompletion = async () => {
     try {
+      console.log(`🚀 Attempting to confirm completion for booking ${booking.id}`);
+      
       const response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include' // Ensure cookies are sent
       })
+      
+      console.log(`📡 Response status: ${response.status}`);
       
       if (response.ok) {
         const data = await response.json()
+        console.log(`✅ Success response:`, data);
         showToast.success(data.message || "Job completion confirmed! Payment will be released to provider.")
         onRefresh?.() // Refresh the booking data
         // Refresh the page to update the status
         window.location.reload()
       } else {
         const errorData = await response.json()
+        console.error(`❌ Error response:`, errorData);
         showToast.error(errorData.error || "Failed to confirm completion")
+        
+        // If it's an authentication error, redirect to login
+        if (response.status === 401) {
+          console.log('🔐 Authentication error, redirecting to login');
+          window.location.href = '/login';
+        }
       }
     } catch (error) {
-      console.error("Confirm completion error:", error)
+      console.error("❌ Confirm completion error:", error)
       showToast.error("Network error. Please try again.")
     }
   }
@@ -476,7 +495,7 @@ export function RecentBookingCard({
                 </Button>
               )}
               
-              {canConfirmCompletion() && (
+              {canConfirmCompletion() && !isPaymentReleased() && (
                 <Button
                   size="sm"
                   onClick={handleConfirmCompletion}
@@ -486,6 +505,13 @@ export function RecentBookingCard({
                   <CheckCircle className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
                   <span className="relative z-10">Confirm Completion</span>
                 </Button>
+              )}
+              
+              {isPaymentReleased() && (
+                <div className="flex items-center text-green-600 text-sm font-medium px-6 py-3">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Payment Released
+                </div>
               )}
             </div>
             
