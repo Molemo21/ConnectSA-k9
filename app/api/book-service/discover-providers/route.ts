@@ -3,14 +3,21 @@ import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 
 // Create Prisma client instance with working configuration
+// Force regeneration to ensure latest schema is used
 const prisma = new PrismaClient({
   datasources: {
     db: {
       url: "postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=15&pool_timeout=60&connection_limit=5"
     }
   },
-  log: ['error'],
-  errorFormat: 'pretty'
+  log: ['error', 'warn'],
+  errorFormat: 'pretty',
+  // Force schema refresh
+  __internal: {
+    engine: {
+      binaryTargets: ['native']
+    }
+  }
 });
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +41,31 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Validate that PENDING_EXECUTION enum exists in the database
+    try {
+      const enumCheck = await prisma.$queryRaw`
+        SELECT enumlabel 
+        FROM pg_enum 
+        WHERE enumlabel = 'PENDING_EXECUTION' 
+        AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'BookingStatus')
+      `;
+      
+      if (enumCheck.length === 0) {
+        console.error('❌ PENDING_EXECUTION enum not found in database');
+        return NextResponse.json({
+          error: "Database schema issue: PENDING_EXECUTION enum missing",
+          details: "Please contact support to update the database schema"
+        }, { status: 500 });
+      }
+      
+      console.log('✅ PENDING_EXECUTION enum validation passed');
+    } catch (enumError) {
+      console.error('❌ Enum validation failed:', enumError);
+      return NextResponse.json({
+        error: "Database schema validation failed",
+        details: enumError instanceof Error ? enumError.message : 'Unknown error'
+      }, { status: 500 });
+    }
     // Provider discovery should be accessible without authentication
     // Users need to discover providers before they can book
     
