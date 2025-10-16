@@ -15,9 +15,212 @@ import {
   Target,
   Lightbulb,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { BrandHeader } from "@/components/ui/brand-header"
+import { useState, useEffect } from "react"
+
+// Team Carousel Component
+function TeamCarousel({ team }: { team: any[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isAutoRotating, setIsAutoRotating] = useState(true)
+
+  const nextSlide = () => {
+    if (isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev + 1) % team.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }
+
+  const prevSlide = () => {
+    if (isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentIndex((prev) => (prev - 1 + team.length) % team.length)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }
+
+  const goToSlide = (index: number) => {
+    if (isTransitioning || index === currentIndex) return
+    setIsTransitioning(true)
+    setCurrentIndex(index)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }
+
+  // Auto-rotation effect
+  useEffect(() => {
+    if (!isAutoRotating) return
+
+    const interval = setInterval(() => {
+      if (!isTransitioning) {
+        nextSlide()
+      }
+    }, 4000) // Rotate every 4 seconds
+
+    return () => clearInterval(interval)
+  }, [isAutoRotating, isTransitioning])
+
+  // Pause auto-rotation on hover
+  const handleMouseEnter = () => setIsAutoRotating(false)
+  const handleMouseLeave = () => setIsAutoRotating(true)
+
+  const getCardStyle = (index: number) => {
+    const distance = Math.abs(index - currentIndex)
+    const isActive = index === currentIndex
+    const isLeft = index < currentIndex
+    const isRight = index > currentIndex
+
+    let transform = ''
+    let opacity = 1
+    let scale = 1
+    let zIndex = 1
+
+    if (isActive) {
+      transform = 'translateX(0)'
+      scale = 1
+      zIndex = 10
+    } else if (isLeft) {
+      const offset = (currentIndex - index) * 100
+      transform = `translateX(-${offset}px)`
+      scale = 1 - (distance * 0.1)
+      opacity = 1 - (distance * 0.2)
+      zIndex = 5 - distance
+    } else if (isRight) {
+      const offset = (index - currentIndex) * 100
+      transform = `translateX(${offset}px)`
+      scale = 1 - (distance * 0.1)
+      opacity = 1 - (distance * 0.2)
+      zIndex = 5 - distance
+    }
+
+    return {
+      transform,
+      opacity: Math.max(opacity, 0.3),
+      scale,
+      zIndex,
+      transition: isTransitioning ? 'all 0.3s ease-in-out' : 'none'
+    }
+  }
+
+  return (
+    <div 
+      className="relative w-full max-w-6xl mx-auto"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Carousel Container */}
+      <div className="relative h-96 flex items-center justify-center overflow-hidden">
+        {team.map((member, index) => (
+          <div
+            key={index}
+            className="absolute flex flex-col items-center"
+            style={getCardStyle(index)}
+          >
+            {/* Photo Card */}
+            <Card className="w-72 h-80 bg-gray-800/80 border-gray-700 hover:bg-gray-800/90 transition-all duration-300 shadow-xl hover:shadow-2xl backdrop-blur-sm overflow-hidden rounded-xl hover:scale-105">
+              <div className="relative w-full h-full">
+                <div 
+                  className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500"
+                  style={{
+                    backgroundImage: `url(${member.image})`,
+                    filter: index === currentIndex 
+                      ? 'brightness(1)' 
+                      : 'grayscale(100%) brightness(0.8)'
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent hover:from-black/40 transition-all duration-300" />
+              </div>
+            </Card>
+            
+            {/* Title below card - only show for current card */}
+            {index === currentIndex && (
+              <div className="mt-4 text-center animate-fade-in">
+                <h3 
+                  className="text-lg font-semibold text-white mb-1 hover:text-white transition-colors duration-300"
+                  style={{
+                    textShadow: '0px -1px 0px rgba(0, 0, 0, 0.4)'
+                  }}
+                >
+                  {member.name}
+                </h3>
+                <p 
+                  className="text-blue-400 text-sm font-medium hover:text-blue-300 transition-colors duration-300"
+                  style={{
+                    textShadow: '0px -1px 0px rgba(0, 0, 0, 0.4)'
+                  }}
+                >
+                  {member.role}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Navigation Controls */}
+      <div className="flex items-center justify-center mt-8 space-x-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={prevSlide}
+          disabled={isTransitioning}
+          className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 disabled:opacity-50 hover:text-white hover:shadow-lg transition-all duration-300"
+          style={{
+            textShadow: '0px -1px 0px rgba(0, 0, 0, 0.4)'
+          }}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+
+        {/* Dots */}
+        <div className="flex space-x-2">
+          {team.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToSlide(index)}
+              className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                index === currentIndex
+                  ? 'bg-blue-500 scale-110'
+                  : 'bg-gray-600 hover:bg-gray-500'
+              }`}
+              disabled={isTransitioning}
+            />
+          ))}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={nextSlide}
+          disabled={isTransitioning}
+          className="bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 disabled:opacity-50 hover:text-white hover:shadow-lg transition-all duration-300"
+          style={{
+            textShadow: '0px -1px 0px rgba(0, 0, 0, 0.4)'
+          }}
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+
+        {/* Auto-rotation toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsAutoRotating(!isAutoRotating)}
+          className={`ml-4 bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 hover:text-white hover:shadow-lg transition-all duration-300 ${
+            isAutoRotating ? 'bg-green-600/20 border-green-500' : ''
+          }`}
+          style={{
+            textShadow: '0px -1px 0px rgba(0, 0, 0, 0.4)'
+          }}
+        >
+          <div className={`w-2 h-2 rounded-full ${isAutoRotating ? 'bg-green-400' : 'bg-gray-400'}`} />
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export default function AboutPage() {
   const values = [
@@ -27,11 +230,13 @@ export default function AboutPage() {
   ]
 
   const team = [
-    { name: "Bubele Mbizeni", role: "Chief Financial Officer", description: "Numbers tell a story—my job is to make sure it's a successful one.", image: "Bubele Mbizeni card background" },
-    { name: "Qhawe Mlengana", role: "Project Manager", description: "Great things are never done alone—they're done with great teams.", image: "Qhawe Mlengana card background" },
-    { name: "Molemo Nakin", role: "Operations Manager & Lead Developer", description: "Clean code. Clear process. Connected people.", image: "Molemo Nakin card background" },
-    { name: "Nontlahla Adonis", role: "Communications & Marketing Manager", description: "A strong message turns interest into trust—and trust into loyalty.", image: "Nontlahla Adonis card background" },
-    { name: "Aphiwe Gaya", role: "Business Analyst", description: "Analysis is the bridge between questions and answers that matter.", image: "Aphiwe Gaya card background" },
+    { name: "Bubele Mbizeni", role: "Chief Financial Officer", image: "/BBm.jpg" },
+    { name: "Qhawe Mlengana", role: "Project Manager", image: "/QM.jpg" },
+    { name: "Molemo Nakin", role: "Operations Manager & Lead Developer", image: "/MN.jpg" },
+    { name: "Nontlahla Adonis", role: "Communications & Marketing Manager", image: "/NA.jpg" },
+    { name: "Aphiwe Gaya", role: "Business Analyst", image: "/AG.jpg" },
+    { name: "Asiphe Sikrenya", role: "Intern (Admin)", image: "/AS.jpg" },
+    { name: "Ezam Mngombane", role: "Intern (Social Media)", image: "/EM.jpg" },
   ]
 
   const stats = [
@@ -176,33 +381,25 @@ export default function AboutPage() {
       </section>
 
       {/* Team */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-900 relative overflow-hidden">
-        <div className="container px-4 md:px-6">
+      <section className="w-full py-12 md:py-24 lg:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 w-full h-full z-0">
+          <div 
+            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: "url('/back.jpg')",
+              backgroundSize: "cover"
+            }}
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+        <div className="container px-4 md:px-6 relative z-10">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white animate-fade-in">
               Meet Our Leadership Team
             </h2>
-            <p className="text-lg text-gray-300 leading-relaxed animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-              The passionate individuals driving ProLiink Connect's mission forward.
-            </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {team.map((member, index) => (
-              <Card key={index} className="bg-gray-800/50 border-gray-700 text-center hover:bg-gray-800/70 transition-all duration-300 hover:scale-105 shadow-xl backdrop-blur-sm animate-slide-in-up" style={{ animationDelay: `${0.1 * index}s` }}>
-                <CardContent className="p-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <span className="text-white font-bold text-2xl">
-                      {member.name.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-1">{member.name}</h3>
-                  <p className="text-blue-400 text-sm mb-3 font-medium">{member.role}</p>
-                  <p className="text-gray-300 text-sm italic leading-relaxed">"{member.description}"</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <TeamCarousel team={team} />
         </div>
       </section>
 
