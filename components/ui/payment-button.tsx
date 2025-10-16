@@ -84,6 +84,14 @@ export function PaymentButton({ bookingId, amount, onSuccess, onError }: Payment
       if (!response.ok) {
         const errorMessage = data.error || data.message || 'Payment initialization failed';
         logger.error('Payment API error', { bookingId, status: response.status, error: errorMessage });
+        
+        // Handle authentication errors specifically
+        if (response.status === 401) {
+          logger.warn('Authentication error, redirecting to login', { bookingId });
+          window.location.href = '/login';
+          return;
+        }
+        
         throw new Error(errorMessage);
       }
 
