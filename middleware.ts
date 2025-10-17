@@ -31,6 +31,7 @@ const PUBLIC_API_ENDPOINTS = [
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/logout',
+  '/api/auth/me', // CRITICAL: Allow auth check without middleware blocking
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
   '/api/auth/verify-email',

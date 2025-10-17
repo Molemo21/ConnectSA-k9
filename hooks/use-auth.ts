@@ -12,13 +12,15 @@ interface AuthState {
   user: User | null
   loading: boolean
   error: string | null
+  isAuthenticated: boolean
 }
 
 // Global auth state to prevent duplicate API calls
 let globalAuthState: AuthState = {
   user: null,
   loading: false,
-  error: null
+  error: null,
+  isAuthenticated: false
 }
 
 let authPromise: Promise<AuthState> | null = null
@@ -52,21 +54,24 @@ export function useAuth() {
           globalAuthState = {
             user: data.user,
             loading: false,
-            error: null
+            error: null,
+            isAuthenticated: true
           }
         } else {
           // Don't treat 401 as an error - it's expected for unauthenticated users
           globalAuthState = {
             user: null,
             loading: false,
-            error: response.status === 401 ? null : `Authentication failed: ${response.status}`
+            error: response.status === 401 ? null : `Authentication failed: ${response.status}`,
+            isAuthenticated: false
           }
         }
       } catch (error) {
         globalAuthState = {
           user: null,
           loading: false,
-          error: 'Network error'
+          error: 'Network error',
+          isAuthenticated: false
         }
       } finally {
         authPromise = null
@@ -84,13 +89,13 @@ export function useAuth() {
   }, [fetchUser])
 
   const refreshAuth = useCallback(() => {
-    globalAuthState = { user: null, loading: false, error: null }
+    globalAuthState = { user: null, loading: false, error: null, isAuthenticated: false }
     authPromise = null
     fetchUser()
   }, [fetchUser])
 
   const logout = useCallback(() => {
-    globalAuthState = { user: null, loading: false, error: null }
+    globalAuthState = { user: null, loading: false, error: null, isAuthenticated: false }
     authPromise = null
     setAuthState(globalAuthState)
   }, [])
@@ -99,8 +104,8 @@ export function useAuth() {
     user: authState.user,
     loading: authState.loading,
     error: authState.error,
+    isAuthenticated: authState.isAuthenticated,
     refreshAuth,
-    logout,
-    isAuthenticated: !!authState.user
+    logout
   }
 }
