@@ -85,6 +85,16 @@ interface EnhancedBookingCardProps {
 }
 
 const getTimelineSteps = (status: string, payment?: { status: string } | null) => {
+  // Debug logging for payment status
+  console.log('🔍 Enhanced Timeline Debug:', {
+    bookingStatus: status,
+    payment: payment ? {
+      status: payment.status
+    } : null,
+    hasPayment: !!payment,
+    paymentStatusValid: payment && ["ESCROW", "HELD_IN_ESCROW", "RELEASED", "COMPLETED"].includes(payment.status)
+  })
+
   const steps = [
     { id: "booked", label: "Booked", completed: true },
     { id: "confirmed", label: "Provider Confirmed", completed: ["CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },

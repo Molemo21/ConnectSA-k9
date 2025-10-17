@@ -150,6 +150,20 @@ export function RecentBookingCard({
 
   // Get timeline steps for booking progress
   const getTimelineSteps = (status: string, payment: any) => {
+    // Debug logging for payment status
+    console.log('🔍 Timeline Debug:', {
+      bookingId: booking.id,
+      bookingStatus: status,
+      payment: payment ? {
+        id: payment.id,
+        status: payment.status,
+        amount: payment.amount,
+        paidAt: payment.paidAt
+      } : null,
+      hasPayment: !!payment,
+      paymentStatusValid: payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(payment.status)
+    })
+
     const steps = [
       { id: 'booked', label: 'Booked', completed: true },
       { id: 'confirmed', label: 'Confirmed', completed: ['CONFIRMED', 'PENDING_EXECUTION', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
