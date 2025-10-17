@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
             user: { select: { name: true } }
           }
         },
-        service: { select: { name: true } }
+        service: { select: { name: true, basePrice: true } }
       }
     });
     
@@ -88,9 +88,17 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Updating booking status to CONFIRMED:', { bookingId });
 
+    // Preserve existing amount or use service base price as fallback
+    const existingAmount = booking.totalAmount;
+    const servicePrice = booking.service?.basePrice || 150; // Default price if not set
+    const totalAmount = existingAmount > 0 ? existingAmount : servicePrice;
+
     const updated = await db.booking.update({
       where: { id: bookingId },
-      data: { status: "CONFIRMED" },
+      data: { 
+        status: "CONFIRMED",
+        totalAmount: totalAmount
+      },
     });
 
     console.log('✅ Booking accepted successfully:', {

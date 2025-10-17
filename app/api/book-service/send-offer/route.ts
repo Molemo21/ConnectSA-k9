@@ -218,17 +218,62 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ No booking conflicts found');
 
+    // Calculate proper pricing for the booking
+    let totalAmount = 0;
+    let platformFee = 0;
+    const duration = 2; // Default duration in hours
+
+    // Get provider's custom rate for this service
+    const providerService = await db.providerService.findFirst({
+      where: {
+        providerId: validated.providerId,
+        serviceId: actualServiceId
+      },
+      include: {
+        service: true
+      }
+    });
+
+    if (providerService?.customRate) {
+      totalAmount = providerService.customRate * duration;
+    } else if (provider.hourlyRate) {
+      totalAmount = provider.hourlyRate * duration;
+    } else if (providerService?.service?.basePrice) {
+      totalAmount = providerService.service.basePrice * duration;
+    } else {
+      // Fallback to default pricing
+      totalAmount = 150 * duration; // R150 per hour default
+    }
+
+    // Calculate platform fee (10% of total amount)
+    platformFee = totalAmount * 0.1;
+
+    // Validate that we have a valid amount
+    if (totalAmount <= 0) {
+      return NextResponse.json({ 
+        error: "Unable to determine service pricing. Please contact support.",
+        details: "The provider or service does not have proper pricing configured."
+      }, { status: 400 });
+    }
+
     // Create a booking with PENDING status (waiting for provider response)
-    console.log('📝 Creating booking...');
+    console.log('📝 Creating booking with calculated pricing...', {
+      totalAmount,
+      platformFee,
+      duration,
+      providerId: validated.providerId,
+      serviceId: actualServiceId
+    });
+    
     const booking = await db.booking.create({
       data: {
         clientId: user.id,
         providerId: validated.providerId,
         serviceId: actualServiceId,
         scheduledDate: new Date(`${validated.date}T${validated.time}`),
-        duration: 2, // Default duration in hours
-        totalAmount: provider.hourlyRate || 0,
-        platformFee: (provider.hourlyRate || 0) * 0.1, // 10% platform fee
+        duration,
+        totalAmount,
+        platformFee,
         description: validated.notes || null,
         address: validated.address,
         status: "PENDING", // This means waiting for provider to accept/decline

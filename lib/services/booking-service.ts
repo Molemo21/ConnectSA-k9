@@ -110,8 +110,10 @@ export class BookingService {
     date,
     time,
     address,
-    notes
-  }: CreateBookingParams) {
+    notes,
+    providerId,
+    duration = 2 // Default duration in hours
+  }: CreateBookingParams & { providerId?: string; duration?: number }) {
     // Validate service
     const service = await validateCleaningService(serviceId);
 
@@ -119,16 +121,64 @@ export class BookingService {
     const scheduledDate = createSADateTime(date, time);
 
     try {
+      // Calculate proper amount based on available pricing
+      let totalAmount = 0;
+      let platformFee = 0;
+
+      if (providerId) {
+        // If provider is specified, get their custom rate
+        const providerService = await db.providerService.findFirst({
+          where: {
+            providerId,
+            serviceId
+          },
+          include: {
+            provider: true,
+            service: true
+          }
+        });
+
+        if (providerService?.customRate) {
+          totalAmount = providerService.customRate * duration;
+        } else if (providerService?.provider?.hourlyRate) {
+          totalAmount = providerService.provider.hourlyRate * duration;
+        } else if (service.basePrice) {
+          totalAmount = service.basePrice * duration;
+        } else {
+          // Fallback to default pricing
+          totalAmount = 150 * duration; // R150 per hour default
+        }
+      } else {
+        // No specific provider - use service base price
+        if (service.basePrice) {
+          totalAmount = service.basePrice * duration;
+        } else {
+          // Fallback to default pricing
+          totalAmount = 150 * duration; // R150 per hour default
+        }
+      }
+
+      // Calculate platform fee (10% of total amount)
+      platformFee = totalAmount * 0.1;
+
+      // Validate that we have a valid amount
+      if (totalAmount <= 0) {
+        throw new Error(`Invalid booking amount calculated: R${totalAmount}. Please ensure the service has proper pricing configured.`);
+      }
+
       // Create the booking
       const booking = await db.booking.create({
         data: {
           clientId: userId,
           serviceId,
+          providerId: providerId || null,
           scheduledDate,
+          duration,
           address,
           notes,
           status: "PENDING" as BookingStatus,
-          totalAmount: 0, // Will be set when provider accepts
+          totalAmount,
+          platformFee,
         },
         include: {
           service: true,
@@ -146,8 +196,12 @@ export class BookingService {
         bookingId: booking.id,
         userId,
         serviceId,
+        providerId,
         scheduledDate: date,
-        scheduledTime: time
+        scheduledTime: time,
+        totalAmount,
+        platformFee,
+        duration
       });
 
       return booking;
@@ -155,8 +209,10 @@ export class BookingService {
       logBooking.error('create', 'Failed to create booking', error as Error, {
         userId,
         serviceId,
+        providerId,
         scheduledDate: date,
         scheduledTime: time,
+        duration,
         error_code: 'DB_ERROR'
       });
       throw error;
