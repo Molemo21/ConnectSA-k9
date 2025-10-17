@@ -132,26 +132,30 @@ export async function setAuthCookie(user: AuthUser) {
   const token = await signToken(user);
   const cookieStore = await cookies();
 
-  // Determine cookie domain configuration
-  let cookieDomain = undefined;
-  if (process.env.COOKIE_DOMAIN) {
-    // If COOKIE_DOMAIN is set to the exact domain (e.g., "app.proliinkconnect.co.za"),
-    // remove it to let the browser handle it automatically for better compatibility
-    if (process.env.COOKIE_DOMAIN === 'app.proliinkconnect.co.za') {
-      cookieDomain = undefined; // Let browser handle domain automatically
-    } else {
-      cookieDomain = process.env.COOKIE_DOMAIN;
-    }
-  }
-
-  cookieStore.set('auth-token', token, {
+  // Enhanced cookie configuration for better compatibility
+  const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: '/',
-    domain: cookieDomain,
     maxAge: 60 * 60 * 24 * 7, // 7 days
-  })
+  };
+
+  // Only set domain if explicitly configured and not the exact domain
+  if (process.env.COOKIE_DOMAIN && process.env.COOKIE_DOMAIN !== 'app.proliinkconnect.co.za') {
+    cookieOptions.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  console.log('🍪 Setting auth cookie:', {
+    userId: user.id,
+    userEmail: user.email,
+    cookieDomain: cookieOptions.domain || 'default',
+    secure: cookieOptions.secure,
+    sameSite: cookieOptions.sameSite,
+    maxAge: cookieOptions.maxAge
+  });
+
+  cookieStore.set('auth-token', token, cookieOptions);
 }
 
 export async function clearAuthCookie() {

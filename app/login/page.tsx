@@ -27,26 +27,39 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      console.log('🔐 Attempting login:', { email: formData.email })
+      
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json"
         },
         body: JSON.stringify(formData),
+        credentials: 'include' // Ensure cookies are sent
+      })
+
+      console.log('📡 Login response:', { 
+        status: response.status, 
+        statusText: response.statusText,
+        ok: response.ok 
       })
 
       const data = await response.json()
+      console.log('📄 Login response data:', data)
 
       if (response.ok) {
         showToast.success("Welcome back! You've been successfully logged in.")
         
-        // Redirect based on user role
-        router.push(data.redirectUrl || "/dashboard")
+        console.log('🔄 Redirecting to:', data.redirectUrl || "/dashboard")
+        
+        // Use window.location.href for more reliable redirect
+        window.location.href = data.redirectUrl || "/dashboard"
       } else {
+        console.error('❌ Login failed:', data.error)
         showToast.error(data.error || "Login failed. Please check your credentials and try again.")
       }
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("❌ Login error:", error)
       showToast.error("Network error. Please check your connection and try again.")
     } finally {
       setIsLoading(false)
