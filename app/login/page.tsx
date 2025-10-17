@@ -46,14 +46,23 @@ export default function LoginPage() {
 
       const data = await response.json()
       console.log('📄 Login response data:', data)
+      console.log('📊 Response details:', {
+        status: response.status,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      })
 
       if (response.ok) {
+        console.log('✅ Login successful!')
         showToast.success("Welcome back! You've been successfully logged in.")
         
-        console.log('🔄 Redirecting to:', data.redirectUrl || "/dashboard")
+        console.log('🔄 About to redirect to:', data.redirectUrl || "/dashboard")
         
-        // Use window.location.href for more reliable redirect
-        window.location.href = data.redirectUrl || "/dashboard"
+        // Add a small delay to see the logs before redirect
+        setTimeout(() => {
+          console.log('🚀 Executing redirect now...')
+          window.location.href = data.redirectUrl || "/dashboard"
+        }, 1000)
       } else {
         console.error('❌ Login failed:', data.error)
         showToast.error(data.error || "Login failed. Please check your credentials and try again.")
