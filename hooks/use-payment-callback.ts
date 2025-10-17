@@ -50,14 +50,93 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
       sessionStorage.setItem('payment_callback_any', '1')
       ;(window as any).__PAYMENT_CALLBACK_HANDLED = true
 
-      showToast.success('Payment completed successfully! Refreshing booking status...')
+      showToast.success('Payment completed successfully! Verifying payment...')
 
       ;(async () => {
         try {
+          // Verify payment with Paystack if we have a reference
+          if (refKey) {
+            console.log('🔍 Verifying payment with reference:', refKey)
+            
+            const verifyResponse = await fetch('/api/payment/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({ reference: refKey })
+            })
+
+            if (verifyResponse.ok) {
+              const verifyData = await verifyResponse.json()
+              console.log('✅ Payment verification successful:', verifyData)
+              showToast.success('Payment verified successfully!')
+              
+              // Force refresh all booking data after successful verification
+              if (optionsRef.current.onRefreshAll) {
+                console.log('🔄 Forcing refresh of all booking data...')
+                await optionsRef.current.onRefreshAll()
+              }
+            } else {
+              console.warn('⚠️ Payment verification failed:', await verifyResponse.text())
+              showToast.warning('Payment completed but verification failed. Refreshing booking data...')
+              
+              // Try to refresh booking data directly as fallback
+              try {
+                const refreshResponse = await fetch(`/api/book-service/${bookingId}/refresh`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ bookingId })
+                })
+                
+                if (refreshResponse.ok) {
+                  const refreshData = await refreshResponse.json()
+                  console.log('✅ Booking data refreshed successfully:', refreshData)
+                  showToast.success('Payment completed! Booking status updated.')
+                  
+                  // Force refresh all booking data
+                  if (optionsRef.current.onRefreshAll) {
+                    await optionsRef.current.onRefreshAll()
+                  }
+                }
+              } catch (refreshError) {
+                console.error('Failed to refresh booking data:', refreshError)
+              }
+            }
+          } else {
+            // No reference, just refresh booking data
+            console.log('🔄 No payment reference, refreshing booking data directly...')
+            try {
+              const refreshResponse = await fetch(`/api/book-service/${bookingId}/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ bookingId })
+              })
+              
+              if (refreshResponse.ok) {
+                console.log('✅ Booking data refreshed successfully')
+                showToast.success('Payment completed! Booking status updated.')
+                
+                // Force refresh all booking data
+                if (optionsRef.current.onRefreshAll) {
+                  await optionsRef.current.onRefreshAll()
+                }
+              }
+            } catch (refreshError) {
+              console.error('Failed to refresh booking data:', refreshError)
+            }
+          }
+
+          // Refresh booking data
           if (optionsRef.current.onRefreshBooking) {
             await optionsRef.current.onRefreshBooking(bookingId)
           }
-        } catch {}
+        } catch (error) {
+          console.error('Payment verification error:', error)
+          showToast.warning('Payment completed but verification failed. Status will update shortly.')
+        }
 
         try {
           if (optionsRef.current.onRefreshAll) {

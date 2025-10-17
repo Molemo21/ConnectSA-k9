@@ -1167,43 +1167,61 @@ export function MobileClientDashboard() {
     onRefreshAll: refreshAllBookings
   })
 
-  // Auto-refresh mechanism for payment status updates
+  // Enhanced auto-refresh mechanism for payment status updates
   useEffect(() => {
     if (!bookings.length || !user) return
 
     const hasPaymentBookings = bookings.some(booking => 
-      booking.payment && ['PENDING', 'ESCROW'].includes(booking.payment.status)
+      booking.payment && ['PENDING', 'ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)
     )
 
     if (!hasPaymentBookings) return
 
+    console.log('🔄 Starting payment status polling for', bookings.length, 'bookings')
+
     const pollInterval = setInterval(async () => {
       try {
-        const currentBookings = await fetch('/api/bookings/my-bookings').then(res => res.json()).catch(() => null)
+        console.log('🔍 Polling for payment status updates...')
+        const currentBookings = await fetch('/api/bookings/my-bookings', {
+          credentials: 'include'
+        }).then(res => res.json()).catch(() => null)
         
         if (currentBookings && currentBookings.bookings) {
           let hasChanges = false
+          let changeDetails = []
           
           currentBookings.bookings.forEach((currentBooking: any) => {
             const storedBooking = bookings.find(b => b.id === currentBooking.id)
             if (storedBooking && storedBooking.payment && currentBooking.payment) {
               if (storedBooking.payment.status !== currentBooking.payment.status) {
                 hasChanges = true
+                changeDetails.push({
+                  bookingId: currentBooking.id,
+                  oldStatus: storedBooking.payment.status,
+                  newStatus: currentBooking.payment.status
+                })
               }
             }
           })
           
           if (hasChanges && refreshAllBookings) {
+            console.log('✅ Payment status changes detected:', changeDetails)
             await refreshAllBookings()
             setLastRefresh(new Date())
+            console.log('🔄 Booking data refreshed successfully')
+          } else {
+            console.log('ℹ️ No payment status changes detected')
           }
         }
       } catch (error) {
         console.error('Payment status polling error:', error)
       }
-    }, 8000)
+    }, 5000) // Reduced interval to 5 seconds for faster updates
 
-    return () => clearInterval(pollInterval)
+    return () => {
+      console.log('🛑 Stopping payment status polling')
+      clearInterval(pollInterval)
+    }
   }, [bookings, user, refreshAllBookings])
 
   useEffect(() => {

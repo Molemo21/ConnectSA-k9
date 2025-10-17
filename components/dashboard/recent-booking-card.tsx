@@ -487,6 +487,42 @@ export function RecentBookingCard({
                 <span className="relative z-10">View Details</span>
               </Button>
               
+              {/* Show refresh button for bookings with pending payments */}
+              {booking.payment && ['PENDING', 'ESCROW'].includes(booking.payment.status) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      console.log('🔄 Manual refresh requested for booking:', booking.id)
+                      const response = await fetch(`/api/book-service/${booking.id}/refresh`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ bookingId: booking.id })
+                      })
+                      
+                      if (response.ok) {
+                        const data = await response.json()
+                        console.log('✅ Booking refreshed:', data)
+                        showToast.success('Booking status updated!')
+                        onRefresh?.()
+                      } else {
+                        showToast.error('Failed to refresh booking status')
+                      }
+                    } catch (error) {
+                      console.error('Refresh error:', error)
+                      showToast.error('Failed to refresh booking status')
+                    }
+                  }}
+                  className="relative overflow-hidden bg-blue-400/10 border-blue-400/40 text-blue-300 hover:text-white hover:bg-blue-400/20 hover:border-blue-400/60 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-400/25 px-4 py-2 rounded-xl font-semibold group/btn"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
+                  <RefreshCw className="w-3 h-3 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
+                  <span className="relative z-10">Refresh</span>
+                </Button>
+              )}
+              
               {canPay() && (
                 <Button
                   size="sm"
