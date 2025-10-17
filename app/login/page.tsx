@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -13,7 +12,6 @@ import { showToast } from "@/lib/toast"
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from "lucide-react"
 
 export default function LoginPage() {
-  const router = useRouter()
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -24,6 +22,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🚀 Form submitted!', { email: formData.email, password: formData.password ? '***' : 'empty' })
+    alert('Form submitted! Check console for details.')
     setIsLoading(true)
 
     try {
