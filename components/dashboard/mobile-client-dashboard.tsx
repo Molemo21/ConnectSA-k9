@@ -1118,36 +1118,29 @@ export function MobileClientDashboard() {
 
   const searchParams = useSearchParams()
 
-  // Global redirect tracker
+  // Simple redirect tracker using console.log
   useEffect(() => {
-    const originalLocationHref = window.location.href
-    const originalLocationReplace = window.location.replace
-    const originalLocationAssign = window.location.assign
+    console.log('🔍 Dashboard component mounted at:', window.location.href)
     
-    // Override window.location.href
-    Object.defineProperty(window.location, 'href', {
-      get: function() {
-        return originalLocationHref
-      },
-      set: function(url) {
-        console.log('🚨 REDIRECT DETECTED: window.location.href =', url)
-        console.trace('Redirect call stack:')
-        return originalLocationHref
-      }
-    })
+    // Track any redirects by monitoring location changes
+    const originalPushState = history.pushState
+    const originalReplaceState = history.replaceState
     
-    // Override window.location.replace
-    window.location.replace = function(url) {
-      console.log('🚨 REDIRECT DETECTED: window.location.replace(', url, ')')
-      console.trace('Replace call stack:')
-      return originalLocationReplace.call(this, url)
+    history.pushState = function(...args) {
+      console.log('🚨 REDIRECT DETECTED: history.pushState', args[2])
+      console.trace('PushState call stack:')
+      return originalPushState.apply(this, args)
     }
     
-    // Override window.location.assign
-    window.location.assign = function(url) {
-      console.log('🚨 REDIRECT DETECTED: window.location.assign(', url, ')')
-      console.trace('Assign call stack:')
-      return originalLocationAssign.call(this, url)
+    history.replaceState = function(...args) {
+      console.log('🚨 REDIRECT DETECTED: history.replaceState', args[2])
+      console.trace('ReplaceState call stack:')
+      return originalReplaceState.apply(this, args)
+    }
+    
+    return () => {
+      history.pushState = originalPushState
+      history.replaceState = originalReplaceState
     }
   }, [])
 
@@ -1245,6 +1238,13 @@ export function MobileClientDashboard() {
         }
         
         console.log('✅ User authenticated:', user.email)
+
+        // Check if we're already on the dashboard to prevent redirect loops
+        if (window.location.pathname === '/dashboard') {
+          console.log('✅ Already on dashboard, proceeding with data fetch')
+        } else {
+          console.log('🔄 Not on dashboard, current path:', window.location.pathname)
+        }
 
         if (user.role === "PROVIDER") {
           console.log('🔄 User is provider, redirecting to provider dashboard')
