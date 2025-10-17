@@ -83,21 +83,41 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
               
               // Try to refresh booking data directly as fallback
               try {
-                const refreshResponse = await fetch(`/api/book-service/${bookingId}/refresh`, {
+                // First try payment recovery
+                const recoveryResponse = await fetch('/api/payment/recover', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
                   body: JSON.stringify({ bookingId })
                 })
                 
-                if (refreshResponse.ok) {
-                  const refreshData = await refreshResponse.json()
-                  console.log('✅ Booking data refreshed successfully:', refreshData)
-                  showToast.success('Payment completed! Booking status updated.')
+                if (recoveryResponse.ok) {
+                  const recoveryData = await recoveryResponse.json()
+                  console.log('✅ Payment recovery successful:', recoveryData)
+                  showToast.success('Payment completed! Status updated.')
                   
                   // Force refresh all booking data
                   if (optionsRef.current.onRefreshAll) {
                     await optionsRef.current.onRefreshAll()
+                  }
+                } else {
+                  // Fallback to booking refresh
+                  const refreshResponse = await fetch(`/api/book-service/${bookingId}/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ bookingId })
+                  })
+                  
+                  if (refreshResponse.ok) {
+                    const refreshData = await refreshResponse.json()
+                    console.log('✅ Booking data refreshed successfully:', refreshData)
+                    showToast.success('Payment completed! Booking status updated.')
+                    
+                    // Force refresh all booking data
+                    if (optionsRef.current.onRefreshAll) {
+                      await optionsRef.current.onRefreshAll()
+                    }
                   }
                 }
               } catch (refreshError) {
@@ -106,22 +126,42 @@ export function usePaymentCallback(options: PaymentCallbackOptions = {}) {
             }
           } else {
             // No reference, just refresh booking data
-            console.log('🔄 No payment reference, refreshing booking data directly...')
+            console.log('🔄 No payment reference, attempting payment recovery...')
             try {
-              const refreshResponse = await fetch(`/api/book-service/${bookingId}/refresh`, {
+              // First try payment recovery
+              const recoveryResponse = await fetch('/api/payment/recover', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ bookingId })
               })
               
-              if (refreshResponse.ok) {
-                console.log('✅ Booking data refreshed successfully')
-                showToast.success('Payment completed! Booking status updated.')
+              if (recoveryResponse.ok) {
+                const recoveryData = await recoveryResponse.json()
+                console.log('✅ Payment recovery successful:', recoveryData)
+                showToast.success('Payment completed! Status updated.')
                 
                 // Force refresh all booking data
                 if (optionsRef.current.onRefreshAll) {
                   await optionsRef.current.onRefreshAll()
+                }
+              } else {
+                // Fallback to booking refresh
+                const refreshResponse = await fetch(`/api/book-service/${bookingId}/refresh`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ bookingId })
+                })
+                
+                if (refreshResponse.ok) {
+                  console.log('✅ Booking data refreshed successfully')
+                  showToast.success('Payment completed! Booking status updated.')
+                  
+                  // Force refresh all booking data
+                  if (optionsRef.current.onRefreshAll) {
+                    await optionsRef.current.onRefreshAll()
+                  }
                 }
               }
             } catch (refreshError) {
