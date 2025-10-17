@@ -25,7 +25,6 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     console.log('🚀 Form submitted!', { email: formData.email, password: formData.password ? '***' : 'empty' })
-    alert('Form submitted! Check console for details.')
     setIsLoading(true)
 
     try {
