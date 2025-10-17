@@ -61,7 +61,16 @@ export default function LoginPage() {
         // Add a small delay to see the logs before redirect
         setTimeout(() => {
           console.log('🚀 Executing redirect now...')
-          window.location.href = data.redirectUrl || "/dashboard"
+          
+          // Try multiple redirect methods for better compatibility
+          try {
+            // Method 1: window.location.href (most reliable)
+            window.location.href = data.redirectUrl || "/dashboard"
+          } catch (error) {
+            console.error('❌ Redirect failed:', error)
+            // Method 2: window.location.replace (fallback)
+            window.location.replace(data.redirectUrl || "/dashboard")
+          }
         }, 1000)
       } else {
         console.error('❌ Login failed:', data.error)

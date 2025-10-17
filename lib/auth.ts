@@ -132,24 +132,20 @@ export async function setAuthCookie(user: AuthUser) {
   const token = await signToken(user);
   const cookieStore = await cookies();
 
-  // Enhanced cookie configuration for better compatibility
+  // Simplified cookie configuration - no domain restrictions
   const cookieOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: '/',
     maxAge: 60 * 60 * 24 * 7, // 7 days
+    // No domain specified - let browser handle it automatically
   };
-
-  // Only set domain if explicitly configured and not the exact domain
-  if (process.env.COOKIE_DOMAIN && process.env.COOKIE_DOMAIN !== 'app.proliinkconnect.co.za') {
-    cookieOptions.domain = process.env.COOKIE_DOMAIN;
-  }
 
   console.log('🍪 Setting auth cookie:', {
     userId: user.id,
     userEmail: user.email,
-    cookieDomain: cookieOptions.domain || 'default',
+    cookieDomain: 'auto (no domain specified)',
     secure: cookieOptions.secure,
     sameSite: cookieOptions.sameSite,
     maxAge: cookieOptions.maxAge
