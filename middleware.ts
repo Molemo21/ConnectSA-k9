@@ -12,7 +12,6 @@ const PUBLIC_PATHS = [
   '/verify-email',
   '/reset-password',
   '/forgot-password',
-  '/dashboard', // Temporarily add dashboard to test redirect
 ];
 
 // File paths that should always be public

@@ -1177,20 +1177,37 @@ export function MobileClientDashboard() {
       try {
         setLoading(true)
         
-        // Use centralized auth state
+        // Use centralized auth state - wait for auth to complete
         if (authLoading) {
+          console.log('🔄 Auth still loading, waiting...')
           return // Wait for auth to complete
         }
         
+        // Add a small delay to ensure cookie is set after login
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Check auth state with better error handling
         if (authError) {
-          console.log('Authentication failed, redirecting to login')
-          window.location.href = '/login'
+          console.log('❌ Authentication error:', authError)
+          // Don't redirect immediately - might be a temporary error
+          setTimeout(() => {
+            if (!user) {
+              console.log('🔄 Still no user after delay, redirecting to login')
+              window.location.href = '/login'
+            }
+          }, 1000)
           return
         }
         
         if (!user) {
-          console.log('No user data, redirecting to login')
-          window.location.href = '/login'
+          console.log('⚠️ No user data yet, waiting...')
+          // Don't redirect immediately - might be loading
+          setTimeout(() => {
+            if (!user && !authLoading) {
+              console.log('🔄 Still no user after delay, redirecting to login')
+              window.location.href = '/login'
+            }
+          }, 1000)
           return
         }
         
