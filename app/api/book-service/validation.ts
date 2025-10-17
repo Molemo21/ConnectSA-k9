@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SERVICES } from '@/config/services';
+import { prisma } from '@/lib/db-utils';
 
 // Helper function to validate service exists and is a cleaning service
 export async function validateCleaningService(serviceId: string) {

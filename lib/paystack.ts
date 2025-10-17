@@ -192,8 +192,23 @@ class PaystackClient {
       this.secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY!;
       this.publicKey = requiredEnvVars.PAYSTACK_PUBLIC_KEY!;
       
-      // Initialize Paystack SDK
-      this.paystackSDK = new PaystackSDK.Paystack(this.secretKey);
+      // Log configuration for debugging
+      this.logger.info('Paystack configuration', {
+        secretKeyPrefix: this.secretKey.substring(0, 8) + '...',
+        publicKeyPrefix: this.publicKey.substring(0, 8) + '...',
+        isTestMode: this.secretKey.startsWith('sk_test_'),
+        webhookUrl: process.env.PAYSTACK_WEBHOOK_URL
+      });
+      
+      // Initialize Paystack SDK with proper error handling
+      try {
+        this.paystackSDK = new PaystackSDK.Paystack(this.secretKey);
+        this.logger.info('Paystack SDK initialized successfully');
+      } catch (sdkError) {
+        this.logger.warn('Paystack SDK initialization failed, using direct API calls', sdkError);
+        // Fallback to direct API calls if SDK fails
+        this.paystackSDK = null as any;
+      }
       
       this.logger.info('Paystack client initialized successfully');
     } catch (error) {
@@ -273,33 +288,42 @@ class PaystackClient {
         return dummyResponse;
       }
 
-      const response = await this.makeRequest<PaystackPaymentResponse>('/transaction/initialize', 'POST', {
-        amount: params.amount * 100, // Convert to kobo
+      // Check if we have valid API keys
+      if (!this.secretKey || this.secretKey === 'dummy-key') {
+        throw new Error('Paystack API keys not configured');
+      }
+
+      // Prepare request payload
+      const requestPayload = {
+        amount: Math.round(params.amount * 100), // Convert to kobo (cents)
         email: params.email,
         reference: params.reference,
         callback_url: params.callback_url,
         metadata: params.metadata,
-        currency: 'ZAR', // Use ZAR as supported by the merchant account
+        currency: 'ZAR', // South African Rand
+      };
+
+      this.logger.info('Making Paystack API request', {
+        endpoint: '/transaction/initialize',
+        payload: { ...requestPayload, metadata: '...' } // Don't log full metadata
       });
 
+      const response = await this.makeRequest<PaystackPaymentResponse>('/transaction/initialize', 'POST', requestPayload);
+
       // Debug logging
-      this.logger.info('Paystack SDK response received', { 
+      this.logger.info('Paystack API response received', { 
         responseType: typeof response,
         responseKeys: response ? Object.keys(response) : 'null/undefined',
         responseStatus: response?.status,
         responseMessage: response?.message,
-        requestParams: {
-          amount: params.amount,
-          email: params.email,
-          currency: 'ZAR',
-          reference: params.reference
-        }
+        hasAuthorizationUrl: !!response?.data?.authorization_url
       });
 
       const validatedResponse = PaystackPaymentResponseSchema.parse(response);
       this.logger.info('Payment initialized successfully', { 
         reference: params.reference, 
-        authorization_url: validatedResponse.data.authorization_url 
+        authorization_url: validatedResponse.data.authorization_url,
+        access_code: validatedResponse.data.access_code
       });
 
       return validatedResponse;
@@ -358,7 +382,8 @@ class PaystackClient {
         return dummyResponse;
       }
 
-      const response = await this.paystackSDK.transaction.verify(reference);
+      // Use direct API call instead of SDK to avoid JSON parsing issues
+      const response = await this.makeRequest<PaystackChargeResponse>(`/transaction/verify/${reference}`, 'GET');
       const validatedResponse = PaystackChargeResponseSchema.parse(response);
       
       this.logger.info('Payment verification completed', { 
@@ -369,6 +394,28 @@ class PaystackClient {
       return validatedResponse;
     } catch (error) {
       this.logger.error('Payment verification failed', error, { reference });
+      
+      // Handle specific JSON parsing errors
+      if (error instanceof Error && error.message.includes('Unexpected token')) {
+        this.logger.warn('JSON parsing error, trying direct API call', { reference });
+        
+        try {
+          // Fallback to direct API call
+          const response = await this.makeRequest<PaystackChargeResponse>(`/transaction/verify/${reference}`, 'GET');
+          const validatedResponse = PaystackChargeResponseSchema.parse(response);
+          
+          this.logger.info('Payment verification completed via fallback', { 
+            reference, 
+            status: validatedResponse.data.status 
+          });
+
+          return validatedResponse;
+        } catch (fallbackError) {
+          this.logger.error('Fallback verification also failed', fallbackError, { reference });
+          throw new Error(`Paystack payment verification failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`);
+        }
+      }
+      
       throw new Error(`Paystack payment verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
