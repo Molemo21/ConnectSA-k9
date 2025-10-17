@@ -52,14 +52,16 @@ class RedirectGuard {
 
     // Monitor page visibility changes (indicates potential redirects)
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
+      if (document.visibilityState === 'hidden' && process.env.NODE_ENV === 'development') {
         console.log('🔍 Page visibility changed to hidden - potential redirect detected');
       }
     });
 
     // Monitor beforeunload events (indicates navigation away)
     window.addEventListener('beforeunload', (event) => {
-      console.log('🔍 beforeunload event detected - potential redirect');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 beforeunload event detected - potential redirect');
+      }
       this.logToServer('info', 'beforeunload event detected', {
         currentUrl: window.location.href,
         timestamp: new Date().toISOString()
@@ -68,7 +70,9 @@ class RedirectGuard {
 
     // Monitor popstate events (back/forward navigation)
     window.addEventListener('popstate', (event) => {
-      console.log('🔍 popstate event detected', event.state);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 popstate event detected', event.state);
+      }
       this.logToServer('info', 'popstate event detected', {
         state: event.state,
         currentUrl: window.location.href,
@@ -78,7 +82,9 @@ class RedirectGuard {
 
     // Monitor hash changes
     window.addEventListener('hashchange', (event) => {
-      console.log('🔍 hashchange event detected', event.oldURL, '->', event.newURL);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 hashchange event detected', event.oldURL, '->', event.newURL);
+      }
       this.logToServer('info', 'hashchange event detected', {
         oldURL: event.oldURL,
         newURL: event.newURL,
@@ -86,7 +92,9 @@ class RedirectGuard {
       });
     });
 
-    console.log('🛡️ Safe redirect monitoring initialized');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🛡️ Safe redirect monitoring initialized');
+    }
   }
 
   private saveHistory() {

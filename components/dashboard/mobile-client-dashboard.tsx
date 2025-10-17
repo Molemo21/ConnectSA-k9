@@ -1220,28 +1220,32 @@ export function MobileClientDashboard() {
         // Add a small delay to ensure cookie is set after login
         await new Promise(resolve => setTimeout(resolve, 100))
         
-        // SIMPLIFIED: Just check auth state without aggressive redirects
+        // OPTIMIZED: Better auth loading logic
         if (authError) {
           console.log('❌ Authentication error:', authError)
-          // Don't redirect immediately - might be a temporary error
-          setTimeout(() => {
-            if (!user) {
-              console.log('🔄 Still no user after delay, attempting safe redirect to login')
-              safeRedirect('/login', 'Authentication error - no user after delay')
-            }
-          }, 1000)
+          // Only redirect if it's a real auth error, not a temporary network issue
+          if (authError.includes('401') || authError.includes('Unauthorized')) {
+            setTimeout(() => {
+              if (!user) {
+                console.log('🔄 Auth error confirmed, attempting safe redirect to login')
+                safeRedirect('/login', 'Authentication error confirmed')
+              }
+            }, 2000) // Longer delay for auth errors
+          }
           return
         }
         
         if (!user) {
           console.log('⚠️ No user data yet, waiting...')
-          // Don't redirect immediately - might be loading
-          setTimeout(() => {
-            if (!user && !authLoading) {
-              console.log('🔄 Still no user after delay, attempting safe redirect to login')
-              safeRedirect('/login', 'No user data after loading timeout')
-            }
-          }, 1000)
+          // Only redirect if auth is definitely not loading
+          if (!authLoading) {
+            setTimeout(() => {
+              if (!user && !authLoading) {
+                console.log('🔄 Still no user after delay, attempting safe redirect to login')
+                safeRedirect('/login', 'No user data after loading timeout')
+              }
+            }, 3000) // Longer delay to allow auth to complete
+          }
           return
         }
         
