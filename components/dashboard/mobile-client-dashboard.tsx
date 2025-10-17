@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
+import { safeRedirect, getRedirectHistory } from "@/lib/redirect-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -1115,12 +1116,19 @@ export function MobileClientDashboard() {
   const [selectedFilter, setSelectedFilter] = useState<string>("all")
   const [activeSection, setActiveSection] = useState<string>("overview")
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
+  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
 
   const searchParams = useSearchParams()
 
-  // Simple redirect tracker using console.log
+  // Initialize redirect guard and show debug info
   useEffect(() => {
     console.log('🔍 Dashboard component mounted at:', window.location.href)
+    
+    // Show redirect history for debugging
+    const history = getRedirectHistory()
+    if (history.length > 0) {
+      console.log('📋 Recent redirect history:', history)
+    }
     
     // Track any redirects by monitoring location changes
     const originalPushState = history.pushState
@@ -1218,8 +1226,8 @@ export function MobileClientDashboard() {
           // Don't redirect immediately - might be a temporary error
           setTimeout(() => {
             if (!user) {
-              console.log('🔄 Still no user after delay, redirecting to login')
-              window.location.href = '/login'
+              console.log('🔄 Still no user after delay, attempting safe redirect to login')
+              safeRedirect('/login', 'Authentication error - no user after delay')
             }
           }, 1000)
           return
@@ -1230,8 +1238,8 @@ export function MobileClientDashboard() {
           // Don't redirect immediately - might be loading
           setTimeout(() => {
             if (!user && !authLoading) {
-              console.log('🔄 Still no user after delay, redirecting to login')
-              window.location.href = '/login'
+              console.log('🔄 Still no user after delay, attempting safe redirect to login')
+              safeRedirect('/login', 'No user data after loading timeout')
             }
           }, 1000)
           return
@@ -1247,22 +1255,22 @@ export function MobileClientDashboard() {
         }
 
         if (user.role === "PROVIDER") {
-          console.log('🔄 User is provider, redirecting to provider dashboard')
-          window.location.href = '/provider/dashboard'
+          console.log('🔄 User is provider, attempting safe redirect to provider dashboard')
+          safeRedirect('/provider/dashboard', 'User role is provider')
           return
         } else if (user.role === "ADMIN") {
-          console.log('🔄 User is admin, redirecting to admin dashboard')
-          window.location.href = '/admin'
+          console.log('🔄 User is admin, attempting safe redirect to admin dashboard')
+          safeRedirect('/admin', 'User role is admin')
           return
         } else if (user.role !== "CLIENT") {
-          console.log('🔄 User role is not client, redirecting to home')
-          window.location.href = '/'
+          console.log('🔄 User role is not client, attempting safe redirect to home')
+          safeRedirect('/', 'User role is not client')
           return
         }
 
         if (!user.emailVerified) {
-          console.log('🔄 User email not verified, redirecting to verify email')
-          window.location.href = '/verify-email'
+          console.log('🔄 User email not verified, attempting safe redirect to verify email')
+          safeRedirect('/verify-email', 'User email not verified')
           return
         }
 
@@ -1439,6 +1447,56 @@ export function MobileClientDashboard() {
           hasNotifications={bookings.some(b => b.payment && ['PENDING', 'ESCROW'].includes(b.payment.status))}
           className="bg-black/70 backdrop-blur-sm border-b border-white/20"
         />
+
+        {/* Debug Panel - Only show in development or when explicitly enabled */}
+        {(process.env.NODE_ENV === 'development' || showDebugPanel) && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 m-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-yellow-800">Debug Panel</h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowDebugPanel(!showDebugPanel)}
+                className="text-xs"
+              >
+                {showDebugPanel ? 'Hide' : 'Show'} Debug
+              </Button>
+            </div>
+            
+            <div className="space-y-2 text-xs">
+              <div>
+                <strong>Current URL:</strong> {window.location.href}
+              </div>
+              <div>
+                <strong>User:</strong> {user ? `${user.email} (${user.role})` : 'Not authenticated'}
+              </div>
+              <div>
+                <strong>Auth Loading:</strong> {authLoading ? 'Yes' : 'No'}
+              </div>
+              <div>
+                <strong>Auth Error:</strong> {authError || 'None'}
+              </div>
+              
+              <div>
+                <strong>Redirect History:</strong>
+                <div className="mt-1 max-h-32 overflow-y-auto bg-white p-2 rounded border">
+                  {getRedirectHistory().length === 0 ? (
+                    <div className="text-gray-500">No redirects recorded</div>
+                  ) : (
+                    getRedirectHistory().map((redirect, index) => (
+                      <div key={index} className="text-xs border-b pb-1 mb-1">
+                        <div><strong>From:</strong> {redirect.from}</div>
+                        <div><strong>To:</strong> {redirect.to}</div>
+                        <div><strong>Reason:</strong> {redirect.reason}</div>
+                        <div><strong>Time:</strong> {new Date(redirect.timestamp).toLocaleTimeString()}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <MainContent
           activeSection={activeSection}
           setActiveSection={setActiveSection}
