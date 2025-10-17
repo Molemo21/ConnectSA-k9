@@ -3,7 +3,7 @@
 import React, { Component, ReactNode, useEffect } from 'react';
 import { CurrencyProvider } from '@/contexts/currency-context';
 import { LanguageProvider } from '@/contexts/LanguageContext';
-import { AuthProvider } from '@/contexts/AuthContext';
+// import { AuthProvider } from '@/contexts/AuthContext'; // Temporarily disabled
 
 // Client logger utility
 const logToServer = async (level: 'error' | 'info', message: string, data?: any) => {
@@ -153,13 +153,14 @@ export function ClientRoot({ children }: ClientRootProps) {
   return (
     <ClientErrorBoundary>
       <HydrationProbe />
-      <AuthProvider>
+      {/* Temporarily disable AuthProvider to prevent conflicts with useAuth hook */}
+      {/* <AuthProvider> */}
         <LanguageProvider>
           <CurrencyProvider>
             {children}
           </CurrencyProvider>
         </LanguageProvider>
-      </AuthProvider>
+      {/* </AuthProvider> */}
     </ClientErrorBoundary>
   );
 }
