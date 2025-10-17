@@ -22,8 +22,8 @@ class RedirectGuard {
     // Initialize persistent logging
     this.initializePersistentLogging();
     
-    // Set up global redirect interception
-    this.setupGlobalInterception();
+    // Set up safer redirect monitoring (no property redefinition)
+    this.setupSafeMonitoring();
   }
 
   static getInstance(): RedirectGuard {
@@ -47,94 +47,46 @@ class RedirectGuard {
     }
   }
 
-  private setupGlobalInterception() {
+  private setupSafeMonitoring() {
     if (typeof window === 'undefined') return;
 
-    // Intercept window.location.href assignments
-    const originalLocation = window.location;
-    const self = this;
-
-    // Override window.location.href setter
-    Object.defineProperty(window.location, 'href', {
-      get: function() {
-        return originalLocation.href;
-      },
-      set: function(url) {
-        const currentPath = window.location.pathname;
-        const targetPath = new URL(url, window.location.origin).pathname;
-        
-        console.log('🚨 GLOBAL REDIRECT INTERCEPTED: window.location.href =', url);
-        console.trace('Global redirect call stack:');
-        
-        // Check if this redirect should be blocked
-        if (!self.shouldAllowRedirect(targetPath, 'Global window.location.href assignment')) {
-          console.error('🚫 GLOBAL REDIRECT BLOCKED:', {
-            from: currentPath,
-            to: targetPath,
-            url: url
-          });
-          return; // Block the redirect
-        }
-        
-        // Record the redirect
-        self.recordRedirect(targetPath, 'Global window.location.href assignment');
-        
-        // Allow the redirect
-        originalLocation.href = url;
+    // Monitor page visibility changes (indicates potential redirects)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        console.log('🔍 Page visibility changed to hidden - potential redirect detected');
       }
     });
 
-    // Intercept window.location.replace calls
-    const originalReplace = window.location.replace;
-    window.location.replace = function(url) {
-      const currentPath = window.location.pathname;
-      const targetPath = new URL(url, window.location.origin).pathname;
-      
-      console.log('🚨 GLOBAL REDIRECT INTERCEPTED: window.location.replace(', url, ')');
-      console.trace('Global replace call stack:');
-      
-      // Check if this redirect should be blocked
-      if (!self.shouldAllowRedirect(targetPath, 'Global window.location.replace call')) {
-        console.error('🚫 GLOBAL REDIRECT BLOCKED:', {
-          from: currentPath,
-          to: targetPath,
-          url: url
-        });
-        return; // Block the redirect
-      }
-      
-      // Record the redirect
-      self.recordRedirect(targetPath, 'Global window.location.replace call');
-      
-      // Allow the redirect
-      originalReplace.call(this, url);
-    };
+    // Monitor beforeunload events (indicates navigation away)
+    window.addEventListener('beforeunload', (event) => {
+      console.log('🔍 beforeunload event detected - potential redirect');
+      this.logToServer('info', 'beforeunload event detected', {
+        currentUrl: window.location.href,
+        timestamp: new Date().toISOString()
+      });
+    });
 
-    // Intercept window.location.assign calls
-    const originalAssign = window.location.assign;
-    window.location.assign = function(url) {
-      const currentPath = window.location.pathname;
-      const targetPath = new URL(url, window.location.origin).pathname;
-      
-      console.log('🚨 GLOBAL REDIRECT INTERCEPTED: window.location.assign(', url, ')');
-      console.trace('Global assign call stack:');
-      
-      // Check if this redirect should be blocked
-      if (!self.shouldAllowRedirect(targetPath, 'Global window.location.assign call')) {
-        console.error('🚫 GLOBAL REDIRECT BLOCKED:', {
-          from: currentPath,
-          to: targetPath,
-          url: url
-        });
-        return; // Block the redirect
-      }
-      
-      // Record the redirect
-      self.recordRedirect(targetPath, 'Global window.location.assign call');
-      
-      // Allow the redirect
-      originalAssign.call(this, url);
-    };
+    // Monitor popstate events (back/forward navigation)
+    window.addEventListener('popstate', (event) => {
+      console.log('🔍 popstate event detected', event.state);
+      this.logToServer('info', 'popstate event detected', {
+        state: event.state,
+        currentUrl: window.location.href,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Monitor hash changes
+    window.addEventListener('hashchange', (event) => {
+      console.log('🔍 hashchange event detected', event.oldURL, '->', event.newURL);
+      this.logToServer('info', 'hashchange event detected', {
+        oldURL: event.oldURL,
+        newURL: event.newURL,
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    console.log('🛡️ Safe redirect monitoring initialized');
   }
 
   private saveHistory() {

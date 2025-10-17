@@ -1220,45 +1220,29 @@ export function MobileClientDashboard() {
         // Add a small delay to ensure cookie is set after login
         await new Promise(resolve => setTimeout(resolve, 100))
         
-        // AGGRESSIVE PROTECTION: If we're on dashboard, don't redirect to login
-        if (window.location.pathname === '/dashboard') {
-          console.log('🛡️ DASHBOARD PROTECTION: Already on dashboard, skipping auth redirects')
-          
-          // Still check auth state but don't redirect
-          if (authError) {
-            console.log('❌ Authentication error on dashboard:', authError)
-            // Don't redirect - stay on dashboard
-            return
-          }
-          
-          if (!user) {
-            console.log('⚠️ No user data on dashboard, waiting...')
-            // Don't redirect - stay on dashboard and wait
-            return
-          }
-        } else {
-          // Only do redirects if we're NOT on dashboard
-          if (authError) {
-            console.log('❌ Authentication error:', authError)
-            setTimeout(() => {
-              if (!user) {
-                console.log('🔄 Still no user after delay, attempting safe redirect to login')
-                safeRedirect('/login', 'Authentication error - no user after delay')
-              }
-            }, 1000)
-            return
-          }
-          
-          if (!user) {
-            console.log('⚠️ No user data yet, waiting...')
-            setTimeout(() => {
-              if (!user && !authLoading) {
-                console.log('🔄 Still no user after delay, attempting safe redirect to login')
-                safeRedirect('/login', 'No user data after loading timeout')
-              }
-            }, 1000)
-            return
-          }
+        // SIMPLIFIED: Just check auth state without aggressive redirects
+        if (authError) {
+          console.log('❌ Authentication error:', authError)
+          // Don't redirect immediately - might be a temporary error
+          setTimeout(() => {
+            if (!user) {
+              console.log('🔄 Still no user after delay, attempting safe redirect to login')
+              safeRedirect('/login', 'Authentication error - no user after delay')
+            }
+          }, 1000)
+          return
+        }
+        
+        if (!user) {
+          console.log('⚠️ No user data yet, waiting...')
+          // Don't redirect immediately - might be loading
+          setTimeout(() => {
+            if (!user && !authLoading) {
+              console.log('🔄 Still no user after delay, attempting safe redirect to login')
+              safeRedirect('/login', 'No user data after loading timeout')
+            }
+          }, 1000)
+          return
         }
         
         console.log('✅ User authenticated:', user.email)
