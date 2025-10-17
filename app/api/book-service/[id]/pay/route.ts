@@ -121,11 +121,27 @@ export async function POST(request: NextRequest) {
       logPayment.error('initialize', 'Invalid booking amount', new Error('Zero or negative amount'), {
         bookingId: booking.id,
         totalAmount: booking.totalAmount,
-        serviceName: booking.service?.name
+        serviceName: booking.service?.name,
+        bookingStatus: booking.status
       });
+      
+      // Provide more helpful error message based on booking status
+      let errorMessage = "Invalid booking amount. Please contact support to resolve this issue.";
+      let details = `Booking amount is R${booking.totalAmount || 0}, which is invalid for payment processing.`;
+      
+      if (booking.status === "PENDING") {
+        errorMessage = "This booking is still pending provider acceptance. Payment can only be made after the provider accepts your booking.";
+        details = "Please wait for the provider to accept your booking before making payment.";
+      } else if (booking.totalAmount === 0) {
+        errorMessage = "The booking amount has not been set yet. Please contact the provider to confirm the service cost.";
+        details = "The provider needs to set the service cost before payment can be processed.";
+      }
+      
       return NextResponse.json({ 
-        error: "Invalid booking amount. Please contact support to resolve this issue.",
-        details: `Booking amount is R${booking.totalAmount || 0}, which is invalid for payment processing.`
+        error: errorMessage,
+        details: details,
+        bookingStatus: booking.status,
+        totalAmount: booking.totalAmount
       }, { status: 400 });
     }
 

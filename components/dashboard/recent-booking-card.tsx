@@ -105,7 +105,16 @@ export function RecentBookingCard({
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Payment failed')
+        console.log('❌ Payment API Error:', errorData)
+        
+        // Handle specific error cases
+        if (errorData.bookingStatus === "PENDING") {
+          throw new Error("This booking is still pending provider acceptance. Please wait for the provider to accept your booking before making payment.")
+        } else if (errorData.totalAmount === 0) {
+          throw new Error("The booking amount has not been set yet. Please contact the provider to confirm the service cost.")
+        } else {
+          throw new Error(errorData.error || 'Payment failed')
+        }
       }
 
       const paymentData = await response.json()
@@ -226,9 +235,11 @@ export function RecentBookingCard({
     // 1. Booking is CONFIRMED (provider accepted)
     // 2. No payment exists yet OR payment is PENDING/FAILED
     // 3. Not already processing payment
+    // 4. Booking has a valid amount (> 0)
     return booking.status === 'CONFIRMED' && 
            (!booking.payment || ['PENDING', 'FAILED'].includes(booking.payment.status)) &&
-           !isProcessingPayment
+           !isProcessingPayment &&
+           booking.totalAmount && booking.totalAmount > 0
   }
 
   // Determine if confirm completion button should be shown
@@ -493,6 +504,16 @@ export function RecentBookingCard({
                     {isProcessingPayment ? "Processing..." : "Pay Now"}
                   </span>
                 </Button>
+              )}
+              
+              {/* Show helpful message when payment button is not available */}
+              {booking.status === 'CONFIRMED' && (!booking.totalAmount || booking.totalAmount <= 0) && (
+                <div className="text-xs text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>Payment amount not set. Contact provider to confirm cost.</span>
+                  </div>
+                </div>
               )}
               
               {canConfirmCompletion() && !isPaymentReleased() && (
