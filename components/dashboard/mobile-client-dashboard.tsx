@@ -1118,6 +1118,39 @@ export function MobileClientDashboard() {
 
   const searchParams = useSearchParams()
 
+  // Global redirect tracker
+  useEffect(() => {
+    const originalLocationHref = window.location.href
+    const originalLocationReplace = window.location.replace
+    const originalLocationAssign = window.location.assign
+    
+    // Override window.location.href
+    Object.defineProperty(window.location, 'href', {
+      get: function() {
+        return originalLocationHref
+      },
+      set: function(url) {
+        console.log('🚨 REDIRECT DETECTED: window.location.href =', url)
+        console.trace('Redirect call stack:')
+        return originalLocationHref
+      }
+    })
+    
+    // Override window.location.replace
+    window.location.replace = function(url) {
+      console.log('🚨 REDIRECT DETECTED: window.location.replace(', url, ')')
+      console.trace('Replace call stack:')
+      return originalLocationReplace.call(this, url)
+    }
+    
+    // Override window.location.assign
+    window.location.assign = function(url) {
+      console.log('🚨 REDIRECT DETECTED: window.location.assign(', url, ')')
+      console.trace('Assign call stack:')
+      return originalLocationAssign.call(this, url)
+    }
+  }, [])
+
   // Use the optimized booking data hook
   const { 
     bookings, 
@@ -1211,23 +1244,29 @@ export function MobileClientDashboard() {
           return
         }
         
-        console.log('User authenticated:', user.email)
+        console.log('✅ User authenticated:', user.email)
 
         if (user.role === "PROVIDER") {
+          console.log('🔄 User is provider, redirecting to provider dashboard')
           window.location.href = '/provider/dashboard'
           return
         } else if (user.role === "ADMIN") {
+          console.log('🔄 User is admin, redirecting to admin dashboard')
           window.location.href = '/admin'
           return
         } else if (user.role !== "CLIENT") {
+          console.log('🔄 User role is not client, redirecting to home')
           window.location.href = '/'
           return
         }
 
         if (!user.emailVerified) {
+          console.log('🔄 User email not verified, redirecting to verify email')
           window.location.href = '/verify-email'
           return
         }
+
+        console.log('✅ User is valid client, proceeding with dashboard data fetch')
 
         // Fetch bookings
         const bookingsRes = await fetch('/api/bookings/my-bookings', {
