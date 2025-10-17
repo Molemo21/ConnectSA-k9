@@ -364,9 +364,29 @@ function MainContent({
   const inProgressBookings = bookings.filter(b => b.status === "IN_PROGRESS").length
   const cancelledBookings = bookings.filter(b => b.status === "CANCELLED").length
   
+  // Debug: Log booking data structure for totalSpent calculation
+  console.log('Debug - Bookings for totalSpent calculation:', bookings.map(b => ({
+    id: b.id,
+    status: b.status,
+    totalAmount: b.totalAmount,
+    payment: b.payment,
+    hasPayment: !!b.payment,
+    paymentStatus: b.payment?.status,
+    paymentAmount: b.payment?.amount
+  })))
+  
   const totalSpent = bookings
-    .filter(b => b.payment)
-    .reduce((sum, b) => sum + (b.payment?.amount || 0), 0)
+    .filter(b => {
+      // Include bookings that have successful payments OR completed bookings with totalAmount
+      return (b.payment && b.payment.status === 'SUCCESS') || 
+             (b.status === 'COMPLETED' && b.totalAmount > 0)
+    })
+    .reduce((sum, b) => {
+      // Use payment amount if available, otherwise use booking totalAmount
+      return sum + (b.payment?.amount || b.totalAmount || 0)
+    }, 0)
+  
+  console.log('Debug - Total spent calculation:', { totalSpent, bookingCount: bookings.length })
   
   const averageRating = bookings
     .filter(b => b.review)
