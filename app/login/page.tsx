@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,7 @@ import { showToast } from "@/lib/toast"
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from "lucide-react"
 
 export default function LoginPage() {
+  const router = useRouter()
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -62,16 +64,25 @@ export default function LoginPage() {
         setTimeout(() => {
           console.log('🚀 Executing redirect now...')
           
-          // Try multiple redirect methods for better compatibility
+          // Use Next.js router for better SPA navigation
           try {
-            // Method 1: window.location.href (most reliable)
-            window.location.href = data.redirectUrl || "/dashboard"
+            console.log('🔄 Using Next.js router.push for SPA navigation')
+            router.push(data.redirectUrl || "/dashboard")
+            
+            // Fallback: if router doesn't work, use window.location
+            setTimeout(() => {
+              if (window.location.pathname === '/login') {
+                console.log('🔄 Router failed, using window.location.replace')
+                window.location.replace(data.redirectUrl || "/dashboard")
+              }
+            }, 100)
           } catch (error) {
-            console.error('❌ Redirect failed:', error)
-            // Method 2: window.location.replace (fallback)
+            console.error('❌ Router redirect failed:', error)
+            // Fallback to window.location
+            console.log('🔄 Fallback to window.location.replace')
             window.location.replace(data.redirectUrl || "/dashboard")
           }
-        }, 1000)
+        }, 500) // Reduced delay for faster redirect
       } else {
         console.error('❌ Login failed:', data.error)
         showToast.error(data.error || "Login failed. Please check your credentials and try again.")

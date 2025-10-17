@@ -80,6 +80,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(endpoint)
   )
 
+  // For public paths, always allow access without any auth checks
+  if (isPublicPath) {
+    console.log('🔓 Public path accessed:', pathname)
+    return NextResponse.next()
+  }
+
   try {
     // For API routes
     if (pathname.startsWith('/api/')) {
@@ -118,14 +124,10 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // For public paths, always allow access
-    if (isPublicPath) {
-      return NextResponse.next()
-    }
-
     // For protected routes, check authentication
     const cookieHeader = request.headers.get("cookie")
     if (!cookieHeader) {
+      console.log('🔒 No cookie found, redirecting to login:', pathname)
       const url = new URL('/login', request.url)
       url.searchParams.set('callbackUrl', encodeURI(request.url))
       return NextResponse.redirect(url)
@@ -137,6 +139,7 @@ export async function middleware(request: NextRequest) {
       ?.split("=")[1]
 
     if (!token) {
+      console.log('🔒 No auth token found, redirecting to login:', pathname)
       const url = new URL('/login', request.url)
       url.searchParams.set('callbackUrl', encodeURI(request.url))
       return NextResponse.redirect(url)
@@ -144,11 +147,13 @@ export async function middleware(request: NextRequest) {
 
     const decoded = await verifyToken(token)
     if (!decoded) {
+      console.log('🔒 Invalid token, redirecting to login:', pathname)
       const url = new URL('/login', request.url)
       url.searchParams.set('callbackUrl', encodeURI(request.url))
       return NextResponse.redirect(url)
     }
 
+    console.log('✅ Authenticated access to:', pathname)
     return NextResponse.next()
   } catch (error) {
     console.error('Middleware error:', error)
