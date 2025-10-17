@@ -21,6 +21,9 @@ class RedirectGuard {
   private constructor() {
     // Initialize persistent logging
     this.initializePersistentLogging();
+    
+    // Set up global redirect interception
+    this.setupGlobalInterception();
   }
 
   static getInstance(): RedirectGuard {
@@ -42,6 +45,96 @@ class RedirectGuard {
         console.error('Failed to load redirect history:', error);
       }
     }
+  }
+
+  private setupGlobalInterception() {
+    if (typeof window === 'undefined') return;
+
+    // Intercept window.location.href assignments
+    const originalLocation = window.location;
+    const self = this;
+
+    // Override window.location.href setter
+    Object.defineProperty(window.location, 'href', {
+      get: function() {
+        return originalLocation.href;
+      },
+      set: function(url) {
+        const currentPath = window.location.pathname;
+        const targetPath = new URL(url, window.location.origin).pathname;
+        
+        console.log('🚨 GLOBAL REDIRECT INTERCEPTED: window.location.href =', url);
+        console.trace('Global redirect call stack:');
+        
+        // Check if this redirect should be blocked
+        if (!self.shouldAllowRedirect(targetPath, 'Global window.location.href assignment')) {
+          console.error('🚫 GLOBAL REDIRECT BLOCKED:', {
+            from: currentPath,
+            to: targetPath,
+            url: url
+          });
+          return; // Block the redirect
+        }
+        
+        // Record the redirect
+        self.recordRedirect(targetPath, 'Global window.location.href assignment');
+        
+        // Allow the redirect
+        originalLocation.href = url;
+      }
+    });
+
+    // Intercept window.location.replace calls
+    const originalReplace = window.location.replace;
+    window.location.replace = function(url) {
+      const currentPath = window.location.pathname;
+      const targetPath = new URL(url, window.location.origin).pathname;
+      
+      console.log('🚨 GLOBAL REDIRECT INTERCEPTED: window.location.replace(', url, ')');
+      console.trace('Global replace call stack:');
+      
+      // Check if this redirect should be blocked
+      if (!self.shouldAllowRedirect(targetPath, 'Global window.location.replace call')) {
+        console.error('🚫 GLOBAL REDIRECT BLOCKED:', {
+          from: currentPath,
+          to: targetPath,
+          url: url
+        });
+        return; // Block the redirect
+      }
+      
+      // Record the redirect
+      self.recordRedirect(targetPath, 'Global window.location.replace call');
+      
+      // Allow the redirect
+      originalReplace.call(this, url);
+    };
+
+    // Intercept window.location.assign calls
+    const originalAssign = window.location.assign;
+    window.location.assign = function(url) {
+      const currentPath = window.location.pathname;
+      const targetPath = new URL(url, window.location.origin).pathname;
+      
+      console.log('🚨 GLOBAL REDIRECT INTERCEPTED: window.location.assign(', url, ')');
+      console.trace('Global assign call stack:');
+      
+      // Check if this redirect should be blocked
+      if (!self.shouldAllowRedirect(targetPath, 'Global window.location.assign call')) {
+        console.error('🚫 GLOBAL REDIRECT BLOCKED:', {
+          from: currentPath,
+          to: targetPath,
+          url: url
+        });
+        return; // Block the redirect
+      }
+      
+      // Record the redirect
+      self.recordRedirect(targetPath, 'Global window.location.assign call');
+      
+      // Allow the redirect
+      originalAssign.call(this, url);
+    };
   }
 
   private saveHistory() {
@@ -83,6 +176,26 @@ class RedirectGuard {
   shouldAllowRedirect(to: string, reason: string): boolean {
     const now = Date.now();
     const currentPath = window.location.pathname;
+
+    // AGGRESSIVE PROTECTION: Block ALL redirects to login from dashboard
+    if (to === '/login' && currentPath === '/dashboard') {
+      console.error('🚫 REDIRECT BLOCKED: Dashboard to login redirect blocked', {
+        to,
+        reason,
+        currentPath,
+        timestamp: new Date(now).toISOString()
+      });
+      
+      this.logToServer('error', 'Dashboard to login redirect blocked', {
+        to,
+        reason,
+        currentPath,
+        timestamp: new Date(now).toISOString(),
+        stack: new Error().stack
+      });
+      
+      return false;
+    }
 
     // Check cooldown period
     if (now - this.lastRedirectTime < this.redirectCooldown) {
@@ -131,7 +244,7 @@ class RedirectGuard {
       attempt.to === '/login'
     ).slice(-5);
 
-    if (loginRedirects.length >= 3) {
+    if (loginRedirects.length >= 2) { // Reduced from 3 to 2 for more aggressive protection
       console.error('🚫 REDIRECT BLOCKED: Too many login redirects', {
         to,
         reason,
