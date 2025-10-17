@@ -38,12 +38,27 @@ export function BrandHeaderClient({
   useEffect(() => {
     setMounted(true)
     
+    // Check if user data is already available from parent component
+    // This prevents duplicate API calls
+    if (userStats?.user) {
+      setUser(userStats.user)
+      setLoading(false)
+      return
+    }
+    
     async function fetchUser() {
       try {
-        const response = await fetch('/api/auth/me')
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        })
         if (response.ok) {
           const data = await response.json()
           setUser(data.user)
+        } else {
+          // Don't log 401 errors as they're expected for unauthenticated users
+          if (response.status !== 401) {
+            console.log("Authentication error:", response.status)
+          }
         }
       } catch (error) {
         console.log("User not authenticated")
@@ -53,7 +68,7 @@ export function BrandHeaderClient({
     }
 
     fetchUser()
-  }, [])
+  }, [userStats?.user])
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   // This ensures hooks are called in the same order on every render

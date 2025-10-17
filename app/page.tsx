@@ -41,21 +41,32 @@ export default function HomePage() {
   const [isUnderConstruction, setIsUnderConstruction] = useState(true) // Set to true to enable construction mode
   const { t } = useLanguage()
 
-  // Fetch user data
+  // Fetch user data with better error handling
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch('/api/auth/me')
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include'
+        })
         if (response.ok) {
           const data = await response.json()
           setUser(data.user)
+        } else {
+          // Don't log 401 errors as they're expected for unauthenticated users
+          if (response.status !== 401) {
+            console.log("Authentication error:", response.status)
+          }
         }
-      } catch {
+      } catch (error) {
         console.log("User not authenticated")
       }
     }
-    fetchUser()
-  }, [])
+    
+    // Only fetch if not already authenticated
+    if (!user) {
+      fetchUser()
+    }
+  }, [user])
 
   // Keyboard shortcut for construction mode toggle (Ctrl+Shift+C)
   useEffect(() => {

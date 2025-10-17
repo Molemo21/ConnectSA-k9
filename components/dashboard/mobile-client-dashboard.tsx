@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -1085,7 +1086,7 @@ function MainContent({
 }
 
 export function MobileClientDashboard() {
-  const [user, setUser] = useState<any>(null)
+  const { user, loading: authLoading, error: authError } = useAuth()
   const [services, setServices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1156,30 +1157,37 @@ export function MobileClientDashboard() {
       try {
         setLoading(true)
         
-        const userRes = await fetch('/api/auth/me', {
-          credentials: 'include' // Ensure cookies are sent
-        })
-        if (!userRes.ok) {
+        // Use centralized auth state
+        if (authLoading) {
+          return // Wait for auth to complete
+        }
+        
+        if (authError) {
           console.log('Authentication failed, redirecting to login')
           window.location.href = '/login'
           return
         }
-        const userData = await userRes.json()
-        console.log('User authenticated:', userData.user?.email)
-        setUser(userData.user)
+        
+        if (!user) {
+          console.log('No user data, redirecting to login')
+          window.location.href = '/login'
+          return
+        }
+        
+        console.log('User authenticated:', user.email)
 
-        if (userData.user.role === "PROVIDER") {
+        if (user.role === "PROVIDER") {
           window.location.href = '/provider/dashboard'
           return
-        } else if (userData.user.role === "ADMIN") {
+        } else if (user.role === "ADMIN") {
           window.location.href = '/admin'
           return
-        } else if (userData.user.role !== "CLIENT") {
+        } else if (user.role !== "CLIENT") {
           window.location.href = '/'
           return
         }
 
-        if (!userData.user.emailVerified) {
+        if (!user.emailVerified) {
           window.location.href = '/verify-email'
           return
         }
@@ -1217,7 +1225,7 @@ export function MobileClientDashboard() {
     }
 
     fetchDashboardData()
-  }, [])
+  }, [user, authLoading, authError])
 
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   // This ensures hooks are called in the same order on every render
