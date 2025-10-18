@@ -149,7 +149,7 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
           </div>
           <div className="flex items-center space-x-2 text-gray-400">
             <DollarSign className="w-3 h-3" />
-            <span>R{booking.totalAmount.toFixed(2)}</span>
+            <span>R{(booking.totalAmount || 0).toFixed(2)}</span>
           </div>
         </div>
 
@@ -167,7 +167,7 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
               className="flex-1 bg-green-600 hover:bg-green-700 text-xs"
             >
               <RandIconSimple className="w-3 h-3 mr-1" />
-              Pay R{booking.totalAmount.toFixed(2)}
+              Pay R{(booking.totalAmount || 0).toFixed(2)}
             </Button>
           )}
           
@@ -215,7 +215,7 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
               <div className="text-xs">
                 <span className="text-gray-400">Payment:</span>
                 <p className="text-gray-200 mt-1">
-                  {booking.payment.status} - R{booking.payment.amount.toFixed(2)}
+                  {booking.payment.status} - R{(booking.payment.amount || 0).toFixed(2)}
                 </p>
               </div>
             )}

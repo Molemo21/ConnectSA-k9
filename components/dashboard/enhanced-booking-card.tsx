@@ -541,7 +541,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent -skew-x-12 -translate-x-full group-hover/detail:translate-x-full transition-transform duration-1000 ease-out"></div>
                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 backdrop-blur-sm rounded-xl border border-emerald-400/30 hover:border-emerald-400/50 transition-all duration-500 group-hover/detail:shadow-lg group-hover/detail:shadow-emerald-400/20">
                   <span className="text-emerald-300 font-medium text-sm">Total Amount</span>
-                  <span className="font-bold text-lg text-transparent bg-gradient-to-r from-emerald-300 via-green-300 to-emerald-300 bg-clip-text">R{booking.totalAmount.toFixed(2)}</span>
+                  <span className="font-bold text-lg text-transparent bg-gradient-to-r from-emerald-300 via-green-300 to-emerald-300 bg-clip-text">R{(booking.totalAmount || 0).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -603,7 +603,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   ) : (
                     <RandIconSimple className="w-4 h-4 mr-1" />
                   )}
-                  {isPaymentInProgress ? "Processing..." : `Pay R${booking.totalAmount.toFixed(2)}`}
+                  {isPaymentInProgress ? "Processing..." : `Pay R${(booking.totalAmount || 0).toFixed(2)}`}
                 </Button>
               )}
               
@@ -705,7 +705,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 <div>
                   <span className="text-sm font-medium text-white/60">Payment Details:</span>
                   <div className="mt-1 text-sm text-white/60">
-                    <p>Amount: R{booking.payment.amount.toFixed(2)}</p>
+                    <p>Amount: R{(booking.payment.amount || 0).toFixed(2)}</p>
                     <p>Status: {booking.payment.status}</p>
                   </div>
                 </div>

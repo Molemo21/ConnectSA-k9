@@ -557,7 +557,7 @@ export function PaginatedClientDashboard() {
                       
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <DollarSign className="h-4 w-4" />
-                        <span>R{booking.totalAmount.toFixed(2)}</span>
+                        <span>R{(booking.totalAmount || 0).toFixed(2)}</span>
                       </div>
 
                       {booking.payment && (
@@ -610,7 +610,7 @@ export function PaginatedClientDashboard() {
                           }}
                         >
                           <RandIconSimple className="h-4 w-4 mr-2" />
-                          Pay R{booking.totalAmount.toFixed(2)}
+                          Pay R{(booking.totalAmount || 0).toFixed(2)}
                         </Button>
                       )}
                       {booking.status === "PENDING" && (

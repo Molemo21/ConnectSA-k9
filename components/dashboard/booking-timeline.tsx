@@ -198,7 +198,7 @@ function BookingTimelineItem({
           <div className="flex items-center space-x-4 text-xs text-gray-400 mb-2">
             <span>{new Date(booking.scheduledDate).toLocaleDateString()}</span>
             <span>•</span>
-            <span>R{booking.totalAmount.toFixed(2)}</span>
+            <span>R{(booking.totalAmount || 0).toFixed(2)}</span>
             {booking.provider && (
               <>
                 <span>•</span>
@@ -247,7 +247,7 @@ function BookingTimelineItem({
                   <div>
                     <span className="text-gray-400">Payment:</span>
                     <p className="text-gray-200">
-                      {booking.payment.status} - R{booking.payment.amount.toFixed(2)}
+                      {booking.payment.status} - R{(booking.payment.amount || 0).toFixed(2)}
                     </p>
                   </div>
                 )}

@@ -469,7 +469,7 @@ export function RecentBookingCard({
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/20">Amount:</span>
-                <span className="font-semibold text-white">R{booking.totalAmount.toFixed(2)}</span>
+                <span className="font-semibold text-white">R{(booking.totalAmount || 0).toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -568,7 +568,7 @@ export function RecentBookingCard({
                     <RandIconSimple className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
                   )}
                   <span className="relative z-10">
-                    {isProcessingPayment ? "Processing..." : `Pay R${booking.totalAmount.toFixed(2)}`}
+                    {isProcessingPayment ? "Processing..." : `Pay R${(booking.totalAmount || 0).toFixed(2)}`}
                   </span>
                 </Button>
               )}

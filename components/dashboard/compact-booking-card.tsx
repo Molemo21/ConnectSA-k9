@@ -474,7 +474,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
               </div>
               <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                 <span className="text-white/20">Amount:</span>
-                <span className="font-semibold text-white">R{booking.totalAmount.toFixed(2)}</span>
+                <span className="font-semibold text-white">R{(booking.totalAmount || 0).toFixed(2)}</span>
               </div>
             </div>
             {/* Additional info column for large screens */}
@@ -604,7 +604,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                     ) : (
                       <RandIconSimple className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
                     )}
-                    {isPaymentInProgress ? "Processing..." : `Pay R${booking.service.price.toFixed(2)}`}
+                    {isPaymentInProgress ? "Processing..." : `Pay R${(booking.totalAmount || 0).toFixed(2)}`}
                   </Button>
                 )}
                 
