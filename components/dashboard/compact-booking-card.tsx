@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle, RefreshCw } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle, RefreshCw, HelpCircle, Info } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
@@ -82,6 +83,11 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
   // Enhanced completion logic with better status detection
   const canConfirmCompletion = () => {
+    // Don't show if payment is already released
+    if (booking.payment && ["RELEASED", "COMPLETED"].includes(booking.payment.status)) {
+      return false
+    }
+    
     // Always allow if booking is awaiting confirmation
     if (booking.status === "AWAITING_CONFIRMATION") {
       return true
@@ -102,8 +108,11 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
     return false
   }
   
-  // Hide button if payment is already released
+  // Check if payment is already released (for display purposes)
   const isPaymentReleased = booking.payment && ["RELEASED", "COMPLETED"].includes(booking.payment.status)
+  
+  // Check if payment is stuck and needs recovery
+  const needsPaymentRecovery = booking.payment && booking.payment.status === 'PENDING' && booking.status !== 'PENDING'
   const canDispute = ["COMPLETED", "CANCELLED"].includes(booking.status) && !booking.review
 
   const handlePay = async () => {
@@ -184,8 +193,19 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
       if (response.ok) {
         const data = await response.json();
         console.log(`✅ Success response:`, data);
-        showToast.success(data.message || "Completion confirmed! Payment will be released to the provider.")
+        
+        // Show success message with more detail
+        const successMessage = data.message || "Completion confirmed! Payment will be released to the provider."
+        showToast.success(successMessage)
+        
+        // Update the booking data to reflect the new state
         onUpdate()
+        
+        // Show additional info about what happened
+        setTimeout(() => {
+          showToast.info("The payment has been released to the provider. You can no longer modify this booking.")
+        }, 2000)
+        
       } else {
         const errorData = await response.json()
         console.error(`❌ Error response:`, errorData);
@@ -297,16 +317,35 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
       if (response.ok) {
         const data = await response.json()
         console.log(`✅ Payment recovery successful:`, data);
+        
+        // Show success message
         showToast.success("Payment status recovered successfully!")
+        
+        // Update the booking data
         onUpdate()
+        
+        // Show additional info
+        setTimeout(() => {
+          showToast.info("Your payment is now ready. You can confirm completion to release funds to the provider.")
+        }, 2000)
+        
       } else {
         const errorData = await response.json()
         console.error(`❌ Payment recovery failed:`, errorData);
-        showToast.error(errorData.error || "Failed to recover payment status")
+        
+        // Enhanced error handling
+        let errorMessage = errorData.error || "Failed to recover payment status"
+        if (errorData.paystackStatus === 'abandoned') {
+          errorMessage = "Payment was abandoned and cannot be recovered"
+        } else if (errorData.details) {
+          errorMessage = `${errorMessage}. ${errorData.details}`
+        }
+        
+        showToast.error(errorMessage)
       }
     } catch (error) {
       console.error("❌ Payment recovery error:", error)
-      showToast.error("Network error during payment recovery")
+      showToast.error("Network error during payment recovery. Please try again.")
     }
   }
 
@@ -568,38 +607,114 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                   </Button>
                 )}
                 
+                {/* Confirm Completion Button with Tooltip */}
                 {canConfirmCompletion() && !isPaymentReleased && (
-                  <Button 
-                    size="sm" 
-                    onClick={handleConfirmCompletion} 
-                    className="bg-orange-600 hover:bg-orange-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base"
-                  >
-                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
-                    Confirm
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          onClick={handleConfirmCompletion} 
+                          className="bg-orange-600 hover:bg-orange-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base"
+                        >
+                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
+                          Confirm Completion
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <div className="space-y-1">
+                          <p className="font-semibold">Confirm Job Completion</p>
+                          <p className="text-sm">Click to release payment to the provider. This confirms the job is done and transfers the funds from escrow.</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 
-                {/* Recovery button for stuck payments */}
-                {booking.payment && booking.payment.status === 'PENDING' && booking.status !== 'PENDING' && (
-                  <Button 
-                    size="sm" 
-                    onClick={handleRecoverPayment} 
-                    className="bg-blue-600 hover:bg-blue-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base"
-                  >
-                    <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
-                    Recover Payment
-                  </Button>
+                {/* Recovery Button for Stuck Payments with Tooltip */}
+                {needsPaymentRecovery && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          size="sm" 
+                          onClick={handleRecoverPayment} 
+                          className="bg-blue-600 hover:bg-blue-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base"
+                        >
+                          <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
+                          Recover Payment
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <div className="space-y-1">
+                          <p className="font-semibold">Recover Stuck Payment</p>
+                          <p className="text-sm">Your payment is stuck in processing. Click to verify with the payment processor and update the status.</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 
+                {/* Payment Released Status with Help Info */}
                 {isPaymentReleased && (
-                  <div className="flex items-center text-green-600 text-xs sm:text-sm md:text-base font-medium px-3 sm:px-4 md:px-6">
-                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
-                    Released
-                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center text-green-600 text-xs sm:text-sm md:text-base font-medium px-3 sm:px-4 md:px-6 cursor-help">
+                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
+                          Payment Released
+                          <Info className="w-3 h-3 sm:w-4 sm:h-4 ml-1 opacity-60" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <div className="space-y-1">
+                          <p className="font-semibold">Payment Successfully Released</p>
+                          <p className="text-sm">The payment has been transferred to the provider's account. This booking is now complete.</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
           </div>
+
+          {/* Payment Help Section - Shows when there are payment issues */}
+          {(needsPaymentRecovery || (booking.payment && booking.payment.status === 'PENDING')) && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start space-x-2">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    Payment Status Help
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-300">
+                    {needsPaymentRecovery 
+                      ? "Your payment is stuck in processing. Use the 'Recover Payment' button to fix this issue."
+                      : "Your payment is being processed. Please wait for it to complete before confirming job completion."
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message Section - Shows when payment is released */}
+          {isPaymentReleased && (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <div className="flex items-start space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-green-800 dark:text-green-200 mb-1">
+                    Payment Successfully Released
+                  </p>
+                  <p className="text-green-700 dark:text-green-300">
+                    The payment has been transferred to the provider's account. This booking is now complete and no further action is needed.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Expandable Details - Enhanced for Large Screens */}
           {showDetails && (
