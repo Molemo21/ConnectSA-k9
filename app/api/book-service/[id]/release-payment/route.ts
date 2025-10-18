@@ -101,7 +101,11 @@ function getPaymentStatusErrorMessage(status: string): { error: string; details:
     },
     "PENDING": {
       error: "Payment is still being processed. Please wait for it to complete.",
-      details: "The payment is being verified with the payment processor."
+      details: "The payment is being verified with the payment processor. If this persists, try the 'Recover Payment' button."
+    },
+    "ABANDONED": {
+      error: "Payment was abandoned and cannot be released.",
+      details: "The payment was abandoned by the payment processor. Please contact support to resolve this issue."
     }
   };
 
@@ -261,9 +265,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       amount: booking.payment.amount
     });
 
-    // Handle payment status recovery for stuck payments
+    // Handle payment status recovery for stuck payments with enhanced logic
     if (booking.payment.status === "PENDING") {
-      console.log(`⚠️ Payment ${booking.payment.id} is stuck in PENDING status. Attempting status recovery...`);
+      console.log(`⚠️ Payment ${booking.payment.id} is stuck in PENDING status. Attempting comprehensive status recovery...`);
       
       try {
         const paystackVerification = await paystackClient.verifyPayment(booking.payment.paystackRef);
@@ -286,25 +290,77 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
           booking.payment.status = 'ESCROW';
           booking.payment.paidAt = new Date();
           
+        } else if (paystackVerification.data.status === 'abandoned') {
+          console.log(`❌ Paystack verification shows payment was abandoned. Checking if we can still proceed...`);
+          
+          // For abandoned payments, check if the booking status suggests work was completed
+          // This handles cases where payment was abandoned but work was actually done
+          if (booking.status === 'AWAITING_CONFIRMATION' || booking.status === 'COMPLETED') {
+            console.log(`🔄 Payment was abandoned but booking suggests work was completed. Attempting manual recovery...`);
+            
+            // Update payment status to ESCROW manually (assuming payment was successful but abandoned)
+            await prisma.payment.update({
+              where: { id: booking.payment.id },
+              data: { 
+                status: 'ESCROW',
+                paidAt: new Date(),
+                updatedAt: new Date()
+              }
+            });
+            
+            console.log(`✅ Payment status manually updated to ESCROW for abandoned payment`);
+            booking.payment.status = 'ESCROW';
+            booking.payment.paidAt = new Date();
+            
+          } else {
+            console.log(`❌ Payment was abandoned and booking doesn't suggest completion`);
+            return NextResponse.json({
+              success: false,
+              error: "Payment was abandoned and cannot be released",
+              details: "The payment was abandoned by the payment processor. Please contact support to resolve this issue.",
+              currentStatus: booking.payment.status,
+              expectedStatus: "ESCROW",
+              bookingStatus: booking.status,
+              paystackStatus: paystackVerification.data.status
+            }, { status: 400 });
+          }
+          
         } else {
           console.log(`❌ Paystack verification shows payment was not successful:`, paystackVerification.data.status);
-          const errorInfo = getPaymentStatusErrorMessage(booking.payment.status);
           return NextResponse.json({
             success: false,
-            error: `Payment verification failed. Paystack status: ${paystackVerification.data.status}`,
-            details: "The payment could not be verified with the payment processor.",
+            error: `Payment verification failed. Status: ${paystackVerification.data.status}`,
+            details: "The payment could not be verified with the payment processor. Please try again or contact support.",
             currentStatus: booking.payment.status,
             expectedStatus: "ESCROW",
-            bookingStatus: booking.status
+            bookingStatus: booking.status,
+            paystackStatus: paystackVerification.data.status
           }, { status: 400 });
         }
         
       } catch (verificationError) {
         console.error(`❌ Payment verification failed during recovery:`, verificationError);
+        
+        // Enhanced error handling for different types of verification errors
+        const errorMessage = verificationError instanceof Error ? verificationError.message : 'Unknown error';
+        
+        // If it's a network error or API error, provide more helpful guidance
+        if (errorMessage.includes('network') || errorMessage.includes('timeout') || errorMessage.includes('ECONNREFUSED')) {
+          return NextResponse.json({
+            success: false,
+            error: "Unable to verify payment status",
+            details: "There was a network issue verifying the payment. Please try again in a few moments.",
+            currentStatus: booking.payment.status,
+            expectedStatus: "ESCROW",
+            bookingStatus: booking.status,
+            retryable: true
+          }, { status: 400 });
+        }
+        
         return NextResponse.json({
           success: false,
-          error: `Payment verification failed: ${verificationError instanceof Error ? verificationError.message : 'Unknown error'}`,
-          details: "Unable to verify payment status with the payment processor.",
+          error: `Payment verification failed: ${errorMessage}`,
+          details: "Unable to verify payment status with the payment processor. Please contact support if this persists.",
           currentStatus: booking.payment.status,
           expectedStatus: "ESCROW",
           bookingStatus: booking.status

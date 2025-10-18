@@ -2,81 +2,65 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { db } from "@/lib/db-utils"
 
-// Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
-  // Skip during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return NextResponse.json({
-      error: "Service temporarily unavailable during deployment"
-    }, { status: 503 });
-  }
-
   try {
-    console.log('=== PROVIDER BOOKINGS API START ===');
-    console.log('Request headers:', Object.fromEntries(request.headers.entries()));
-    console.log('Request URL:', request.url);
-    console.log('Environment:', {
-      NODE_ENV: process.env.NODE_ENV,
-      VERCEL: process.env.VERCEL,
-      hasDatabaseUrl: !!process.env.DATABASE_URL,
-      cookieDomain: process.env.COOKIE_DOMAIN
-    });
+    console.log('=== PROVIDER BOOKINGS API START ===')
     
-    const user = await getCurrentUser();
-    console.log('User authenticated:', !!user, { 
-      userId: user?.id, 
-      userRole: user?.role,
-      userEmail: user?.email 
-    });
+    const user = await getCurrentUser()
     
     if (!user) {
-      console.log('Provider bookings API: No user found');
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      console.log('Provider bookings API: No user found')
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
     
     if (user.role !== "PROVIDER") {
-      console.log('Provider bookings API: User is not a provider:', user.role);
-      return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 });
+      console.log('Provider bookings API: User is not a provider:', user.role)
+      return NextResponse.json({ error: "Unauthorized - Provider role required" }, { status: 403 })
     }
 
     const provider = await db.provider.findUnique({
       where: { userId: user.id },
-    });
-
-    console.log('Provider bookings API: Provider found:', { 
-      providerId: provider?.id,
-      businessName: provider?.businessName,
-      status: provider?.status 
-    });
+    })
 
     if (!provider) {
-      console.log('Provider bookings API: Provider profile not found for user:', user.id);
-      return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
+      console.log('Provider bookings API: Provider profile not found for user:', user.id)
+      return NextResponse.json({ error: "Provider profile not found" }, { status: 404 })
     }
 
-    // Fetch all bookings for this provider with timeout
-    console.log('Fetching bookings for provider:', provider.id);
-    
-    const bookings = await Promise.race([
-      db.booking.findMany({
-        where: {
-          providerId: provider.id,
-        },
-        orderBy: { scheduledDate: "desc" },
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database query timeout after 15 seconds')), 15000)
-      )
-    ]);
+    console.log('Fetching bookings for provider:', provider.id)
 
-    console.log('Bookings fetched successfully:', { 
-      providerId: provider.id, 
-      bookingCount: bookings.length,
-      bookingStatuses: bookings.map(b => b.status)
-    });
+    // Fetch all bookings for this provider with related data
+    const bookings = await db.booking.findMany({
+      where: {
+        providerId: provider.id,
+      },
+      include: {
+        service: {
+          include: {
+            category: true
+          }
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true, // Use avatar instead of image
+            phone: true
+          }
+        },
+        payment: true,
+        review: true
+      },
+      orderBy: {
+        scheduledDate: 'desc'
+      }
+    })
+
+    console.log(`Found ${bookings.length} bookings`)
 
     // Calculate stats
     const pendingJobs = bookings.filter(b => b.status === "PENDING").length
@@ -118,8 +102,6 @@ export async function GET(request: NextRequest) {
       totalReviews: reviews.length
     }
 
-    console.log('Stats calculated successfully:', stats);
-
     // Create response with cache-busting headers
     const response = NextResponse.json({ 
       success: true,
@@ -130,30 +112,38 @@ export async function GET(request: NextRequest) {
         ? "No active bookings found. Your bookings will appear here when clients book your services."
         : `Found ${bookings.length} active bookings`,
       timestamp: new Date().toISOString()
-    });
+    })
 
     // Add cache-busting headers
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
 
-    console.log('=== PROVIDER BOOKINGS API SUCCESS ===');
-    return response;
+    console.log('=== PROVIDER BOOKINGS API SUCCESS ===')
+    return response
     
   } catch (error) {
-    console.error("=== PROVIDER BOOKINGS API ERROR ===", error);
+    console.error("=== PROVIDER BOOKINGS API ERROR ===", {
+      timestamp: new Date().toISOString(),
+      context: 'provider-bookings-api',
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error
+    })
     
     const errorResponse = NextResponse.json({ 
       error: "Internal server error",
       details: error instanceof Error ? error.message : "Unknown error",
       timestamp: new Date().toISOString()
-    }, { status: 500 });
+    }, { status: 500 })
     
     // Add cache-busting headers to error response too
-    errorResponse.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    errorResponse.headers.set('Pragma', 'no-cache');
-    errorResponse.headers.set('Expires', '0');
+    errorResponse.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    errorResponse.headers.set('Pragma', 'no-cache')
+    errorResponse.headers.set('Expires', '0')
     
-    return errorResponse;
+    return errorResponse
   }
 }

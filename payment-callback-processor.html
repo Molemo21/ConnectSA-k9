@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Callback Processor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Payment Callback Processor</h1>
+        
+        <div class="info">
+            <h3>Current URL Parameters:</h3>
+            <pre id="urlParams"></pre>
+        </div>
+        
+        <button class="button" onclick="processPaymentCallback()">
+            🚀 Process Payment Callback
+        </button>
+        
+        <button class="button" onclick="cleanUrl()" style="background: #28a745;">
+            🧹 Clean URL Only
+        </button>
+        
+        <button class="button" onclick="refreshPage()" style="background: #ffc107; color: #000;">
+            🔄 Refresh Page
+        </button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Display current URL parameters
+        function displayUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const params = {};
+            for (const [key, value] of urlParams) {
+                params[key] = value;
+            }
+            document.getElementById('urlParams').textContent = JSON.stringify(params, null, 2);
+        }
+        
+        // Process payment callback
+        async function processPaymentCallback() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="info">🔄 Processing payment callback...</div>';
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const payment = urlParams.get('payment');
+            const bookingId = urlParams.get('booking');
+            const trxref = urlParams.get('trxref');
+            const reference = urlParams.get('reference');
+            
+            if (payment === 'success' && bookingId && (reference || trxref)) {
+                const refKey = reference || trxref;
+                
+                try {
+                    // Verify payment with Paystack
+                    const verifyResponse = await fetch('/api/payment/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ reference: refKey })
+                    });
+
+                    if (verifyResponse.ok) {
+                        const verifyData = await verifyResponse.json();
+                        resultDiv.innerHTML = `
+                            <div class="success">
+                                <h3>✅ Payment Verification Successful!</h3>
+                                <p><strong>Payment Status:</strong> ${verifyData.payment?.status || 'Unknown'}</p>
+                                <p><strong>Booking Status:</strong> ${verifyData.booking?.status || 'Unknown'}</p>
+                                <p><strong>Paid At:</strong> ${verifyData.payment?.paidAt || 'Unknown'}</p>
+                            </div>
+                        `;
+                        
+                        // Clean up URL
+                        cleanUrl();
+                        
+                        // Show success message
+                        setTimeout(() => {
+                            alert('Payment completed successfully! The page will now refresh to show updated status.');
+                            window.location.href = '/dashboard';
+                        }, 2000);
+                        
+                    } else {
+                        const errorText = await verifyResponse.text();
+                        resultDiv.innerHTML = `
+                            <div class="error">
+                                <h3>❌ Payment Verification Failed</h3>
+                                <p>${errorText}</p>
+                            </div>
+                        `;
+                    }
+                    
+                } catch (error) {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h3>❌ Error Processing Payment</h3>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
+                
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ Invalid Payment Parameters</h3>
+                        <p>Expected: payment=success, booking=ID, and (reference or trxref)</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Clean URL only
+        function cleanUrl() {
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('payment');
+            cleanUrl.searchParams.delete('booking');
+            cleanUrl.searchParams.delete('trxref');
+            cleanUrl.searchParams.delete('reference');
+            window.history.replaceState({}, '', cleanUrl.toString());
+            
+            document.getElementById('result').innerHTML = `
+                <div class="success">
+                    <h3>🧹 URL Cleaned Successfully!</h3>
+                    <p>The payment parameters have been removed from the URL.</p>
+                </div>
+            `;
+            
+            // Update URL params display
+            displayUrlParams();
+        }
+        
+        // Refresh page
+        function refreshPage() {
+            window.location.reload();
+        }
+        
+        // Initialize
+        displayUrlParams();
+    </script>
+</body>
+</html>

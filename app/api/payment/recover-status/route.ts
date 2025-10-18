@@ -1,93 +1,89 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { PrismaClient } from "@prisma/client";
 import { paystackClient } from "@/lib/paystack";
 
 export const dynamic = 'force-dynamic'
 
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  }
+});
 
 export async function POST(request: NextRequest) {
-  // Skip during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return NextResponse.json({
-      success: false,
-      message: "Service temporarily unavailable during deployment"
-    }, { status: 503 });
-  }
-
-  console.log('🚀 POST /api/payment/recover-status called');
-  console.log('🚀 Request URL:', request.url);
-  console.log('🚀 Request method:', request.method);
-  console.log('🚀 Request headers:', Object.fromEntries(request.headers.entries()));
-  
   try {
-    console.log('🔐 Getting current user...');
+    // 1. Authentication
     const user = await getCurrentUser();
-    console.log('🔐 Current user:', user ? { id: user.id, role: user.role } : 'null');
-    
     if (!user) {
-      console.log('❌ No user found, returning 401');
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ 
+        success: false,
+        error: "Unauthorized",
+        details: "You must be logged in to recover payment status."
+      }, { status: 401 });
     }
 
-    console.log('📝 Parsing request body...');
-    const body = await request.json();
-    console.log('📝 Request body:', body);
+    // 2. Parse request body
+    const { paymentId } = await request.json();
     
-    const { paymentId } = body;
-
     if (!paymentId) {
-      console.log('❌ No payment ID provided, returning 400');
-      return NextResponse.json({ error: "Payment ID is required" }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        error: "Payment ID is required",
+        details: "Please provide a valid payment ID."
+      }, { status: 400 });
     }
 
-    console.log(`🔄 Manual payment status recovery requested for payment: ${paymentId}`);
+    console.log(`🔄 Starting payment recovery for payment: ${paymentId}`);
 
-    // Get payment details
+    // 3. Fetch payment with booking and provider info
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
-      include: { 
-        booking: { 
-          include: { 
-            client: true, 
-            provider: true 
-          } 
-        } 
+      include: {
+        booking: {
+          include: {
+            client: true,
+            provider: {
+              include: { user: true }
+            },
+            service: true
+          }
+        }
       }
     });
 
     if (!payment) {
-      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+      return NextResponse.json({
+        success: false,
+        error: "Payment not found",
+        details: "No payment found with the provided ID."
+      }, { status: 404 });
     }
 
-    // Check if user has permission to recover this payment
-    if (user.role === "CLIENT" && payment.booking.clientId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // 4. Authorization check
+    if (payment.booking.clientId !== user.id && user.role !== 'ADMIN') {
+      return NextResponse.json({
+        success: false,
+        error: "Forbidden",
+        details: "You can only recover payments for your own bookings."
+      }, { status: 403 });
     }
 
-    if (user.role === "PROVIDER" && payment.booking.providerId !== user.provider?.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    console.log(`🔍 Payment details:`, {
-      id: payment.id,
-      status: payment.status,
-      paystackRef: payment.paystackRef,
-      amount: payment.amount,
-      bookingId: payment.bookingId
-    });
-
-    // Only attempt recovery for PENDING payments
-    if (payment.status !== "PENDING") {
-      return NextResponse.json({ 
-        message: `Payment status is already ${payment.status}. No recovery needed.`,
+    // 5. Check if payment is actually stuck
+    if (payment.status !== 'PENDING') {
+      return NextResponse.json({
+        success: false,
+        error: "Payment is not stuck",
+        details: `Payment status is already ${payment.status}. No recovery needed.`,
         currentStatus: payment.status
-      });
+      }, { status: 400 });
     }
 
-    // Verify payment with Paystack
-    console.log(`🔍 Verifying payment with Paystack using reference: ${payment.paystackRef}`);
-    
+    console.log(`🔍 Payment ${paymentId} is stuck in PENDING status. Verifying with Paystack...`);
+
+    // 6. Verify payment with Paystack
     try {
       const paystackVerification = await paystackClient.verifyPayment(payment.paystackRef);
       console.log(`🔍 Paystack verification result:`, paystackVerification);
@@ -116,6 +112,21 @@ export async function POST(request: NextRequest) {
           console.log(`✅ Booking status updated to PENDING_EXECUTION`);
         }
 
+        // Create notification for provider
+        try {
+          await prisma.notification.create({
+            data: {
+              userId: payment.booking.provider.user.id,
+              type: 'PAYMENT_RECEIVED',
+              title: 'Payment Received',
+              message: `Payment received for ${payment.booking.service?.name || 'your service'} - Booking #${payment.booking.id}. You can now start the job!`,
+              isRead: false,
+            }
+          });
+        } catch (notificationError) {
+          console.warn('Could not create payment notification:', notificationError);
+        }
+
         console.log(`🎉 Payment status recovery completed successfully!`);
         
         return NextResponse.json({
@@ -138,122 +149,48 @@ export async function POST(request: NextRequest) {
           }
         });
 
-      } else {
-        console.log(`❌ Paystack verification shows payment was not successful:`, paystackVerification.data.status);
-        
+      } else if (paystackVerification.data.status === 'abandoned') {
+        console.log(`❌ Payment was abandoned by user`);
         return NextResponse.json({
           success: false,
-          message: `Payment verification failed. Paystack status: ${paystackVerification.data.status}`,
+          error: "Payment was abandoned",
+          details: "The payment was abandoned by the user and cannot be recovered.",
           paystackStatus: paystackVerification.data.status,
-          error: "Payment was not completed on Paystack"
+          currentStatus: payment.status
+        }, { status: 400 });
+
+      } else {
+        console.log(`❌ Payment verification shows payment was not successful:`, paystackVerification.data.status);
+        return NextResponse.json({
+          success: false,
+          error: "Payment verification failed",
+          details: `Paystack verification shows payment status: ${paystackVerification.data.status}`,
+          paystackStatus: paystackVerification.data.status,
+          currentStatus: payment.status
         }, { status: 400 });
       }
       
     } catch (verificationError) {
-      console.error(`❌ Paystack verification failed:`, verificationError);
+      console.error(`❌ Payment verification failed:`, verificationError);
       
-      // Handle specific Paystack API errors
-      let errorMessage = 'Unknown error';
-      let errorDetails = '';
-      
-      if (verificationError instanceof Error) {
-        errorMessage = verificationError.message;
-        
-        // Check for specific Paystack error patterns
-        if (errorMessage.includes('Transaction reference not found')) {
-          errorMessage = 'Payment reference not found on Paystack. This payment may have been cancelled or never completed.';
-          errorDetails = 'The payment reference provided does not exist in Paystack\'s system.';
-        } else if (errorMessage.includes('ZodError')) {
-          errorMessage = 'Payment verification response format error. Payment may still be valid.';
-          errorDetails = 'Paystack returned the payment data but in an unexpected format.';
-          
-          // For schema errors, we can try a fallback recovery since the payment might actually be successful
-          console.log(`🔄 Attempting fallback recovery for schema validation error...`);
-          
-          try {
-            // Try to get the raw response from Paystack to check if payment was actually successful
-            const rawResponse = await fetch(`${process.env.PAYSTACK_BASE_URL || 'https://api.paystack.co'}/transaction/verify/${payment.paystackRef}`, {
-              headers: {
-                'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-                'Content-Type': 'application/json'
-              }
-            });
-            
-            if (rawResponse.ok) {
-              const rawData = await rawResponse.json();
-              console.log(`🔍 Raw Paystack response:`, rawData);
-              
-              // Check if the payment was actually successful despite schema issues
-              if (rawData.status && rawData.data && rawData.data.status === 'success') {
-                console.log(`✅ Fallback recovery successful! Payment was completed despite schema issues.`);
-                
-                // Update payment status to ESCROW
-                const updatedPayment = await prisma.payment.update({
-                  where: { id: paymentId },
-                  data: { 
-                    status: 'ESCROW',
-                    paidAt: new Date(),
-                    transactionId: rawData.data.id?.toString() || null,
-                    updatedAt: new Date()
-                  }
-                });
-
-                // Update booking status to PENDING_EXECUTION if it's still CONFIRMED
-                let updatedBooking = null;
-                if (payment.booking.status === "CONFIRMED") {
-                  updatedBooking = await prisma.booking.update({
-                    where: { id: payment.bookingId },
-                    data: { status: 'PENDING_EXECUTION' }
-                  });
-                  console.log(`✅ Booking status updated to PENDING_EXECUTION via fallback`);
-                }
-
-                console.log(`🎉 Fallback payment status recovery completed successfully!`);
-                
-                return NextResponse.json({
-                  success: true,
-                  message: "Payment status recovered successfully via fallback method",
-                  recoveryMethod: "fallback",
-                  payment: {
-                    id: updatedPayment.id,
-                    status: updatedPayment.status,
-                    paidAt: updatedPayment.paidAt,
-                    transactionId: updatedPayment.transactionId
-                  },
-                  booking: updatedBooking ? {
-                    id: updatedBooking.id,
-                    status: updatedBooking.status
-                  } : null,
-                  paystackVerification: {
-                    status: rawData.data.status,
-                    amount: rawData.data.amount,
-                    currency: rawData.data.currency
-                  }
-                });
-              }
-            }
-          } catch (fallbackError) {
-            console.error(`❌ Fallback recovery also failed:`, fallbackError);
-          }
-        }
-      }
+      const errorMessage = verificationError instanceof Error ? verificationError.message : 'Unknown error';
       
       return NextResponse.json({
         success: false,
-        message: "Failed to verify payment with Paystack",
-        error: errorMessage,
-        details: errorDetails,
-        paystackRef: payment.paystackRef
+        error: "Payment verification failed",
+        details: `Unable to verify payment with Paystack: ${errorMessage}`,
+        currentStatus: payment.status
       }, { status: 500 });
     }
 
   } catch (error) {
-    console.error('❌ Payment status recovery error:', error);
-    
+    console.error('Payment recovery error:', error);
     return NextResponse.json({
       success: false,
-      message: "Payment status recovery failed",
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: "Internal server error",
+      details: "An unexpected error occurred during payment recovery."
     }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-10-13T12:11:27.137Z",
+  "fixes": [
+    "Created default service category",
+    "Cancelled 2 old pending bookings"
+  ],
+  "errors": [
+    "Failed to fix service categories: \nInvalid `prisma.service.findMany()` invocation:\n\n{\n  where: {\n+   categoryId: {\n+     equals: String | StringFieldRefInput,\n+     in: String[] | ListStringFieldRefInput,\n+     notIn: String[] | ListStringFieldRefInput,\n+     lt: String | StringFieldRefInput,\n+     lte: String | StringFieldRefInput,\n+     gt: String | StringFieldRefInput,\n+     gte: String | StringFieldRefInput,\n+     contains: String | StringFieldRefInput,\n+     startsWith: String | StringFieldRefInput,\n+     endsWith: String | StringFieldRefInput,\n+     mode: QueryMode,\n+     not: String | NestedStringFilter\n+   }\n  }\n}\n\nArgument `categoryId` must not be null.",
+    "Failed to fix payments: \nInvalid `prisma.payment.create()` invocation:\n\n{\n  data: {\n    bookingId: \"cmgkjx3qp0001l804m0nxqye7\",\n    amount: 150,\n    status: \"PENDING\",\n+   booking: {\n+     create: BookingCreateWithoutPaymentInput | BookingUncheckedCreateWithoutPaymentInput,\n+     connectOrCreate: BookingCreateOrConnectWithoutPaymentInput,\n+     connect: BookingWhereUniqueInput\n+   }\n  }\n}\n\nArgument `booking` is missing."
+  ],
+  "summary": {
+    "fixed": 2,
+    "failed": 2
+  }
+}

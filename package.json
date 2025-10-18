@@ -30,9 +30,32 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:sync": "node scripts/sync-production-database.js",
+    "db:backup": "node scripts/migrate-db.js backup",
+    "db:validate": "node scripts/migrate-db.js validate",
+    "db:full-migrate": "node scripts/migrate-db.js full-migrate",
+    "db:cleanup": "node scripts/migrate-db.js cleanup",
+    "env:validate": "node scripts/manage-env.js validate",
+    "env:create": "node scripts/manage-env.js create",
+    "env:compare": "node scripts/manage-env.js compare",
+    "env:generate-secrets": "node scripts/manage-env.js generate-secrets",
+    "env:security-check": "node scripts/manage-env.js security-check",
+    "deploy:production": "./scripts/deploy-production.sh",
+    "deploy:production:skip-tests": "./scripts/deploy-production.sh --skip-tests",
+    "verify:production": "node scripts/verify-production-deployment.js",
+    "health:check": "curl -f https://your-domain.com/api/health || echo 'Health check failed'",
+    "monitor:start": "node scripts/monitor-production.js start",
+    "monitor:check": "node scripts/monitor-production.js check",
+    "monitor:status": "node scripts/monitor-production.js status",
+    "monitor:report": "node scripts/monitor-production.js report",
+    "rollback:points": "node scripts/monitor-production.js rollback-points",
+    "rollback:to": "node scripts/monitor-production.js rollback",
+    "rollback:emergency": "node scripts/monitor-production.js emergency-rollback",
+    "setup:deployment": "./scripts/setup-deployment.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -124,8 +147,5 @@
     "tailwindcss": "^3.3.0",
     "ts-jest": "^29.1.1",
     "typescript": "^5"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   }
 }

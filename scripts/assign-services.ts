@@ -1,90 +1,59 @@
-import { prisma } from '../lib/prisma-fixed';
+interface AssignmentResult {
+  provider: string
+  success?: boolean
+  servicesAssigned?: number
+  services?: string[]
+  error?: string
+}
+
+interface ApiResponse {
+  success: boolean
+  results?: AssignmentResult[]
+  message?: string
+  error?: string
+  remainingProvidersWithoutServices?: number
+}
 
 async function assignServices() {
   try {
-    console.log('Assigning services to providers...');
-    
-    // Get all approved providers
-    const providers = await prisma.provider.findMany({
-      where: {
-        status: "APPROVED",
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-          }
-        }
+    console.log('=== Assigning Services to Providers ===\n')
+
+    const response = await fetch('http://localhost:3000/api/admin/assign-services', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       }
-    });
-    
-    // Get all services
-    const services = await prisma.service.findMany();
-    
-    console.log(`Found ${providers.length} approved providers and ${services.length} services`);
-    
-    // Assign services to providers
-    for (const provider of providers) {
-      // Assign 2-3 random services to each provider
-      const numServices = Math.floor(Math.random() * 3) + 2; // 2-4 services
-      const selectedServices = services
-        .sort(() => 0.5 - Math.random()) // Shuffle
-        .slice(0, numServices);
+    })
+
+    const data = await response.json() as ApiResponse
+
+    if (data.success) {
+      console.log('✅ Service assignment successful!\n')
       
-      for (const service of selectedServices) {
-        // Check if service is already assigned
-        const existing = await prisma.providerService.findFirst({
-          where: {
-            providerId: provider.id,
-            serviceId: service.id,
+      if (data.results) {
+        console.log('Results:')
+        data.results.forEach((result) => {
+          if (result.success) {
+            console.log(`\n✅ Provider: ${result.provider}`)
+            console.log(`   Assigned ${result.servicesAssigned} services:`)
+            result.services?.forEach((service) => {
+              console.log(`   - ${service}`)
+            })
+          } else {
+            console.log(`\n❌ Provider: ${result.provider}`)
+            console.log(`   Error: ${result.error}`)
           }
-        });
-        
-        if (!existing) {
-          await prisma.providerService.create({
-            data: {
-              providerId: provider.id,
-              serviceId: service.id,
-              customRate: Math.floor(Math.random() * 200) + 100, // R100-R300 per hour
-            }
-          });
-          console.log(`Assigned ${service.name} to ${provider.user.name}`);
-        }
+        })
       }
+
+      console.log(`\n${data.message}`)
+    } else {
+      console.error('❌ Service assignment failed:', data.error)
     }
-    
-    console.log('Service assignment completed!');
-    
-    // Show results
-    const updatedProviders = await prisma.provider.findMany({
-      where: {
-        status: "APPROVED",
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
-          }
-        },
-        services: {
-          include: {
-            service: true,
-          }
-        }
-      }
-    });
-    
-    console.log('\nUpdated providers:');
-    updatedProviders.forEach((provider) => {
-      console.log(`${provider.user.name}: ${provider.services.map(ps => ps.service.name).join(', ')}`);
-    });
-    
+
   } catch (error) {
-    console.error('❌ Assignment failed:', error);
-  } finally {
-    await prisma.$disconnect();
-    console.log('Database disconnected');
+    console.error('❌ Error:', error)
   }
 }
 
-assignServices(); 
+assignServices()

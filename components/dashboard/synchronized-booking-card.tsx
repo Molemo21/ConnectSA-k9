@@ -287,12 +287,16 @@ export function SynchronizedBookingCard({
     setActionError(null);
     
     try {
-      const response = await fetch(`/api/book-service/${booking.id}/release-escrow`, {
-        method: 'POST'
+      const response = await fetch(`/api/book-service/${booking.id}/release-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        throw new Error('Failed to confirm completion');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to confirm completion');
       }
 
       const data = await response.json();

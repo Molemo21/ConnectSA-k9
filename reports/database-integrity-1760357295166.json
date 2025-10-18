@@ -1,0 +1,40 @@
+{
+  "timestamp": "2025-10-13T12:07:48.404Z",
+  "tables": {
+    "User": {
+      "totalRecords": 27,
+      "nullFields": []
+    },
+    "Provider": {
+      "totalRecords": 9,
+      "nullFields": []
+    },
+    "Service": {
+      "totalRecords": 6,
+      "nullFields": []
+    },
+    "ServiceCategory": {
+      "totalRecords": 0,
+      "nullFields": []
+    },
+    "Booking": {
+      "totalRecords": 31,
+      "nullFields": []
+    },
+    "Payment": {
+      "totalRecords": 0,
+      "nullFields": []
+    },
+    "Review": {
+      "totalRecords": 0,
+      "nullFields": []
+    },
+    "ProviderReview": {
+      "totalRecords": 0,
+      "nullFields": []
+    }
+  },
+  "relationships": {},
+  "inconsistencies": [],
+  "recommendations": []
+}

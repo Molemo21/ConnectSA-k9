@@ -1,98 +1,79 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getCurrentUserSafe } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-export const dynamic = 'force-dynamic'
-
-
-export async function GET(request: NextRequest) {
-  // Skip during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    return NextResponse.json({
-      status: "deploying",
-      timestamp: new Date().toISOString(),
-      message: "Service is being deployed, please try again in a few minutes"
-    }, { status: 503 });
-  }
+export async function GET() {
+  const startTime = Date.now();
+  const healthChecks = {
+    database: { status: 'unknown', responseTime: 0, error: null },
+    email: { status: 'unknown', configured: false },
+    payments: { status: 'unknown', configured: false },
+    environment: { status: 'unknown', nodeEnv: process.env.NODE_ENV }
+  };
 
   try {
-    const startTime = Date.now()
-    
-    // Check database connection
-    let dbConnected = false
+    // Database health check
+    const dbStartTime = Date.now();
     try {
-      // Lightweight query to validate connectivity
-      await prisma.user.findFirst()
-      dbConnected = true
-    } catch (e) {
-      dbConnected = false
-    }
-    const dbLatency = Date.now() - startTime
-    
-    // Check authentication
-    let user = null
-    let authStatus = "not_authenticated"
-    
-    try {
-      user = await getCurrentUserSafe()
-      authStatus = user ? "authenticated" : "not_authenticated"
-    } catch (authError) {
-      authStatus = "error"
-      console.error("Auth check failed:", authError)
+      await prisma.$queryRaw`SELECT 1`;
+      healthChecks.database = {
+        status: 'healthy',
+        responseTime: Date.now() - dbStartTime,
+        error: null
+      };
+    } catch (error) {
+      healthChecks.database = {
+        status: 'unhealthy',
+        responseTime: Date.now() - dbStartTime,
+        error: error.message
+      };
     }
 
-    const healthData = {
-      status: dbConnected ? "healthy" : "unhealthy",
+    // Email service check
+    healthChecks.email = {
+      status: process.env.RESEND_API_KEY ? 'configured' : 'not_configured',
+      configured: !!process.env.RESEND_API_KEY
+    };
+
+    // Payment service check
+    healthChecks.payments = {
+      status: process.env.PAYSTACK_SECRET_KEY ? 'configured' : 'not_configured',
+      configured: !!process.env.PAYSTACK_SECRET_KEY,
+      testMode: process.env.PAYSTACK_TEST_MODE === 'true',
+      mode: process.env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_') ? 'test' : 'live'
+    };
+
+    // Environment check
+    healthChecks.environment = {
+      status: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+      nodeEnv: process.env.NODE_ENV,
+      vercel: !!process.env.VERCEL
+    };
+
+    // Overall health status
+    const isHealthy = 
+      healthChecks.database.status === 'healthy' &&
+      healthChecks.email.configured &&
+      healthChecks.payments.configured;
+
+    const response = {
+      status: isHealthy ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
-      database: {
-        connected: dbConnected,
-        latency: dbLatency,
-        url: process.env.DATABASE_URL ? "configured" : "not_configured"
-      },
-      authentication: {
-        status: authStatus,
-        user: user ? {
-          id: user.id,
-          email: user.email,
-          role: user.role
-        } : null
-      },
-      environment: {
-        node: process.env.NODE_ENV || "development",
-        database_url_configured: !!process.env.DATABASE_URL
-      }
-    }
+      responseTime: Date.now() - startTime,
+      version: process.env.npm_package_version || '1.0.0',
+      checks: healthChecks
+    };
 
-    const statusCode = dbConnected ? 200 : 503
+    return NextResponse.json(response, {
+      status: isHealthy ? 200 : 503
+    });
 
-    return NextResponse.json(healthData, { status: statusCode })
   } catch (error) {
-    console.error("Health check failed:", error)
-    
     return NextResponse.json({
-      status: "error",
+      status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : "Unknown error",
-      database: {
-        connected: false,
-        error: "Failed to check database connection"
-      },
-      environment: {
-        node: process.env.NODE_ENV || "development",
-        database_url_configured: !!process.env.DATABASE_URL
-      }
-    }, { status: 503 })
+      responseTime: Date.now() - startTime,
+      error: error.message,
+      checks: healthChecks
+    }, { status: 503 });
   }
 }
-
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
-    }
-  })
-} 

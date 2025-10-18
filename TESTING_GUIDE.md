@@ -1,312 +1,281 @@
-# 🧪 Complete Testing Guide for Paystack Integration
+# 🧪 Comprehensive Testing Guide
 
-## 📋 Overview
+## Overview
 
-This guide will walk you through testing the complete Paystack integration in test mode, from setup to end-to-end payment flow testing.
+This project implements a comprehensive testing strategy using Jest for unit testing and Playwright for end-to-end testing. The testing suite covers all critical user flows and ensures the platform's reliability and quality.
 
-## 🚀 Prerequisites
+## 🎯 Testing Strategy
 
-### **1. Environment Setup**
-- ✅ Node.js and npm/pnpm installed
-- ✅ PostgreSQL database running
-- ✅ Next.js development server ready
-- ✅ Paystack test account created
+### Unit Tests (Jest)
+- **Utility Functions**: Date formatting, validation, calculations
+- **Custom Hooks**: React hooks for data fetching, form validation, notifications
+- **API Integration**: Mock API calls and error handling
+- **Component Logic**: Form validation, state management
 
-### **2. Required Environment Variables**
-Create `.env.local` with:
+### End-to-End Tests (Playwright)
+- **Login Flow**: Authentication for all user types (Client, Provider, Admin)
+- **Booking Flow**: Complete booking process from service selection to confirmation
+- **Payment Flow**: Paystack integration and payment processing
+- **Provider Flow**: Provider dashboard and booking management
+- **Admin Flow**: Admin dashboard and system management
+- **Mobile Responsiveness**: Cross-device compatibility testing
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Modern web browser
+
+### Installation
 ```bash
-# Paystack Test Mode
-PAYSTACK_TEST_MODE=true
-PAYSTACK_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-PAYSTACK_PUBLIC_KEY=pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-PAYSTACK_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Install dependencies
+npm install
 
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/connectsa_db"
-
-# Next.js
-NEXTAUTH_SECRET="your-nextauth-secret-key"
-NEXTAUTH_URL="http://localhost:3000"
+# Install Playwright browsers
+npx playwright install
 ```
 
-## 🔧 Step 1: Database Setup Verification
+## 📋 Running Tests
 
-### **Run Database Migration Script**
+### Unit Tests (Jest)
 ```bash
-node scripts/add-provider-bank-fields.js
+# Run all unit tests
+npm run test:unit
+
+# Run tests in watch mode
+npm run test:unit -- --watch
+
+# Run tests with coverage
+npm run test:unit -- --coverage
+
+# Run specific test file
+npm run test:unit -- __tests__/lib/utils.test.ts
 ```
 
-**Expected Output:**
-```
-🔧 Adding Provider Bank Fields
-
-✅ Database connection successful
-
-No bank-related columns found
-
-🔧 Adding bank details columns to providers table...
-
-✅ Added bankName column
-✅ Added bankCode column
-✅ Added accountNumber column
-✅ Added accountName column
-✅ Added recipient_code column
-
-🎉 Provider Bank Fields Addition Completed!
-```
-
-### **Verify Database Schema**
-Check that your `providers` table now has:
-- `bankName` (TEXT)
-- `bankCode` (TEXT)
-- `accountNumber` (TEXT)
-- `accountName` (TEXT)
-- `recipient_code` (TEXT)
-
-## 🧪 Step 2: Paystack Integration Testing
-
-### **Run Integration Test Script**
+### End-to-End Tests (Playwright)
 ```bash
-node scripts/test-paystack-integration.js
+# Run all E2E tests
+npm run test:e2e
+
+# Run tests in headed mode (visible browser)
+npm run test:e2e:headed
+
+# Run tests with UI mode
+npm run test:e2e:ui
+
+# Run tests in debug mode
+npm run test:e2e:debug
+
+# Run specific test file
+npx playwright test tests/e2e/login-flow.spec.ts
+
+# Run tests for specific browser
+npx playwright test --project=chromium
+
+# Run tests for mobile devices
+npx playwright test --project="Mobile Chrome"
 ```
 
-**Expected Output:**
-```
-🧪 Testing Paystack Integration (Test Mode)
-
-✅ Database connection successful
-
-🔍 Step 1: Finding provider with bank details...
-
-❌ No provider found with bank details
-💡 Please add bank details to a provider first using the frontend form
-```
-
-**Note**: This is expected at first since no provider has bank details yet.
-
-## 🎯 Step 3: Frontend Testing
-
-### **1. Start Development Server**
+### All Tests
 ```bash
-npm run dev
-# or
-pnpm dev
+# Run all tests (unit + E2E)
+npm run test:all
 ```
 
-### **2. Login as a Provider**
-1. Navigate to `http://localhost:3000/login`
-2. Login with provider credentials
-3. You should see the provider dashboard
+## 📁 Test Structure
 
-### **3. Add Bank Details**
-1. **Look for Bank Details Section**: It should appear below the stats cards
-2. **Fill in the form**:
-   - **Bank**: Select "ABSA Bank" (code: 044)
-   - **Account Number**: Enter "1234567890"
-   - **Account Holder Name**: Enter "Test Provider Account"
-3. **Click "Save Details"**
-4. **Verify Success**: You should see a success message
-
-### **4. Verify Bank Details Display**
-After saving, you should see:
-- ✅ Bank details displayed in a card format
-- ✅ Account number masked (****1234)
-- ✅ "Edit Bank Details" button
-- ✅ Green success alert
-
-## 🔄 Step 4: Payment Flow Testing
-
-### **1. Create Test Booking**
-1. **Login as a client** in another browser/incognito window
-2. **Create a booking** for the provider you just added bank details to
-3. **Complete payment** (this should put payment in ESCROW status)
-4. **Provider should mark job as complete**
-
-### **2. Test Payment Release**
-1. **Login as the client** for the completed booking
-2. **Navigate to the booking** and click "Confirm Completion"
-3. **Monitor the terminal/console** for payment release logs
-
-### **Expected Logs:**
 ```
-🚀 Starting payment release for booking: [booking-id]
-🔍 Fetching booking data for [booking-id]...
-🔍 Database query completed in [X]ms
-🔍 Payment status validation for booking [booking-id]: { paymentId: 'xxx', currentStatus: 'ESCROW', expectedStatus: 'ESCROW', bookingStatus: 'AWAITING_CONFIRMATION', amount: 150 }
-💰 Generated payout reference: PO_[timestamp]_[random]
-💰 Payout record created in [X]ms
-💳 Payment status updated to PROCESSING_RELEASE in [X]ms
-📋 Booking status updated to PAYMENT_PROCESSING in [X]ms
-🔄 Processing Paystack transfer for payout: [payout-id]
-📋 Provider [provider-id] has no recipient_code, creating new recipient...
-🏦 Creating Paystack transfer recipient with bank details: { bank: 'ABSA Bank', accountNumber: '1234567890', accountName: 'Test Provider Account' }
-✅ Created transfer recipient with code: RCP_[code]
-💾 Stored recipient_code RCP_[code] for provider [provider-id]
-💸 Initiating Paystack transfer: { amount: 150, recipient: 'RCP_[code]', reason: 'Payment for [service] - Booking [booking-id]', reference: 'PO_[timestamp]_[random]' }
-✅ Paystack transfer created successfully: { transferCode: 'TRF_[code]', amount: 15000, status: 'pending' }
-🎉 Payment release completed successfully in [X]ms
+├── __tests__/                    # Jest unit tests
+│   ├── lib/                      # Utility function tests
+│   │   ├── utils.test.ts
+│   │   ├── validation-utils.test.ts
+│   │   └── date-utils.test.ts
+│   ├── hooks/                    # Custom hook tests
+│   │   ├── custom-hooks.test.ts
+│   │   └── form-ui-hooks.test.ts
+│   └── setup.ts                  # Jest setup configuration
+├── tests/
+│   ├── e2e/                      # Playwright E2E tests
+│   │   ├── login-flow.spec.ts
+│   │   ├── booking-flow.spec.ts
+│   │   ├── payment-flow.spec.ts
+│   │   ├── provider-flow.spec.ts
+│   │   └── admin-flow.spec.ts
+│   ├── global-setup.ts           # Global test setup
+│   └── global-teardown.ts        # Global test cleanup
+├── playwright.config.ts          # Playwright configuration
+├── jest.config.js               # Jest configuration
+└── .github/workflows/           # CI/CD pipeline
+    └── comprehensive-testing.yml
 ```
 
-### **3. Verify Database Changes**
-Check your database for these status changes:
+## 🎭 Test Scenarios
 
-**Booking Status:**
-```sql
--- Should change from AWAITING_CONFIRMATION to PAYMENT_PROCESSING to COMPLETED
-SELECT id, status FROM bookings WHERE id = '[booking-id]';
-```
+### Login Flow Tests
+- ✅ Form validation and error handling
+- ✅ Successful login for all user types
+- ✅ Authentication state persistence
+- ✅ Redirect to intended pages
+- ✅ Logout functionality
+- ✅ Network error handling
+- ✅ Mobile responsiveness
 
-**Payment Status:**
-```sql
--- Should change from ESCROW to PROCESSING_RELEASE to RELEASED
-SELECT id, status FROM payments WHERE "bookingId" = '[booking-id]';
-```
+### Booking Flow Tests
+- ✅ Service discovery and selection
+- ✅ Provider search and filtering
+- ✅ Booking form validation
+- ✅ Date and time validation
+- ✅ Provider selection and offer sending
+- ✅ Booking status tracking
+- ✅ Conflict detection
+- ✅ Mobile booking experience
 
-**Payout Status:**
-```sql
--- Should change from PENDING to PROCESSING
-SELECT id, status FROM payouts WHERE "paymentId" = '[payment-id]';
-```
+### Payment Flow Tests
+- ✅ Payment modal display
+- ✅ Amount calculation and breakdown
+- ✅ Paystack integration
+- ✅ Payment success handling
+- ✅ Payment failure handling
+- ✅ Escrow payment flow
+- ✅ Payment history display
+- ✅ Security information display
 
-**Provider Recipient Code:**
-```sql
--- Should now have a recipient_code
-SELECT "recipientCode" FROM providers WHERE id = '[provider-id]';
-```
+### Provider Flow Tests
+- ✅ Provider dashboard display
+- ✅ Booking request management
+- ✅ Accept/decline booking requests
+- ✅ Service start and completion
+- ✅ Earnings tracking
+- ✅ Profile management
+- ✅ Service offering management
+- ✅ Conflict handling
 
-## 📊 Step 5: Monitoring & Validation
+### Admin Flow Tests
+- ✅ Admin dashboard overview
+- ✅ User management
+- ✅ Provider application management
+- ✅ Booking monitoring
+- ✅ Payment and refund management
+- ✅ System analytics
+- ✅ Settings management
+- ✅ Audit log viewing
 
-### **1. Check Frontend Status Updates**
-- **Client Dashboard**: Booking should show "Completed" status
-- **Provider Dashboard**: Should see the completed booking
-- **Payment Status**: Should show payment released
+## 🔧 Configuration
 
-### **2. Verify Error Handling**
-Test these scenarios:
+### Jest Configuration
+- **Test Environment**: jsdom (browser-like environment)
+- **Setup Files**: Custom mocks for IntersectionObserver, ResizeObserver, localStorage
+- **Module Mapping**: Path aliases for clean imports
+- **Coverage**: Comprehensive coverage reporting
 
-**Scenario 1: Missing Bank Details**
-1. **Remove bank details** from a provider
-2. **Try to release payment** for their booking
-3. **Expected Result**: Error message about incomplete bank details
+### Playwright Configuration
+- **Browsers**: Chromium, Firefox, WebKit, Mobile Chrome, Mobile Safari
+- **Base URL**: Production environment (https://app.proliinkconnect.co.za)
+- **Screenshots**: On failure
+- **Videos**: On failure
+- **Traces**: On first retry
+- **Timeouts**: 30s for tests, 10s for actions
 
-**Scenario 2: Invalid Payment Status**
-1. **Try to release payment** for a booking not in ESCROW
-2. **Expected Result**: Appropriate error message
+## 📊 Test Data
 
-**Scenario 3: Unauthorized Access**
-1. **Try to release payment** as wrong user
-2. **Expected Result**: 401 Unauthorized error
+### Test Users
+- **Client**: molemonakin08@gmail.com / 123456
+- **Provider**: thabangnakin17@gmail.com / Thabang17
+- **Admin**: admin@example.com / password
 
-### **3. Check Logs for Errors**
-Monitor your terminal for any error messages or failed operations.
+### Test Services
+- Carpet Cleaning (R400 base price)
+- House Cleaning (R350 base price)
+- Window Cleaning (R300 base price)
 
-## 🔍 Step 6: Advanced Testing
+## 🚨 Error Handling
 
-### **1. Test Recipient Code Reuse**
-1. **Create another booking** for the same provider
-2. **Release payment** for the new booking
-3. **Verify**: Should use existing recipient code (no new recipient creation)
+### Common Issues
+1. **Authentication Failures**: Check test user credentials
+2. **Network Timeouts**: Increase timeout values
+3. **Element Not Found**: Add proper wait conditions
+4. **Mobile Tests**: Verify viewport settings
 
-### **2. Test Multiple Providers**
-1. **Add bank details** to another provider
-2. **Create and complete bookings** for both providers
-3. **Verify**: Each provider gets their own recipient code
-
-### **3. Test Transfer Failure Scenarios**
-1. **Use invalid bank details** (wrong account number)
-2. **Try to release payment**
-3. **Verify**: Proper rollback and error handling
-
-## ❌ Troubleshooting Common Issues
-
-### **Issue 1: "Bank Details Form Not Showing"**
-**Solutions:**
-- Check browser console for errors
-- Verify the component is imported correctly
-- Check if `currentProviderId` is being set
-
-### **Issue 2: "API Error 500"**
-**Solutions:**
-- Check terminal logs for detailed error messages
-- Verify database connection
-- Check if all required environment variables are set
-
-### **Issue 3: "Paystack API Error"**
-**Solutions:**
-- Verify API keys are correct (start with `sk_test_`)
-- Check Paystack dashboard for account status
-- Ensure you're using test mode
-
-### **Issue 4: "Database Column Missing"**
-**Solutions:**
-- Run `node scripts/add-provider-bank-fields.js` again
-- Check database schema manually
-- Restart your development server
-
-## 🎯 Success Criteria
-
-Your Paystack integration is working correctly when:
-
-✅ **Bank details form displays and saves correctly**
-✅ **Provider can add/edit bank information**
-✅ **Payment release flow completes without errors**
-✅ **All status transitions work correctly**
-✅ **Paystack recipient creation succeeds**
-✅ **Transfer creation succeeds**
-✅ **Database rollbacks work on failures**
-✅ **Error handling provides clear messages**
-✅ **No real money is transferred in test mode**
-
-## 🚀 Next Steps After Successful Testing
-
-1. **Monitor Performance**: Check response times and success rates
-2. **Test Edge Cases**: Try various error scenarios
-3. **Prepare for Production**: Update environment variables
-4. **Implement Webhooks**: Handle transfer status updates
-5. **Add Monitoring**: Track transfer success rates
-
-## 📝 Test Data Examples
-
-### **Valid Test Bank Details**
-```json
-{
-  "bankCode": "044",
-  "bankName": "ABSA Bank",
-  "accountNumber": "1234567890",
-  "accountName": "Test Provider Account"
-}
-```
-
-### **Test Transfer Response**
-```json
-{
-  "success": true,
-  "payout": { /* payout details */ },
-  "message": "Payment released successfully to provider. Transfer initiated.",
-  "transferCode": "TRF_xxxxxxxxxxxxxxxxxxxxxxxx",
-  "recipientCode": "RCP_xxxxxxxxxxxxxxxxxxxxxxxx",
-  "amount": 150.00,
-  "bookingStatus": "COMPLETED"
-}
-```
-
----
-
-**Remember**: Test mode is completely safe - no real money will be transferred. Use this time to thoroughly test all payment flows before going live! 🎉
-
-## 🔗 Quick Reference Commands
-
+### Debugging
 ```bash
-# Database setup
-node scripts/add-provider-bank-fields.js
+# Debug specific test
+npx playwright test tests/e2e/login-flow.spec.ts --debug
 
-# Paystack integration test
-node scripts/test-paystack-integration.js
+# Run with verbose output
+npx playwright test --reporter=list
 
-# Start development server
-npm run dev
-
-# Check environment variables
-echo $PAYSTACK_TEST_MODE
-echo $PAYSTACK_SECRET_KEY
+# Generate trace file
+npx playwright test --trace=on
 ```
+
+## 📈 CI/CD Integration
+
+### GitHub Actions
+- **Triggers**: Push to main/develop, pull requests, daily schedule
+- **Jobs**: Unit tests, E2E tests, mobile tests, performance tests, security tests
+- **Artifacts**: Test reports, screenshots, videos, traces
+- **Coverage**: Codecov integration for unit test coverage
+
+### Test Reports
+- **HTML Reports**: Interactive test results
+- **JSON Reports**: Machine-readable results
+- **JUnit Reports**: CI/CD integration
+- **Coverage Reports**: Code coverage metrics
+
+## 🎯 Best Practices
+
+### Writing Tests
+1. **Descriptive Names**: Clear test descriptions
+2. **Single Responsibility**: One test per scenario
+3. **Proper Setup**: Clean test environment
+4. **Assertions**: Clear and specific assertions
+5. **Error Handling**: Test both success and failure cases
+
+### Maintenance
+1. **Regular Updates**: Keep tests in sync with code changes
+2. **Test Data**: Maintain realistic test data
+3. **Performance**: Optimize test execution time
+4. **Documentation**: Keep test documentation updated
+
+## 🔍 Monitoring
+
+### Test Metrics
+- **Pass Rate**: Percentage of passing tests
+- **Execution Time**: Test suite performance
+- **Coverage**: Code coverage percentage
+- **Flakiness**: Test reliability metrics
+
+### Alerts
+- **Failed Tests**: Immediate notification on test failures
+- **Coverage Drop**: Alert when coverage decreases
+- **Performance Regression**: Alert on slow test execution
+
+## 📚 Resources
+
+### Documentation
+- [Jest Documentation](https://jestjs.io/docs/getting-started)
+- [Playwright Documentation](https://playwright.dev/docs/intro)
+- [Testing Library](https://testing-library.com/docs/)
+
+### Tools
+- **Jest**: Unit testing framework
+- **Playwright**: End-to-end testing framework
+- **Testing Library**: React component testing utilities
+- **Codecov**: Coverage reporting
+
+## 🚀 Future Enhancements
+
+### Planned Improvements
+1. **Visual Regression Testing**: Screenshot comparisons
+2. **Performance Testing**: Load and stress testing
+3. **Accessibility Testing**: WCAG compliance testing
+4. **API Testing**: Comprehensive API test suite
+5. **Database Testing**: Data integrity testing
+
+### Integration
+1. **Slack Notifications**: Test result notifications
+2. **Test Analytics**: Advanced test metrics
+3. **Parallel Execution**: Faster test execution
+4. **Test Data Management**: Automated test data setup
+5. **Cross-browser Testing**: Extended browser support

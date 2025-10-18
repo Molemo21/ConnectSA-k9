@@ -84,7 +84,10 @@ interface Booking {
   id: string
   service: {
     name: string
-    category: string
+    category: {
+      name: string
+      description?: string
+    }
     description?: string
     basePrice?: number
   }
@@ -92,7 +95,7 @@ interface Booking {
     id: string
     name: string
     email: string
-    phone?: string
+    image?: string
   }
   scheduledDate: string
   totalAmount: number
@@ -622,7 +625,7 @@ function ProviderMainContent({
                         <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
                           {booking.status || 'UNKNOWN'}
                         </Badge>
-                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount || 0}</p>
+                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount || booking.service?.basePrice || 0}</p>
                       </div>
                     </div>
                   ))}
@@ -689,7 +692,7 @@ function ProviderMainContent({
                           </div>
                           <div>
                             <h3 className="text-lg font-semibold text-white">{booking.service?.name || 'Unknown Service'}</h3>
-                            <p className="text-sm text-gray-400">{booking.service?.category || 'No Category'}</p>
+                            <p className="text-sm text-gray-400">{booking.service?.category?.name || 'No Category'}</p>
                           </div>
                         </div>
                         
@@ -716,8 +719,7 @@ function ProviderMainContent({
                             {booking.address || 'No Address'}
                           </span>
                           <span className="flex items-center text-gray-400">
-                            <DollarSign className="w-4 h-4 mr-1" />
-                            R{booking.totalAmount || 0}
+                            R{booking.totalAmount || booking.service?.basePrice || 0}
                           </span>
                         </div>
                       </div>

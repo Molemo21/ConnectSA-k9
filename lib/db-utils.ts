@@ -1,4 +1,4 @@
-import { prisma } from './prisma';
+import prisma from './prisma';
 
 // Retry configuration for database operations
 const RETRY_CONFIG = {
@@ -127,6 +127,21 @@ const createDbWrapper = () => {
         findMany: () => Promise.resolve([]), 
         findUnique: () => Promise.resolve(null), 
         count: () => Promise.resolve(0), 
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        aggregate: () => Promise.resolve({ _sum: { amount: 0 }, _avg: { rating: 0 } }) 
+      },
+      notification: { 
+        findFirst: () => Promise.resolve(null), 
+        findMany: () => Promise.resolve([]), 
+        findUnique: () => Promise.resolve(null), 
+        count: () => Promise.resolve(0), 
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        updateMany: () => Promise.resolve({ count: 0 }),
+        delete: () => Promise.resolve(null),
+        deleteMany: () => Promise.resolve({ count: 0 }),
         aggregate: () => Promise.resolve({ _sum: { amount: 0 }, _avg: { rating: 0 } }) 
       },
       review: { 
@@ -140,7 +155,10 @@ const createDbWrapper = () => {
         findFirst: () => Promise.resolve(null), 
         findMany: () => Promise.resolve([]), 
         findUnique: () => Promise.resolve(null), 
-        count: () => Promise.resolve(0) 
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null)
       },
       service: { 
         findFirst: () => Promise.resolve(null), 
@@ -203,6 +221,21 @@ const createDbWrapper = () => {
         delete: () => Promise.resolve(null),
         deleteMany: () => Promise.resolve({ count: 0 }),
       },
+      notification: {
+        findFirst: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        updateMany: () => Promise.resolve({ count: 0 }),
+        delete: () => Promise.resolve(null),
+        deleteMany: () => Promise.resolve({ count: 0 }),
+      },
+      $transaction: (callback: any) => Promise.resolve(callback({})),
+      $queryRaw: () => Promise.resolve([]),
+      $executeRaw: () => Promise.resolve(0),
+      $disconnect: () => Promise.resolve(),
     };
   }
 
@@ -248,6 +281,9 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.payment.findMany(args), 'payment.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.payment.findUnique(args), 'payment.findUnique'),
       count: (args: any) => withRetry(() => prisma.payment.count(args), 'payment.count'),
+      create: (args: any) => withRetry(() => prisma.payment.create(args), 'payment.create'),
+      update: (args: any) => withRetry(() => prisma.payment.update(args), 'payment.update'),
+      delete: (args: any) => withRetry(() => prisma.payment.delete(args), 'payment.delete'),
       aggregate: (args: any) => withRetry(() => prisma.payment.aggregate(args), 'payment.aggregate'),
     },
     
@@ -266,6 +302,9 @@ const createDbWrapper = () => {
       findMany: (args: any) => withRetry(() => prisma.payout.findMany(args), 'payout.findMany'),
       findUnique: (args: any) => withRetry(() => prisma.payout.findUnique(args), 'payout.findUnique'),
       count: (args: any) => withRetry(() => prisma.payout.count(args), 'payout.count'),
+      create: (args: any) => withRetry(() => prisma.payout.create(args), 'payout.create'),
+      update: (args: any) => withRetry(() => prisma.payout.update(args), 'payout.update'),
+      delete: (args: any) => withRetry(() => prisma.payout.delete(args), 'payout.delete'),
     },
     
     // Service operations
@@ -343,6 +382,45 @@ const createDbWrapper = () => {
       deleteMany: (args: any) => withRetry(() => prisma.bookingDraft.deleteMany(args), 'bookingDraft.deleteMany'),
     },
     
+    // Transaction operations
+    $transaction: async (callback: any) => {
+      // For transactions, we need to handle retries differently
+      // because the callback needs to receive the transaction object
+      let lastError: any;
+      
+      for (let attempt = 1; attempt <= RETRY_CONFIG.maxAttempts; attempt++) {
+        try {
+          return await prisma.$transaction(callback);
+        } catch (error) {
+          lastError = error;
+          
+          if (attempt === RETRY_CONFIG.maxAttempts || !isRetryableError(error)) {
+            console.error(`❌ db.$transaction failed after ${attempt} attempts:`, error);
+            throw error;
+          }
+          
+          console.warn(`⚠️ db.$transaction failed (attempt ${attempt}/${RETRY_CONFIG.maxAttempts}), retrying...`, error);
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, getDelay(attempt)));
+          
+          // For connection errors, try to refresh the connection
+          if (error.message && (error.message.includes('prepared statement') || error.message.includes('Engine is not yet connected') || error.message.includes('connection pool'))) {
+            console.log('🔄 Attempting to refresh Prisma connection...');
+            try {
+              await prisma.$disconnect();
+              await prisma.$connect();
+              console.log('✅ Prisma connection refreshed');
+            } catch (refreshError) {
+              console.warn('⚠️ Failed to refresh Prisma connection:', refreshError);
+            }
+          }
+        }
+      }
+      
+      throw lastError;
+    },
+    
     // Raw query operations
     $queryRaw: (args: any) => withRetry(() => prisma.$queryRaw(args), 'db.$queryRaw'),
     $executeRaw: (args: any) => withRetry(() => prisma.$executeRaw(args), 'db.$executeRaw'),
@@ -350,9 +428,5 @@ const createDbWrapper = () => {
   };
 };
 
-// Export the database wrapper
+// Create and export the database wrapper
 export const db = createDbWrapper();
-
-// Export the original prisma client for operations not covered by the wrapper
-// Note: prisma might be null in browser/Edge runtime environments
-export { prisma };

@@ -1,24 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 
-// Create Prisma client instance with working configuration
-// Force regeneration to ensure latest schema is used
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: "postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=15&pool_timeout=60&connection_limit=5"
-    }
-  },
-  log: ['error', 'warn'],
-  errorFormat: 'pretty',
-  // Force schema refresh
-  __internal: {
-    engine: {
-      binaryTargets: ['native']
-    }
-  }
-});
+// Import the configured Prisma client
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic'
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db-utils";
+import prisma from "@/lib/prisma"; // Use the updated Prisma client
 import { paystackClient } from "@/lib/paystack";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 
 const releaseEscrowSchema = z.object({
-  reason: z.string().min(1, "Release reason is required"),
+  reason: z.string().min(1, "Release reason is required").optional().default("Job completion confirmed by client"),
   notes: z.string().optional(),
 });
 
@@ -38,8 +38,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    const body = await request.json();
-    const validated = releaseEscrowSchema.parse(body);
+    // Parse request body with defaults
+    let validated;
+    try {
+      const body = await request.json();
+      validated = releaseEscrowSchema.parse(body);
+    } catch (error) {
+      // If no body or invalid body, use defaults
+      validated = releaseEscrowSchema.parse({});
+    }
 
     console.log(`🔓 Escrow release requested for booking ${bookingId} by user ${user.id} (${user.role})`);
 

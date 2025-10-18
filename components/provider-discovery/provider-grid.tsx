@@ -137,7 +137,7 @@ export function ProviderGrid({
                   {providers[0]?.service.name}
                 </Badge>
                 <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30 text-xs">
-                  {providers[0]?.service.category}
+                  {providers[0]?.service.category?.name || 'No Category'}
                 </Badge>
               </div>
             </div>
@@ -194,7 +194,7 @@ export function ProviderGrid({
                           {provider.businessName || provider.user.name}
                         </CardTitle>
                         <CardDescription className="text-white/70 text-xs sm:text-sm truncate">
-                          {provider.service.name} • {provider.service.category}
+                          {provider.service.name} • {provider.service.category?.name || 'No Category'}
                         </CardDescription>
                       </div>
                     </div>

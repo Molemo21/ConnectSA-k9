@@ -710,43 +710,42 @@ async function handleTransferSuccess(data: any, webhookEventId: string) {
     });
 
     const result = await prisma.$transaction(async (tx) => {
-      // Find payout by reference
-      const payout = await tx.payout.findUnique({
-        where: { paystackRef: reference },
-        include: { payment: { include: { booking: true } } }
+      // Find payment by transactionId (which stores the transfer_code)
+      const payment = await tx.payment.findFirst({
+        where: { 
+          transactionId: transfer_code,
+          status: 'PROCESSING_RELEASE'
+        },
+        include: { booking: true }
       });
 
-      if (!payout) {
-        throw new Error(`Payout not found for reference: ${reference}`);
+      if (!payment) {
+        throw new Error(`Payment not found for transfer code: ${transfer_code}`);
       }
-
-      // Update payout status
-      await tx.payout.update({
-        where: { id: payout.id },
-        data: {
-          status: 'COMPLETED',
-          transferCode: transfer_code,
-        }
-      });
 
       // Update payment status to RELEASED
       await tx.payment.update({
-        where: { id: payout.paymentId },
-        data: { status: 'RELEASED' }
+        where: { id: payment.id },
+        data: { 
+          status: 'RELEASED',
+          updatedAt: new Date()
+        }
       });
 
       // Update booking status to COMPLETED
       await tx.booking.update({
-        where: { id: payout.payment.bookingId },
-        data: { status: 'COMPLETED' }
+        where: { id: payment.bookingId },
+        data: { 
+          status: 'COMPLETED',
+          updatedAt: new Date()
+        }
       });
 
       logPayment.success('webhook', 'Transfer completed successfully', {
-        payoutId: payout.id,
-        paymentId: payout.paymentId,
-        bookingId: payout.payment.bookingId,
+        paymentId: payment.id,
+        bookingId: payment.bookingId,
         metadata: {
-          amount: payout.amount,
+          amount: payment.amount,
           transferCode: transfer_code,
           reference
         }
@@ -754,15 +753,14 @@ async function handleTransferSuccess(data: any, webhookEventId: string) {
 
       return { 
         success: true, 
-        message: `Payout ${payout.id} completed successfully, payment ${payout.paymentId} released to provider`,
-        payout: payout,
-        payment: payout.payment,
-        booking: payout.payment.booking
+        message: `Payment ${payment.id} released to provider successfully`,
+        payment: payment,
+        booking: payment.booking
       };
     });
 
-    // Broadcast payout status change
-    if (result.success && result.payout && result.payment && result.booking) {
+    // Broadcast payment status change (commented out until broadcastPayoutStatusChange is updated)
+    if (false && result.success && result.payment && result.booking) {
       try {
         broadcastPayoutStatusChange(
           {

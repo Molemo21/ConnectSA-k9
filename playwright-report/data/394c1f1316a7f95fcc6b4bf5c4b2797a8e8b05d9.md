@@ -1,0 +1,247 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic:
+    - generic:
+      - generic:
+        - banner:
+          - generic:
+            - generic:
+              - link "ProLiink Connect Logo ProLiink":
+                - /url: /
+                - img "ProLiink Connect Logo"
+                - generic:
+                  - generic:
+                    - text: ProL
+                    - generic: ii
+                    - text: nk
+              - generic:
+                - generic:
+                  - link "Sign In":
+                    - /url: /login
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - img
+              - heading "Platform Under Maintenance" [level=1]
+              - paragraph: We're working hard to bring you an amazing experience. Our platform will be launching soon with exciting new features!
+              - generic:
+                - paragraph: "Stay updated:"
+                - paragraph: support@proliinkconnect.co.za
+                - paragraph: +27 68 947 6401
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - heading "Our Services" [level=2]
+            - paragraph: Professional services delivered to your doorstep. Choose from our verified network of experts.
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - img "Plumbing"
+                  - generic:
+                    - generic: Home Services
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading "Plumbing" [level=3]
+                      - paragraph: Professional plumbing services delivered by verified experts in your area.
+                    - generic:
+                      - generic: From R300
+                      - button "Book Now":
+                        - generic:
+                          - generic: Book Now
+                          - img
+            - generic:
+              - generic:
+                - generic:
+                  - img "Electrical Work"
+                  - generic:
+                    - generic: Home Services
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading "Electrical Work" [level=3]
+                      - paragraph: Professional electrical work services delivered by verified experts in your area.
+                    - generic:
+                      - generic: From R400
+                      - button "Book Now":
+                        - generic:
+                          - generic: Book Now
+                          - img
+            - generic:
+              - generic:
+                - generic:
+                  - img "House Cleaning"
+                  - generic:
+                    - generic: Home Services
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading "House Cleaning" [level=3]
+                      - paragraph: Professional house cleaning services delivered by verified experts in your area.
+                    - generic:
+                      - generic: From R250
+                      - button "Book Now":
+                        - generic:
+                          - generic: Book Now
+                          - img
+            - generic:
+              - generic:
+                - generic:
+                  - img "Carpentry"
+                  - generic:
+                    - generic: Home Services
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading "Carpentry" [level=3]
+                      - paragraph: Professional carpentry services delivered by verified experts in your area.
+                    - generic:
+                      - generic: From R350
+                      - button "Book Now":
+                        - generic:
+                          - generic: Book Now
+                          - img
+          - generic:
+            - link "View All Services":
+              - /url: /services
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - heading "How It Works" [level=2]
+            - paragraph: Three simple steps to connect with verified professionals and get your tasks done
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading "Browse & Discover" [level=3]
+                  - paragraph: Explore our curated selection of verified professionals and services tailored to your specific needs and location.
+            - generic:
+              - generic:
+                - generic:
+                  - heading "Connect & Chat" [level=3]
+                  - paragraph: Message providers directly, discuss your requirements, and receive instant quotes for your project.
+            - generic:
+              - generic:
+                - generic:
+                  - heading "Book & Relax" [level=3]
+                  - paragraph: Secure your booking with our escrow payment system and let us handle the rest while you relax.
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - heading "Why People Trust Our Platform" [level=2]
+            - paragraph: Join thousands of satisfied customers who rely on our platform for their service needs.
+        - generic:
+          - generic:
+            - img
+            - generic:
+              - heading "Save Time" [level=3]
+              - paragraph: We make finding reliable services effortless, saving you hours of research and phone calls.
+          - generic:
+            - img
+            - generic:
+              - heading "Guaranteed Quality" [level=3]
+              - paragraph: Avoid scams and poor service with our vetted professionals and quality guarantee.
+          - generic:
+            - img
+            - generic:
+              - heading "Dedicated Support" [level=3]
+              - paragraph: Our customer service team is always ready to help with any questions or issues.
+          - generic:
+            - img
+            - generic:
+              - heading "Real Reviews" [level=3]
+              - paragraph: Make informed decisions based on authentic reviews from real users.
+    - contentinfo:
+      - generic:
+        - generic:
+          - generic:
+            - heading "ProLink Connect" [level=3]:
+              - generic:
+                - generic:
+                  - text: ProL
+                  - generic: i
+                  - text: nk
+                - generic:
+                  - text: Co
+                  - generic: nn
+                  - text: ect
+            - paragraph: The smart way to link professionals and clients.
+            - img "Handshake"
+          - generic:
+            - heading "Quick Links" [level=3]
+            - list:
+              - listitem:
+                - link "Services":
+                  - /url: /services
+              - listitem:
+                - link "Book Service":
+                  - /url: /book-service
+              - listitem:
+                - link "Become Provider":
+                  - /url: /become-provider
+              - listitem:
+                - link "About Us":
+                  - /url: /about
+              - listitem:
+                - link "Dashboard":
+                  - /url: /dashboard
+              - listitem:
+                - link "Contact Us":
+                  - /url: /contact
+          - generic:
+            - heading "Popular Services" [level=3]
+            - list:
+              - listitem:
+                - link "Home Services":
+                  - /url: /services?category=Home Services
+              - listitem:
+                - link "Beauty & Wellness":
+                  - /url: /services?category=Beauty
+              - listitem:
+                - link "IT Support":
+                  - /url: /services?category=Technology
+              - listitem:
+                - link "Automotive":
+                  - /url: /services?category=Automotive
+              - listitem:
+                - link "View All Services →":
+                  - /url: /services
+          - generic:
+            - heading "Contact Us" [level=3]
+            - generic:
+              - paragraph: 49 Leeds Street
+              - paragraph: Cnr Leeds & Creister street
+              - paragraph: Mthatha, Eastern Cape
+              - paragraph: "5099"
+              - paragraph:
+                - generic: "Email: support@proliinkconnect.co.za"
+                - generic: "Phone: +27 68 947 6401"
+        - generic:
+          - generic:
+            - link:
+              - /url: https://facebook.com
+              - img
+            - link:
+              - /url: https://twitter.com
+              - img
+            - link:
+              - /url: https://instagram.com
+              - img
+            - link:
+              - /url: https://www.linkedin.com/company/proliink-connect-sa
+              - img
+          - paragraph: © 2024 ProLiink Connect. All rights reserved.
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e2]
+```

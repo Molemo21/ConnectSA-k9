@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-10-13T12:13:48.111Z",
+  "fixes": [],
+  "errors": [
+    "Failed to fix payments: \nInvalid `prisma.payment.create()` invocation:\n\n\nThe column `userId` does not exist in the current database."
+  ],
+  "summary": {
+    "fixed": 1,
+    "failed": 1
+  }
+}

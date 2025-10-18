@@ -21,6 +21,8 @@ interface PaymentStatusDisplayProps {
   isProcessing?: boolean
   onCheckStatus?: () => void
   className?: string
+  allowContinue?: boolean
+  bookingStatus?: string
 }
 
 export function PaymentStatusDisplay({ 
@@ -29,7 +31,8 @@ export function PaymentStatusDisplay({
   onCheckStatus,
   className,
   allowContinue = false,
-}: PaymentStatusDisplayProps & { allowContinue?: boolean }) {
+  bookingStatus,
+}: PaymentStatusDisplayProps) {
   if (!payment) return null
 
   const isPaymentProcessing = payment.status === 'PENDING' && isProcessing
@@ -167,6 +170,37 @@ export function PaymentStatusDisplay({
 
   // Escrow payment
   if (['ESCROW', 'HELD_IN_ESCROW'].includes(payment.status)) {
+    // If booking is completed, show different message
+    if (bookingStatus === 'COMPLETED') {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <Clock className="w-4 h-4 text-orange-500" />
+          <span className="text-orange-600 font-medium">Payment in Escrow - Ready for Release</span>
+        </div>
+      )
+    }
+    
+    // If booking is awaiting confirmation, show waiting for client confirmation
+    if (bookingStatus === 'AWAITING_CONFIRMATION') {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <Clock className="w-4 h-4 text-orange-500" />
+          <span className="text-orange-600 font-medium">Payment in Escrow - Awaiting Client Confirmation</span>
+        </div>
+      )
+    }
+    
+    // If booking is in progress, show provider can start work
+    if (bookingStatus === 'IN_PROGRESS') {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <DollarSign className="w-4 h-4 text-blue-500" />
+          <span className="text-blue-600 font-medium">Payment in Escrow - Work in Progress</span>
+        </div>
+      )
+    }
+    
+    // Default escrow message for other statuses
     return (
       <div className="flex items-center space-x-2 text-sm">
         <DollarSign className="w-4 h-4 text-blue-500" />

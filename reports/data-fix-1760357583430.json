@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-10-13T12:12:55.141Z",
+  "fixes": [],
+  "errors": [
+    "Failed to fix payments: \nInvalid `prisma.payment.create()` invocation:\n\n{\n  data: {\n    bookingId: \"cmgkm9hh00001la049wudtx6q\",\n    ~~~~~~~~~\n    amount: 0,\n    status: \"PENDING\",\n    booking: {\n      connect: {\n        id: \"cmgkm9hh00001la049wudtx6q\"\n      }\n    },\n    user: {\n      connect: {\n        id: \"cmd8kloy60000s7s4a2w0nmfc\"\n      }\n    },\n?   id?: String,\n?   createdAt?: DateTime,\n?   updatedAt?: DateTime,\n?   payout?: PayoutCreateNestedManyWithoutPaymentInput\n  }\n}\n\nUnknown argument `bookingId`. Did you mean `booking`? Available options are marked with ?."
+  ],
+  "summary": {
+    "fixed": 1,
+    "failed": 1
+  }
+}

@@ -132,7 +132,7 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-medium text-gray-100 truncate">{booking.service.name}</h3>
-            <p className="text-xs text-gray-400">{booking.service.category}</p>
+            <p className="text-xs text-gray-400">{booking.service.category?.name || 'No Category'}</p>
           </div>
           <Badge className={`text-xs ${statusInfo.color} ml-2`}>
             <StatusIcon className={`w-3 h-3 mr-1 ${statusInfo.icon === Loader2 ? 'animate-spin' : ''}`} />

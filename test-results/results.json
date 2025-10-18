@@ -30,6 +30,10 @@
         {
           "outputFile": "test-results/results.xml"
         }
+      ],
+      [
+        "github",
+        null
       ]
     ],
     "reportSlowTests": {
@@ -48,11 +52,16 @@
         "id": "chromium",
         "name": "chromium",
         "testDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/tests/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
         ],
-        "timeout": 30000
+        "testMatch": [
+          "**/e2e/**/*.spec.ts",
+          "**/e2e/**/*.test.ts"
+        ],
+        "timeout": 10000
       },
       {
         "outputDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/test-results",
@@ -64,11 +73,16 @@
         "id": "firefox",
         "name": "firefox",
         "testDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/tests/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
         ],
-        "timeout": 30000
+        "testMatch": [
+          "**/e2e/**/*.spec.ts",
+          "**/e2e/**/*.test.ts"
+        ],
+        "timeout": 10000
       },
       {
         "outputDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/test-results",
@@ -80,11 +94,16 @@
         "id": "webkit",
         "name": "webkit",
         "testDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/tests/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
         ],
-        "timeout": 30000
+        "testMatch": [
+          "**/e2e/**/*.spec.ts",
+          "**/e2e/**/*.test.ts"
+        ],
+        "timeout": 10000
       },
       {
         "outputDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/test-results",
@@ -96,11 +115,16 @@
         "id": "Mobile Chrome",
         "name": "Mobile Chrome",
         "testDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/tests/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
         ],
-        "timeout": 30000
+        "testMatch": [
+          "**/e2e/**/*.spec.ts",
+          "**/e2e/**/*.test.ts"
+        ],
+        "timeout": 10000
       },
       {
         "outputDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/test-results",
@@ -112,11 +136,58 @@
         "id": "Mobile Safari",
         "name": "Mobile Safari",
         "testDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/tests/e2e",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
         ],
-        "timeout": 30000
+        "testMatch": [
+          "**/e2e/**/*.spec.ts",
+          "**/e2e/**/*.test.ts"
+        ],
+        "timeout": 10000
+      },
+      {
+        "outputDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "Microsoft Edge",
+        "name": "Microsoft Edge",
+        "testDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/tests/e2e",
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
+        ],
+        "testMatch": [
+          "**/e2e/**/*.spec.ts",
+          "**/e2e/**/*.test.ts"
+        ],
+        "timeout": 10000
+      },
+      {
+        "outputDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "Google Chrome",
+        "name": "Google Chrome",
+        "testDir": "C:/Users/liqui/OneDrive/Desktop/ConnectSA/ConnectSA-k9/tests/e2e",
+        "testIgnore": [
+          "**/node_modules/**",
+          "**/dist/**",
+          "**/build/**"
+        ],
+        "testMatch": [
+          "**/e2e/**/*.spec.ts",
+          "**/e2e/**/*.test.ts"
+        ],
+        "timeout": 10000
       }
     ],
     "shard": null,
@@ -128,25 +199,25 @@
   },
   "suites": [
     {
-      "title": "client-journey\\01-discovery-signup.spec.ts",
-      "file": "client-journey/01-discovery-signup.spec.ts",
+      "title": "site-status.spec.ts",
+      "file": "site-status.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [],
       "suites": [
         {
-          "title": "Client Journey - Discovery & Sign Up",
-          "file": "client-journey/01-discovery-signup.spec.ts",
+          "title": "Site Status Check",
+          "file": "site-status.spec.ts",
           "line": 3,
           "column": 6,
           "specs": [
             {
-              "title": "should display landing page with services and featured providers",
+              "title": "should load the maintenance page",
               "ok": false,
               "tags": [],
               "tests": [
                 {
-                  "timeout": 30000,
+                  "timeout": 10000,
                   "annotations": [],
                   "expectedStatus": "passed",
                   "projectId": "chromium",
@@ -155,67 +226,64 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 26081,
+                      "status": "timedOut",
+                      "duration": 13481,
                       "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24",
-                        "location": {
-                          "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                          "column": 24,
-                          "line": 10
-                        },
-                        "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                        "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
                       },
                       "errors": [
                         {
+                          "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
+                        },
+                        {
                           "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 24,
-                            "line": 10
+                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\site-status.spec.ts",
+                            "column": 16,
+                            "line": 6
                           },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24\u001b[22m"
+                          "message": "Error: page.goto: Test timeout of 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://app.proliinkconnect.co.za/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m 4 |\u001b[39m   test(\u001b[32m'should load the maintenance page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 5 |\u001b[39m     \u001b[90m// Navigate to the site\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 6 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\n \u001b[90m   |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 7 |\u001b[39m     \n \u001b[90m 8 |\u001b[39m     \u001b[90m// Wait for the page to load\u001b[39m\n \u001b[90m 9 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m)\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\site-status.spec.ts:6:16\u001b[22m"
                         }
                       ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-09-15T13:41:18.449Z",
+                      "startTime": "2025-10-17T09:29:24.592Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-chromium\\test-failed-1.png"
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Ch-f806e-d-load-the-maintenance-page-chromium\\test-failed-1.png"
                         },
                         {
                           "name": "video",
                           "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-chromium\\video.webm"
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Ch-f806e-d-load-the-maintenance-page-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Ch-f806e-d-load-the-maintenance-page-chromium\\error-context.md"
                         }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                        "column": 24,
-                        "line": 10
-                      }
+                      ]
                     }
                   ],
                   "status": "unexpected"
                 }
               ],
-              "id": "9851c90e283afae2c92c-dfae4d5a729d3aa3ead8",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 8,
+              "id": "b1e5866a3676882105fa-3788123e1410c7610d02",
+              "file": "site-status.spec.ts",
+              "line": 4,
               "column": 7
             },
             {
-              "title": "should navigate to sign up page",
+              "title": "should display contact information",
               "ok": false,
               "tags": [],
               "tests": [
                 {
-                  "timeout": 30000,
+                  "timeout": 10000,
                   "annotations": [],
                   "expectedStatus": "passed",
                   "projectId": "chromium",
@@ -224,62 +292,64 @@
                     {
                       "workerIndex": 1,
                       "parallelIndex": 1,
-                      "status": "failed",
-                      "duration": 9736,
+                      "status": "timedOut",
+                      "duration": 13564,
                       "error": {
-                        "message": "Error: page.goto: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n",
-                        "stack": "Error: page.goto: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:5:16",
-                        "location": {
-                          "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                          "column": 16,
-                          "line": 5
-                        },
-                        "snippet": "\u001b[0m \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Client Journey - Discovery & Sign Up'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n \u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 5 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 6 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m\n \u001b[90m 8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\u001b[0m"
+                        "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
                       },
                       "errors": [
                         {
+                          "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
+                        },
+                        {
                           "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
+                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\site-status.spec.ts",
                             "column": 16,
-                            "line": 5
+                            "line": 21
                           },
-                          "message": "Error: page.goto: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m 3 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Client Journey - Discovery & Sign Up'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\n \u001b[90m 4 |\u001b[39m   test\u001b[33m.\u001b[39mbeforeEach(\u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 5 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 6 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 7 |\u001b[39m\n \u001b[90m 8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:5:16\u001b[22m"
+                          "message": "Error: page.goto: Test timeout of 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://app.proliinkconnect.co.za/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m 19 |\u001b[39m\n \u001b[90m 20 |\u001b[39m   test(\u001b[32m'should display contact information'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 21 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 22 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m)\n \u001b[90m 23 |\u001b[39m     \n \u001b[90m 24 |\u001b[39m     \u001b[90m// Check contact information\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\site-status.spec.ts:21:16\u001b[22m"
                         }
                       ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-09-15T13:41:19.340Z",
+                      "startTime": "2025-10-17T09:29:24.615Z",
                       "annotations": [],
                       "attachments": [
                         {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Ch-15c2a-display-contact-information-chromium\\test-failed-1.png"
+                        },
+                        {
                           "name": "video",
                           "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-chromium\\video.webm"
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Ch-15c2a-display-contact-information-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Ch-15c2a-display-contact-information-chromium\\error-context.md"
                         }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                        "column": 16,
-                        "line": 5
-                      }
+                      ]
                     }
                   ],
                   "status": "unexpected"
                 }
               ],
-              "id": "9851c90e283afae2c92c-2fdac5a8b2ea861d9c16",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 28,
+              "id": "b1e5866a3676882105fa-70ccd04d8f6584e726ce",
+              "file": "site-status.spec.ts",
+              "line": 20,
               "column": 7
             },
             {
-              "title": "should complete client registration successfully",
+              "title": "should be responsive on mobile",
               "ok": false,
               "tags": [],
               "tests": [
                 {
-                  "timeout": 30000,
+                  "timeout": 10000,
                   "annotations": [],
                   "expectedStatus": "passed",
                   "projectId": "chromium",
@@ -289,39 +359,44 @@
                       "workerIndex": 2,
                       "parallelIndex": 1,
                       "status": "timedOut",
-                      "duration": 37733,
+                      "duration": 11792,
                       "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
                       },
                       "errors": [
                         {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                          "message": "\u001b[31mTest timeout of 10000ms exceeded.\u001b[39m"
                         },
                         {
                           "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 42
+                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\site-status.spec.ts",
+                            "column": 67,
+                            "line": 37
                           },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 40 |\u001b[39m     \n \u001b[90m 41 |\u001b[39m     \u001b[90m// Fill out registration form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 42 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'John Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 43 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 44 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 45 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"phone\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'+27123456789'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:42:16\u001b[22m"
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m()\u001b[22m failed\n\nLocator:  locator('text=Platform Under Maintenance')\nExpected: visible\nReceived: undefined\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for locator('text=Platform Under Maintenance')\u001b[22m\n\n\n\u001b[0m \u001b[90m 35 |\u001b[39m     \n \u001b[90m 36 |\u001b[39m     \u001b[90m// Check if maintenance page is still visible on mobile\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 37 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'text=Platform Under Maintenance'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\n \u001b[90m    |\u001b[39m                                                                   \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 38 |\u001b[39m   })\n \u001b[90m 39 |\u001b[39m })\n \u001b[90m 40 |\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\site-status.spec.ts:37:67\u001b[22m"
                         }
                       ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2025-09-15T13:41:39.278Z",
+                      "startTime": "2025-10-17T09:29:44.938Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-chromium\\test-failed-1.png"
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Check-should-be-responsive-on-mobile-chromium\\test-failed-1.png"
                         },
                         {
                           "name": "video",
                           "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-chromium\\video.webm"
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Check-should-be-responsive-on-mobile-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\site-status-Site-Status-Check-should-be-responsive-on-mobile-chromium\\error-context.md"
                         }
                       ]
                     }
@@ -329,2298 +404,9 @@
                   "status": "unexpected"
                 }
               ],
-              "id": "9851c90e283afae2c92c-115e70e5e07900fb1ca4",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 37,
-              "column": 7
-            },
-            {
-              "title": "should validate form inputs",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 3,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 39271,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 64
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 62 |\u001b[39m     \n \u001b[90m 63 |\u001b[39m     \u001b[90m// Try to submit empty form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 64 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 65 |\u001b[39m     \n \u001b[90m 66 |\u001b[39m     \u001b[90m// Should show validation errors\u001b[39m\n \u001b[90m 67 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'text=Name must be at least 2 characters'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:64:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:41:52.546Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-chromium\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-chromium\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-90e466d507db878a3d46",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 60,
-              "column": 7
-            },
-            {
-              "title": "should handle duplicate email registration",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 4,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 39375,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 76
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 74 |\u001b[39m     \n \u001b[90m 75 |\u001b[39m     \u001b[90m// Fill form with existing email\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 76 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'Jane Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 77 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'existing@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 78 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 79 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mcheck(\u001b[32m'input[value=\"CLIENT\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:76:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:42:21.064Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-chromium\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-chromium\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-729791d871d9558e9dc9",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 72,
-              "column": 7
-            },
-            {
-              "title": "should navigate to login page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 5,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 41355,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 89
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign In')\u001b[22m\n\n\n\u001b[0m \u001b[90m 87 |\u001b[39m   test(\u001b[32m'should navigate to login page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 88 |\u001b[39m     \u001b[90m// Click on login link\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 89 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Sign In'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 90 |\u001b[39m     \n \u001b[90m 91 |\u001b[39m     \u001b[90m// Should navigate to login page\u001b[39m\n \u001b[90m 92 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*login/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:89:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:42:36.254Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-chromium\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-chromium\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-14919fdd3fa4bd5fde5d",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 87,
-              "column": 7
-            },
-            {
-              "title": "should complete login successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 6,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 35250,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 100
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m  98 |\u001b[39m     \n \u001b[90m  99 |\u001b[39m     \u001b[90m// Fill login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 100 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 101 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 102 |\u001b[39m     \n \u001b[90m 103 |\u001b[39m     \u001b[90m// Submit form\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:100:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:43:05.247Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-chromium\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-chromium\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-3badb4e3c3937556e6d7",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 96,
-              "column": 7
-            },
-            {
-              "title": "should handle invalid login credentials",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 7,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 42707,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 115
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 113 |\u001b[39m     \n \u001b[90m 114 |\u001b[39m     \u001b[90m// Fill with invalid credentials\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 115 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'invalid@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 116 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'wrongpassword'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 117 |\u001b[39m     \n \u001b[90m 118 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:115:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:43:21.943Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-chromium\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-chromium\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-eca03acfb01bd498d566",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 111,
-              "column": 7
-            },
-            {
-              "title": "should display landing page with services and featured providers",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 8,
-                      "parallelIndex": 1,
-                      "status": "failed",
-                      "duration": 15927,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24",
-                        "location": {
-                          "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                          "column": 24,
-                          "line": 10
-                        },
-                        "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 24,
-                            "line": 10
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:43:43.806Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-firefox\\video.webm"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                        "column": 24,
-                        "line": 10
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-461fe1265f4cd9e52726",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 8,
-              "column": 7
-            },
-            {
-              "title": "should navigate to sign up page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 9,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 30795,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 30
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Get Started')\u001b[22m\n\n\n\u001b[0m \u001b[90m 28 |\u001b[39m   test(\u001b[32m'should navigate to sign up page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 29 |\u001b[39m     \u001b[90m// Click on Get Started button\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Get Started'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m     \n \u001b[90m 32 |\u001b[39m     \u001b[90m// Should navigate to signup page\u001b[39m\n \u001b[90m 33 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*signup/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:30:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:44:08.297Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-firefox\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-633fb587602329d806d9",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 28,
-              "column": 7
-            },
-            {
-              "title": "should complete client registration successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 10,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30331,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 42
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 40 |\u001b[39m     \n \u001b[90m 41 |\u001b[39m     \u001b[90m// Fill out registration form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 42 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'John Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 43 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 44 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 45 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"phone\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'+27123456789'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:42:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:44:10.116Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-firefox\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-f3397df2b55eb7834da8",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 37,
-              "column": 7
-            },
-            {
-              "title": "should validate form inputs",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 11,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 30395,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 64
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 62 |\u001b[39m     \n \u001b[90m 63 |\u001b[39m     \u001b[90m// Try to submit empty form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 64 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 65 |\u001b[39m     \n \u001b[90m 66 |\u001b[39m     \u001b[90m// Should show validation errors\u001b[39m\n \u001b[90m 67 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'text=Name must be at least 2 characters'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:64:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:44:48.789Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-firefox\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-2a6838bda95eb8e134ef",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 60,
-              "column": 7
-            },
-            {
-              "title": "should handle duplicate email registration",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 12,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30422,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 76
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 74 |\u001b[39m     \n \u001b[90m 75 |\u001b[39m     \u001b[90m// Fill form with existing email\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 76 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'Jane Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 77 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'existing@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 78 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 79 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mcheck(\u001b[32m'input[value=\"CLIENT\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:76:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:44:52.615Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-firefox\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-d60d26fe69009a5303da",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 72,
-              "column": 7
-            },
-            {
-              "title": "should navigate to login page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 13,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 32200,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 89
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign In')\u001b[22m\n\n\n\u001b[0m \u001b[90m 87 |\u001b[39m   test(\u001b[32m'should navigate to login page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 88 |\u001b[39m     \u001b[90m// Click on login link\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 89 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Sign In'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 90 |\u001b[39m     \n \u001b[90m 91 |\u001b[39m     \u001b[90m// Should navigate to login page\u001b[39m\n \u001b[90m 92 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*login/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:89:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:45:28.104Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-firefox\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-3a472627345db787af52",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 87,
-              "column": 7
-            },
-            {
-              "title": "should complete login successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 14,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30404,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 100
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m  98 |\u001b[39m     \n \u001b[90m  99 |\u001b[39m     \u001b[90m// Fill login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 100 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 101 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 102 |\u001b[39m     \n \u001b[90m 103 |\u001b[39m     \u001b[90m// Submit form\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:100:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:45:33.558Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-firefox\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-6d659399b8dedf483fed",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 96,
-              "column": 7
-            },
-            {
-              "title": "should handle invalid login credentials",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "firefox",
-                  "projectName": "firefox",
-                  "results": [
-                    {
-                      "workerIndex": 15,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 30391,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 115
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 113 |\u001b[39m     \n \u001b[90m 114 |\u001b[39m     \u001b[90m// Fill with invalid credentials\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 115 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'invalid@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 116 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'wrongpassword'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 117 |\u001b[39m     \n \u001b[90m 118 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:115:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:46:09.895Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-firefox\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-firefox\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-5fb287d97296d9e188c7",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 111,
-              "column": 7
-            },
-            {
-              "title": "should display landing page with services and featured providers",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 16,
-                      "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 8454,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24",
-                        "location": {
-                          "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                          "column": 24,
-                          "line": 10
-                        },
-                        "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 24,
-                            "line": 10
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:46:14.321Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-webkit\\video.webm"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                        "column": 24,
-                        "line": 10
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-af37d081c725570ac5b7",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 8,
-              "column": 7
-            },
-            {
-              "title": "should navigate to sign up page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 17,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30493,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 30
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Get Started')\u001b[22m\n\n\n\u001b[0m \u001b[90m 28 |\u001b[39m   test(\u001b[32m'should navigate to sign up page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 29 |\u001b[39m     \u001b[90m// Click on Get Started button\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Get Started'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m     \n \u001b[90m 32 |\u001b[39m     \u001b[90m// Should navigate to signup page\u001b[39m\n \u001b[90m 33 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*signup/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:30:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:46:27.255Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-webkit\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-9f4da9bdcdfbe814bc26",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 28,
-              "column": 7
-            },
-            {
-              "title": "should complete client registration successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 18,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 31560,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 42
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 40 |\u001b[39m     \n \u001b[90m 41 |\u001b[39m     \u001b[90m// Fill out registration form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 42 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'John Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 43 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 44 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 45 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"phone\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'+27123456789'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:42:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:46:46.605Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-webkit\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-d38005267100125f8911",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 37,
-              "column": 7
-            },
-            {
-              "title": "should validate form inputs",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 19,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 37162,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 64
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 62 |\u001b[39m     \n \u001b[90m 63 |\u001b[39m     \u001b[90m// Try to submit empty form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 64 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 65 |\u001b[39m     \n \u001b[90m 66 |\u001b[39m     \u001b[90m// Should show validation errors\u001b[39m\n \u001b[90m 67 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'text=Name must be at least 2 characters'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:64:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:47:00.957Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-webkit\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-7286f9741fc99fc4cbe5",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 60,
-              "column": 7
-            },
-            {
-              "title": "should handle duplicate email registration",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 20,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 30646,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 76
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 74 |\u001b[39m     \n \u001b[90m 75 |\u001b[39m     \u001b[90m// Fill form with existing email\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 76 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'Jane Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 77 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'existing@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 78 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 79 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mcheck(\u001b[32m'input[value=\"CLIENT\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:76:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:47:20.786Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-webkit\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-c9720dd6a0fae5a0fd18",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 72,
-              "column": 7
-            },
-            {
-              "title": "should navigate to login page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 21,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30676,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 89
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign In')\u001b[22m\n\n\n\u001b[0m \u001b[90m 87 |\u001b[39m   test(\u001b[32m'should navigate to login page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 88 |\u001b[39m     \u001b[90m// Click on login link\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 89 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Sign In'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 90 |\u001b[39m     \n \u001b[90m 91 |\u001b[39m     \u001b[90m// Should navigate to login page\u001b[39m\n \u001b[90m 92 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*login/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:89:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:47:41.182Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-webkit\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-347097f754ee5d7cc2a4",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 87,
-              "column": 7
-            },
-            {
-              "title": "should complete login successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 22,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 33505,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 100
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m  98 |\u001b[39m     \n \u001b[90m  99 |\u001b[39m     \u001b[90m// Fill login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 100 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 101 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 102 |\u001b[39m     \n \u001b[90m 103 |\u001b[39m     \u001b[90m// Submit form\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:100:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:47:54.932Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-webkit\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-b81c433259401a327d98",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 96,
-              "column": 7
-            },
-            {
-              "title": "should handle invalid login credentials",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "webkit",
-                  "projectName": "webkit",
-                  "results": [
-                    {
-                      "workerIndex": 23,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30673,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 115
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 113 |\u001b[39m     \n \u001b[90m 114 |\u001b[39m     \u001b[90m// Fill with invalid credentials\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 115 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'invalid@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 116 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'wrongpassword'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 117 |\u001b[39m     \n \u001b[90m 118 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:115:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:48:15.420Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-webkit\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-webkit\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-74053b8b41072139d099",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 111,
-              "column": 7
-            },
-            {
-              "title": "should display landing page with services and featured providers",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 24,
-                      "parallelIndex": 1,
-                      "status": "failed",
-                      "duration": 8732,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24",
-                        "location": {
-                          "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                          "column": 24,
-                          "line": 10
-                        },
-                        "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 24,
-                            "line": 10
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:48:31.654Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Chrome\\video.webm"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                        "column": 24,
-                        "line": 10
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-0b501472191d7bb343a8",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 8,
-              "column": 7
-            },
-            {
-              "title": "should navigate to sign up page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 25,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 34666,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 30
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Get Started')\u001b[22m\n\n\n\u001b[0m \u001b[90m 28 |\u001b[39m   test(\u001b[32m'should navigate to sign up page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 29 |\u001b[39m     \u001b[90m// Click on Get Started button\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Get Started'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m     \n \u001b[90m 32 |\u001b[39m     \u001b[90m// Should navigate to signup page\u001b[39m\n \u001b[90m 33 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*signup/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:30:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:48:45.356Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Chrome\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-4acde36227a11ee63ec9",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 28,
-              "column": 7
-            },
-            {
-              "title": "should complete client registration successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 26,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 39855,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 42
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 40 |\u001b[39m     \n \u001b[90m 41 |\u001b[39m     \u001b[90m// Fill out registration form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 42 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'John Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 43 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 44 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 45 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"phone\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'+27123456789'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:42:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:48:52.760Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Chrome\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-705abf41131363b57885",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 37,
-              "column": 7
-            },
-            {
-              "title": "should validate form inputs",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 27,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 35160,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 64
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 62 |\u001b[39m     \n \u001b[90m 63 |\u001b[39m     \u001b[90m// Try to submit empty form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 64 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 65 |\u001b[39m     \n \u001b[90m 66 |\u001b[39m     \u001b[90m// Should show validation errors\u001b[39m\n \u001b[90m 67 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'text=Name must be at least 2 characters'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:64:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:49:25.128Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Chrome\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-bcbe48c6d1db10272fb6",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 60,
-              "column": 7
-            },
-            {
-              "title": "should handle duplicate email registration",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 28,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 37106,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 76
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 74 |\u001b[39m     \n \u001b[90m 75 |\u001b[39m     \u001b[90m// Fill form with existing email\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 76 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'Jane Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 77 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'existing@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 78 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 79 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mcheck(\u001b[32m'input[value=\"CLIENT\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:76:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:49:36.403Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Chrome\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-e529655f8736bf8d0fc7",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 72,
-              "column": 7
-            },
-            {
-              "title": "should navigate to login page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 29,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 35983,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 89
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign In')\u001b[22m\n\n\n\u001b[0m \u001b[90m 87 |\u001b[39m   test(\u001b[32m'should navigate to login page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 88 |\u001b[39m     \u001b[90m// Click on login link\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 89 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Sign In'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 90 |\u001b[39m     \n \u001b[90m 91 |\u001b[39m     \u001b[90m// Should navigate to login page\u001b[39m\n \u001b[90m 92 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*login/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:89:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:50:04.813Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Chrome\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-a7ed34619496835e964e",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 87,
-              "column": 7
-            },
-            {
-              "title": "should complete login successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 30,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 35722,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 100
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m  98 |\u001b[39m     \n \u001b[90m  99 |\u001b[39m     \u001b[90m// Fill login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 100 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 101 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 102 |\u001b[39m     \n \u001b[90m 103 |\u001b[39m     \u001b[90m// Submit form\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:100:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:50:18.492Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Chrome\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-91a771143b5f8dfce45b",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 96,
-              "column": 7
-            },
-            {
-              "title": "should handle invalid login credentials",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Chrome",
-                  "projectName": "Mobile Chrome",
-                  "results": [
-                    {
-                      "workerIndex": 31,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 36109,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 115
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 113 |\u001b[39m     \n \u001b[90m 114 |\u001b[39m     \u001b[90m// Fill with invalid credentials\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 115 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'invalid@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 116 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'wrongpassword'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 117 |\u001b[39m     \n \u001b[90m 118 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:115:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:50:44.634Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Chrome\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Chrome\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-bb73f8373de573b8cecd",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 111,
-              "column": 7
-            },
-            {
-              "title": "should display landing page with services and featured providers",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 32,
-                      "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 6625,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24",
-                        "location": {
-                          "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                          "column": 24,
-                          "line": 10
-                        },
-                        "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 24,
-                            "line": 10
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveTitle\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/ConnectSA/\u001b[39m\nReceived string:  \u001b[31m\"\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveTitle\" with timeout 5000ms\u001b[22m\n\u001b[2m    8 × unexpected value \"\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  8 |\u001b[39m   test(\u001b[32m'should display landing page with services and featured providers'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m  9 |\u001b[39m     \u001b[90m// Check if landing page loads\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveTitle(\u001b[35m/ConnectSA/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m     \n \u001b[90m 12 |\u001b[39m     \u001b[90m// Check for hero section\u001b[39m\n \u001b[90m 13 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1'\u001b[39m))\u001b[33m.\u001b[39mtoContainText(\u001b[35m/Find Reliable Service Providers/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:10:24\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:50:57.674Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-4157f-ices-and-featured-providers-Mobile-Safari\\video.webm"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                        "column": 24,
-                        "line": 10
-                      }
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-aa85ae13d9306e36a8b7",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 8,
-              "column": 7
-            },
-            {
-              "title": "should navigate to sign up page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 33,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30420,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 30
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Get Started')\u001b[22m\n\n\n\u001b[0m \u001b[90m 28 |\u001b[39m   test(\u001b[32m'should navigate to sign up page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 29 |\u001b[39m     \u001b[90m// Click on Get Started button\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Get Started'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m     \n \u001b[90m 32 |\u001b[39m     \u001b[90m// Should navigate to signup page\u001b[39m\n \u001b[90m 33 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*signup/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:30:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:51:07.162Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-41ee8-ld-navigate-to-sign-up-page-Mobile-Safari\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-7461eb16ffee3b02c93b",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 28,
-              "column": 7
-            },
-            {
-              "title": "should complete client registration successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 34,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 30316,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 42
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 40 |\u001b[39m     \n \u001b[90m 41 |\u001b[39m     \u001b[90m// Fill out registration form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 42 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'John Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 43 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 44 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 45 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"phone\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'+27123456789'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:42:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:51:24.544Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-ae0e0-t-registration-successfully-Mobile-Safari\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-aad9cd8b95f0900e11bd",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 37,
-              "column": 7
-            },
-            {
-              "title": "should validate form inputs",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 35,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30438,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 64
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button[type=\"submit\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 62 |\u001b[39m     \n \u001b[90m 63 |\u001b[39m     \u001b[90m// Try to submit empty form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 64 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 65 |\u001b[39m     \n \u001b[90m 66 |\u001b[39m     \u001b[90m// Should show validation errors\u001b[39m\n \u001b[90m 67 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'text=Name must be at least 2 characters'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:64:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:51:41.376Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-6382c-should-validate-form-inputs-Mobile-Safari\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-cdf11314d4dc121288ba",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 60,
-              "column": 7
-            },
-            {
-              "title": "should handle duplicate email registration",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 36,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 30360,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 76
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"name\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 74 |\u001b[39m     \n \u001b[90m 75 |\u001b[39m     \u001b[90m// Fill form with existing email\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 76 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"name\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'Jane Doe'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 77 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'existing@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 78 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 79 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mcheck(\u001b[32m'input[value=\"CLIENT\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:76:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:51:58.107Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-9af89-uplicate-email-registration-Mobile-Safari\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-c7a70a932897c21ea8bb",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 72,
-              "column": 7
-            },
-            {
-              "title": "should navigate to login page",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 37,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30542,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 89
-                          },
-                          "message": "Error: page.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('text=Sign In')\u001b[22m\n\n\n\u001b[0m \u001b[90m 87 |\u001b[39m   test(\u001b[32m'should navigate to login page'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 88 |\u001b[39m     \u001b[90m// Click on login link\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 89 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'text=Sign In'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 90 |\u001b[39m     \n \u001b[90m 91 |\u001b[39m     \u001b[90m// Should navigate to login page\u001b[39m\n \u001b[90m 92 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/.*login/\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:89:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:52:14.755Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-94676-ould-navigate-to-login-page-Mobile-Safari\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-2b1a58f598d076189801",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 87,
-              "column": 7
-            },
-            {
-              "title": "should complete login successfully",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 38,
-                      "parallelIndex": 1,
-                      "status": "timedOut",
-                      "duration": 30341,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 100
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m  98 |\u001b[39m     \n \u001b[90m  99 |\u001b[39m     \u001b[90m// Fill login form\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 100 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'john.doe@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 101 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'password123'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 102 |\u001b[39m     \n \u001b[90m 103 |\u001b[39m     \u001b[90m// Submit form\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:100:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:52:31.615Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-8c41e-complete-login-successfully-Mobile-Safari\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-962ca972765547dc2906",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 96,
-              "column": 7
-            },
-            {
-              "title": "should handle invalid login credentials",
-              "ok": false,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 30000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "Mobile Safari",
-                  "projectName": "Mobile Safari",
-                  "results": [
-                    {
-                      "workerIndex": 39,
-                      "parallelIndex": 0,
-                      "status": "timedOut",
-                      "duration": 30319,
-                      "error": {
-                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
-                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                      },
-                      "errors": [
-                        {
-                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
-                        },
-                        {
-                          "location": {
-                            "file": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts",
-                            "column": 16,
-                            "line": 115
-                          },
-                          "message": "Error: page.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('input[name=\"email\"]')\u001b[22m\n\n\n\u001b[0m \u001b[90m 113 |\u001b[39m     \n \u001b[90m 114 |\u001b[39m     \u001b[90m// Fill with invalid credentials\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 115 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"email\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'invalid@example.com'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 116 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mfill(\u001b[32m'input[name=\"password\"]'\u001b[39m\u001b[33m,\u001b[39m \u001b[32m'wrongpassword'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 117 |\u001b[39m     \n \u001b[90m 118 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mclick(\u001b[32m'button[type=\"submit\"]'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\tests\\e2e\\client-journey\\01-discovery-signup.spec.ts:115:16\u001b[22m"
-                        }
-                      ],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2025-09-15T13:52:48.159Z",
-                      "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "screenshot",
-                          "contentType": "image/png",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Safari\\test-failed-1.png"
-                        },
-                        {
-                          "name": "video",
-                          "contentType": "video/webm",
-                          "path": "C:\\Users\\liqui\\OneDrive\\Desktop\\ConnectSA\\ConnectSA-k9\\test-results\\client-journey-01-discover-2fa69-e-invalid-login-credentials-Mobile-Safari\\video.webm"
-                        }
-                      ]
-                    }
-                  ],
-                  "status": "unexpected"
-                }
-              ],
-              "id": "9851c90e283afae2c92c-3b2358e1bd03c0142b95",
-              "file": "client-journey/01-discovery-signup.spec.ts",
-              "line": 111,
+              "id": "b1e5866a3676882105fa-b6fd950de1bac2f82e19",
+              "file": "site-status.spec.ts",
+              "line": 29,
               "column": 7
             }
           ]
@@ -2630,11 +416,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2025-09-15T13:41:11.259Z",
-    "duration": 727697.531,
+    "startTime": "2025-10-17T09:29:20.065Z",
+    "duration": 42597.744999999995,
     "expected": 0,
     "skipped": 0,
-    "unexpected": 40,
+    "unexpected": 3,
     "flaky": 0
   }
 }

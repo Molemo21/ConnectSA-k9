@@ -234,7 +234,7 @@ function BookingTimelineItem({
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
                   <span className="text-gray-400">Service:</span>
-                  <p className="text-gray-200">{booking.service.category}</p>
+                  <p className="text-gray-200">{booking.service.category?.name || 'No Category'}</p>
                 </div>
                 <div>
                   <span className="text-gray-400">Scheduled:</span>

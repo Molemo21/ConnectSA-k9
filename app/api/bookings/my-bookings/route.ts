@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
     }
 
-    // Fetch all bookings for this client with simplified query
+    // Fetch all bookings for this client with payment data
     const bookings = await db.booking.findMany({
       where: {
         clientId: user.id,
@@ -98,7 +98,15 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             description: true,
-            basePrice: true
+            basePrice: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                icon: true
+              }
+            }
           }
         },
         provider: {
@@ -110,9 +118,29 @@ export async function GET(request: NextRequest) {
               select: {
                 id: true,
                 name: true,
-                email: true
+                email: true,
+                phone: true
               }
             }
+          }
+        },
+        payment: {
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            paystackRef: true,
+            paidAt: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        },
+        review: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true
           }
         }
       },
@@ -126,7 +154,7 @@ export async function GET(request: NextRequest) {
       bookingCount: bookings.length 
     });
 
-    // Transform bookings for frontend (simplified)
+    // Transform bookings for frontend with complete data
     const transformedBookings = bookings.map(booking => ({
       id: booking.id,
       status: booking.status,
@@ -140,8 +168,8 @@ export async function GET(request: NextRequest) {
       updatedAt: booking.updatedAt,
       service: booking.service,
       provider: booking.provider,
-      payment: null, // Simplified - would need separate query
-      review: null // Simplified - would need separate query
+      payment: booking.payment, // Include actual payment data
+      review: booking.review // Include actual review data
     }));
 
     return NextResponse.json({

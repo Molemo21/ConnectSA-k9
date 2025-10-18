@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db-utils";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
@@ -38,7 +38,7 @@ export async function GET(
     }
 
     console.log('Fetching provider from database:', providerId);
-    const provider = await prisma.provider.findUnique({
+    const provider = await db.provider.findUnique({
       where: { id: providerId },
       select: {
         bankName: true,
@@ -132,7 +132,7 @@ export async function POST(
     const { bankName, bankCode, accountNumber, accountName } = body;
 
     // Check if provider exists
-    const existingProvider = await prisma.provider.findUnique({
+    const existingProvider = await db.provider.findUnique({
       where: { id: providerId },
       select: { id: true }
     });
@@ -163,7 +163,7 @@ export async function POST(
     // Update provider with bank details
     console.log('Updating provider with data:', { bankName, bankCode, accountNumber: '***', accountName });
     
-    const updatedProvider = await prisma.provider.update({
+    const updatedProvider = await db.provider.update({
       where: { id: providerId },
       data: {
         bankName,

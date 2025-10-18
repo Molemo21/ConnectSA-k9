@@ -82,7 +82,8 @@ export function BookingActionsModal({
   const canModify = ["PENDING"].includes(booking.status)
   const canReschedule = ["CONFIRMED"].includes(booking.status)
   const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)
-  const canConfirmCompletion = booking.status === "AWAITING_CONFIRMATION"
+  const canConfirmCompletion = (booking.status === "AWAITING_CONFIRMATION") || 
+    (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
   const hasPayment = booking.payment // Only check payment flag, not status
 
   const handleAction = async (action: string) => {

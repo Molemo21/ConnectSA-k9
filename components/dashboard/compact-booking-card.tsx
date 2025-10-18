@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle } from "lucide-react"
+import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle, RefreshCw } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
@@ -80,8 +80,27 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
   const canPay = (booking.status === "CONFIRMED") && (!booking.payment || booking.payment.status === 'PENDING' || booking.payment.status === 'FAILED')
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
-  const canConfirmCompletion = (booking.status === "AWAITING_CONFIRMATION") || 
-    (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
+  // Enhanced completion logic with better status detection
+  const canConfirmCompletion = () => {
+    // Always allow if booking is awaiting confirmation
+    if (booking.status === "AWAITING_CONFIRMATION") {
+      return true
+    }
+    
+    // Allow if booking is completed and payment is in escrow
+    if (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status)) {
+      return true
+    }
+    
+    // Special case: If booking suggests completion but payment is stuck in PENDING
+    // This handles cases where payment verification failed but work was done
+    if ((booking.status === "AWAITING_CONFIRMATION" || booking.status === "COMPLETED") && 
+        booking.payment && booking.payment.status === "PENDING") {
+      return true
+    }
+    
+    return false
+  }
   
   // Hide button if payment is already released
   const isPaymentReleased = booking.payment && ["RELEASED", "COMPLETED"].includes(booking.payment.status)
@@ -170,17 +189,48 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
       } else {
         const errorData = await response.json()
         console.error(`❌ Error response:`, errorData);
-        showToast.error(errorData.error || "Failed to confirm completion")
+        
+        // Enhanced error handling with user-friendly messages
+        let errorMessage = errorData.error || "Failed to confirm completion"
+        let errorDetails = errorData.details || ""
+        
+        // Handle specific error cases with better UX
+        if (errorData.paystackStatus === 'abandoned') {
+          errorMessage = "Payment was abandoned by the payment processor"
+          errorDetails = "The payment was not completed. Please contact support to resolve this issue."
+        } else if (errorData.retryable) {
+          errorMessage = "Temporary issue verifying payment"
+          errorDetails = "Please try again in a few moments. The payment verification is temporarily unavailable."
+        } else if (errorData.currentStatus === 'PENDING') {
+          errorMessage = "Payment is still being processed"
+          errorDetails = "Please wait a moment for the payment to complete, then try again."
+        }
+        
+        showToast.error(errorMessage)
+        
+        // Show additional details in console for debugging
+        if (errorDetails) {
+          console.log(`📋 Error details: ${errorDetails}`)
+        }
         
         // If it's an authentication error, redirect to login
         if (response.status === 401) {
           console.log('🔐 Authentication error, redirecting to login');
           window.location.href = '/login';
         }
+        
+        // If it's a retryable error, show a retry option
+        if (errorData.retryable) {
+          setTimeout(() => {
+            if (confirm("Would you like to try again?")) {
+              handleConfirmCompletion()
+            }
+          }, 2000)
+        }
       }
     } catch (error) {
       console.error("❌ Confirm completion error:", error)
-      showToast.error("Network error. Please try again.")
+      showToast.error("Network error. Please check your connection and try again.")
     }
   }
 
@@ -230,6 +280,33 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
       showToast.error("Failed to check payment status")
     } finally {
       setIsProcessingPayment(false)
+    }
+  }
+
+  const handleRecoverPayment = async () => {
+    try {
+      console.log(`🔄 Attempting to recover payment for booking ${booking.id}`);
+      
+      const response = await fetch(`/api/payment/recover-status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId: booking.payment?.id }),
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`✅ Payment recovery successful:`, data);
+        showToast.success("Payment status recovered successfully!")
+        onUpdate()
+      } else {
+        const errorData = await response.json()
+        console.error(`❌ Payment recovery failed:`, errorData);
+        showToast.error(errorData.error || "Failed to recover payment status")
+      }
+    } catch (error) {
+      console.error("❌ Payment recovery error:", error)
+      showToast.error("Network error during payment recovery")
     }
   }
 
@@ -491,7 +568,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                   </Button>
                 )}
                 
-                {canConfirmCompletion && !isPaymentReleased && (
+                {canConfirmCompletion() && !isPaymentReleased && (
                   <Button 
                     size="sm" 
                     onClick={handleConfirmCompletion} 
@@ -499,6 +576,18 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                   >
                     <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
                     Confirm
+                  </Button>
+                )}
+                
+                {/* Recovery button for stuck payments */}
+                {booking.payment && booking.payment.status === 'PENDING' && booking.status !== 'PENDING' && (
+                  <Button 
+                    size="sm" 
+                    onClick={handleRecoverPayment} 
+                    className="bg-blue-600 hover:bg-blue-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base"
+                  >
+                    <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
+                    Recover Payment
                   </Button>
                 )}
                 

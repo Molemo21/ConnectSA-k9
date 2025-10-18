@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-10-13T12:12:17.831Z",
+  "fixes": [],
+  "errors": [
+    "Failed to fix payments: \nInvalid `prisma.payment.create()` invocation:\n\n{\n  data: {\n    bookingId: \"cmgkm9hh00001la049wudtx6q\",\n    amount: 0,\n    status: \"PENDING\",\n    booking: {\n      connect: {\n        id: \"cmgkm9hh00001la049wudtx6q\"\n      }\n    },\n+   user: {\n+     create: UserCreateWithoutPaymentsInput | UserUncheckedCreateWithoutPaymentsInput,\n+     connectOrCreate: UserCreateOrConnectWithoutPaymentsInput,\n+     connect: UserWhereUniqueInput\n+   }\n  }\n}\n\nArgument `user` is missing."
+  ],
+  "summary": {
+    "fixed": 1,
+    "failed": 1
+  }
+}
