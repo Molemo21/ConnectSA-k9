@@ -60,25 +60,35 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
         if (mounted) {
           if (Array.isArray(data) && data.length > 0) {
             setCategories(data);
-            // Auto-select the cleaning category if it's the only one
-            if (data.length === 1) {
+            // Auto-select the first category if available
+            if (data.length > 0) {
               setSelectedCategory(data[0]);
             }
           } else {
-            // Fallback: fetch services directly from services API
+            // Fallback: fetch services directly from services API and group by category
             try {
               const servicesResponse = await fetch('/api/services');
               if (servicesResponse.ok) {
                 const servicesData = await servicesResponse.json();
                 if (Array.isArray(servicesData) && servicesData.length > 0) {
-                  const cleaningCategory = {
-                    id: 'cat_cleaning',
-                    name: 'Cleaning Services',
-                    description: 'Professional cleaning services for homes and offices',
-                    icon: '🧹',
-                    isActive: true,
-                    services: servicesData.map(service => ({
-                      id: service.id, // Use actual database ID
+                  // Group services by category
+                  const servicesByCategory = servicesData.reduce((acc, service) => {
+                    const categoryName = service.categoryName || 'Other Services';
+                    const categoryId = service.categoryId || `cat_${categoryName.toLowerCase().replace(/\s+/g, '_')}`;
+                    
+                    if (!acc[categoryId]) {
+                      acc[categoryId] = {
+                        id: categoryId,
+                        name: categoryName,
+                        description: `${categoryName} for your needs`,
+                        icon: service.categoryIcon || '🔧',
+                        isActive: true,
+                        services: []
+                      };
+                    }
+                    
+                    acc[categoryId].services.push({
+                      id: service.id,
                       name: service.name,
                       description: service.description,
                       basePrice: service.basePrice,
@@ -89,10 +99,18 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                         'Experienced staff'
                       ],
                       duration: 60
-                    }))
-                  };
-                  setCategories([cleaningCategory]);
-                  setSelectedCategory(cleaningCategory);
+                    });
+                    
+                    return acc;
+                  }, {});
+                  
+                  const categoryArray = Object.values(servicesByCategory);
+                  setCategories(categoryArray);
+                  
+                  // Auto-select the first category if available
+                  if (categoryArray.length > 0) {
+                    setSelectedCategory(categoryArray[0]);
+                  }
                 } else {
                   throw new Error('No services available');
                 }
@@ -113,20 +131,30 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
               setRetryCount(prev => prev + 1);
             }, retryDelay);
           } else {
-            // After max retries, try to fetch services directly
+            // After max retries, try to fetch services directly and group by category
             try {
               const servicesResponse = await fetch('/api/services');
               if (servicesResponse.ok) {
                 const servicesData = await servicesResponse.json();
                 if (Array.isArray(servicesData) && servicesData.length > 0) {
-                  const cleaningCategory = {
-                    id: 'cat_cleaning',
-                    name: 'Cleaning Services',
-                    description: 'Professional cleaning services for homes and offices',
-                    icon: '🧹',
-                    isActive: true,
-                    services: servicesData.map(service => ({
-                      id: service.id, // Use actual database ID
+                  // Group services by category
+                  const servicesByCategory = servicesData.reduce((acc, service) => {
+                    const categoryName = service.categoryName || 'Other Services';
+                    const categoryId = service.categoryId || `cat_${categoryName.toLowerCase().replace(/\s+/g, '_')}`;
+                    
+                    if (!acc[categoryId]) {
+                      acc[categoryId] = {
+                        id: categoryId,
+                        name: categoryName,
+                        description: `${categoryName} for your needs`,
+                        icon: service.categoryIcon || '🔧',
+                        isActive: true,
+                        services: []
+                      };
+                    }
+                    
+                    acc[categoryId].services.push({
+                      id: service.id,
                       name: service.name,
                       description: service.description,
                       basePrice: service.basePrice,
@@ -137,10 +165,19 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                         'Experienced staff'
                       ],
                       duration: 60
-                    }))
-                  };
-                  setCategories([cleaningCategory]);
-                  setSelectedCategory(cleaningCategory);
+                    });
+                    
+                    return acc;
+                  }, {});
+                  
+                  const categoryArray = Object.values(servicesByCategory);
+                  setCategories(categoryArray);
+                  
+                  // Auto-select the first category if available
+                  if (categoryArray.length > 0) {
+                    setSelectedCategory(categoryArray[0]);
+                  }
+                  
                   setError(null); // Clear error since we have data
                 } else {
                   setError("No services available. Please try again later.");
@@ -245,69 +282,24 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
         </div>
         
         <div className="flex flex-wrap justify-center gap-6">
-          {/* Hardcoded categories */}
-          <button
-            onClick={() => {
-              setSelectedCategory({
-                id: 'cleaning',
-                name: 'Cleaning Services',
-                description: 'Professional cleaning services',
-                icon: '🧹',
-                isActive: true,
-                services: categories.find(c => c.name.includes('Cleaning'))?.services || []
-              });
-              setSearchTerm("");
-            }}
-            className={`text-base font-medium transition-all duration-300 ${
-              selectedCategory?.name === 'Cleaning Services'
-                ? 'text-white border-b-2 border-white pb-1'
-                : 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/50 pb-1'
-            }`}
-          >
-            Cleaning Services
-          </button>
-          
-          <button
-            onClick={() => {
-              setSelectedCategory({
-                id: 'hairstyling',
-                name: 'Hairstyling',
-                description: 'Professional hairstyling services',
-                icon: '💇‍♀️',
-                isActive: true,
-                services: []
-              });
-              setSearchTerm("");
-            }}
-            className={`text-base font-medium transition-all duration-300 ${
-              selectedCategory?.name === 'Hairstyling'
-                ? 'text-white border-b-2 border-white pb-1'
-                : 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/50 pb-1'
-            }`}
-          >
-            Hairstyling
-          </button>
-          
-          <button
-            onClick={() => {
-              setSelectedCategory({
-                id: 'makeup',
-                name: 'Makeup',
-                description: 'Professional makeup services',
-                icon: '💄',
-                isActive: true,
-                services: []
-              });
-              setSearchTerm("");
-            }}
-            className={`text-base font-medium transition-all duration-300 ${
-              selectedCategory?.name === 'Makeup'
-                ? 'text-white border-b-2 border-white pb-1'
-                : 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/50 pb-1'
-            }`}
-          >
-            Makeup
-          </button>
+          {/* Dynamic category buttons */}
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => {
+                setSelectedCategory(category);
+                setSearchTerm("");
+              }}
+              className={`text-base font-medium transition-all duration-300 ${
+                selectedCategory?.id === category.id
+                  ? 'text-white border-b-2 border-white pb-1'
+                  : 'text-white/60 hover:text-white hover:border-b-2 hover:border-white/50 pb-1'
+              }`}
+            >
+              {category.icon && <span className="mr-2">{category.icon}</span>}
+              {category.name}
+            </button>
+          ))}
         </div>
       </div>
 
