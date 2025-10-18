@@ -14,11 +14,11 @@ import { MobileStatsCard } from "@/components/ui/mobile-stats-card"
 import { MobileActionCard } from "@/components/ui/mobile-action-card"
 import { MobileTabbedSection } from "@/components/ui/mobile-tabbed-section"
 import { MobileCollapsibleSection } from "@/components/ui/mobile-collapsible-section"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 import { 
   Calendar, 
   Clock, 
   Star, 
-  DollarSign, 
   CheckCircle, 
   AlertCircle, 
   Plus,
@@ -474,7 +474,7 @@ export function RealtimeClientDashboard() {
           <MobileStatsCard
             title="Total Spent"
             value={`R${stats.totalSpent.toFixed(2)}`}
-            icon={<DollarSign className="h-5 w-5" />}
+            icon={<RandIconSimple className="h-5 w-5" />}
             trend={stats.totalSpent > 0 ? "+8%" : "0%"}
           />
         </div>
@@ -564,7 +564,7 @@ export function RealtimeClientDashboard() {
                       </div>
                       
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <DollarSign className="h-4 w-4" />
+                        <RandIconSimple className="h-4 w-4" />
                         <span>R{booking.totalAmount.toFixed(2)}</span>
                       </div>
 
@@ -617,8 +617,8 @@ export function RealtimeClientDashboard() {
                             }
                           }}
                         >
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          Pay Now
+                          <RandIconSimple className="h-4 w-4 mr-2" />
+                          Pay R{booking.totalAmount.toFixed(2)}
                         </Button>
                       )}
                       {booking.status === "PENDING" && (

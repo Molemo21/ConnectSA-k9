@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Calendar, Clock, DollarSign, MapPin, Activity, ChevronRight, 
+  Calendar, Clock, MapPin, Activity, ChevronRight, 
   CheckCircle, AlertCircle, Loader2, X, Phone, MessageCircle,
   ArrowRight, Eye
 } from "lucide-react"
 import { useState } from "react"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 
 interface Booking {
   id: string
@@ -165,8 +166,8 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
               onClick={handlePay}
               className="flex-1 bg-green-600 hover:bg-green-700 text-xs"
             >
-              <DollarSign className="w-3 h-3 mr-1" />
-              Pay Now
+              <RandIconSimple className="w-3 h-3 mr-1" />
+              Pay R{booking.service.price.toFixed(2)}
             </Button>
           )}
           

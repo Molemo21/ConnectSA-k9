@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
-  Calendar, Clock, CheckCircle, DollarSign, AlertCircle, 
+  Calendar, Clock, CheckCircle, AlertCircle, 
   ArrowRight, Loader2, AlertTriangle, X, TrendingUp,
   ChevronRight, Eye
 } from "lucide-react"
 import { useState } from "react"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 
 interface Booking {
   id: string
@@ -62,7 +63,7 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
       return {
         label: "Payment Received",
         color: "bg-green-900/50 text-green-400 border-green-800/50",
-        icon: DollarSign,
+        icon: RandIconSimple,
         step: 3,
         description: "Payment in escrow"
       }
@@ -121,7 +122,7 @@ const getTimelineSteps = (status: string, hasPayment?: boolean) => {
   const allSteps = [
     { id: 1, label: "Booked", icon: Calendar },
     { id: 2, label: "Confirmed", icon: CheckCircle },
-    { id: 3, label: "Payment", icon: DollarSign },
+    { id: 3, label: "Payment", icon: RandIconSimple },
     { id: 4, label: "In Progress", icon: Loader2 },
     { id: 5, label: "Awaiting", icon: AlertCircle },
     { id: 6, label: "Completed", icon: CheckCircle }

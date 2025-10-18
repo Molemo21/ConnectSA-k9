@@ -5,7 +5,7 @@ import { useSafeTime } from "@/hooks/use-safe-time"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertTriangle, RefreshCw, HelpCircle, Info } from "lucide-react"
+import { Calendar, Clock, MapPin, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertTriangle } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
@@ -13,7 +13,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { processPayment, handlePaymentResult } from "@/lib/payment-utils"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 
 interface Booking {
   id: string
@@ -601,9 +601,9 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   {isPaymentInProgress ? (
                     <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                   ) : (
-                    <DollarSign className="w-4 h-4 mr-1" />
+                    <RandIconSimple className="w-4 h-4 mr-1" />
                   )}
-                  {isPaymentInProgress ? "Processing..." : "Pay Now"}
+                  {isPaymentInProgress ? "Processing..." : `Pay R${booking.totalAmount.toFixed(2)}`}
                 </Button>
               )}
               

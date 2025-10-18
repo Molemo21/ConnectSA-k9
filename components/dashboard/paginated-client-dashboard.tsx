@@ -13,11 +13,11 @@ import { MobileStatsCard } from "@/components/ui/mobile-stats-card"
 import { MobileActionCard } from "@/components/ui/mobile-action-card"
 import { MobileTabbedSection } from "@/components/ui/mobile-tabbed-section"
 import { MobileCollapsibleSection } from "@/components/ui/mobile-collapsible-section"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 import { 
   Calendar, 
   Clock, 
   Star, 
-  DollarSign, 
   CheckCircle, 
   AlertCircle, 
   Plus,
@@ -609,8 +609,8 @@ export function PaginatedClientDashboard() {
                             }
                           }}
                         >
-                          <DollarSign className="h-4 w-4 mr-2" />
-                          Pay Now
+                          <RandIconSimple className="h-4 w-4 mr-2" />
+                          Pay R{booking.totalAmount.toFixed(2)}
                         </Button>
                       )}
                       {booking.status === "PENDING" && (

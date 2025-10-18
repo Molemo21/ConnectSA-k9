@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Calendar, Clock, MapPin, DollarSign, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle, RefreshCw, HelpCircle, Info } from "lucide-react"
+import { Calendar, Clock, MapPin, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertCircle, AlertTriangle, RefreshCw, HelpCircle, Info } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { processPayment, handlePaymentResult } from "@/lib/payment-utils"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
 
@@ -601,9 +602,9 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                     {isPaymentInProgress ? (
                       <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 animate-spin" />
                     ) : (
-                      <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
+                      <RandIconSimple className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
                     )}
-                    {isPaymentInProgress ? "Processing..." : "Pay"}
+                    {isPaymentInProgress ? "Processing..." : `Pay R${booking.service.price.toFixed(2)}`}
                   </Button>
                 )}
                 

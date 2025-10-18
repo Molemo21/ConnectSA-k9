@@ -21,10 +21,10 @@ import {
   RefreshCw,
   X,
   RotateCcw,
-  DollarSign
 } from "lucide-react"
 import { showToast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 
 interface Booking {
   id: string
@@ -565,10 +565,10 @@ export function RecentBookingCard({
                   {isProcessingPayment ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin group-hover/btn:scale-110 transition-transform duration-300" />
                   ) : (
-                    <DollarSign className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
+                    <RandIconSimple className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
                   )}
                   <span className="relative z-10">
-                    {isProcessingPayment ? "Processing..." : "Pay Now"}
+                    {isProcessingPayment ? "Processing..." : `Pay R${booking.service.price.toFixed(2)}`}
                   </span>
                 </Button>
               )}
