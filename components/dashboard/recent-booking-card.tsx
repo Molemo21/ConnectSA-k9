@@ -568,7 +568,7 @@ export function RecentBookingCard({
                     <RandIconSimple className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
                   )}
                   <span className="relative z-10">
-                    {isProcessingPayment ? "Processing..." : `Pay R${booking.service.price.toFixed(2)}`}
+                    {isProcessingPayment ? "Processing..." : `Pay R${booking.totalAmount.toFixed(2)}`}
                   </span>
                 </Button>
               )}

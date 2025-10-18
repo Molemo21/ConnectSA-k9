@@ -167,7 +167,7 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
               className="flex-1 bg-green-600 hover:bg-green-700 text-xs"
             >
               <RandIconSimple className="w-3 h-3 mr-1" />
-              Pay R{booking.service.price.toFixed(2)}
+              Pay R{booking.totalAmount.toFixed(2)}
             </Button>
           )}
           

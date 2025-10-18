@@ -15,11 +15,11 @@ import { MobileStatsCard } from "@/components/ui/mobile-stats-card"
 import { MobileActionCard } from "@/components/ui/mobile-action-card"
 import { MobileTabbedSection } from "@/components/ui/mobile-tabbed-section"
 import { MobileCollapsibleSection } from "@/components/ui/mobile-collapsible-section"
+import { RandIconSimple } from "@/components/ui/rand-icon"
 import { 
   Calendar, 
   Clock, 
   Star, 
-  DollarSign, 
   CheckCircle, 
   AlertCircle, 
   Plus,
@@ -513,7 +513,7 @@ function MainContent({
                         <p className="text-2xl sm:text-3xl font-bold text-white group-hover:text-blue-400 transition-colors duration-500 ease-out">R{totalSpent.toFixed(0)}</p>
                       </div>
                       <div className="w-14 h-14 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 ease-out shadow-lg">
-                        <DollarSign className="w-7 h-7 text-white" />
+                        <RandIconSimple className="w-7 h-7 text-white" />
                       </div>
                     </div>
                   </CardContent>
