@@ -559,7 +559,7 @@ export function RecentBookingCard({
                   size="sm"
                   onClick={handlePay}
                   disabled={isProcessingPayment}
-                  className="relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 px-6 py-3 rounded-xl font-semibold group/btn"
+                  className="relative overflow-hidden bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 px-6 py-3 rounded-xl font-semibold group/btn flex items-center justify-center"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
                   {isProcessingPayment ? (

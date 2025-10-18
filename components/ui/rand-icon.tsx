@@ -31,8 +31,26 @@ export function RandIcon({ className = "w-4 h-4" }: RandIconProps) {
 
 // Alternative: Simple R symbol (more readable)
 export function RandIconSimple({ className = "w-4 h-4" }: RandIconProps) {
+  // Extract size classes and convert to text size
+  const sizeClasses = className.match(/(w-\d+|h-\d+)/g) || [];
+  let textSize = "text-base";
+  
+  // Convert width/height classes to appropriate text sizes
+  if (sizeClasses.includes("w-3") || sizeClasses.includes("h-3")) {
+    textSize = "text-xs";
+  } else if (sizeClasses.includes("w-4") || sizeClasses.includes("h-4")) {
+    textSize = "text-sm";
+  } else if (sizeClasses.includes("w-5") || sizeClasses.includes("h-5")) {
+    textSize = "text-base";
+  } else if (sizeClasses.includes("w-6") || sizeClasses.includes("h-6")) {
+    textSize = "text-lg";
+  }
+  
+  // Remove size classes from className and add text size
+  const cleanClassName = className.replace(/(w-\d+|h-\d+)/g, '').trim();
+  
   return (
-    <span className={`font-bold text-lg ${className}`}>
+    <span className={`font-bold ${textSize} leading-none inline-flex items-center ${cleanClassName}`}>
       R
     </span>
   );

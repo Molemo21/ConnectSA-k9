@@ -596,7 +596,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                   <Button 
                     size="sm" 
                     onClick={handlePay} 
-                    className="bg-green-600 hover:bg-green-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base"
+                    className="bg-green-600 hover:bg-green-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base flex items-center justify-center"
                     disabled={isPaymentInProgress}
                   >
                     {isPaymentInProgress ? (

@@ -592,10 +592,10 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             
             <div className="flex items-center space-x-2">
               {canPay && (
-                <Button 
-                  size="sm" 
-                  onClick={handlePay} 
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 pay-button"
+                <Button
+                  size="sm"
+                  onClick={handlePay}
+                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 pay-button flex items-center justify-center"
                   disabled={isPaymentInProgress}
                 >
                   {isPaymentInProgress ? (

@@ -598,7 +598,7 @@ export function RealtimeClientDashboard() {
                         <Button 
                           variant="default" 
                           size="sm" 
-                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          className="flex-1 bg-green-600 hover:bg-green-700 flex items-center justify-center"
                           onClick={async () => {
                             try {
                               const response = await fetch(`/api/book-service/${booking.id}/pay`, {

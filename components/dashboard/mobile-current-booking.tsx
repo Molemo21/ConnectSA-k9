@@ -161,10 +161,10 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
         {/* Action Buttons */}
         <div className="flex space-x-2">
           {canPay && (
-            <Button 
+            <Button
               size="sm" 
               onClick={handlePay}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-xs"
+              className="flex-1 bg-green-600 hover:bg-green-700 text-xs flex items-center justify-center"
             >
               <RandIconSimple className="w-3 h-3 mr-1" />
               Pay R{(booking.totalAmount || 0).toFixed(2)}
