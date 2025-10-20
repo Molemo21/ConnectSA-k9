@@ -19,6 +19,8 @@ import {
   Linkedin,
   Hammer,
   ChevronLeft,
+  Scissors,
+  Sparkles,
 } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
@@ -159,12 +161,11 @@ export default function HomePage() {
   }, [showSplash])
 
   const services = [
-    { name: "Plumbing", category: "Home Services", price: "From R300", icon: Wrench, color: "from-blue-500 to-blue-600", image: "/services/Plumber%202.jpg" },
-    { name: "Electrical Work", category: "Home Services", price: "From R400", icon: Zap, color: "from-yellow-500 to-yellow-600", image: "/services/electricity.jpg" },
-    { name: "House Cleaning", category: "Home Services", price: "From R250", icon: SprayCan, color: "from-green-500 to-green-600", image: "/services/Cleaner%202.jpg" },
-    { name: "Carpentry", category: "Home Services", price: "From R350", icon: Hammer, color: "from-orange-500 to-orange-600", image: "/services/plank.jpg" },
-    { name: "Painting", category: "Home Services", price: "From R350", icon: Paintbrush, color: "from-purple-500 to-purple-600", image: "/services/paint.jpg" },
-    { name: "Garden Services", category: "Home Services", price: "From R200", icon: Flower, color: "from-green-500 to-green-600", image: "/services/skere.jpg" },
+    { name: "Cleaning", category: "Home Services", price: "From R250", icon: SprayCan, color: "from-green-500 to-green-600", image: "/services/Cleaner%202.jpg", slug: "cleaning" },
+    { name: "Hairdressing", category: "Beauty", price: "From R200", icon: Scissors, color: "from-purple-500 to-purple-600", image: "/services/hairdresser.webp", slug: "hairdressing" },
+    { name: "Makeup Services", category: "Beauty", price: "From R250", icon: Sparkles, color: "from-pink-500 to-pink-600", image: "/services/makeup.jpg", slug: "makeup" },
+    { name: "Plumbing", category: "Home Services", price: "From R300", icon: Wrench, color: "from-blue-500 to-blue-600", image: "/services/Plumber%202.jpg", slug: "plumbing", comingSoon: true },
+    { name: "Carpentry", category: "Home Services", price: "From R350", icon: Hammer, color: "from-orange-500 to-orange-600", image: "/services/plank.jpg", slug: "carpentry", comingSoon: true },
   ]
 
   const whyChooseUs = [
@@ -281,11 +282,11 @@ export default function HomePage() {
             </motion.div>
           </div>
 
-          {/* Services Grid - Show 4 services, scroll horizontally */}
+          {/* Services Grid - Show 5 services with horizontal scroll */}
           <div className="relative">
             {/* Scroll container */}
             <div className="flex overflow-x-auto hide-scrollbar gap-6 pb-4 snap-x snap-mandatory scroll-smooth">
-              {services.slice(0, 4).map((service, index) => {
+              {services.map((service, index) => {
                 return (
                   <motion.div
                     key={index}
@@ -299,7 +300,11 @@ export default function HomePage() {
                     viewport={{ once: true }}
                     className="group flex-shrink-0 w-72 xs:w-80 sm:w-80 lg:w-96 snap-center"
                   >
-                    <Card className="relative overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl h-full hover:bg-white/10">
+                    <Card className={`relative overflow-hidden backdrop-blur-sm border transition-all duration-300 hover:shadow-2xl h-full ${
+                      service.comingSoon 
+                        ? 'bg-white/5 border-white/10 opacity-60 grayscale hover:opacity-70 hover:grayscale-[0.8]' 
+                        : 'bg-white/5 border-white/10 hover:border-white/20 hover:scale-105 hover:bg-white/10'
+                    }`}>
                       {/* Service Image */}
                       <div className="relative h-48 sm:h-56 overflow-hidden">
                         <Image 
@@ -307,7 +312,11 @@ export default function HomePage() {
                           alt={service.name}
                           width={400}
                           height={300}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                          className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
+                            service.comingSoon 
+                              ? 'grayscale group-hover:grayscale-[0.8]' 
+                              : 'group-hover:scale-110'
+                          }`}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
 
@@ -317,34 +326,60 @@ export default function HomePage() {
                             {service.category}
                           </span>
                         </div>
+
+                        {/* Coming Soon Badge */}
+                        {service.comingSoon && (
+                          <div className="absolute top-4 right-4">
+                            <span className="px-3 py-1 bg-orange-500/90 backdrop-blur-sm rounded-full text-white text-xs font-medium border border-orange-400/50">
+                              Coming Soon
+                            </span>
+                          </div>
+                        )}
             </div>
 
                       {/* Service Content */}
                       <CardContent className="p-4 sm:p-6">
                         <div className="space-y-3 sm:space-y-4">
                           <div>
-                            <h3 className="text-lg sm:text-xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                            <h3 className={`text-lg sm:text-xl font-bold mb-2 transition-colors ${
+                              service.comingSoon 
+                                ? 'text-gray-400' 
+                                : 'text-white group-hover:text-blue-300'
+                            }`}>
                               {service.name}
                             </h3>
-                            <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
-                              Professional {service.name.toLowerCase()} services delivered by verified experts in your area.
+                            <p className={`text-xs sm:text-sm leading-relaxed ${
+                              service.comingSoon ? 'text-gray-500' : 'text-gray-300'
+                            }`}>
+                              {service.name === "Cleaning" && "Professional cleaning services for your home or office."}
+                              {service.name === "Hairdressing" && "Professional hairdressing and styling services."}
+                              {service.name === "Makeup Services" && "Professional makeup for all occasions."}
+                              {service.name === "Plumbing" && "Professional plumbing services for homes and businesses."}
+                              {service.name === "Carpentry" && "Custom woodwork and furniture building services."}
                             </p>
                           </div>
 
                           <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-3 xs:gap-0">
-                            <div className="text-blue-400 font-semibold text-base sm:text-lg">
+                            <div className={`font-semibold text-base sm:text-lg ${
+                              service.comingSoon ? 'text-gray-400' : 'text-blue-400'
+                            }`}>
                               {service.price}
                             </div>
                             <EnhancedButton 
                               size="sm"
-                              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-105 text-xs sm:text-sm"
-                              onClick={() => handleButtonClick('browseServices', () => window.location.href = '/book-service')}
+                              disabled={service.comingSoon}
+                              className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-300 text-xs sm:text-sm ${
+                                service.comingSoon
+                                  ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white hover:scale-105'
+                              }`}
+                              onClick={() => handleButtonClick('browseServices', () => window.location.href = `/book-service?service=${service.slug}`)}
                               loading={loadingStates.browseServices}
                               loadingText="Booking..."
                             >
                               <div className="flex items-center space-x-1 sm:space-x-2">
-                                <span>{t('services.bookNow')}</span>
-                                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                                <span>{service.comingSoon ? 'Coming Soon' : t('services.bookNow')}</span>
+                                {!service.comingSoon && <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />}
                               </div>
                             </EnhancedButton>
                           </div>
