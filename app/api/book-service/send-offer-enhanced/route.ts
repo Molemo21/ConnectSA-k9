@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db-utils";
+import { PrismaClient } from "@prisma/client";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+// Create Prisma client instance
+const prisma = new PrismaClient();
 
 // Enhanced schema that supports both legacy and catalogue-based pricing
 const sendOfferSchema = z.object({
@@ -83,7 +86,7 @@ export async function POST(request: NextRequest) {
       expectedAvailable: true
     });
     
-    const provider = await db.provider.findFirst({
+    const provider = await prisma.provider.findFirst({
       where: {
         id: validated.providerId,
         services: {
@@ -144,7 +147,7 @@ export async function POST(request: NextRequest) {
       timeWindow: '4 hours (2 hours before and after)'
     });
     
-    const conflictingBooking = await db.booking.findFirst({
+    const conflictingBooking = await prisma.booking.findFirst({
       where: {
         providerId: validated.providerId,
         scheduledDate: {
@@ -203,7 +206,7 @@ export async function POST(request: NextRequest) {
           providerId: validated.providerId
         });
 
-        const catalogueItem = await db.catalogueItem.findFirst({
+        const catalogueItem = await prisma.catalogueItem.findFirst({
           where: {
             id: validated.catalogueItemId!,
             providerId: validated.providerId,
@@ -220,7 +223,7 @@ export async function POST(request: NextRequest) {
           console.log('❌ Catalogue item not found, checking if it exists at all...');
           
           // Check if the catalogue item exists but doesn't match the provider
-          const anyCatalogueItem = await db.catalogueItem.findFirst({
+          const anyCatalogueItem = await prisma.catalogueItem.findFirst({
             where: {
               id: validated.catalogueItemId!
             }
@@ -278,7 +281,7 @@ export async function POST(request: NextRequest) {
       console.log('💰 Using legacy pricing...');
       
       // Get provider's custom rate for this service
-      const providerService = await db.providerService.findFirst({
+      const providerService = await prisma.providerService.findFirst({
         where: {
           providerId: validated.providerId,
           serviceId: actualServiceId
@@ -330,7 +333,7 @@ export async function POST(request: NextRequest) {
       pricingMode: useCatalogue ? 'catalogue' : 'legacy'
     });
     
-    const booking = await db.booking.create({
+    const booking = await prisma.booking.create({
       data: {
         clientId: user.id,
         providerId: validated.providerId,
