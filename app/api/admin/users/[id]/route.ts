@@ -223,8 +223,8 @@ export async function DELETE(
         provider: true,
         _count: {
           select: {
-            clientBookings: true,
-            messages: true,
+            bookings: true,
+            notifications: true,
           },
         },
       },
@@ -241,9 +241,9 @@ export async function DELETE(
 
     // For hard delete, require no linked data. Soft delete allowed regardless.
     if (permanent) {
-      if (targetUser._count.clientBookings > 0 || targetUser._count.messages > 0) {
+      if (targetUser._count.bookings > 0 || targetUser._count.notifications > 0) {
         return NextResponse.json({ 
-          error: 'Cannot permanently delete user with linked bookings or messages. Suspend instead.' 
+          error: 'Cannot permanently delete user with linked bookings or notifications. Suspend instead.' 
         }, { status: 400 })
       }
     }
@@ -295,7 +295,7 @@ export async function DELETE(
           reason,
           userEmail: targetUser.email,
           userRole: targetUser.role,
-          bookingsCount: targetUser._count.clientBookings,
+          bookingsCount: targetUser._count.bookings,
         },
         ipAddress,
         userAgent,

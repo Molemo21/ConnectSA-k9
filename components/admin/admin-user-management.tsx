@@ -46,8 +46,8 @@ interface UserWithDetails {
     businessName?: string
   }
   _count: {
-    clientBookings: number
-    messages: number
+    bookings: number
+    notifications: number
   }
 }
 
@@ -361,7 +361,7 @@ export function AdminUserManagement({ className }: UserManagementProps) {
                       <p><strong>Email:</strong> {user.email}</p>
                       <p><strong>Phone:</strong> {user.phone || 'Not provided'}</p>
                       <p><strong>Joined:</strong> {new Date(user.createdAt).toLocaleDateString()}</p>
-                      <p><strong>Bookings:</strong> {user._count.clientBookings}</p>
+                      <p><strong>Bookings:</strong> {user._count.bookings}</p>
                       {user.provider && (
                         <p><strong>Provider Status:</strong> {user.provider.status}</p>
                       )}
@@ -399,7 +399,7 @@ export function AdminUserManagement({ className }: UserManagementProps) {
                           Change Role
                         </DropdownMenuItem>
                         {/* Optional: Hard delete action, only shown when safe */}
-                        {user._count.clientBookings === 0 && user._count.messages === 0 && (
+                        {user._count.bookings === 0 && user._count.notifications === 0 && (
                           <DropdownMenuItem 
                             onClick={() => {
                               setSelectedUser(user)
@@ -523,7 +523,7 @@ export function AdminUserManagement({ className }: UserManagementProps) {
               Cancel
             </Button>
             <div className="flex gap-2">
-              {actionType === "delete" && selectedUser && selectedUser._count.clientBookings === 0 && selectedUser._count.messages === 0 && (
+              {actionType === "delete" && selectedUser && selectedUser._count.bookings === 0 && selectedUser._count.notifications === 0 && (
                 <Button 
                   onClick={async () => {
                     if (!selectedUser) return

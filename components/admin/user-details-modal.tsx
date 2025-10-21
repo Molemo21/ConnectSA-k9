@@ -43,7 +43,7 @@ interface UserDetails {
       }
     }>
   }
-  clientBookings: Array<{
+  bookings: Array<{
     id: string
     status: string
     totalAmount: number
@@ -63,8 +63,7 @@ interface UserDetails {
     }
   }>
   _count: {
-    clientBookings: number
-    messages: number
+    bookings: number
     notifications: number
   }
 }
@@ -260,7 +259,7 @@ export function UserDetailsModal({ isOpen, onClose, userId }: UserDetailsModalPr
                   <div>
                     <p className="font-medium">Activity</p>
                     <p className="text-sm text-gray-600">
-                      {user._count.clientBookings} bookings, {user._count.messages} messages
+                      {user._count.bookings} bookings, {user._count.notifications} notifications
                     </p>
                   </div>
                 </div>
@@ -346,15 +345,15 @@ export function UserDetailsModal({ isOpen, onClose, userId }: UserDetailsModalPr
           )}
 
           {/* Recent Bookings */}
-          {user.clientBookings.length > 0 && (
+          {user.bookings.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Recent Bookings ({user._count.clientBookings})</CardTitle>
+                <CardTitle>Recent Bookings ({user._count.bookings})</CardTitle>
                 <CardDescription>Last 10 bookings</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {user.clientBookings.map((booking) => (
+                  {user.bookings.map((booking) => (
                     <div key={booking.id} className="border rounded-lg p-3">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{booking.service.name}</span>
