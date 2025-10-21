@@ -215,7 +215,7 @@ export function ProviderDiscovery({
 
       console.log('🚀 Sending job offer with data:', requestData);
 
-      const response = await fetch('/api/book-service/send-offer', {
+      const response = await fetch('/api/book-service/send-offer-enhanced', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData)
@@ -566,7 +566,7 @@ export function ProviderDiscovery({
               date, time, address, notes,
               catalogueItemId: selectedPackage.id
             }
-            const res = await fetch('/api/book-service/send-offer', {
+            const res = await fetch('/api/book-service/send-offer-enhanced', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
