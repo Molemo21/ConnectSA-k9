@@ -193,6 +193,11 @@ export async function POST(request: NextRequest) {
       });
       
       try {
+        console.log('🔍 Querying catalogue item with:', {
+          catalogueItemId: validated.catalogueItemId,
+          providerId: validated.providerId
+        });
+
         const catalogueItem = await db.catalogueItem.findFirst({
           where: {
             id: validated.catalogueItemId!,
@@ -222,14 +227,25 @@ export async function POST(request: NextRequest) {
             console.log('🔍 Found catalogue item but provider mismatch:', {
               requestedProviderId: validated.providerId,
               actualProviderId: anyCatalogueItem.providerId,
-              isActive: anyCatalogueItem.isActive
+              isActive: anyCatalogueItem.isActive,
+              catalogueItemId: validated.catalogueItemId
             });
+            
+            return NextResponse.json({ 
+              error: "Package provider mismatch",
+              details: `The selected package belongs to a different provider. Package ID: ${validated.catalogueItemId}`
+            }, { status: 400 });
+          } else {
+            console.log('🔍 Catalogue item does not exist at all:', {
+              catalogueItemId: validated.catalogueItemId,
+              providerId: validated.providerId
+            });
+            
+            return NextResponse.json({ 
+              error: "Package not found",
+              details: `The selected package does not exist. Package ID: ${validated.catalogueItemId}`
+            }, { status: 400 });
           }
-          
-          return NextResponse.json({ 
-            error: "Selected service package not available",
-            details: "The package may not be available for this provider or may have been deactivated"
-          }, { status: 400 });
         }
 
         totalAmount = catalogueItem.price;

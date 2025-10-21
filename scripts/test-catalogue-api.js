@@ -1,83 +1,153 @@
-const { PrismaClient } = require('@prisma/client');
+#!/usr/bin/env node
+/**
+ * Test Catalogue API for Specific Provider
+ * - Tests the /api/catalogue endpoint
+ * - Checks what catalogue items are returned
+ * - Verifies provider and service matching
+ */
+
+const https = require('https');
+
+const PRODUCTION_URL = 'https://app.proliinkconnect.co.za';
 
 async function testCatalogueAPI() {
-  const prisma = new PrismaClient();
+  console.log('🔍 Testing Catalogue API');
+  console.log('========================');
   
   try {
-    console.log('🧪 Testing Catalogue API Endpoints...\n');
+    // Test the catalogue API endpoint
+    const result = await new Promise((resolve, reject) => {
+      const url = new URL('/api/catalogue', PRODUCTION_URL);
+      
+      const options = {
+        hostname: url.hostname,
+        port: 443,
+        path: url.pathname,
+        method: 'GET'
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          resolve({
+            status: res.statusCode,
+            data: data ? JSON.parse(data) : null
+          });
+        });
+      });
+
+      req.on('error', reject);
+      req.end();
+    });
+
+    console.log(`📊 API Status: ${result.status}`);
     
-    // Test 1: Check if catalogue_items table exists and has data
-    console.log('1. Testing catalogue_items table...');
-    const catalogueCount = await prisma.catalogueItem.count();
-    console.log(`   ✅ Found ${catalogueCount} catalogue items\n`);
-    
-    // Test 2: Check if providers have catalogue items
-    console.log('2. Testing provider-catalogue relationship...');
-    const providersWithCatalogue = await prisma.provider.findMany({
-      where: {
-        catalogueItems: {
-          some: {}
+    if (result.status === 200 && result.data) {
+      const items = Array.isArray(result.data) ? result.data : (result.data.items || []);
+      console.log(`📊 Total Items Returned: ${items.length}`);
+      
+      if (items.length > 0) {
+        console.log('\n📦 Sample Catalogue Items:');
+        items.slice(0, 3).forEach((item, index) => {
+          console.log(`${index + 1}. ID: ${item.id}`);
+          console.log(`   Provider: ${item.providerId}`);
+          console.log(`   Service: ${item.serviceId}`);
+          console.log(`   Title: ${item.title}`);
+          console.log(`   Price: ${item.price} ${item.currency}`);
+          console.log(`   Active: ${item.isActive}`);
+          console.log('');
+        });
+        
+        // Check for any items with the test ID format
+        const testIdItems = items.filter(item => item.id.startsWith('cat_test'));
+        if (testIdItems.length > 0) {
+          console.log('⚠️  Found items with test ID format:');
+          testIdItems.forEach(item => {
+            console.log(`   ${item.id} - ${item.title}`);
+          });
+        } else {
+          console.log('✅ No test ID format items found (good)');
         }
-      },
-      include: {
-        catalogueItems: true
+        
+      } else {
+        console.log('⚠️  No catalogue items returned from API');
       }
-    });
-    console.log(`   ✅ Found ${providersWithCatalogue.length} providers with catalogue items\n`);
-    
-    // Test 3: Check if bookings can reference catalogue items
-    console.log('3. Testing booking-catalogue relationship...');
-    const bookingsWithCatalogue = await prisma.booking.findMany({
-      where: {
-        catalogueItemId: {
-          not: null
-        }
-      },
-      include: {
-        catalogueItem: true
-      }
-    });
-    console.log(`   ✅ Found ${bookingsWithCatalogue.length} bookings with catalogue items\n`);
-    
-    // Test 4: Sample catalogue item data
-    console.log('4. Sample catalogue item data...');
-    const sampleItem = await prisma.catalogueItem.findFirst({
-      include: {
-        provider: {
-          include: {
-            user: true
-          }
-        },
-        service: true
-      }
-    });
-    
-    if (sampleItem) {
-      console.log(`   📦 Sample Item: "${sampleItem.title}"`);
-      console.log(`   💰 Price: ${sampleItem.currency} ${sampleItem.price}`);
-      console.log(`   ⏱️  Duration: ${sampleItem.durationMins} minutes`);
-      console.log(`   👤 Provider: ${sampleItem.provider.businessName || sampleItem.provider.user.name}`);
-      console.log(`   🏷️  Service: ${sampleItem.service.name}`);
-      console.log(`   ✅ Active: ${sampleItem.isActive}\n`);
+    } else {
+      console.log(`❌ API Error: ${result.status}`);
+      console.log('Response:', result.data);
     }
-    
-    // Test 5: Check feature flag functionality
-    console.log('5. Testing feature flag...');
-    const cataloguePricingEnabled = process.env.NEXT_PUBLIC_CATALOGUE_PRICING_V1 === 'true';
-    console.log(`   🚩 NEXT_PUBLIC_CATALOGUE_PRICING_V1: ${cataloguePricingEnabled ? 'ENABLED' : 'DISABLED'}\n`);
-    
-    console.log('🎉 All catalogue API tests passed!');
-    console.log('\n📊 Summary:');
-    console.log(`   - ${catalogueCount} catalogue items created`);
-    console.log(`   - ${providersWithCatalogue.length} providers have catalogue items`);
-    console.log(`   - ${bookingsWithCatalogue.length} bookings reference catalogue items`);
-    console.log(`   - Feature flag: ${cataloguePricingEnabled ? 'ENABLED' : 'DISABLED'}`);
-    
+
   } catch (error) {
-    console.error('❌ Test failed:', error);
-  } finally {
-    await prisma.$disconnect();
+    console.error('❌ Test failed:', error.message);
   }
 }
 
-testCatalogueAPI();
+async function testCatalogueAPIWithService() {
+  console.log('\n🔍 Testing Catalogue API with Service Filter');
+  console.log('============================================');
+  
+  try {
+    // Test with a service ID filter
+    const serviceId = '82ce42da-a2b1-4117-b7f5-21240c42ba37'; // Deep Cleaning service from our test
+    
+    const result = await new Promise((resolve, reject) => {
+      const url = new URL(`/api/catalogue?serviceId=${serviceId}&limit=50`, PRODUCTION_URL);
+      
+      const options = {
+        hostname: url.hostname,
+        port: 443,
+        path: url.pathname,
+        method: 'GET'
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          resolve({
+            status: res.statusCode,
+            data: data ? JSON.parse(data) : null
+          });
+        });
+      });
+
+      req.on('error', reject);
+      req.end();
+    });
+
+    console.log(`📊 API Status: ${result.status}`);
+    
+    if (result.status === 200 && result.data) {
+      const items = Array.isArray(result.data) ? result.data : (result.data.items || []);
+      console.log(`📊 Items for Service ${serviceId}: ${items.length}`);
+      
+      if (items.length > 0) {
+        console.log('\n📦 Items for Deep Cleaning Service:');
+        items.forEach((item, index) => {
+          console.log(`${index + 1}. ${item.id} - ${item.title} (${item.providerId})`);
+        });
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Service filter test failed:', error.message);
+  }
+}
+
+async function main() {
+  await testCatalogueAPI();
+  await testCatalogueAPIWithService();
+  
+  console.log('\n🎯 Analysis:');
+  console.log('The issue is likely:');
+  console.log('1. Frontend is sending a catalogue item ID that doesn\'t exist');
+  console.log('2. Provider mismatch between selected provider and catalogue item');
+  console.log('3. Catalogue item was deactivated or deleted');
+  console.log('\n🔧 Next steps:');
+  console.log('1. Check what catalogue item ID is being sent from frontend');
+  console.log('2. Verify the provider ID matches the catalogue item');
+  console.log('3. Ensure the catalogue item is active');
+}
+
+main().catch(console.error);
