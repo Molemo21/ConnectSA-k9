@@ -104,6 +104,7 @@ model Provider {
   // Relations
   bookings        Booking[]        @relation("ProviderBookings")
   services        ProviderService[]
+  catalogueItems  CatalogueItem[]  // New relation for catalogue items
   reviews         Review[]
   adminReviews    ProviderReview[]
   bookingDrafts   BookingDraft[]
@@ -124,6 +125,7 @@ model Service {
   // Relations
   bookings    Booking[]
   providers   ProviderService[]
+  catalogueItems CatalogueItem[] // New relation for catalogue items
   category    ServiceCategory @relation(fields: [categoryId], references: [id])
   bookingDrafts BookingDraft[]
 
@@ -160,10 +162,17 @@ model Booking {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  // New catalogue-based pricing fields (nullable for backward compatibility)
+  catalogueItemId    String?  // Nullable for backward compatibility
+  bookedPrice        Float?   // Snapshot of catalogue item price
+  bookedCurrency     String?  // Snapshot of catalogue item currency
+  bookedDurationMins Int?     // Snapshot of catalogue item duration
+
   // Relations
   client        User          @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Restrict)
   provider      Provider      @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Restrict)
   service       Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  catalogueItem CatalogueItem? @relation(fields: [catalogueItemId], references: [id], onDelete: SetNull)
   payment       Payment?
   review        Review?
 
@@ -301,4 +310,28 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+// New CatalogueItem model for catalogue-based pricing
+model CatalogueItem {
+  id          String   @id @default(cuid())
+  providerId  String
+  serviceId   String
+  title       String
+  shortDesc   String
+  longDesc    String?
+  price       Float
+  currency    String   @default("ZAR")
+  durationMins Int
+  images      String[] // Array of image URLs
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+
+  @@map("catalogue_items")
 }
