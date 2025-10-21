@@ -15,6 +15,9 @@ export type NotificationType =
   | 'REVIEW_SUBMITTED'
   | 'PAYMENT_RELEASED'
   | 'ESCROW_RELEASED'
+  | 'CATALOGUE_SETUP_REQUIRED'
+  | 'CATALOGUE_SETUP_COMPLETED'
+  | 'CATALOGUE_SETUP_REMINDER'
 
 export interface NotificationData {
   userId: string
@@ -284,5 +287,23 @@ export const NotificationTemplates = {
     type: 'ESCROW_RELEASED' as NotificationType,
     title: 'Escrow Released',
     content: `Escrow payment of R${amount.toFixed(2)} has been released for booking #${booking.id}.`
+  }),
+
+  CATALOGUE_SETUP_REQUIRED: (provider: any, packageCount: number) => ({
+    type: 'CATALOGUE_SETUP_REQUIRED' as NotificationType,
+    title: '🎉 Your Service Packages Are Ready!',
+    content: `We've created ${packageCount} starter packages for your services. Customize them now to start receiving bookings!`
+  }),
+
+  CATALOGUE_SETUP_COMPLETED: (provider: any, completionTime: string) => ({
+    type: 'CATALOGUE_SETUP_COMPLETED' as NotificationType,
+    title: '🎉 Setup Complete - You\'re Ready to Earn!',
+    content: `Congratulations! You completed your service packages setup in ${completionTime}. You're now live and ready to receive bookings!`
+  }),
+
+  CATALOGUE_SETUP_REMINDER: (provider: any, daysSince: number) => ({
+    type: 'CATALOGUE_SETUP_REMINDER' as NotificationType,
+    title: '💡 Complete Your Service Packages',
+    content: `Don't miss out on bookings! Complete your service packages setup to start earning. It's been ${daysSince} days since your packages were created.`
   })
 }

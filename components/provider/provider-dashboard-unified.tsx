@@ -15,6 +15,8 @@ import { MobileStatsCard } from "@/components/ui/mobile-stats-card"
 import { MobileActionCard } from "@/components/ui/mobile-action-card"
 import { MobileTabbedSection } from "@/components/ui/mobile-tabbed-section"
 import { MobileCollapsibleSection } from "@/components/ui/mobile-collapsible-section"
+import { SetupProgressBar } from "@/components/provider/setup-progress-bar"
+import { CompletionCelebration } from "@/components/provider/completion-celebration"
 import { 
   Star, 
   Calendar, 
@@ -408,6 +410,9 @@ function ProviderMainContent({
       case "overview":
         return (
           <div className="space-y-6">
+            {/* Setup Progress Bar - Show if not completed */}
+            <SetupProgressBar />
+            
             {/* Current Bookings Card - Priority at Top */}
             <Card className="bg-black/60 backdrop-blur-sm border-gray-300/20 shadow-lg">
               <CardHeader>
@@ -2094,6 +2099,15 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav userRole="PROVIDER" />
+
+      {/* Completion Celebration */}
+      <CompletionCelebration 
+        providerId={user?.id || ''}
+        onComplete={() => {
+          // Refresh data when celebration is completed
+          refreshData();
+        }}
+      />
     </div>
   )
 }

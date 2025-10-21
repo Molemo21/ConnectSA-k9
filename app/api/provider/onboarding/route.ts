@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { db } from "@/lib/db-utils"
 import { z } from "zod"
+import { createStarterPackages } from "@/lib/services/package-generator"
+import { createNotification } from "@/lib/notification-service"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
@@ -151,6 +153,29 @@ export async function POST(request: NextRequest) {
       console.log("✅ Services updated successfully")
     } else {
       console.log("⚠️ No services selected")
+    }
+
+    // Auto-create starter packages if provider is approved and has services
+    if (provider.status === "APPROVED" && validatedData.selectedServices.length > 0) {
+      console.log("🎯 Provider is approved, creating starter packages...")
+      try {
+        const createdPackages = await createStarterPackages(provider.id, validatedData.selectedServices)
+        console.log(`✅ Created ${createdPackages.length} starter packages`)
+
+        // Send notification to provider about packages
+        await createNotification({
+          userId: provider.userId,
+          type: 'CATALOGUE_SETUP_REQUIRED',
+          title: '🎉 Your Service Packages Are Ready!',
+          content: `We've created ${createdPackages.length} starter packages for your services. Customize them now to start receiving bookings!`
+        })
+        console.log("✅ Notification sent to provider")
+
+      } catch (packageError) {
+        console.error("❌ Failed to create starter packages:", packageError)
+        // Don't fail the onboarding if package creation fails
+        // Just log the error and continue
+      }
     }
 
     // Create audit log

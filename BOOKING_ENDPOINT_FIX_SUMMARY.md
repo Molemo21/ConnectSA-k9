@@ -42,3 +42,4 @@ After deployment, the booking flow should work seamlessly:
 4. Client clicks "Confirm & Book" → booking created successfully
 
 The 401 Unauthorized error should be resolved.
+

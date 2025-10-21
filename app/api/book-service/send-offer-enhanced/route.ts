@@ -365,8 +365,51 @@ export async function POST(request: NextRequest) {
     console.log('ℹ️ Skipping proposal creation (table not available)');
 
     // Create notifications for both client and provider
-    // Note: Notification system temporarily disabled - model not available in database
-    console.log('ℹ️ Skipping notification creation (system temporarily disabled)');
+    console.log('🔔 Creating notifications...')
+    try {
+      // Get the full booking data with relations for notifications
+      const fullBooking = await prisma.booking.findUnique({
+        where: { id: booking.id },
+        include: {
+          client: { select: { id: true, name: true, email: true } },
+          provider: { 
+            include: { 
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+          service: { 
+            select: { 
+              name: true, 
+              category: { select: { name: true } }
+            } 
+          }
+        }
+      });
+
+      if (fullBooking) {
+        // Notify provider about new booking
+        const providerNotification = NotificationTemplates.BOOKING_CREATED(fullBooking);
+        await createNotification({
+          userId: fullBooking.provider.user.id,
+          type: providerNotification.type,
+          title: providerNotification.title,
+          content: providerNotification.content
+        });
+
+        // Notify client about booking creation
+        await createNotification({
+          userId: fullBooking.client.id,
+          type: 'BOOKING_CREATED',
+          title: 'Booking Request Sent',
+          content: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent to ${fullBooking.provider?.businessName || 'the provider'}. You'll be notified when they respond.`
+        });
+
+        console.log(`🔔 Notifications sent: Provider ${fullBooking.provider.user.email}, Client ${fullBooking.client.email}`);
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to create booking notifications:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     // Broadcast real-time update to provider
     console.log('📡 Broadcasting real-time update to provider...');
