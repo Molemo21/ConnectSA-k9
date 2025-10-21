@@ -9,6 +9,8 @@ import { Package, Plus, Eye, EyeOff, TrendingUp, Users, BarChart3, Sparkles, Zap
 import { useToast } from '@/hooks/use-toast';
 import { useCataloguePricing } from '@/lib/feature-flags';
 import { CatalogueManager } from '@/components/provider/catalogue-manager';
+import { BulkEditInterface } from '@/components/provider/bulk-edit-interface';
+import { PricingSuggestions } from '@/components/provider/pricing-suggestions';
 
 interface ProviderStats {
   totalCatalogueItems: number;
@@ -271,6 +273,24 @@ export function ProviderCatalogueDashboard({ providerId }: ProviderCatalogueDash
 
       {/* Catalogue Manager */}
       <CatalogueManager providerId={providerId} />
+
+      {/* Bulk Edit Interface */}
+      <BulkEditInterface 
+        providerId={providerId} 
+        onSave={() => {
+          // Refresh stats when bulk edit is saved
+          fetchStats();
+        }} 
+      />
+
+      {/* Pricing Suggestions */}
+      <PricingSuggestions 
+        providerId={providerId}
+        onApplySuggestion={() => {
+          // Refresh stats when pricing suggestions are applied
+          fetchStats();
+        }}
+      />
     </div>
   );
 }

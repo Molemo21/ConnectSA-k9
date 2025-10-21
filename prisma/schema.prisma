@@ -94,6 +94,10 @@ model Provider {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   
+  // Catalogue setup tracking fields
+  catalogueSetupCompleted    Boolean   @default(false)
+  catalogueSetupCompletedAt DateTime?
+  
   // Bank details fields
   bankName        String?
   bankCode        String?

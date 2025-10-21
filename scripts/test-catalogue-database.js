@@ -133,3 +133,4 @@ main().catch(async (error) => {
   try { await prisma.$disconnect(); } catch {}
   process.exit(1);
 });
+
