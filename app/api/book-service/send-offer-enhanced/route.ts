@@ -3,7 +3,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
-import { useCataloguePricing, useCataloguePricingForProvider } from "@/lib/feature-flags";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
@@ -57,7 +56,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Request validated successfully:', validated);
 
     // Determine pricing mode based on feature flags and request data
-    const useCatalogue = useCataloguePricing() && validated.catalogueItemId;
+    const useCatalogue = process.env.NEXT_PUBLIC_CATALOGUE_PRICING_V1 === 'true' && validated.catalogueItemId;
     console.log('🔍 Pricing mode:', useCatalogue ? 'Catalogue-based' : 'Legacy');
 
     // Parse date and time
@@ -188,36 +187,71 @@ export async function POST(request: NextRequest) {
     if (useCatalogue) {
       // Catalogue-based pricing
       console.log('💰 Using catalogue-based pricing...');
+      console.log('🔍 Looking for catalogue item:', {
+        catalogueItemId: validated.catalogueItemId,
+        providerId: validated.providerId
+      });
       
-      const catalogueItem = await db.catalogueItem.findFirst({
-        where: {
-          id: validated.catalogueItemId!,
-          providerId: validated.providerId,
-          isActive: true
-        },
-        include: {
-          service: true
+      try {
+        const catalogueItem = await db.catalogueItem.findFirst({
+          where: {
+            id: validated.catalogueItemId!,
+            providerId: validated.providerId,
+            isActive: true
+          },
+          include: {
+            service: true
+          }
+        });
+
+        console.log('🔍 Catalogue item query result:', catalogueItem ? 'Found' : 'Not found');
+
+        if (!catalogueItem) {
+          console.log('❌ Catalogue item not found, checking if it exists at all...');
+          
+          // Check if the catalogue item exists but doesn't match the provider
+          const anyCatalogueItem = await db.catalogueItem.findFirst({
+            where: {
+              id: validated.catalogueItemId!
+            }
+          });
+          
+          console.log('🔍 Any catalogue item with this ID:', anyCatalogueItem ? 'Found' : 'Not found');
+          
+          if (anyCatalogueItem) {
+            console.log('🔍 Found catalogue item but provider mismatch:', {
+              requestedProviderId: validated.providerId,
+              actualProviderId: anyCatalogueItem.providerId,
+              isActive: anyCatalogueItem.isActive
+            });
+          }
+          
+          return NextResponse.json({ 
+            error: "Selected service package not available",
+            details: "The package may not be available for this provider or may have been deactivated"
+          }, { status: 400 });
         }
-      });
 
-      if (!catalogueItem) {
+        totalAmount = catalogueItem.price;
+        duration = catalogueItem.durationMins / 60; // Convert minutes to hours
+        bookedPrice = catalogueItem.price;
+        bookedCurrency = catalogueItem.currency;
+        bookedDurationMins = catalogueItem.durationMins;
+
+        console.log('💰 Catalogue pricing:', {
+          price: catalogueItem.price,
+          currency: catalogueItem.currency,
+          durationMins: catalogueItem.durationMins,
+          title: catalogueItem.title
+        });
+        
+      } catch (catalogueError) {
+        console.error('❌ Error fetching catalogue item:', catalogueError);
         return NextResponse.json({ 
-          error: "Selected service package not available" 
-        }, { status: 400 });
+          error: "Failed to fetch service package details",
+          details: catalogueError instanceof Error ? catalogueError.message : 'Unknown error'
+        }, { status: 500 });
       }
-
-      totalAmount = catalogueItem.price;
-      duration = catalogueItem.durationMins / 60; // Convert minutes to hours
-      bookedPrice = catalogueItem.price;
-      bookedCurrency = catalogueItem.currency;
-      bookedDurationMins = catalogueItem.durationMins;
-
-      console.log('💰 Catalogue pricing:', {
-        price: catalogueItem.price,
-        currency: catalogueItem.currency,
-        durationMins: catalogueItem.durationMins,
-        title: catalogueItem.title
-      });
     } else {
       // Legacy pricing
       console.log('💰 Using legacy pricing...');
