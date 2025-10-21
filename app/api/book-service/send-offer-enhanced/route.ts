@@ -32,6 +32,11 @@ export async function POST(request: NextRequest) {
 
   try {
     console.log('🚀 Send-offer API called - Enhanced with Catalogue Pricing Support');
+    console.log('🔍 Request details:', {
+      url: request.url,
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries())
+    });
     
     const user = await getCurrentUser();
     if (!user || user.role !== "CLIENT") {
@@ -390,13 +395,33 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       console.error('Error details:', {
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
+        name: error.name
       });
     }
 
+    // Return specific error message based on error type
+    let errorMessage = "Failed to send job offer. Please try again.";
+    let statusCode = 500;
+
+    if (error instanceof z.ZodError) {
+      errorMessage = `Validation error: ${error.errors[0]?.message || 'Invalid input'}`;
+      statusCode = 400;
+    } else if (error && typeof error === 'object' && 'code' in error) {
+      // Prisma errors
+      if (error.code === 'P1001' || error.code === 'P1008') {
+        errorMessage = "Database connection error. Please try again.";
+        statusCode = 500;
+      } else if (error.code === 'P2002') {
+        errorMessage = "Duplicate entry. Please try again.";
+        statusCode = 400;
+      }
+    }
+
     return NextResponse.json({ 
-      error: "Failed to send job offer. Please try again." 
-    }, { status: 500 });
+      error: errorMessage,
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: statusCode });
   }
 }
 

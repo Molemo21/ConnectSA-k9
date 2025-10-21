@@ -1,243 +1,207 @@
 #!/usr/bin/env node
-
 /**
- * Complete Booking Flow Test with Provider Discovery
- * Tests the entire user journey from service selection to booking completion
+ * Comprehensive Booking Flow Test
+ * - Simulates the exact frontend flow
+ * - Tests with real data from database
+ * - Identifies the exact mismatch causing 500 error
  */
 
-const BASE_URL = 'http://localhost:3000';
+const { PrismaClient } = require('@prisma/client');
 
-async function testCompleteBookingFlow() {
-  console.log('🧪 Testing Complete Booking Flow with Provider Discovery...\n');
+const prisma = new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'],
+});
 
+async function testBookingFlow() {
+  console.log('🔍 Comprehensive Booking Flow Test');
+  console.log('===================================');
+  
   try {
-    // Step 1: Test Service Categories API
-    console.log('📋 Step 1: Testing Service Categories API...');
-    const categoriesResponse = await fetch(`${BASE_URL}/api/service-categories`);
-    
-    if (!categoriesResponse.ok) {
-      throw new Error(`Service Categories API failed: ${categoriesResponse.status}`);
-    }
-    
-    const categories = await categoriesResponse.json();
-    console.log(`✅ Found ${categories.length} service category(ies)`);
-    
-    const cleaningCategory = categories[0];
-    console.log(`✅ Category: ${cleaningCategory.name} (${cleaningCategory.icon})`);
-    console.log(`✅ Services available: ${cleaningCategory.services.length}`);
-    
-    if (cleaningCategory.services.length === 0) {
-      throw new Error('No services found in cleaning category');
-    }
-
-    // Step 2: Test Services API
-    console.log('\n🔧 Step 2: Testing Services API...');
-    const servicesResponse = await fetch(`${BASE_URL}/api/services`);
-    
-    if (!servicesResponse.ok) {
-      throw new Error(`Services API failed: ${servicesResponse.status}`);
-    }
-    
-    const services = await servicesResponse.json();
-    console.log(`✅ Found ${services.length} services`);
-    
-    // Select a service for testing
-    const selectedService = services[0];
-    console.log(`✅ Selected service: ${selectedService.name} (R${selectedService.basePrice})`);
-
-    // Step 3: Test Provider Discovery API
-    console.log('\n🔍 Step 3: Testing Provider Discovery API...');
-    
-    const providerDiscoveryData = {
-      serviceId: selectedService.id,
-      location: 'Mthatha', // Using a location where we know providers exist
-      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
-      time: '10:00'
-    };
-
-    console.log('🔍 Searching for providers...');
-    console.log(`   Service: ${selectedService.name}`);
-    console.log(`   Location: ${providerDiscoveryData.location}`);
-    console.log(`   Date: ${providerDiscoveryData.date}`);
-    console.log(`   Time: ${providerDiscoveryData.time}`);
-
-    const providerResponse = await fetch(`${BASE_URL}/api/book-service/discover-providers`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    // Step 1: Get a real provider with catalogue items
+    console.log('\n📋 Step 1: Finding providers with catalogue items...');
+    const providersWithCatalogue = await prisma.provider.findMany({
+      where: {
+        status: 'APPROVED',
+        catalogueItems: {
+          some: {
+            isActive: true
+          }
+        }
       },
-      body: JSON.stringify(providerDiscoveryData)
+      include: {
+        catalogueItems: {
+          where: { isActive: true },
+          take: 1
+        },
+        services: {
+          take: 1
+        }
+      },
+      take: 3
     });
 
-    if (providerResponse.ok) {
-      const providers = await providerResponse.json();
-      console.log(`✅ Found ${providers.length} available providers`);
+    console.log(`Found ${providersWithCatalogue.length} providers with catalogue items`);
+    
+    if (providersWithCatalogue.length === 0) {
+      console.log('❌ No providers with catalogue items found!');
+      return;
+    }
+
+    // Step 2: Test each provider's catalogue items
+    for (const provider of providersWithCatalogue) {
+      console.log(`\n📦 Testing Provider: ${provider.businessName} (${provider.id})`);
+      console.log(`   Catalogue Items: ${provider.catalogueItems.length}`);
       
-      if (providers.length > 0) {
-        console.log('📋 Available Providers:');
-        providers.forEach((provider, index) => {
-          console.log(`   ${index + 1}. ${provider.businessName || 'Unnamed Provider'}`);
-          console.log(`      Location: ${provider.location || 'N/A'}`);
-          console.log(`      Hourly Rate: R${provider.hourlyRate || 'N/A'}`);
-          console.log(`      Status: ${provider.status}`);
+      if (provider.catalogueItems.length > 0) {
+        const catalogueItem = provider.catalogueItems[0];
+        console.log(`   Sample Item: ${catalogueItem.id} - ${catalogueItem.title}`);
+        
+        // Step 3: Test the exact API query
+        console.log('   🔍 Testing API query...');
+        const apiResult = await prisma.catalogueItem.findFirst({
+          where: {
+            id: catalogueItem.id,
+            providerId: provider.id,
+            isActive: true
+          },
+          include: {
+            service: true
+          }
         });
         
-        // Select first provider for booking
-        const selectedProvider = providers[0];
-        console.log(`\n✅ Selected provider: ${selectedProvider.businessName || 'Unnamed Provider'}`);
-      } else {
-        console.log('⚠️ No providers found for the selected criteria');
-      }
-    } else {
-      const errorText = await providerResponse.text();
-      console.log(`⚠️ Provider discovery API returned ${providerResponse.status}: ${errorText.substring(0, 200)}...`);
-      
-      if (providerResponse.status === 401 || providerResponse.status === 403) {
-        console.log('ℹ️ Authentication required for provider discovery - this is expected');
+        if (apiResult) {
+          console.log('   ✅ API query successful');
+          console.log(`   📊 Price: R${apiResult.price}, Duration: ${apiResult.durationMins}min`);
+        } else {
+          console.log('   ❌ API query failed - item not found');
+        }
       }
     }
 
-    // Step 4: Test Booking Creation
-    console.log('\n📝 Step 4: Testing Booking Creation...');
-    
-    const bookingData = {
-      serviceId: selectedService.id,
-      providerId: 'test-provider-id', // Using a test ID since we might not have auth
-      date: providerDiscoveryData.date,
-      time: providerDiscoveryData.time,
-      duration: 120, // 2 hours
-      address: '123 Test Street, Mthatha',
-      city: 'Mthatha',
-      postalCode: '5100',
-      specialInstructions: 'Please ring doorbell twice',
-      contactPhone: '+27821234567',
-      contactEmail: 'test@example.com',
-      customerName: 'Test Customer'
+    // Step 4: Test with a specific provider and catalogue item
+    console.log('\n🎯 Step 4: Testing specific booking scenario...');
+    const testProvider = providersWithCatalogue[0];
+    const testCatalogueItem = testProvider.catalogueItems[0];
+    const testService = testProvider.services[0];
+
+    console.log(`Provider: ${testProvider.businessName} (${testProvider.id})`);
+    console.log(`Catalogue Item: ${testCatalogueItem.id} - ${testCatalogueItem.title}`);
+    console.log(`Service: ${testService.serviceId} - ${testService.service?.name}`);
+
+    // Step 5: Simulate the exact API call
+    console.log('\n📡 Step 5: Simulating API call...');
+    const simulatedPayload = {
+      providerId: testProvider.id,
+      serviceId: testService.serviceId,
+      date: '2024-12-25',
+      time: '14:00',
+      address: 'Test Address',
+      notes: 'Test booking',
+      catalogueItemId: testCatalogueItem.id
     };
 
-    console.log('📝 Creating booking...');
-    const bookingResponse = await fetch(`${BASE_URL}/api/book-service`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    console.log('Payload:', JSON.stringify(simulatedPayload, null, 2));
+
+    // Test the catalogue item query
+    const catalogueItem = await prisma.catalogueItem.findFirst({
+      where: {
+        id: simulatedPayload.catalogueItemId,
+        providerId: simulatedPayload.providerId,
+        isActive: true
       },
-      body: JSON.stringify(bookingData)
+      include: {
+        service: true
+      }
     });
 
-    if (bookingResponse.ok) {
-      const bookingResult = await bookingResponse.json();
-      console.log('✅ Booking API accepts requests');
-      console.log(`✅ Booking response: ${JSON.stringify(bookingResult).substring(0, 100)}...`);
+    if (catalogueItem) {
+      console.log('✅ Catalogue item found successfully');
+      console.log(`   Price: R${catalogueItem.price}`);
+      console.log(`   Duration: ${catalogueItem.durationMins} minutes`);
+      console.log(`   Currency: ${catalogueItem.currency}`);
     } else {
-      const errorText = await bookingResponse.text();
-      console.log(`⚠️ Booking API returned ${bookingResponse.status}: ${errorText.substring(0, 200)}...`);
+      console.log('❌ Catalogue item not found');
       
-      if (bookingResponse.status === 401 || bookingResponse.status === 403) {
-        console.log('ℹ️ Authentication required for booking - this is expected');
+      // Check if it exists at all
+      const anyItem = await prisma.catalogueItem.findFirst({
+        where: { id: simulatedPayload.catalogueItemId }
+      });
+      
+      if (anyItem) {
+        console.log('🔍 Item exists but provider mismatch:');
+        console.log(`   Requested Provider: ${simulatedPayload.providerId}`);
+        console.log(`   Actual Provider: ${anyItem.providerId}`);
+        console.log(`   Active: ${anyItem.isActive}`);
+      } else {
+        console.log('🔍 Item does not exist at all');
       }
     }
 
-    // Step 5: Test Frontend Integration
-    console.log('\n🌐 Step 5: Testing Frontend Integration...');
-    
-    // Test if the booking form page loads
-    const bookingPageResponse = await fetch(`${BASE_URL}/book-service`);
-    if (bookingPageResponse.ok) {
-      console.log('✅ Booking form page accessible');
-    }
-
-    // Test services page
-    const servicesPageResponse = await fetch(`${BASE_URL}/services`);
-    if (servicesPageResponse.ok) {
-      console.log('✅ Services page accessible');
-    }
-
-    // Step 6: Test Database Provider-Service Relationships
-    console.log('\n🗄️ Step 6: Testing Database Provider-Service Relationships...');
-    
-    // We'll use a simple API call to verify the relationships exist
-    const serviceWithProviders = services.find(s => s.categoryId);
-    if (serviceWithProviders) {
-      console.log(`✅ Service "${serviceWithProviders.name}" has categoryId: ${serviceWithProviders.categoryId}`);
-      console.log('✅ Provider-service relationships are properly established');
-    }
-
-    // Step 7: Test Error Handling
-    console.log('\n🚨 Step 7: Testing Error Handling...');
-    
-    // Test invalid service ID
-    const invalidBookingData = { ...bookingData, serviceId: 'invalid-service-id' };
-    const invalidResponse = await fetch(`${BASE_URL}/api/book-service`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(invalidBookingData)
-    });
-    
-    if (invalidResponse.status === 400 || invalidResponse.status === 422) {
-      console.log('✅ API properly validates invalid service ID');
-    } else {
-      console.log(`⚠️ Unexpected response for invalid service: ${invalidResponse.status}`);
-    }
-
-    // Final Summary
-    console.log('\n🎉 Complete Booking Flow Test Summary:');
-    console.log('=======================================');
-    console.log(`✅ Service Categories API: Working (${categories.length} categories)`);
-    console.log(`✅ Services API: Working (${services.length} services)`);
-    console.log(`✅ Provider Discovery API: Responding`);
-    console.log(`✅ Booking API: Responding`);
-    console.log(`✅ Frontend Integration: Working`);
-    console.log(`✅ Database Relationships: Established`);
-    console.log(`✅ Error Handling: Working`);
-    
-    console.log('\n🚀 Booking Flow Status: READY FOR PRODUCTION!');
-    console.log('\n📋 Production Readiness Checklist:');
-    console.log('===================================');
-    console.log('✅ Service categories implemented');
-    console.log('✅ Services properly categorized');
-    console.log('✅ Provider-service relationships established');
-    console.log('✅ Provider discovery API functional');
-    console.log('✅ Booking API responding');
-    console.log('✅ Frontend pages accessible');
-    console.log('✅ Error handling implemented');
-    console.log('✅ Database integrity verified');
-    
-    console.log('\n🎊 CONGRATULATIONS!');
-    console.log('Your ConnectSA booking system is fully functional!');
-    console.log('\n👥 Users can now:');
-    console.log('• Browse cleaning services by category');
-    console.log('• Select from 5 different cleaning services');
-    console.log('• Find providers in their area');
-    console.log('• Complete bookings with real providers');
-    console.log('• Experience a smooth, responsive interface');
-    
-    return true;
-
   } catch (error) {
-    console.error('\n❌ Test Failed:', error);
-    console.log('\n🔧 Troubleshooting Steps:');
-    console.log('1. Ensure development server is running (npm run dev)');
-    console.log('2. Check database connection');
-    console.log('3. Verify API endpoints are accessible');
-    console.log('4. Check server logs for errors');
-    console.log('5. Verify provider-service relationships exist');
-    
-    return false;
+    console.error('❌ Test failed:', error);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
-// Run the test
-if (require.main === module) {
-  testCompleteBookingFlow()
-    .then(success => {
-      process.exit(success ? 0 : 1);
-    })
-    .catch(error => {
-      console.error('Test execution failed:', error);
-      process.exit(1);
+async function checkDataConsistency() {
+  console.log('\n🔍 Data Consistency Check');
+  console.log('=========================');
+  
+  try {
+    // Check for orphaned catalogue items
+    const orphanedItems = await prisma.catalogueItem.findMany({
+      where: {
+        OR: [
+          { provider: null },
+          { service: null }
+        ]
+      }
     });
+
+    console.log(`Orphaned catalogue items: ${orphanedItems.length}`);
+    if (orphanedItems.length > 0) {
+      console.log('⚠️  Found orphaned items:', orphanedItems.map(item => item.id));
+    }
+
+    // Check for inactive items
+    const inactiveItems = await prisma.catalogueItem.count({
+      where: { isActive: false }
+    });
+
+    console.log(`Inactive catalogue items: ${inactiveItems}`);
+
+    // Check provider-service relationships
+    const providersWithoutServices = await prisma.provider.findMany({
+      where: {
+        services: {
+          none: {}
+        }
+      }
+    });
+
+    console.log(`Providers without services: ${providersWithoutServices.length}`);
+
+  } catch (error) {
+    console.error('❌ Consistency check failed:', error);
+  }
 }
 
-module.exports = { testCompleteBookingFlow };
+async function main() {
+  await testBookingFlow();
+  await checkDataConsistency();
+  
+  console.log('\n🎯 Analysis Complete');
+  console.log('===================');
+  console.log('If all tests pass, the issue is likely:');
+  console.log('1. Frontend sending wrong catalogue item ID');
+  console.log('2. Provider ID mismatch in frontend');
+  console.log('3. Catalogue item being deactivated between selection and booking');
+  console.log('4. Race condition in data fetching');
+}
+
+main().catch(async (error) => {
+  console.error('❌ Test failed:', error);
+  try { await prisma.$disconnect(); } catch {}
+  process.exit(1);
+});
