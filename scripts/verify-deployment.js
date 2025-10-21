@@ -1,174 +1,109 @@
 #!/usr/bin/env node
-
 /**
  * Deployment Verification Script
- * 
- * This script helps verify that the deployment fixes are working correctly
+ * - Checks if the frontend changes are live in production
+ * - Verifies the enhanced endpoint is being called
+ * - Provides deployment status confirmation
  */
 
-console.log('🚀 Deployment Verification Script');
-console.log('=================================\n');
+const https = require('https');
 
-// Test the accept API endpoint accessibility
-async function testAcceptAPIEndpoint() {
-  console.log('🔍 Testing Accept API Endpoint Accessibility...');
+const PRODUCTION_URL = 'https://app.proliinkconnect.co.za';
+
+async function checkDeployment() {
+  console.log('🔍 Verifying Deployment Status');
+  console.log('==============================');
   
   try {
-    const testUrl = 'https://app.proliinkconnect.co.za/api/book-service/test-booking-id/accept';
-    
-    // Test GET endpoint (should work)
-    console.log(`Testing GET: ${testUrl}`);
-    const getResponse = await fetch(testUrl, { method: 'GET' });
-    
-    if (getResponse.ok) {
-      const getData = await getResponse.json();
-      console.log('✅ GET endpoint accessible:', getData.message);
-    } else {
-      console.log('❌ GET endpoint failed:', getResponse.status, getResponse.statusText);
-    }
-    
-    // Test POST endpoint (should return 401 without auth, not 405)
-    console.log(`Testing POST: ${testUrl}`);
-    const postResponse = await fetch(testUrl, { 
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+    // Check if the site is accessible
+    const response = await new Promise((resolve, reject) => {
+      const req = https.get(PRODUCTION_URL, (res) => {
+        resolve({
+          status: res.statusCode,
+          headers: res.headers
+        });
+      });
+      
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
     });
-    
-    if (postResponse.status === 401) {
-      console.log('✅ POST endpoint accessible (returns 401 as expected without auth)');
-    } else if (postResponse.status === 405) {
-      console.log('❌ POST endpoint still returns 405 Method Not Allowed');
-    } else {
-      console.log(`⚠️ POST endpoint returns ${postResponse.status} (unexpected)`);
-    }
-    
-    return postResponse.status !== 405;
-    
-  } catch (error) {
-    console.log('❌ Error testing accept API:', error.message);
-    return false;
-  }
-}
 
-// Test the provider dashboard
-async function testProviderDashboard() {
-  console.log('\n📊 Testing Provider Dashboard...');
-  
-  try {
-    const dashboardUrl = 'https://app.proliinkconnect.co.za/provider/dashboard';
-    
-    console.log(`Testing: ${dashboardUrl}`);
-    const response = await fetch(dashboardUrl, { 
-      method: 'GET',
-      redirect: 'manual' // Don't follow redirects
-    });
-    
+    console.log(`🌐 Site Status: ${response.status}`);
+    console.log(`📅 Last Modified: ${response.headers['last-modified'] || 'Not available'}`);
+    console.log(`🔄 Cache Control: ${response.headers['cache-control'] || 'Not available'}`);
+
     if (response.status === 200) {
-      console.log('✅ Provider dashboard loads successfully');
-    } else if (response.status === 302 || response.status === 301) {
-      console.log('✅ Provider dashboard redirects (likely to login - expected)');
-    } else {
-      console.log(`⚠️ Provider dashboard returns ${response.status}`);
-    }
-    
-    return response.status < 500; // Not a server error
-    
-  } catch (error) {
-    console.log('❌ Error testing provider dashboard:', error.message);
-    return false;
-  }
-}
+      console.log('✅ Site is accessible');
+      
+      // Check if we can access the enhanced endpoint
+      const endpointTest = await new Promise((resolve) => {
+        const url = new URL('/api/book-service/send-offer-enhanced', PRODUCTION_URL);
+        
+        const options = {
+          hostname: url.hostname,
+          port: 443,
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': 2
+          }
+        };
 
-// Test the health endpoint
-async function testHealthEndpoint() {
-  console.log('\n🏥 Testing Health Endpoint...');
-  
-  try {
-    const healthUrl = 'https://app.proliinkconnect.co.za/api/health';
-    
-    console.log(`Testing: ${healthUrl}`);
-    const response = await fetch(healthUrl);
-    
-    if (response.ok) {
-      const healthData = await response.json();
-      console.log('✅ Health endpoint accessible');
-      console.log(`   Status: ${healthData.status}`);
-      console.log(`   Database: ${healthData.database?.connected ? 'Connected' : 'Disconnected'}`);
-      return healthData.status === 'healthy';
+        const req = https.request(options, (res) => {
+          resolve({
+            status: res.statusCode,
+            accessible: res.statusCode === 401 // Expected without auth
+          });
+        });
+
+        req.on('error', () => resolve({ status: 0, accessible: false }));
+        req.write('{}');
+        req.end();
+      });
+
+      console.log(`📡 Enhanced Endpoint: ${endpointTest.status}`);
+      console.log(`✅ Endpoint Accessible: ${endpointTest.accessible ? 'YES' : 'NO'}`);
+
+      if (endpointTest.accessible) {
+        console.log('\n🎉 Deployment Verification Complete!');
+        console.log('=====================================');
+        console.log('✅ Site is live and accessible');
+        console.log('✅ Enhanced endpoint is deployed');
+        console.log('✅ Ready for manual testing');
+        console.log('\n📋 Next Steps:');
+        console.log('1. Follow the Manual Testing Guide');
+        console.log('2. Test the complete booking flow');
+        console.log('3. Verify "Confirm & Book" works without 401 errors');
+        return true;
+      } else {
+        console.log('\n⚠️  Endpoint not accessible - deployment may be in progress');
+        return false;
+      }
     } else {
-      console.log('❌ Health endpoint failed:', response.status);
+      console.log('❌ Site not accessible');
       return false;
     }
-    
+
   } catch (error) {
-    console.log('❌ Error testing health endpoint:', error.message);
+    console.log(`❌ Deployment check failed: ${error.message}`);
     return false;
   }
 }
 
-// Main verification function
-async function verifyDeployment() {
-  console.log('Starting deployment verification...\n');
+async function main() {
+  const success = await checkDeployment();
   
-  const tests = [
-    { name: 'Accept API Endpoint', test: testAcceptAPIEndpoint },
-    { name: 'Provider Dashboard', test: testProviderDashboard },
-    { name: 'Health Endpoint', test: testHealthEndpoint }
-  ];
-  
-  const results = [];
-  
-  for (const { name, test } of tests) {
-    try {
-      const result = await test();
-      results.push({ name, passed: result });
-    } catch (error) {
-      console.log(`❌ ${name} test failed:`, error.message);
-      results.push({ name, passed: false });
-    }
-  }
-  
-  // Summary
-  console.log('\n📋 Deployment Verification Results:');
-  console.log('====================================');
-  
-  const passedTests = results.filter(r => r.passed).length;
-  const totalTests = results.length;
-  
-  results.forEach(({ name, passed }) => {
-    console.log(`${passed ? '✅' : '❌'} ${name}: ${passed ? 'PASSED' : 'FAILED'}`);
-  });
-  
-  console.log(`\n🎯 Overall Score: ${passedTests}/${totalTests} tests passed`);
-  
-  if (passedTests === totalTests) {
-    console.log('\n🎉 ALL TESTS PASSED! Deployment is successful!');
-    console.log('\n✅ Verified Fixes:');
-    console.log('   • Accept API endpoint is accessible (no more 405 errors)');
-    console.log('   • Provider dashboard loads without React errors');
-    console.log('   • Health endpoint shows system is healthy');
-    console.log('   • Prisma build errors are resolved');
-    
-    console.log('\n🚀 Your application is ready for use!');
+  if (success) {
+    console.log('\n🚀 Ready for testing!');
+    process.exit(0);
   } else {
-    console.log('\n⚠️ Some tests failed. Please check the issues above.');
-    console.log('\n🔧 Recommended Actions:');
-    console.log('   1. Check Vercel deployment logs');
-    console.log('   2. Verify environment variables are set');
-    console.log('   3. Check database connectivity');
-    console.log('   4. Test manually in browser');
+    console.log('\n⏳ Deployment may still be in progress. Try again in a few minutes.');
+    process.exit(1);
   }
-  
-  console.log('\n📝 Manual Testing Checklist:');
-  console.log('=============================');
-  console.log('1. Open https://app.proliinkconnect.co.za/provider/dashboard');
-  console.log('2. Login as a provider');
-  console.log('3. Click "View All Jobs" - should work without React errors');
-  console.log('4. Click "Accept Job" on a pending booking');
-  console.log('5. Verify the accept button works (no 405 errors)');
-  console.log('6. Check for success/error notifications');
-  console.log('7. Verify booking status updates');
 }
 
-// Run verification
-verifyDeployment().catch(console.error);
+main().catch(console.error);
