@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ArrowLeft, ArrowRight, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
 import { ProviderGrid } from "./provider-grid"
+import { ProviderDetailsModal } from "./provider-details-modal"
+import { BookingSummaryDrawer } from "@/components/booking/BookingSummaryDrawer"
 import { BookingLoginModal } from "@/components/ui/booking-login-modal"
 import { showToast, handleApiError } from "@/lib/toast"
 
@@ -78,6 +80,8 @@ export function ProviderDiscovery({
   const [lastError, setLastError] = useState<string | null>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
+  const [selectedPackage, setSelectedPackage] = useState<any | null>(null)
+  const [showSummary, setShowSummary] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isUnauthorized, setIsUnauthorized] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
@@ -469,11 +473,17 @@ export function ProviderDiscovery({
       {/* Providers Grid */}
       <ProviderGrid
         providers={providers}
+        serviceId={serviceId}
         onProviderSelected={handleAcceptProvider}
         onBack={onBack}
         isProcessing={isProcessing}
         declinedProviders={declinedProviders}
         onRetryDeclined={retryDeclinedProviders}
+        onPackageSelected={(provider, item) => {
+          setSelectedProvider(provider)
+          setSelectedPackage(item)
+          setShowSummary(true)
+        }}
       />
 
       {/* Alternative Times Display */}
@@ -538,6 +548,39 @@ export function ProviderDiscovery({
         />
       )}
       </div>
+      {showSummary && selectedProvider && selectedPackage && (
+        <BookingSummaryDrawer
+          onClose={() => setShowSummary(false)}
+          data={{
+            provider: selectedProvider,
+            serviceId,
+            scheduled: { date, time },
+            address,
+            notes,
+            package: selectedPackage
+          }}
+          onConfirm={async () => {
+            const payload = {
+              providerId: selectedProvider.id,
+              serviceId,
+              date, time, address, notes,
+              catalogueItemId: selectedPackage.id
+            }
+            const res = await fetch('/api/book-service/send-offer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            })
+            if (!res.ok) {
+              const e = await res.json().catch(() => ({}))
+              throw new Error(e.error || 'Failed to create booking')
+            }
+            await res.json()
+            setShowSummary(false)
+            onProviderSelected(selectedProvider.id)
+          }}
+        />
+      )}
     </>
   )
-} 
+}

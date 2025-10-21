@@ -69,7 +69,8 @@ import {
   LogIn,
   AlertTriangle,
   Plus,
-  Briefcase as JobIcon
+  Briefcase as JobIcon,
+  Package
 } from "lucide-react"
 import { showToast, handleApiError } from "@/lib/toast"
 import { useSocket } from "@/lib/socket-client"
@@ -79,6 +80,8 @@ import { ProviderEarningsChart } from "./provider-earnings-chart"
 import { BankDetailsForm } from "./bank-details-form"
 import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
 import Link from "next/link"
+import { useCataloguePricing } from "@/lib/feature-flags"
+import { ProviderCatalogueDashboard } from "@/components/provider/provider-catalogue-dashboard"
 
 interface Booking {
   id: string
@@ -197,6 +200,17 @@ function ProviderDesktopSidebar({
       badge: null
     }
   ]
+
+  // Add catalogue section if feature flag is enabled
+  const cataloguePricingEnabled = useCataloguePricing()
+  if (cataloguePricingEnabled) {
+    sidebarItems.splice(4, 0, {
+      id: "catalogue",
+      label: "Service Packages",
+      icon: Package,
+      badge: null
+    })
+  }
 
   return (
     <div className={`
@@ -598,14 +612,26 @@ function ProviderMainContent({
                     <Clock className="w-5 h-5 text-blue-400" />
                     Recent Jobs
                   </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setActiveSection('jobs')}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    View All
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={refreshData}
+                      disabled={isRefreshing}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setActiveSection('jobs')}
+                      className="text-blue-400 hover:text-blue-300"
+                    >
+                      View All
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -650,21 +676,33 @@ function ProviderMainContent({
             {/* Job Filters */}
             <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
               <CardContent className="p-4">
-                <div className="flex flex-wrap gap-2">
-                  {['all', 'pending', 'confirmed', 'in_progress', 'awaiting_confirmation', 'pending_execution', 'completed'].map((filter) => (
-                    <Button
-                      key={filter}
-                      variant={selectedFilter === filter ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedFilter(filter)}
-                      className={selectedFilter === filter 
-                        ? 'bg-blue-400 hover:bg-blue-500 text-white' 
-                        : 'border-gray-300/30 text-gray-300 hover:bg-blue-400/10'
-                      }
-                    >
-                      {filter.charAt(0).toUpperCase() + filter.slice(1).replace('_', ' ')}
-                    </Button>
-                  ))}
+                <div className="flex flex-wrap gap-2 items-center justify-between">
+                  <div className="flex flex-wrap gap-2">
+                    {['all', 'pending', 'confirmed', 'in_progress', 'awaiting_confirmation', 'pending_execution', 'completed'].map((filter) => (
+                      <Button
+                        key={filter}
+                        variant={selectedFilter === filter ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedFilter(filter)}
+                        className={selectedFilter === filter 
+                          ? 'bg-blue-400 hover:bg-blue-500 text-white' 
+                          : 'border-gray-300/30 text-gray-300 hover:bg-blue-400/10'
+                        }
+                      >
+                        {filter.charAt(0).toUpperCase() + filter.slice(1).replace('_', ' ')}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={refreshData}
+                    disabled={isRefreshing}
+                    className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    {isRefreshing ? 'Refreshing...' : 'Refresh Jobs'}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -896,12 +934,21 @@ function ProviderMainContent({
                   <CardContent className="p-8 text-center">
                     <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-white mb-2">No Jobs Found</h3>
-                    <p className="text-gray-400">
+                    <p className="text-gray-400 mb-4">
                       {selectedFilter === 'all' 
                         ? 'You haven\'t received any job requests yet.' 
                         : `No jobs with status "${selectedFilter}" found.`
                       }
                     </p>
+                    <Button 
+                      variant="outline" 
+                      onClick={refreshData}
+                      disabled={isRefreshing}
+                      className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing...' : 'Refresh Jobs'}
+                    </Button>
                   </CardContent>
                 </Card>
               )}
@@ -1068,6 +1115,13 @@ function ProviderMainContent({
           )
         }
 
+      case "catalogue":
+        return (
+          <div className="space-y-6">
+            <ProviderCatalogueDashboard providerId={user?.id} />
+          </div>
+        )
+
       default:
         return (
           <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
@@ -1128,6 +1182,7 @@ function ProviderMainContent({
               {activeSection === 'jobs' && 'View and manage your job requests'}
               {activeSection === 'earnings' && 'Track your earnings and performance'}
               {activeSection === 'bank' && 'Configure your bank details for payments'}
+              {activeSection === 'catalogue' && 'Create and manage your service packages'}
               {activeSection === 'profile' && 'Update your provider profile'}
               {activeSection === 'support' && 'Get help and support'}
             </p>
@@ -1309,8 +1364,15 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   // })
 
   // Stable provider data fetch function with retry logic
-  const fetchProviderData = useCallback(async (retryCount = 0) => {
+  const fetchProviderData = useCallback(async (retryCount = 0, force = false) => {
     const maxRetries = 3;
+    
+    // Smart caching: Don't fetch if we've fetched recently (unless forced)
+    const now = Date.now()
+    if (!force && now - lastRefreshTime.current < 30000) { // 30 seconds cooldown
+      console.log('fetchProviderData: Skipping due to cooldown period')
+      return
+    }
     
     // Use initialUser or check authentication state without circular dependency
     const isAuthenticated = initialUser || dashboardState.auth.isAuthenticated;
@@ -1449,7 +1511,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   const checkBankDetails = useCallback(async (providerId: string) => {
     // Debounce: Don't check more than once every 10 seconds
     const now = Date.now()
-    if (now - lastBankDetailsCheck.current < 10000) {
+    if (now - lastBankDetailsCheck.current < 60000) { // 1 minute instead of 10 seconds
       console.log('checkBankDetails: Skipping due to debounce (last check was', now - lastBankDetailsCheck.current, 'ms ago)')
       return
     }
@@ -1556,7 +1618,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         if (!response.ok) return; // Not authenticated, skip refresh
         
         const timeSinceLastRefresh = Date.now() - lastRefreshTime.current
-        if (timeSinceLastRefresh > 60000) { // 1 minute
+        if (timeSinceLastRefresh > 300000) { // 5 minutes instead of 1 minute
           lastRefreshTime.current = Date.now()
           // Call fetchProviderData directly without dependency
           await fetchProviderData()
@@ -1564,7 +1626,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       } catch (error) {
         console.error('Auto-refresh error:', error)
       }
-    }, 30000) // Check every 30 seconds
+    }, 300000) // Check every 5 minutes instead of 30 seconds
 
     return () => clearInterval(pollInterval)
   }, [mounted]) // Remove fetchProviderData dependency to prevent infinite loop
@@ -1572,7 +1634,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   // Refresh function for manual refresh
   const refreshData = useCallback(async () => {
     lastRefreshTime.current = Date.now()
-    await fetchProviderData()
+    await fetchProviderData(0, true) // Force refresh
   }, [fetchProviderData])
 
   // Handle bank details change with useCallback to prevent re-renders

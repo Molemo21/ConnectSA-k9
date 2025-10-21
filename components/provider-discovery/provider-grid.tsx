@@ -54,20 +54,24 @@ interface Provider {
 
 interface ProviderGridProps {
   providers: Provider[]
+  serviceId: string
   onProviderSelected: (providerId: string) => void
   onBack: () => void
   isProcessing?: boolean
   declinedProviders?: string[]
   onRetryDeclined?: () => void
+  onPackageSelected?: (provider: Provider, item: { id: string; title: string; price: number; currency: string; durationMins: number }) => void
 }
 
 export function ProviderGrid({ 
-  providers, 
+  providers,
+  serviceId, 
   onProviderSelected, 
   onBack, 
   isProcessing = false,
   declinedProviders = [],
-  onRetryDeclined
+  onRetryDeclined,
+  onPackageSelected
 }: ProviderGridProps) {
   const [showCatalogue, setShowCatalogue] = useState<string | null>(null)
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
@@ -320,8 +324,13 @@ export function ProviderGrid({
       {selectedProvider && (
         <ServiceCatalogueModal
           provider={selectedProvider}
+          serviceId={serviceId}
           isOpen={showCatalogue === selectedProvider.id}
           onClose={handleCloseCatalogue}
+          onSelect={(item) => {
+            handleCloseCatalogue()
+            onPackageSelected?.(selectedProvider, item)
+          }}
         />
       )}
     </>
