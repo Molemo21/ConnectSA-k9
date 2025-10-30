@@ -25,7 +25,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get provider with their selected services
+    // Get provider with their selected services
     const provider = await db.provider.findUnique({
       where: { userId: user.id },
       include: {
@@ -79,3 +79,4 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
