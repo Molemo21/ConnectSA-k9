@@ -51,7 +51,20 @@ export async function GET(request: NextRequest) {
 
       bookings = await prisma.booking.findMany({
         where: whereClause,
-        include: {
+        select: {
+          id: true,
+          status: true,
+          scheduledDate: true,
+          duration: true,
+          totalAmount: true,
+          platformFee: true,
+          description: true,
+          address: true,
+          createdAt: true,
+          updatedAt: true,
+          paymentMethod: true,
+          serviceId: true,
+          providerId: true,
           service: {
             select: {
               id: true,
@@ -253,6 +266,19 @@ export async function GET(request: NextRequest) {
       },
       userRole: user.role
     });
+
+  } catch (error) {
+    logDashboard.error('client', 'dashboard_load', 'User bookings API: Error fetching bookings', error as Error, {
+      error_code: 'INTERNAL_ERROR',
+      metadata: { errorMessage: (error as Error).message }
+    });
+    
+    return NextResponse.json({ 
+      error: "Internal server error",
+      message: "Failed to fetch user bookings"
+    }, { status: 500 });
+  }
+}
 
   } catch (error) {
     logDashboard.error('client', 'dashboard_load', 'User bookings API: Error fetching bookings', error as Error, {

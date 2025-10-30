@@ -72,7 +72,7 @@ async function testBookingFlow() {
         if (apiResult) {
           console.log('   ✅ API query successful');
           console.log(`   📊 Price: R${apiResult.price}, Duration: ${apiResult.durationMins}min`);
-        } else {
+      } else {
           console.log('   ❌ API query failed - item not found');
         }
       }
@@ -203,5 +203,5 @@ async function main() {
 main().catch(async (error) => {
   console.error('❌ Test failed:', error);
   try { await prisma.$disconnect(); } catch {}
-  process.exit(1);
-});
+      process.exit(1);
+    });

@@ -204,14 +204,32 @@ export function SynchronizedBookingCard({
       });
     }
 
-    // Confirm completion
+    // Confirm completion - Different handling for cash vs online bookings
     if (status === 'AWAITING_CONFIRMATION') {
-      actions.push({
-        label: 'Confirm Completion',
-        variant: 'default' as const,
-        onClick: handleConfirmCompletion,
-        disabled: isPerformingAction
-      });
+      if (booking.paymentMethod === 'CASH') {
+        // Cash bookings: Show "Pay" and "Job Incomplete" buttons
+        actions.push({
+          label: 'Pay',
+          variant: 'default' as const,
+          onClick: handleConfirmCompletion, // This will call release-payment which handles cash payment
+          disabled: isPerformingAction
+        });
+        // TODO: Add handleReportIncomplete function later
+        // actions.push({
+        //   label: 'Job Incomplete',
+        //   variant: 'destructive' as const,
+        //   onClick: handleReportIncomplete,
+        //   disabled: isPerformingAction
+        // });
+      } else {
+        // Online bookings: Show "Confirm Completion" (existing behavior)
+        actions.push({
+          label: 'Confirm Completion',
+          variant: 'default' as const,
+          onClick: handleConfirmCompletion,
+          disabled: isPerformingAction
+        });
+      }
     }
 
     // Cancel booking

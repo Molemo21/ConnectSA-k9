@@ -206,8 +206,12 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
             {booking.provider && (
               <div className="text-xs">
                 <span className="text-gray-400">Provider:</span>
-                <p className="text-gray-200 mt-1">{booking.provider.businessName}</p>
-                <p className="text-gray-400">{booking.provider.user.name}</p>
+                <p className="text-gray-200 mt-1">
+                  {booking.provider.businessName || booking.provider.user?.name || 'N/A'}
+                </p>
+                {booking.provider.businessName && booking.provider.user?.name && (
+                  <p className="text-gray-400">{booking.provider.user.name}</p>
+                )}
               </div>
             )}
             

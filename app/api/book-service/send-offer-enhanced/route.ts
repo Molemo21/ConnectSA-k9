@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { PrismaClient } from "@prisma/client";
+import { db } from "@/lib/db-utils";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
 import { z } from "zod";
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
-// Create Prisma client instance
-const prisma = new PrismaClient();
 
 // Enhanced schema that supports both legacy and catalogue-based pricing
 const sendOfferSchema = z.object({
@@ -23,6 +20,11 @@ const sendOfferSchema = z.object({
   notes: z.string().optional(),
   // New optional fields for catalogue-based pricing
   catalogueItemId: z.string().cuid().optional(),
+  // Payment method field
+  paymentMethod: z.enum(['ONLINE', 'CASH']).default('ONLINE'),
+  // Timezone context from client
+  timezone: z.string().optional(),
+  timezoneOffsetMinutes: z.number().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -67,9 +69,26 @@ export async function POST(request: NextRequest) {
     const useCatalogue = process.env.NEXT_PUBLIC_CATALOGUE_PRICING_V1 === 'true' && validated.catalogueItemId;
     console.log('🔍 Pricing mode:', useCatalogue ? 'Catalogue-based' : 'Legacy');
 
-    // Parse date and time
-    const requestedDateTime = new Date(`${validated.date}T${validated.time}`);
-    console.log('📅 Requested date/time:', requestedDateTime.toISOString());
+    // Parse date and time with client timezone offset when provided
+    let requestedDateTime: Date;
+    try {
+      const [y, m, d] = validated.date.split('-').map((n) => parseInt(n, 10));
+      const [hh, mm] = validated.time.split(':').map((n) => parseInt(n, 10));
+      const offset = typeof (body as any).timezoneOffsetMinutes === 'number' ? (body as any).timezoneOffsetMinutes : undefined;
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d) && !isNaN(hh) && !isNaN(mm) && typeof offset === 'number') {
+        const utcMillis = Date.UTC(y, (m - 1), d, hh, mm) - (offset * 60000);
+        requestedDateTime = new Date(utcMillis);
+      } else {
+        // Fallback to naive parsing
+        requestedDateTime = new Date(`${validated.date}T${validated.time}`);
+      }
+    } catch {
+      requestedDateTime = new Date(`${validated.date}T${validated.time}`);
+    }
+    console.log('📅 Requested date/time (UTC):', requestedDateTime.toISOString(), {
+      tz: (body as any).timezone,
+      tzOffsetMin: (body as any).timezoneOffsetMinutes
+    });
 
     console.log(`🎯 Job offer request: Client ${user.id} requesting provider ${validated.providerId} for service ${validated.serviceId} on ${validated.date} at ${validated.time}`);
 
@@ -86,7 +105,7 @@ export async function POST(request: NextRequest) {
       expectedAvailable: true
     });
     
-    const provider = await prisma.provider.findFirst({
+    const provider = await db.provider.findFirst({
       where: {
         id: validated.providerId,
         services: {
@@ -128,61 +147,9 @@ export async function POST(request: NextRequest) {
       }))
     });
 
-    // Check if provider is busy at the requested time
-    console.log('🔍 Checking for booking conflicts...');
-    
-    // Parse the requested time (reuse existing requestedDateTime from above)
-    const requestedTime = validated.time;
-    const [requestedHour, requestedMinute] = requestedTime.split(':').map(Number);
-    
-    // Check for time-specific conflicts (within 2 hours of requested time)
-    const conflictStart = new Date(requestedDateTime.getTime() - 2 * 60 * 60 * 1000); // 2 hours before
-    const conflictEnd = new Date(requestedDateTime.getTime() + 2 * 60 * 60 * 1000);   // 2 hours after
-    
-    console.log('🔍 Conflict check details:', {
-      requestedTime: requestedTime,
-      requestedDateTime: requestedDateTime.toISOString(),
-      conflictStart: conflictStart.toISOString(),
-      conflictEnd: conflictEnd.toISOString(),
-      timeWindow: '4 hours (2 hours before and after)'
-    });
-    
-    const conflictingBooking = await prisma.booking.findFirst({
-      where: {
-        providerId: validated.providerId,
-        scheduledDate: {
-          gte: conflictStart,
-          lte: conflictEnd,
-        },
-        status: {
-          notIn: ["CANCELLED", "COMPLETED"],
-        },
-      },
-    });
-
-    if (conflictingBooking) {
-      console.log(`❌ Provider ${validated.providerId} has conflicting booking ${conflictingBooking.id}`);
-      console.log('🔍 Conflict details:', {
-        conflictingTime: conflictingBooking.scheduledDate.toISOString(),
-        requestedTime: requestedDateTime.toISOString(),
-        timeDifference: Math.abs(conflictingBooking.scheduledDate.getTime() - requestedDateTime.getTime()) / (1000 * 60 * 60) + ' hours'
-      });
-      
-      // Find alternative available times for the same provider
-      console.log('🔍 Looking for alternative times...');
-      const alternativeTimes = await findAlternativeTimes(validated.providerId, validated.date, validated.serviceId);
-      
-      return NextResponse.json({ 
-        error: "Provider has a conflicting booking at this time. Please select a different time or provider.",
-        details: {
-          conflictingTime: conflictingBooking.scheduledDate.toISOString(),
-          requestedTime: requestedDateTime.toISOString(),
-          alternativeTimes: alternativeTimes
-        }
-      }, { status: 400 });
-    }
-
-    console.log('✅ No booking conflicts found');
+    // Note: Conflict checking is disabled to allow multiple bookings per day
+    // Providers can manage their own schedule and availability
+    console.log('✅ Skipping booking conflict check - allowing multiple bookings per day');
 
     // Calculate pricing based on mode
     let totalAmount = 0;
@@ -206,7 +173,7 @@ export async function POST(request: NextRequest) {
           providerId: validated.providerId
         });
 
-        const catalogueItem = await prisma.catalogueItem.findFirst({
+        const catalogueItem = await db.catalogueItem.findFirst({
           where: {
             id: validated.catalogueItemId!,
             providerId: validated.providerId,
@@ -223,7 +190,7 @@ export async function POST(request: NextRequest) {
           console.log('❌ Catalogue item not found, checking if it exists at all...');
           
           // Check if the catalogue item exists but doesn't match the provider
-          const anyCatalogueItem = await prisma.catalogueItem.findFirst({
+          const anyCatalogueItem = await db.catalogueItem.findFirst({
             where: {
               id: validated.catalogueItemId!
             }
@@ -257,15 +224,19 @@ export async function POST(request: NextRequest) {
         }
 
         totalAmount = catalogueItem.price;
-        duration = catalogueItem.durationMins / 60; // Convert minutes to hours
+        duration = Math.ceil(catalogueItem.durationMins / 60); // Convert minutes to hours and round up
         bookedPrice = catalogueItem.price;
         bookedCurrency = catalogueItem.currency;
         bookedDurationMins = catalogueItem.durationMins;
+        
+        // Ensure duration is a valid integer
+        duration = Math.max(1, Math.round(duration));
 
         console.log('💰 Catalogue pricing:', {
           price: catalogueItem.price,
           currency: catalogueItem.currency,
           durationMins: catalogueItem.durationMins,
+          durationHours: duration,
           title: catalogueItem.title
         });
         
@@ -281,7 +252,7 @@ export async function POST(request: NextRequest) {
       console.log('💰 Using legacy pricing...');
       
       // Get provider's custom rate for this service
-      const providerService = await prisma.providerService.findFirst({
+      const providerService = await db.providerService.findFirst({
         where: {
           providerId: validated.providerId,
           serviceId: actualServiceId
@@ -309,18 +280,24 @@ export async function POST(request: NextRequest) {
         hourlyRate: provider.hourlyRate,
         basePrice: providerService?.service?.basePrice
       });
+      
+      // Ensure duration is a valid integer for legacy pricing
+      duration = Math.max(1, Math.round(duration));
     }
 
-    // Calculate platform fee (10% of total amount)
-    platformFee = totalAmount * 0.1;
-
     // Validate that we have a valid amount
-    if (totalAmount <= 0) {
+    if (totalAmount <= 0 || isNaN(totalAmount)) {
       return NextResponse.json({ 
         error: "Unable to determine service pricing. Please contact support.",
         details: "The provider or service does not have proper pricing configured."
       }, { status: 400 });
     }
+    
+    // Round totalAmount to 2 decimal places
+    totalAmount = Math.round(totalAmount * 100) / 100;
+    
+    // Calculate platform fee (10% of total amount)
+    platformFee = Math.round((totalAmount * 0.1) * 100) / 100; // Round to 2 decimal places
 
     // Create a booking with PENDING status (waiting for provider response)
     console.log('📝 Creating booking with calculated pricing...', {
@@ -333,13 +310,13 @@ export async function POST(request: NextRequest) {
       pricingMode: useCatalogue ? 'catalogue' : 'legacy'
     });
     
-    const booking = await prisma.booking.create({
+    const booking = await db.booking.create({
       data: {
         clientId: user.id,
         providerId: validated.providerId,
         serviceId: actualServiceId,
         catalogueItemId: validated.catalogueItemId || null,
-        scheduledDate: new Date(`${validated.date}T${validated.time}`),
+        scheduledDate: requestedDateTime,
         duration,
         totalAmount,
         platformFee,
@@ -349,6 +326,7 @@ export async function POST(request: NextRequest) {
         description: validated.notes || null,
         address: validated.address,
         status: "PENDING", // This means waiting for provider to accept/decline
+        paymentMethod: validated.paymentMethod,
       },
     });
 
@@ -358,15 +336,88 @@ export async function POST(request: NextRequest) {
       platformFee: booking.platformFee,
       duration: booking.duration,
       status: booking.status,
-      catalogueItemId: booking.catalogueItemId
+      catalogueItemId: booking.catalogueItemId,
+      paymentMethod: booking.paymentMethod
     });
+
+    // Handle payment creation based on payment method
+    if (validated.paymentMethod === 'CASH') {
+      console.log('💰 Creating cash payment record...');
+      
+      // Create minimal payment record for cash payments
+      const cashPayment = await db.payment.create({
+        data: {
+          bookingId: booking.id,
+          amount: totalAmount,
+          paystackRef: `CASH_${booking.id}`, // Unique identifier for cash payments
+          status: 'CASH_PENDING',
+        }
+      });
+      
+      console.log('✅ Cash payment record created:', {
+        paymentId: cashPayment.id,
+        bookingId: booking.id,
+        amount: cashPayment.amount,
+        status: cashPayment.status
+      });
+    } else {
+      console.log('💳 Online payment - Payment record will be created when client initiates payment');
+    }
 
     // Note: Proposal creation removed - table doesn't exist in database
     console.log('ℹ️ Skipping proposal creation (table not available)');
 
     // Create notifications for both client and provider
-    // Note: Notification system temporarily disabled - model not available in database
-    console.log('ℹ️ Skipping notification creation (system temporarily disabled)');
+    console.log('🔔 Creating notifications...')
+    try {
+      // Get the full booking data with relations for notifications
+      const fullBooking = await db.booking.findUnique({
+        where: { id: booking.id },
+        select: {
+          id: true,
+          status: true,
+          scheduledDate: true,
+          totalAmount: true,
+          client: { select: { id: true, name: true, email: true } },
+          provider: { 
+            select: {
+              businessName: true,
+              user: { select: { id: true, name: true, email: true } }
+            }
+          },
+          service: { 
+            select: { 
+              name: true, 
+              category: { select: { name: true } }
+            } 
+          }
+        }
+      });
+
+      if (fullBooking) {
+        // Notify provider about new booking
+        const providerNotification = NotificationTemplates.BOOKING_CREATED(fullBooking);
+        await createNotification({
+          userId: fullBooking.provider.user.id,
+          type: providerNotification.type,
+          title: providerNotification.title,
+          content: providerNotification.content
+        });
+
+        // Notify client about booking creation
+        await createNotification({
+          userId: fullBooking.client.id,
+          type: 'BOOKING_CREATED',
+          title: 'Booking Request Sent',
+          content: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent to ${fullBooking.provider?.businessName || 'the provider'}. You'll be notified when they respond.`
+        });
+
+        console.log(`🔔 Notifications sent: Provider ${fullBooking.provider.user.email}, Client ${fullBooking.client.email}`);
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to create booking notifications:', notificationError);
+      // Don't fail the request if notification fails
+    }
 
     // Broadcast real-time update to provider
     console.log('📡 Broadcasting real-time update to provider...');
@@ -387,9 +438,12 @@ export async function POST(request: NextRequest) {
         totalAmount: booking.totalAmount,
         providerId: booking.providerId,
         catalogueItemId: booking.catalogueItemId,
+        paymentMethod: booking.paymentMethod,
         pricingMode: useCatalogue ? 'catalogue' : 'legacy'
       },
-      message: "Job offer sent successfully! Provider will respond within 2 hours."
+      message: validated.paymentMethod === 'CASH' 
+        ? "Job offer sent successfully! Pay cash directly to your provider after service completion."
+        : "Job offer sent successfully! Provider will respond within 2 hours."
     });
 
   } catch (error) {
@@ -445,5 +499,4 @@ async function findAlternativeTimes(providerId: string, date: string, serviceId:
     return [];
   }
 }
-
 

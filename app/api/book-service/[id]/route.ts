@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
         description: true,
         createdAt: true,
         updatedAt: true,
+        paymentMethod: true,
         client: {
           select: {
             id: true,
@@ -142,3 +143,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

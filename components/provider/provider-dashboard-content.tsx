@@ -683,6 +683,11 @@ export function ProviderDashboardContent() {
                   <CardDescription className="text-sm sm:text-base">
                     Recently completed jobs and client feedback
                   </CardDescription>
+                  <div className="mt-2">
+                    <Link href="/provider/reviews" className="text-xs sm:text-sm text-blue-600 hover:underline">
+                      View all reviews
+                    </Link>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6">
                   <div className="space-y-3 sm:space-y-4">

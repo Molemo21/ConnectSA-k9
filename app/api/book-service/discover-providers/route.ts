@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 // Import the configured Prisma client
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/db-utils';
 
 export const dynamic = 'force-dynamic'
 
@@ -25,31 +25,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Validate that PENDING_EXECUTION enum exists in the database
-    try {
-      const enumCheck = await prisma.$queryRaw`
-        SELECT enumlabel 
-        FROM pg_enum 
-        WHERE enumlabel = 'PENDING_EXECUTION' 
-        AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'BookingStatus')
-      `;
-      
-      if (enumCheck.length === 0) {
-        console.error('❌ PENDING_EXECUTION enum not found in database');
-        return NextResponse.json({
-          error: "Database schema issue: PENDING_EXECUTION enum missing",
-          details: "Please contact support to update the database schema"
-        }, { status: 500 });
-      }
-      
-      console.log('✅ PENDING_EXECUTION enum validation passed');
-    } catch (enumError) {
-      console.error('❌ Enum validation failed:', enumError);
-      return NextResponse.json({
-        error: "Database schema validation failed",
-        details: enumError instanceof Error ? enumError.message : 'Unknown error'
-      }, { status: 500 });
-    }
     // Provider discovery should be accessible without authentication
     // Users need to discover providers before they can book
     
@@ -72,7 +47,7 @@ export async function POST(request: NextRequest) {
     console.log('Using service ID:', actualServiceId);
 
     // Find available providers for the service
-    const providers = await prisma.provider.findMany({
+    const providers = await db.provider.findMany({
       where: {
         services: {
           some: { serviceId: actualServiceId },
@@ -118,7 +93,7 @@ export async function POST(request: NextRequest) {
     for (const provider of providers) {
       try {
         // Check for conflicting bookings using raw query
-        const conflictingBookings = await prisma.$queryRaw`
+        const conflictingBookings = await db.$queryRaw`
           SELECT id, "scheduledDate", status 
           FROM "Booking" 
           WHERE "providerId" = ${provider.id}
@@ -210,7 +185,5 @@ export async function POST(request: NextRequest) {
       error: "Internal server error",
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 } 

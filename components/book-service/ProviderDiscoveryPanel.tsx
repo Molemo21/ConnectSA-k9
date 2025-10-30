@@ -5,7 +5,7 @@ import { ProviderDiscovery } from "@/components/provider-discovery/provider-disc
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface Props {
-  form: { serviceId: string; date: string; time: string; address: string; notes?: string }
+  form: { serviceId: string; date: string; time: string; address: string; notes?: string; paymentMethod: "ONLINE" | "CASH" }
   onProviderSelected: (providerId: string) => void
   onBack: () => void
   onLoginSuccess?: () => void
@@ -21,6 +21,7 @@ export function ProviderDiscoveryPanel({ form, onProviderSelected, onBack, onLog
         time={form.time}
         address={form.address}
         notes={form.notes}
+        paymentMethod={form.paymentMethod}
         onProviderSelected={onProviderSelected}
         onBack={onBack}
         onLoginSuccess={onLoginSuccess}
@@ -29,5 +30,6 @@ export function ProviderDiscoveryPanel({ form, onProviderSelected, onBack, onLog
     </div>
   )
 }
+
 
 

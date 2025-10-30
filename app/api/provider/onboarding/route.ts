@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { db } from "@/lib/db-utils"
 import { z } from "zod"
+import { createStarterPackages } from "@/lib/services/package-generator"
+import { createNotification } from "@/lib/notification-service"
 
 // Force dynamic rendering to prevent build-time static generation
 export const dynamic = 'force-dynamic'
@@ -153,25 +155,59 @@ export async function POST(request: NextRequest) {
       console.log("⚠️ No services selected")
     }
 
-    // Create audit log
-    console.log("📝 Creating audit log...")
-    await db.adminAuditLog.create({
-      data: {
-        adminId: user.id,
-        action: 'SYSTEM_MAINTENANCE' as any, // Using existing enum value
-        targetType: 'PROVIDER',
-        targetId: provider.id,
-        details: {
-          businessName: validatedData.businessName,
-          location: validatedData.location,
-          servicesCount: validatedData.selectedServices.length,
-          action: 'PROVIDER_ONBOARDING_SUBMITTED'
-        },
-        ipAddress: request.headers.get('x-forwarded-for') || request.ip || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
+    // Auto-create starter packages if provider is approved and has services
+    if (provider.status === "APPROVED" && validatedData.selectedServices.length > 0) {
+      console.log("🎯 Provider is approved, creating starter packages...")
+      try {
+        const createdPackages = await createStarterPackages(provider.id, validatedData.selectedServices)
+        console.log(`✅ Created ${createdPackages.length} starter packages`)
+
+        // Send notification to provider about packages
+        await createNotification({
+          userId: provider.userId,
+          type: 'CATALOGUE_SETUP_REQUIRED',
+          title: '🎉 Your Service Packages Are Ready!',
+          content: `We've created ${createdPackages.length} starter packages for your services. Customize them now to start receiving bookings!`
+        })
+        console.log("✅ Notification sent to provider")
+
+      } catch (packageError) {
+        console.error("❌ Failed to create starter packages:", packageError)
+        // Don't fail the onboarding if package creation fails
+        // Just log the error and continue
       }
-    })
-    console.log("✅ Audit log created successfully")
+    }
+
+    // Create audit log (if model exists)
+    console.log("📝 Creating audit log...")
+    try {
+      // Check if adminAuditLog model exists before trying to create
+      if (db.adminAuditLog && typeof db.adminAuditLog.create === 'function') {
+        await db.adminAuditLog.create({
+          data: {
+            adminId: user.id,
+            action: 'SYSTEM_MAINTENANCE' as any, // Using existing enum value
+            targetType: 'PROVIDER',
+            targetId: provider.id,
+            details: {
+              businessName: validatedData.businessName,
+              location: validatedData.location,
+              servicesCount: validatedData.selectedServices.length,
+              action: 'PROVIDER_ONBOARDING_SUBMITTED'
+            },
+            ipAddress: request.headers.get('x-forwarded-for') || request.ip || 'unknown',
+            userAgent: request.headers.get('user-agent') || 'unknown',
+          }
+        })
+        console.log("✅ Audit log created successfully")
+      } else {
+        console.log("⚠️ AdminAuditLog model not available, skipping audit log creation")
+      }
+    } catch (auditError) {
+      console.error("❌ Failed to create audit log:", auditError)
+      // Don't fail the onboarding if audit log creation fails
+      // Just log the error and continue
+    }
 
     return NextResponse.json({
       success: true,
@@ -193,6 +229,17 @@ export async function POST(request: NextRequest) {
     // Log more specific error information
     if (error instanceof Error) {
       console.error("❌ Error message:", error.message)
+      console.error("❌ Error stack:", error.stack)
+    }
+
+    console.error("❌ Returning 500 error response")
+    return NextResponse.json({
+      error: "Internal server error",
+      message: "Failed to submit provider onboarding",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
+  }
+}
       console.error("❌ Error stack:", error.stack)
     }
 

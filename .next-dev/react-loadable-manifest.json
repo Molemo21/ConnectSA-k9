@@ -1,0 +1,14 @@
+{
+  "app\\book-service\\page.tsx -> @/lib/booking-draft": {
+    "id": "app\\book-service\\page.tsx -> @/lib/booking-draft",
+    "files": []
+  },
+  "components\\ui\\booking-login-modal.tsx -> @/lib/booking-draft": {
+    "id": "components\\ui\\booking-login-modal.tsx -> @/lib/booking-draft",
+    "files": []
+  },
+  "components\\ui\\draft-aware-booking-button.tsx -> @/lib/dashboard-draft-utils": {
+    "id": "components\\ui\\draft-aware-booking-button.tsx -> @/lib/dashboard-draft-utils",
+    "files": []
+  }
+}

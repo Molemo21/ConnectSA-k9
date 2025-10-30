@@ -507,6 +507,7 @@ export function EnhancedProviderDashboard({ initialUser }: EnhancedProviderDashb
                 <ProviderBookingCard
                   key={booking.id}
                   booking={booking}
+                  showReview={booking.status === 'COMPLETED'}
                   onAction={(action) => {
                     setSelectedBooking(booking)
                     setSelectedAction(action)

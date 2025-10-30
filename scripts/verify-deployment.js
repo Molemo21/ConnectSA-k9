@@ -79,15 +79,15 @@ async function checkDeployment() {
         console.log('2. Test the complete booking flow');
         console.log('3. Verify "Confirm & Book" works without 401 errors');
         return true;
-      } else {
+    } else {
         console.log('\n⚠️  Endpoint not accessible - deployment may be in progress');
-        return false;
-      }
+    return false;
+  }
     } else {
       console.log('❌ Site not accessible');
       return false;
     }
-
+    
   } catch (error) {
     console.log(`❌ Deployment check failed: ${error.message}`);
     return false;

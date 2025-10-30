@@ -146,12 +146,14 @@ function BookServiceContent() {
     time: "",
     address: "",
     notes: "",
+    paymentMethod: "ONLINE" as "ONLINE" | "CASH",
   } as {
     serviceId: string;
     date: string;
     time: string;
     address: string;
     notes?: string;
+    paymentMethod: "ONLINE" | "CASH";
   });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
   const [submitting, setSubmitting] = useState(false);
@@ -469,8 +471,11 @@ function BookServiceContent() {
     // The booking is already created by send-offer, just show confirmation
     setConfirmation({
       success: true,
-      message: "Provider selected successfully! Your job offer has been sent.",
-      providerId: providerId
+      message: form.paymentMethod === 'CASH' 
+        ? "Provider selected successfully! Pay cash directly to your provider after service completion."
+        : "Provider selected successfully! Your job offer has been sent.",
+      providerId: providerId,
+      paymentMethod: form.paymentMethod
     });
     setShowProviderDiscovery(false);
     setActiveStep('CONFIRM')
@@ -686,6 +691,7 @@ function BookServiceContent() {
                   time: next.time,
                   address: next.address,
                   notes: next.notes || "",
+                  paymentMethod: next.paymentMethod || "ONLINE",
                 });
               }}
               onNext={() => {
@@ -726,7 +732,8 @@ function BookServiceContent() {
             date: form.date || "",
             time: form.time || "",
             address: form.address || "",
-            notes: form.notes || ""
+            notes: form.notes || "",
+            paymentMethod: form.paymentMethod || "ONLINE"
           }}
         />
         

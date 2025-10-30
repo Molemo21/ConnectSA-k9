@@ -42,7 +42,20 @@ export async function GET(request: NextRequest) {
   const logger = createLogger('ClientBookingsAPI');
   
   try {
-    logger.info('Client bookings API: Starting request');
+    // Parse query parameters for pagination and date filtering
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '0');
+    const limit = parseInt(searchParams.get('limit') || '20'); // Default: 20 bookings
+    const days = parseInt(searchParams.get('days') || '90'); // Default: last 90 days
+    const showAll = searchParams.get('showAll') === 'true'; // Override to show all
+    
+    logger.info('Client bookings API: Starting request', { 
+      page, 
+      limit, 
+      days, 
+      showAll 
+    });
+    
     logger.info('Environment check:', {
       NODE_ENV: process.env.NODE_ENV,
       VERCEL: process.env.VERCEL,
@@ -77,11 +90,25 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
     }
 
-    // Fetch all bookings for this client with payment data
+    // Build where clause with optional date filtering
+    const whereClause: any = {
+      clientId: user.id,
+    };
+    
+    // Add date filter if not showing all
+    if (!showAll) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      whereClause.createdAt = {
+        gte: cutoffDate
+      };
+    }
+    
+    // Fetch bookings with optimization (limit + date filter + pagination)
     const bookings = await db.booking.findMany({
-      where: {
-        clientId: user.id,
-      },
+      where: whereClause,
+      take: limit,
+      skip: page * limit,
       select: {
         id: true,
         status: true,
@@ -93,6 +120,7 @@ export async function GET(request: NextRequest) {
         address: true,
         createdAt: true,
         updatedAt: true,
+        paymentMethod: true,
         service: {
           select: {
             id: true,
@@ -148,6 +176,11 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       }
     });
+    
+    // Get total count for pagination
+    const totalCount = await db.booking.count({
+      where: whereClause
+    });
 
     logger.info('Client bookings API: Bookings fetched', { 
       userId: user.id, 
@@ -166,6 +199,7 @@ export async function GET(request: NextRequest) {
       address: booking.address,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
+      paymentMethod: booking.paymentMethod, // Include payment method
       service: booking.service,
       provider: booking.provider,
       payment: booking.payment, // Include actual payment data
@@ -175,7 +209,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       bookings: transformedBookings,
-      count: transformedBookings.length
+      count: transformedBookings.length,
+      total: totalCount,
+      page: page,
+      hasMore: (page + 1) * limit < totalCount
     });
 
   } catch (error) {
@@ -186,7 +223,7 @@ export async function GET(request: NextRequest) {
       success: false,
       bookings: [],
       message: "Failed to fetch bookings",
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       count: 0
     }, { status: 200 });
   }

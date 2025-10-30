@@ -545,6 +545,7 @@ function MainContent({
                 <ProviderBookingCard
                   key={booking.id}
                   booking={booking}
+                  showReview={booking.status === 'COMPLETED'}
                   onAction={(action, booking) => {
                     setSelectedAction(action)
                     setSelectedBooking(booking)

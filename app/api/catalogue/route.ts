@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { useCataloguePricing } from '@/lib/feature-flags';
 
 const discoverCatalogueSchema = z.object({
-  serviceId: z.string().cuid().optional(),
+  serviceId: z.string().min(1).optional(), // Accept both CUID and UUID formats
   priceMin: z.number().min(0).optional(),
   priceMax: z.number().min(0).optional(),
   durationMin: z.number().min(15).optional(),
