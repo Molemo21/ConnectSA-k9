@@ -1,19 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, ReactNode } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, Loader2 } from "lucide-react"
+import { AlertTriangle, Loader2, Banknote, CheckCircle2 } from "lucide-react"
 
 interface ConfirmationDialogProps {
   isOpen: boolean
   onClose: () => void
   onConfirm: () => Promise<void> | void
   title: string
-  description: string
+  description: string | ReactNode
   confirmText?: string
   cancelText?: string
-  variant?: "default" | "destructive" | "warning"
+  variant?: "default" | "destructive" | "warning" | "success"
   loadingText?: string
 }
 
@@ -58,9 +58,16 @@ export function ConfirmationDialog({
           buttonColor: "bg-yellow-600 hover:bg-yellow-700",
           borderColor: "border-yellow-200"
         }
+      case "success":
+        return {
+          icon: Banknote,
+          iconColor: "text-green-600",
+          buttonColor: "bg-green-600 hover:bg-green-700",
+          borderColor: "border-green-200"
+        }
       default:
         return {
-          icon: AlertTriangle,
+          icon: CheckCircle2,
           iconColor: "text-blue-600",
           buttonColor: "bg-blue-600 hover:bg-blue-700",
           borderColor: "border-blue-200"
@@ -73,14 +80,16 @@ export function ConfirmationDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-gray-900 border-gray-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+          <DialogTitle className="flex items-center space-x-2 text-white">
             <IconComponent className={cn("w-5 h-5", styles.iconColor)} />
             <span>{title}</span>
           </DialogTitle>
-          <DialogDescription className="pt-2">
-            {description}
+          <DialogDescription asChild className="pt-2">
+            <div className="text-gray-300">
+              {description}
+            </div>
           </DialogDescription>
         </DialogHeader>
         
@@ -89,14 +98,14 @@ export function ConfirmationDialog({
             variant="outline"
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
           >
             {cancelText}
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isLoading}
-            className={cn("flex-1", styles.buttonColor)}
+            className={cn("flex-1 text-white", styles.buttonColor)}
           >
             {isLoading ? (
               <>

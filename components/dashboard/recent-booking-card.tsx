@@ -70,6 +70,7 @@ export function RecentBookingCard({
 }: RecentBookingCardProps) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [isConfirmingCompletion, setIsConfirmingCompletion] = useState(false)
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -150,6 +151,19 @@ export function RecentBookingCard({
 
   // Get timeline steps for booking progress
   const getTimelineSteps = (status: string, payment: any) => {
+    // CASH PAYMENT TIMELINE (Simplified - 5 steps, clearer labels)
+    if (booking.paymentMethod === 'CASH') {
+      const steps = [
+        { id: 'booked', label: 'Booked', completed: true },
+        { id: 'confirmed', label: 'Confirmed', completed: ['CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
+        { id: 'in_progress', label: 'In Progress', completed: ['IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
+        { id: 'pay_cash', label: 'Pay Cash', completed: ['AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
+        { id: 'completed', label: 'Completed', completed: status === 'COMPLETED' }
+      ]
+      
+      return steps
+    }
+
     // Debug logging for payment status
     console.log('🔍 Timeline Debug:', {
       bookingId: booking.id,
@@ -275,8 +289,19 @@ export function RecentBookingCard({
 
   // Determine if confirm completion button should be shown
   const canConfirmCompletion = () => {
-    return (booking.status === "AWAITING_CONFIRMATION") || 
-      (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
+    if (booking.status === "AWAITING_CONFIRMATION") {
+      // For cash: Only show when payment is CASH_PENDING (not CASH_PAID - button should be hidden after payment)
+      if (booking.paymentMethod === 'CASH') {
+        return booking.payment && booking.payment.status === 'CASH_PENDING';
+      }
+      // For online: Show when payment is in escrow
+      if (booking.paymentMethod === 'ONLINE') {
+        return booking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status);
+      }
+      return true
+    }
+    // Allow if booking is completed and payment is in escrow
+    return (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
   }
   
   // Hide button if payment is already released
@@ -286,6 +311,9 @@ export function RecentBookingCard({
 
   // Handle confirm completion
   const handleConfirmCompletion = async () => {
+    if (isConfirmingCompletion) return; // Prevent duplicate clicks
+    
+    setIsConfirmingCompletion(true);
     try {
       console.log(`🚀 Attempting to confirm completion for booking ${booking.id}`);
       
@@ -300,9 +328,8 @@ export function RecentBookingCard({
       if (response.ok) {
         const data = await response.json()
         console.log(`✅ Success response:`, data);
-        showToast.success(data.message || "Job completion confirmed! Payment will be released to provider.")
+        showToast.success(data.message || "Payment submitted! Provider will confirm receipt.")
         onRefresh?.() // Refresh the booking data
-        // Refresh the page to update the status
         window.location.reload()
       } else {
         const errorData = await response.json()
@@ -318,6 +345,8 @@ export function RecentBookingCard({
     } catch (error) {
       console.error("❌ Confirm completion error:", error)
       showToast.error("Network error. Please try again.")
+    } finally {
+      setIsConfirmingCompletion(false);
     }
   }
 
@@ -483,10 +512,10 @@ export function RecentBookingCard({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">
-                    {booking.provider.user.name}
+                    {booking.provider.user?.name || 'N/A'}
                   </p>
                   <p className="text-xs text-white/20 truncate">
-                    {booking.provider.businessName}
+                    {booking.provider.businessName || 'Business name not set'}
                   </p>
                 </div>
                 {booking.provider.user.phone && (
@@ -495,7 +524,7 @@ export function RecentBookingCard({
                     size="sm"
                     className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
                     onClick={() => window.open(`tel:${booking.provider?.user.phone}`, '_blank')}
-                    aria-label={`Call ${booking.provider.user.name}`}
+                    aria-label={`Call ${booking.provider.user?.name || 'provider'}`}
                   >
                     <Phone className="w-4 h-4" />
                   </Button>
@@ -587,11 +616,21 @@ export function RecentBookingCard({
                 <Button
                   size="sm"
                   onClick={handleConfirmCompletion}
-                  className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-orange-500/25 px-6 py-3 rounded-xl font-semibold group/btn"
+                  disabled={isConfirmingCompletion}
+                  className="relative overflow-hidden bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-orange-500/25 px-6 py-3 rounded-xl font-semibold group/btn disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-out"></div>
-                  <CheckCircle className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
-                  <span className="relative z-10">Confirm Completion</span>
+                  {isConfirmingCompletion ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <span className="relative z-10">{booking.paymentMethod === 'CASH' ? 'Submitting...' : 'Processing...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
+                      <span className="relative z-10">{booking.paymentMethod === 'CASH' ? 'Pay Cash' : 'Confirm Completion'}</span>
+                    </>
+                  )}
                 </Button>
               )}
               

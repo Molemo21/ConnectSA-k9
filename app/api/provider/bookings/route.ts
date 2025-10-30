@@ -61,6 +61,14 @@ export async function GET(request: NextRequest) {
     })
 
     console.log(`Found ${bookings.length} bookings`)
+    
+    // Log payment method distribution for debugging
+    const paymentMethodCounts = bookings.reduce((acc, b) => {
+      const method = b.paymentMethod || 'UNSET';
+      acc[method] = (acc[method] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log('Payment method distribution:', paymentMethodCounts)
 
     // Calculate stats
     const pendingJobs = bookings.filter(b => b.status === "PENDING").length

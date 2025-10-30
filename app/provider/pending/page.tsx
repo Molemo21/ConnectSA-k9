@@ -5,14 +5,21 @@ import { useRouter } from "next/navigation"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
 import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
-import { CheckCircle, Clock, FileText, AlertCircle, RefreshCw, ArrowRight, Mail, Phone } from "lucide-react"
+import { CheckCircle, Clock, FileText, AlertCircle, RefreshCw, ArrowRight, Mail, Phone, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
+interface ProviderStatus {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'INCOMPLETE'
+  businessName?: string
+}
 
 export default function ProviderPendingPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [timeElapsed, setTimeElapsed] = useState(0)
+  const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null)
+  const [statusLoading, setStatusLoading] = useState(true)
 
   useEffect(() => {
     // Simulate loading
@@ -28,6 +35,45 @@ export default function ProviderPendingPage() {
 
     return () => clearInterval(interval)
   }, [])
+
+  // Fetch provider status
+  useEffect(() => {
+    const fetchProviderStatus = async () => {
+      try {
+        setStatusLoading(true)
+        const response = await fetch('/api/provider/status')
+        if (response.ok) {
+          const data = await response.json()
+          const provider = data.provider
+          
+          if (provider) {
+            setProviderStatus({
+              status: provider.status,
+              businessName: provider.businessName
+            })
+            
+            // If provider is approved, redirect to dashboard
+            if (provider.status === 'APPROVED') {
+              router.push('/provider/dashboard')
+              return
+            }
+            
+            // If provider is rejected or incomplete, redirect to onboarding
+            if (provider.status === 'REJECTED' || provider.status === 'INCOMPLETE') {
+              router.push('/provider/onboarding')
+              return
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching provider status:', error)
+      } finally {
+        setStatusLoading(false)
+      }
+    }
+
+    fetchProviderStatus()
+  }, [router])
 
   const formatTimeElapsed = (minutes: number) => {
     if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''}`
@@ -218,18 +264,106 @@ export default function ProviderPendingPage() {
             <Button
               onClick={() => window.location.reload()}
               className="bg-black/30 border-white/40 text-white hover:bg-black/40 hover:border-white/50 transition-all duration-300 backdrop-blur-sm px-8 py-4 h-14 shadow-lg hover:shadow-xl transform hover:scale-105"
+              disabled={statusLoading}
             >
-              <RefreshCw className="w-5 h-5 mr-3" />
-              <span className="font-semibold">Refresh Status</span>
+              {statusLoading ? (
+                <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-5 h-5 mr-3" />
+              )}
+              <span className="font-semibold">
+                {statusLoading ? 'Checking Status...' : 'Refresh Status'}
+              </span>
             </Button>
             
+            {/* Only show dashboard button for APPROVED providers */}
+            {providerStatus?.status === 'APPROVED' && (
+              <Button
+                onClick={() => router.push('/provider/dashboard')}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 transform hover:scale-105 px-8 py-4 h-14"
+              >
+                <ArrowRight className="w-5 h-5 mr-3" />
+                <span className="font-semibold">Go to Dashboard</span>
+              </Button>
+            )}
+            
+            {/* Show application status button for PENDING providers */}
+            {providerStatus?.status === 'PENDING' && (
+              <Button
+                onClick={() => window.location.reload()}
+                className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white shadow-lg shadow-yellow-500/25 hover:shadow-yellow-500/40 transition-all duration-300 transform hover:scale-105 px-8 py-4 h-14"
+              >
+                <FileText className="w-5 h-5 mr-3" />
+                <span className="font-semibold">View Application Status</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Mobile Navigation */}
+      <MobileBottomNav userRole="PROVIDER" />
+      <MobileFloatingActionButton userRole="PROVIDER" />
+    </div>
+  )
+}
+                  <div>
+                    <h4 className="text-lg font-bold text-white drop-shadow-lg">Email Support</h4>
+                    <p className="text-white/90 drop-shadow-md">support@proliinkconnect.co.za</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 p-6 bg-black/10 rounded-xl hover:bg-black/20 transition-all duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
+                    <Phone className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white drop-shadow-lg">Phone Support</h4>
+                    <p className="text-white/90 drop-shadow-md">+27 11 123 4567</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Button
-              onClick={() => router.push('/dashboard')}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 transform hover:scale-105 px-8 py-4 h-14"
+              onClick={() => window.location.reload()}
+              className="bg-black/30 border-white/40 text-white hover:bg-black/40 hover:border-white/50 transition-all duration-300 backdrop-blur-sm px-8 py-4 h-14 shadow-lg hover:shadow-xl transform hover:scale-105"
+              disabled={statusLoading}
             >
-              <ArrowRight className="w-5 h-5 mr-3" />
-              <span className="font-semibold">Go to Dashboard</span>
+              {statusLoading ? (
+                <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-5 h-5 mr-3" />
+              )}
+              <span className="font-semibold">
+                {statusLoading ? 'Checking Status...' : 'Refresh Status'}
+              </span>
             </Button>
+            
+            {/* Only show dashboard button for APPROVED providers */}
+            {providerStatus?.status === 'APPROVED' && (
+              <Button
+                onClick={() => router.push('/provider/dashboard')}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 transform hover:scale-105 px-8 py-4 h-14"
+              >
+                <ArrowRight className="w-5 h-5 mr-3" />
+                <span className="font-semibold">Go to Dashboard</span>
+              </Button>
+            )}
+            
+            {/* Show application status button for PENDING providers */}
+            {providerStatus?.status === 'PENDING' && (
+              <Button
+                onClick={() => window.location.reload()}
+                className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white shadow-lg shadow-yellow-500/25 hover:shadow-yellow-500/40 transition-all duration-300 transform hover:scale-105 px-8 py-4 h-14"
+              >
+                <FileText className="w-5 h-5 mr-3" />
+                <span className="font-semibold">View Application Status</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

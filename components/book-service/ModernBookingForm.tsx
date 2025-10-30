@@ -28,9 +28,12 @@ import {
   ChefHat,
   Sofa,
   Bed,
-  Car
+  Car,
+  CreditCard,
+  Banknote
 } from "lucide-react"
 import { reverseGeocode } from "@/lib/geocoding"
+import { saveBookingDraft } from "@/lib/booking-draft"
 import { ServiceSelection } from "./ServiceSelection"
 import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel"
 
@@ -40,6 +43,7 @@ const bookingFormSchema = z.object({
   time: z.string().min(1, 'Select a time'),
   address: z.string().min(3, 'Address is required'),
   notes: z.string().optional(),
+  paymentMethod: z.enum(['ONLINE', 'CASH']).default('ONLINE'),
 })
 
 const fetcher = (url: string, signal?: AbortSignal) => fetch(url, { signal }).then(r => {
@@ -48,7 +52,7 @@ const fetcher = (url: string, signal?: AbortSignal) => fetch(url, { signal }).th
 })
 
 interface ModernBookingFormProps {
-  value: { serviceId: string; date: string; time: string; address: string; notes?: string }
+  value: { serviceId: string; date: string; time: string; address: string; notes?: string; paymentMethod: 'ONLINE' | 'CASH' }
   onChange: (next: ModernBookingFormProps["value"]) => void
   onNext: () => void
   onBack?: () => void
@@ -64,6 +68,7 @@ const steps = [
   { id: 'datetime', title: 'Date & Time', icon: CalendarDays },
   { id: 'address', title: 'Address', icon: MapPin },
   { id: 'details', title: 'Service Details', icon: Home },
+  { id: 'payment', title: 'Payment Method', icon: CreditCard },
   { id: 'review', title: 'Review', icon: CheckCircle },
   { id: 'provider', title: 'Choose Provider', icon: CheckCircle },
 ]
@@ -81,6 +86,9 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE')
+  const [isSaved, setIsSaved] = useState(false)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number | null>(null)
   const NOTES_MAX = 500
 
   // Service-specific information state
@@ -384,11 +392,16 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     return commonSuggestions
   }
 
-  const { data: services, error, isLoading } = useSWR('/api/services', (url) => {
+  const { data: services, error, isLoading, mutate } = useSWR('/api/services', (url) => {
     const ctrl = new AbortController()
     const p = fetcher(url, ctrl.signal)
     ;(p as any).cancel = () => ctrl.abort()
     return p
+  }, {
+    onErrorRetry: (err: any, key, config, revalidate, { retryCount }) => {
+      if (err?.status === 404 || retryCount >= 3) return
+      setTimeout(() => revalidate({ retryCount: (retryCount || 0) + 1 }), 1500)
+    }
   })
 
   useEffect(() => {
@@ -414,6 +427,11 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   }, [currentStep, value.address])
 
   const selectedService = React.useMemo(() => services?.find((s: any) => s.id === value.serviceId), [services, value.serviceId])
+
+  // Update form data when payment method changes
+  React.useEffect(() => {
+    onChange({ ...value, paymentMethod })
+  }, [paymentMethod])
 
   const handleFieldChange = (name: keyof typeof value, val: string) => {
     const next = { ...value, [name]: val }
@@ -446,8 +464,54 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     if (name === 'notes') setNotesCount(val.length)
   }
 
+  // Debounced server-backed autosave of drafts
+  useEffect(() => {
+    // Only autosave when meaningful fields are present or changed
+    const payload = {
+      serviceId: value.serviceId,
+      date: value.date,
+      time: value.time,
+      address: value.address,
+      notes: value.notes || ''
+    }
+    const hasAny = payload.serviceId || payload.date || payload.time || payload.address
+    if (!hasAny) return
+
+    setIsSaved(false)
+    const id = setTimeout(() => {
+      saveBookingDraft(payload)
+        .then(() => {
+          setIsSaved(true)
+          // Hide the saved tick after a short delay
+          setTimeout(() => setIsSaved(false), 1500)
+        })
+        .catch(() => {})
+    }, 600)
+    return () => clearTimeout(id)
+  }, [value.serviceId, value.date, value.time, value.address, value.notes])
+
+  // Save on page unload to reduce data loss
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      const payload = {
+        serviceId: value.serviceId,
+        date: value.date,
+        time: value.time,
+        address: value.address,
+        notes: value.notes || ''
+      }
+      saveBookingDraft(payload).catch(() => {})
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', onBeforeUnload)
+      return () => window.removeEventListener('beforeunload', onBeforeUnload)
+    }
+  }, [value.serviceId, value.date, value.time, value.address, value.notes])
+
+  const canUseGeo = typeof window !== 'undefined' && (window as any).isSecureContext && !!navigator.geolocation
+
   const handleCurrentLocation = async () => {
-    if (!navigator.geolocation) {
+    if (!canUseGeo) {
       setErrors(prev => ({ ...prev, address: 'Geolocation is not supported by this browser' }))
       return
     }
@@ -511,8 +575,9 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
       1: () => value.date && value.time,
       2: () => value.address,
       3: () => true, // Notes are optional
-      4: () => true, // Review step
-      5: () => true, // Provider selection step
+      4: () => paymentMethod, // Payment method step
+      5: () => true, // Review step
+      6: () => true, // Provider selection step
     }
 
     if (!stepValidations[currentStep]()) {
@@ -520,8 +585,8 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
       return
     }
 
-    // Check if user is trying to go to provider selection step (step 5) without being authenticated
-    if (currentStep === 4 && !isAuthenticated && onShowLoginModal) {
+    // Check if user is trying to go to provider selection step (step 6) without being authenticated
+    if (currentStep === 5 && !isAuthenticated && onShowLoginModal) {
       onShowLoginModal()
       return
     }
@@ -597,6 +662,29 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   }, [])
 
   const isValid = bookingFormSchema.safeParse(value).success
+
+  // Keyboard navigation for address suggestions
+  const onAddressKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+    if (!showSuggestions || addressSuggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveSuggestionIndex(prev => {
+        const next = prev === null ? 0 : Math.min(addressSuggestions.length - 1, prev + 1)
+        return next
+      })
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveSuggestionIndex(prev => {
+        const next = prev === null ? addressSuggestions.length - 1 : Math.max(0, prev - 1)
+        return next
+      })
+    } else if (e.key === 'Enter') {
+      if (activeSuggestionIndex !== null) {
+        e.preventDefault()
+        handleSuggestionSelect(addressSuggestions[activeSuggestionIndex])
+      }
+    }
+  }
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -707,11 +795,14 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                   <Input
                     value={value.address}
                     onChange={(e) => handleAddressChange(e.target.value)}
+                    onKeyDown={onAddressKeyDown}
                     onFocus={() => value.address.length >= 2 && setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder={addressPlaceholder || "Start typing your address..."}
                     className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     autoComplete="street-address"
+                    aria-autocomplete="list"
+                    aria-expanded={showSuggestions}
                   />
                   
                   {/* Loading indicator */}
@@ -723,12 +814,14 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                   
                   {/* Address suggestions dropdown */}
                   {showSuggestions && addressSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto" role="listbox">
                       {addressSuggestions.map((suggestion, index) => (
                         <button
                           key={index}
                           onClick={() => handleSuggestionSelect(suggestion)}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-700 text-white text-sm border-b border-gray-700 last:border-b-0 transition-colors"
+                          className={`w-full text-left px-4 py-3 text-white text-sm border-b border-gray-700 last:border-b-0 transition-colors ${activeSuggestionIndex === index ? 'bg-gray-700' : 'hover:bg-gray-700'}`}
+                          role="option"
+                          aria-selected={activeSuggestionIndex === index}
                         >
                           <div className="flex items-center">
                             <MapPin className="w-4 h-4 mr-2 text-gray-400" />
@@ -754,7 +847,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                   className="w-full text-sm sm:text-base animate-slide-in-up"
                   style={{ animationDelay: '0.3s' }}
                   onClick={handleCurrentLocation}
-                  disabled={isGeocoding}
+                  disabled={isGeocoding || !canUseGeo}
                 >
                   {isGeocoding ? (
                     <>
@@ -764,7 +857,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                   ) : (
                     <>
                   <MapPin className="w-4 h-4 mr-2" />
-                  Use my current location
+                  {canUseGeo ? 'Use my current location' : 'Current location unavailable'}
                     </>
                   )}
                 </Button>
@@ -918,7 +1011,97 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
           </div>
         )
 
-      case 4: // Review
+      case 4: // Payment Method
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Choose Payment Method</h3>
+              <p className="text-sm sm:text-base text-white/80">Select how you'd like to pay for this service</p>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Online Payment Option */}
+              <div 
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                  paymentMethod === 'ONLINE' 
+                    ? 'border-blue-500 bg-blue-500/10' 
+                    : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
+                }`}
+                onClick={() => setPaymentMethod('ONLINE')}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className={`p-2 rounded-lg ${
+                    paymentMethod === 'ONLINE' ? 'bg-blue-500' : 'bg-gray-600'
+                  }`}>
+                    <CreditCard className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-white mb-1">Pay Online (Secure)</h4>
+                    <p className="text-sm text-white/80 mb-2">Pay securely with your card. Money held in escrow until service completion.</p>
+                    <ul className="text-xs text-white/70 space-y-1">
+                      <li className="flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-2 text-green-400" />
+                        Secure payment processing
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-2 text-green-400" />
+                        Money protected in escrow
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-2 text-green-400" />
+                        Automatic refund if service not completed
+                      </li>
+                    </ul>
+                  </div>
+                  {paymentMethod === 'ONLINE' && (
+                    <CheckCircle className="w-5 h-5 text-blue-500" />
+                  )}
+                </div>
+              </div>
+
+              {/* Cash Payment Option */}
+              <div 
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                  paymentMethod === 'CASH' 
+                    ? 'border-green-500 bg-green-500/10' 
+                    : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
+                }`}
+                onClick={() => setPaymentMethod('CASH')}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className={`p-2 rounded-lg ${
+                    paymentMethod === 'CASH' ? 'bg-green-500' : 'bg-gray-600'
+                  }`}>
+                    <Banknote className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-white mb-1">Pay with Cash</h4>
+                    <p className="text-sm text-white/80 mb-2">Pay directly to your provider after service completion.</p>
+                    <ul className="text-xs text-white/70 space-y-1">
+                      <li className="flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-2 text-green-400" />
+                        No processing fees
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-2 text-green-400" />
+                        Pay only after service completion
+                      </li>
+                      <li className="flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-2 text-green-400" />
+                        Direct payment to provider
+                      </li>
+                    </ul>
+                  </div>
+                  {paymentMethod === 'CASH' && (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 5: // Review
         return (
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className="text-center animate-slide-in-up">
@@ -930,24 +1113,57 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               <div className="bg-gray-800/50 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                   <span className="font-medium text-white text-sm sm:text-base">Service</span>
-                  <span className="text-white/80 text-sm sm:text-base">{selectedService?.name || 'Not selected'}</span>
+                  <span className="text-white/80 text-sm sm:text-base flex items-center gap-2">
+                    {selectedService?.name || 'Not selected'}
+                    <button onClick={() => setCurrentStep(0)} className="text-blue-400 text-xs underline">Edit</button>
+                  </span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                   <span className="font-medium text-white text-sm sm:text-base">Date</span>
-                  <span className="text-white/80 text-sm sm:text-base">{value.date || 'Not selected'}</span>
+                  <span className="text-white/80 text-sm sm:text-base flex items-center gap-2">
+                    {value.date || 'Not selected'}
+                    <button onClick={() => setCurrentStep(1)} className="text-blue-400 text-xs underline">Edit</button>
+                  </span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                   <span className="font-medium text-white text-sm sm:text-base">Time</span>
-                  <span className="text-white/80 text-sm sm:text-base">{value.time || 'Not selected'}</span>
+                  <span className="text-white/80 text-sm sm:text-base flex items-center gap-2">
+                    {value.time || 'Not selected'}
+                    <button onClick={() => setCurrentStep(1)} className="text-blue-400 text-xs underline">Edit</button>
+                  </span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-1 sm:space-y-0">
                   <span className="font-medium text-white text-sm sm:text-base">Address</span>
-                  <span className="text-white/80 text-sm sm:text-base text-right max-w-xs break-words">{value.address || 'Not provided'}</span>
+                  <span className="text-white/80 text-sm sm:text-base text-right max-w-xs break-words flex items-center gap-2 justify-end">
+                    {value.address || 'Not provided'}
+                    <button onClick={() => setCurrentStep(2)} className="text-blue-400 text-xs underline">Edit</button>
+                  </span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                  <span className="font-medium text-white text-sm sm:text-base">Payment Method</span>
+                  <div className="flex items-center space-x-2">
+                    {paymentMethod === 'ONLINE' ? (
+                      <>
+                        <CreditCard className="w-4 h-4 text-blue-400" />
+                        <span className="text-blue-400 text-sm sm:text-base">Pay Online</span>
+                        <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline ml-2">Edit</button>
+                      </>
+                    ) : (
+                      <>
+                        <Banknote className="w-4 h-4 text-green-400" />
+                        <span className="text-green-400 text-sm sm:text-base">Pay with Cash</span>
+                        <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline ml-2">Edit</button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 {value.notes && (
                   <div className="pt-2 border-t border-gray-600">
                     <span className="font-medium text-white block mb-1 text-sm sm:text-base">Notes</span>
-                    <span className="text-white/80 text-xs sm:text-sm whitespace-pre-line">{value.notes}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-white/80 text-xs sm:text-sm whitespace-pre-line">{value.notes}</span>
+                      <button onClick={() => setCurrentStep(3)} className="text-blue-400 text-xs underline">Edit</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -955,7 +1171,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
           </div>
         )
 
-      case 5: // Choose Provider
+      case 6: // Choose Provider
         return (
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className="text-center animate-slide-in-up">
@@ -1002,6 +1218,19 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-400" />
           <p className="text-white/80">Loading services...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-3">
+          <p className="text-white/80">Failed to load services.</p>
+          <Button variant="outline" onClick={() => mutate()}>
+            Retry
+          </Button>
         </div>
       </div>
     )
@@ -1109,11 +1338,15 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
           }`}>
             {renderStepContent()}
           </div>
+          {/* Saved indicator */}
+          {isSaved && (
+            <div className="absolute bottom-2 right-3 text-xs text-green-400">Saved</div>
+          )}
         </CardContent>
       </Card>
 
       {/* Navigation - Mobile Optimized - Hidden on Provider Selection Step */}
-      {currentStep !== 5 && (
+      {currentStep !== 6 && (
       <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 sm:mt-8 space-y-3 sm:space-y-0 transition-all duration-300 ${
         isTransitioning ? 'opacity-50 translate-y-2' : 'opacity-100 translate-y-0'
       }`}>

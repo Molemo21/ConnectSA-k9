@@ -178,25 +178,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create audit log
+    // Create audit log (if model exists)
     console.log("📝 Creating audit log...")
-    await db.adminAuditLog.create({
-      data: {
-        adminId: user.id,
-        action: 'SYSTEM_MAINTENANCE' as any, // Using existing enum value
-        targetType: 'PROVIDER',
-        targetId: provider.id,
-        details: {
-          businessName: validatedData.businessName,
-          location: validatedData.location,
-          servicesCount: validatedData.selectedServices.length,
-          action: 'PROVIDER_ONBOARDING_SUBMITTED'
-        },
-        ipAddress: request.headers.get('x-forwarded-for') || request.ip || 'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
+    try {
+      // Check if adminAuditLog model exists before trying to create
+      if (db.adminAuditLog && typeof db.adminAuditLog.create === 'function') {
+        await db.adminAuditLog.create({
+          data: {
+            adminId: user.id,
+            action: 'SYSTEM_MAINTENANCE' as any, // Using existing enum value
+            targetType: 'PROVIDER',
+            targetId: provider.id,
+            details: {
+              businessName: validatedData.businessName,
+              location: validatedData.location,
+              servicesCount: validatedData.selectedServices.length,
+              action: 'PROVIDER_ONBOARDING_SUBMITTED'
+            },
+            ipAddress: request.headers.get('x-forwarded-for') || request.ip || 'unknown',
+            userAgent: request.headers.get('user-agent') || 'unknown',
+          }
+        })
+        console.log("✅ Audit log created successfully")
+      } else {
+        console.log("⚠️ AdminAuditLog model not available, skipping audit log creation")
       }
-    })
-    console.log("✅ Audit log created successfully")
+    } catch (auditError) {
+      console.error("❌ Failed to create audit log:", auditError)
+      // Don't fail the onboarding if audit log creation fails
+      // Just log the error and continue
+    }
 
     return NextResponse.json({
       success: true,
@@ -218,6 +229,17 @@ export async function POST(request: NextRequest) {
     // Log more specific error information
     if (error instanceof Error) {
       console.error("❌ Error message:", error.message)
+      console.error("❌ Error stack:", error.stack)
+    }
+
+    console.error("❌ Returning 500 error response")
+    return NextResponse.json({
+      error: "Internal server error",
+      message: "Failed to submit provider onboarding",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
+  }
+}
       console.error("❌ Error stack:", error.stack)
     }
 

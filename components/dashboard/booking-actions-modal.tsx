@@ -217,7 +217,7 @@ export function BookingActionsModal({
               />
               {booking.provider && (
                 <span className="text-sm text-gray-600">
-                  Provider: {booking.provider.businessName}
+                  Provider: {booking.provider.businessName || booking.provider.user?.name || 'N/A'}
                 </span>
               )}
             </div>
@@ -513,8 +513,10 @@ export function BookingActionsModal({
                 </p>
                 {booking.provider && (
                   <div className="mt-2 text-sm text-blue-700">
-                    <p>Provider: {booking.provider.user.name}</p>
-                    <p>Phone: {booking.provider.user.phone}</p>
+                    <p>Provider: {booking.provider.user?.name || 'N/A'}</p>
+                    {booking.provider.user?.phone && (
+                      <p>Phone: {booking.provider.user.phone}</p>
+                    )}
                   </div>
                 )}
               </div>

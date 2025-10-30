@@ -12,7 +12,6 @@ interface ReviewStepProps {
     businessName: string
     description: string
     experience: number
-    hourlyRate: number
     location: string
     // Services
     selectedServices: string[]
@@ -89,13 +88,6 @@ export function ReviewStep({
                 <p className="text-gray-900 flex items-center gap-1">
                   <Briefcase className="w-4 h-4 text-gray-500" />
                   {data.experience} years
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Hourly Rate</label>
-                <p className="text-gray-900 flex items-center gap-1">
-                  <DollarSign className="w-4 h-4 text-gray-500" />
-                  R{data.hourlyRate}/hour
                 </p>
               </div>
             </div>

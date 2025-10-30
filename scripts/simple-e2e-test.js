@@ -127,13 +127,16 @@ async function runSimpleE2ETests() {
     console.log('\n🛠️ Testing Services...');
     try {
       const services = await prisma.service.findMany({
-        take: 5,
         where: { isActive: true }
       });
 
       console.log(`✅ Found ${services.length} active services`);
       if (services.length > 0) {
         console.log(`   Sample: ${services[0].name}`);
+        // Show breakdown by category
+        const cleaningServices = services.filter(s => s.categoryId?.includes('cleaning')).length;
+        const beautyServices = services.filter(s => s.categoryId === 'cmgwb4tgx0000s7hw47vt5p41').length;
+        console.log(`   Breakdown: ${cleaningServices} cleaning, ${beautyServices} beauty services`);
       }
       results.passed++;
     } catch (error) {

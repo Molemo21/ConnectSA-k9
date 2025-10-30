@@ -26,6 +26,11 @@ enum ProviderStatus {
   INCOMPLETE
 }
 
+enum PaymentMethod {
+  ONLINE
+  CASH
+}
+
 enum BookingStatus {
   PENDING
   CONFIRMED
@@ -47,6 +52,10 @@ enum PaymentStatus {
   REFUNDED
   FAILED
   COMPLETED
+  CASH_PENDING
+  CASH_PAID
+  CASH_RECEIVED
+  CASH_VERIFIED
 }
 
 model User {
@@ -155,7 +164,7 @@ model Booking {
   id            String        @id @default(cuid())
   clientId      String
   providerId    String
-  serviceId     String
+  serviceId      String
   scheduledDate DateTime
   duration      Int
   totalAmount   Float
@@ -163,6 +172,7 @@ model Booking {
   description   String?
   address       String
   status        BookingStatus @default(PENDING)
+  paymentMethod PaymentMethod @default(ONLINE)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

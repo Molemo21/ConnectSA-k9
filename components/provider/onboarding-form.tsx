@@ -42,7 +42,6 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
     businessName: "",
     description: "",
     experience: 0,
-    hourlyRate: 0,
     location: "",
     services: []
   };
@@ -51,7 +50,6 @@ export function ProviderOnboardingForm({ user, provider, readOnly = false, feedb
     businessName: safeProvider.businessName || "",
     description: safeProvider.description || "",
     experience: safeProvider.experience || 0,
-    hourlyRate: safeProvider.hourlyRate || 0,
     location: safeProvider.location || "",
     selectedServices: Array.isArray(safeProvider.services) ? safeProvider.services.map((s: any) => s.service.id) : [],
     // Document uploads

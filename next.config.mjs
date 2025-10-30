@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Write build artifacts to a fresh directory to avoid stale OneDrive locks
+  distDir: '.next-dev',
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -11,8 +13,8 @@ const nextConfig = {
   },
   // Disable React Strict Mode to prevent double mounting in development
   reactStrictMode: false,
-  // Disable minification in production for better error debugging
-  swcMinify: false,
+  // Use SWC minifier (Next.js default) to avoid deprecation warnings
+  swcMinify: true,
   // Enable source maps for better error tracking
   productionBrowserSourceMaps: true,
   // Add webpack config for better error reporting
@@ -22,6 +24,8 @@ const nextConfig = {
     }
     return config;
   },
+  // Allow local dev origins to avoid noisy dev warnings
+  allowedDevOrigins: ['http://localhost:3000', 'http://localhost:3001']
 }
 
 export default nextConfig

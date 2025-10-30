@@ -7,7 +7,8 @@ import {
   Clock, 
   AlertTriangle, 
   Loader2,
-  DollarSign
+  DollarSign,
+  Banknote
 } from "lucide-react"
 import { StatusBadge } from "./status-badge"
 
@@ -23,6 +24,7 @@ interface PaymentStatusDisplayProps {
   className?: string
   allowContinue?: boolean
   bookingStatus?: string
+  paymentMethod?: "ONLINE" | "CASH"
 }
 
 export function PaymentStatusDisplay({ 
@@ -32,8 +34,49 @@ export function PaymentStatusDisplay({
   className,
   allowContinue = false,
   bookingStatus,
+  paymentMethod = "ONLINE",
 }: PaymentStatusDisplayProps) {
   if (!payment) return null
+
+  // CASH PAYMENT STATUS DISPLAY
+  if (paymentMethod === 'CASH') {
+    if (payment.status === 'CASH_PENDING') {
+      return (
+        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+          <Banknote className="h-4 w-4 text-yellow-400" />
+          <AlertDescription className="text-yellow-300">
+            <span className="font-medium mb-1 block">Awaiting Cash Payment</span>
+            <p className="text-xs">
+              Please pay the provider in cash when the service is completed. The provider will confirm receipt.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )
+    }
+
+    if (payment.status === 'CASH_RECEIVED') {
+      return (
+        <Alert className="border-green-500/50 bg-green-500/10">
+          <CheckCircle className="h-4 w-4 text-green-400" />
+          <AlertDescription className="text-green-300">
+            <span className="font-medium mb-1 block">Cash Payment Received</span>
+            <p className="text-xs">
+              The provider has confirmed receipt of your cash payment.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )
+    }
+
+    if (payment.status === 'CASH_VERIFIED') {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <CheckCircle className="w-4 h-4 text-green-500" />
+          <span className="text-green-600 font-medium">Cash Payment Verified</span>
+        </div>
+      )
+    }
+  }
 
   const isPaymentProcessing = payment.status === 'PENDING' && isProcessing
   const isPaymentStuck = () => {

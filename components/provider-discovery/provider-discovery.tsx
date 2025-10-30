@@ -53,6 +53,7 @@ interface ProviderDiscoveryProps {
   time: string
   address: string
   notes?: string
+  paymentMethod: "ONLINE" | "CASH"
   onProviderSelected: (providerId: string) => void
   onBack: () => void
   onLoginSuccess?: () => void
@@ -64,11 +65,12 @@ export function ProviderDiscovery({
   date, 
   time, 
   address, 
-  notes, 
+  notes,
+  paymentMethod,
   onProviderSelected, 
-  onBack,
-  onLoginSuccess,
-  onCancelBooking
+  onBack, 
+  onLoginSuccess, 
+  onCancelBooking 
 }: ProviderDiscoveryProps) {
   const [providers, setProviders] = useState<Provider[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -85,6 +87,7 @@ export function ProviderDiscovery({
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isUnauthorized, setIsUnauthorized] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [discoveryTime, setDiscoveryTime] = useState<string>(time)
 
   // Debug modal state changes
   useEffect(() => {
@@ -103,11 +106,11 @@ export function ProviderDiscovery({
       console.log('🔍 [ProviderDiscovery] Starting provider discovery...')
       console.log('🔍 [ProviderDiscovery] ServiceId:', serviceId)
       console.log('🔍 [ProviderDiscovery] Date:', date)
-      console.log('🔍 [ProviderDiscovery] Time:', time)
+      console.log('🔍 [ProviderDiscovery] Time:', discoveryTime)
       console.log('🔍 [ProviderDiscovery] Address:', address)
       
       // Validate required fields before making API call
-      if (!serviceId || !date || !time || !address) {
+      if (!serviceId || !date || !discoveryTime || !address) {
         setError('Missing required booking information')
         return
       }
@@ -132,7 +135,7 @@ export function ProviderDiscovery({
       const response = await fetch('/api/book-service/discover-providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceId, date, time, address })
+        body: JSON.stringify({ serviceId, date, time: discoveryTime, address })
       })
 
       if (!response || typeof response.ok !== 'boolean') {
@@ -146,6 +149,12 @@ export function ProviderDiscovery({
         console.log('❌ [ProviderDiscovery] Response status:', response.status);
         console.log('❌ [ProviderDiscovery] Error message:', errorMessage);
         
+        if (response.status === 503) {
+          setError('The system is briefly updating. Please try again in a moment.')
+          showToast.info('Temporarily unavailable during update. Please try again shortly.')
+          return
+        }
+
         // Check if it's an unauthorized error
         if (response.status === 401 && errorMessage === 'Unauthorized') {
           console.log('🔐 [ProviderDiscovery] Unauthorized detected - showing login modal');
@@ -204,13 +213,16 @@ export function ProviderDiscovery({
         return
       }
 
-      const requestData = { 
+      const requestData = {
         providerId, 
         serviceId, 
         date, 
         time, 
         address, 
-        notes 
+        notes,
+        paymentMethod,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezoneOffsetMinutes: new Date().getTimezoneOffset()
       };
 
       console.log('🚀 Sending job offer with data:', requestData);
@@ -243,6 +255,11 @@ export function ProviderDiscovery({
           headers: Object.fromEntries(response.headers.entries())
         });
         
+        if (response.status === 503) {
+          showToast.info('Temporarily unavailable during update. Please try again shortly.')
+          return;
+        }
+
         // Handle authentication errors by showing login modal
         if (response.status === 401) {
           console.log('🔐 Authentication required, showing login modal');
@@ -425,6 +442,21 @@ export function ProviderDiscovery({
     )
   }
 
+  // Utility: compute next 3 half-hour slots from provided time
+  const computeNextSlots = (t: string) => {
+    const [hh, mm] = t.split(':').map(n => parseInt(n, 10))
+    const base = new Date()
+    base.setHours(hh || 8, mm || 0, 0, 0)
+    const slots: string[] = []
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(base.getTime() + i * 30 * 60000)
+      const h = String(d.getHours()).padStart(2, '0')
+      const m = String(d.getMinutes()).padStart(2, '0')
+      slots.push(`${h}:${m}`)
+    }
+    return slots
+  }
+
   if (!providers || providers.length === 0) {
     return (
       <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
@@ -434,6 +466,18 @@ export function ProviderDiscovery({
           <p className="text-white/70 mb-4">
             No providers are currently available for this service at the requested time.
           </p>
+          {/* Quick next-time suggestions */}
+          <div className="mb-4">
+            <p className="text-white/80 mb-2">Try a nearby time:</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {computeNextSlots(discoveryTime || '08:00').map((slot) => (
+                <Button key={slot} variant="outline" className="border-gray-600 text-white hover:bg-gray-800"
+                  onClick={() => { setDiscoveryTime(slot); setLoading(true); setTimeout(discoverProviders, 50) }}>
+                  {slot}
+                </Button>
+              ))}
+            </div>
+          </div>
           <div className="space-x-2">
             <Button onClick={onBack} className="!bg-white !text-black hover:!bg-gray-100 !border-0 font-medium px-4 py-2 rounded-md transition-all duration-200">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -564,7 +608,10 @@ export function ProviderDiscovery({
               providerId: selectedProvider.id,
               serviceId,
               date, time, address, notes,
-              catalogueItemId: selectedPackage.id
+              catalogueItemId: selectedPackage.id,
+              paymentMethod,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              timezoneOffsetMinutes: new Date().getTimezoneOffset()
             }
             const res = await fetch('/api/book-service/send-offer-enhanced', {
               method: 'POST',

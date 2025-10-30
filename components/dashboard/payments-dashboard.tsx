@@ -206,8 +206,10 @@ export function PaymentsDashboard({
                       {selectedPayment.booking.provider && (
                         <div>
                           <span className="text-gray-400 block">Provider:</span>
-                          <span className="text-gray-100">{selectedPayment.booking.provider.user.name}</span>
-                          <span className="text-gray-400 text-sm block">{selectedPayment.booking.provider.businessName}</span>
+                          <span className="text-gray-100">{selectedPayment.booking.provider.user?.name || 'N/A'}</span>
+                          {selectedPayment.booking.provider.businessName && (
+                            <span className="text-gray-400 text-sm block">{selectedPayment.booking.provider.businessName}</span>
+                          )}
                         </div>
                       )}
                       <div>

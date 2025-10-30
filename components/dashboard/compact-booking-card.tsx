@@ -38,6 +38,7 @@ interface Booking {
   totalAmount: number
   status: string
   createdAt: string
+  paymentMethod?: "ONLINE" | "CASH"
   payment?: {
     id: string
     amount: number
@@ -62,6 +63,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   const [showDetails, setShowDetails] = useState(false)
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [isConfirmingCompletion, setIsConfirmingCompletion] = useState(false)
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
 
   const isRecent = () => {
@@ -71,7 +73,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
     return hoursDiff < 24
   }
 
-  const timelineSteps = getTimelineSteps(booking.status, booking.payment)
+  const timelineSteps = getTimelineSteps(booking.status, booking.payment, booking.paymentMethod)
   
   // Enhanced payment status checking with better logic
   const hasPayment = booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(booking.payment.status)
@@ -89,8 +91,15 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
       return false
     }
     
-    // Always allow if booking is awaiting confirmation
     if (booking.status === "AWAITING_CONFIRMATION") {
+      // For cash: Only show when payment is CASH_PENDING (not CASH_PAID - button should be hidden after payment)
+      if (booking.paymentMethod === 'CASH') {
+        return booking.payment && booking.payment.status === 'CASH_PENDING';
+      }
+      // For online: Show when payment is in escrow
+      if (booking.paymentMethod === 'ONLINE') {
+        return booking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status);
+      }
       return true
     }
     
@@ -180,6 +189,9 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   }
 
   const handleConfirmCompletion = async () => {
+    if (isConfirmingCompletion) return; // Prevent duplicate clicks
+    
+    setIsConfirmingCompletion(true);
     try {
       console.log(`🚀 Attempting to confirm completion for booking ${booking.id}`);
       
@@ -196,23 +208,18 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
         console.log(`✅ Success response:`, data);
         
         // Show success message with more detail
-        const successMessage = data.message || "Completion confirmed! Payment will be released to the provider."
+        const successMessage = data.message || "Payment submitted! Provider will confirm receipt."
         showToast.success(successMessage)
         
         // Update the booking data to reflect the new state
         onUpdate()
-        
-        // Show additional info about what happened
-        setTimeout(() => {
-          showToast.info("The payment has been released to the provider. You can no longer modify this booking.")
-        }, 2000)
         
       } else {
         const errorData = await response.json()
         console.error(`❌ Error response:`, errorData);
         
         // Enhanced error handling with user-friendly messages
-        let errorMessage = errorData.error || "Failed to confirm completion"
+        let errorMessage = errorData.error || "Failed to submit payment"
         let errorDetails = errorData.details || ""
         
         // Handle specific error cases with better UX
@@ -252,6 +259,8 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
     } catch (error) {
       console.error("❌ Confirm completion error:", error)
       showToast.error("Network error. Please check your connection and try again.")
+    } finally {
+      setIsConfirmingCompletion(false);
     }
   }
 
@@ -482,7 +491,9 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
               {booking.provider && (
                 <div className="flex items-center space-x-1 md:space-x-3 text-xs sm:text-sm md:text-base">
                   <span className="text-white/20">Provider:</span>
-                  <span className="text-white/20 truncate">{booking.provider.businessName}</span>
+                  <span className="text-white/20 truncate">
+                    {booking.provider.businessName || booking.provider.user?.name || 'N/A'}
+                  </span>
                 </div>
               )}
               <div className="flex items-center space-x-1 md:space-x-3 text-xs sm:text-sm md:text-base">
@@ -616,16 +627,26 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                         <Button 
                           size="sm" 
                           onClick={handleConfirmCompletion} 
-                          className="bg-orange-600 hover:bg-orange-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base"
+                          disabled={isConfirmingCompletion}
+                          className="bg-orange-600 hover:bg-orange-700 h-8 sm:h-9 md:h-10 px-3 sm:px-4 md:px-6 text-xs sm:text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
-                          Confirm Completion
+                          {isConfirmingCompletion ? (
+                            <>
+                              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1 animate-spin" />
+                              {booking.paymentMethod === 'CASH' ? 'Submitting...' : 'Processing...'}
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
+                              {booking.paymentMethod === 'CASH' ? 'Pay Cash' : 'Confirm Completion'}
+                            </>
+                          )}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs">
                         <div className="space-y-1">
-                          <p className="font-semibold">Confirm Job Completion</p>
-                          <p className="text-sm">Click to release payment to the provider. This confirms the job is done and transfers the funds from escrow.</p>
+                          <p className="font-semibold">{booking.paymentMethod === 'CASH' ? 'Submit Cash Payment' : 'Confirm Job Completion'}</p>
+                          <p className="text-sm">{booking.paymentMethod === 'CASH' ? 'Click to confirm you have paid the provider in cash. The provider will then verify receipt to complete the booking.' : 'Click to release payment to the provider. This confirms the job is done and transfers the funds from escrow.'}</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -733,7 +754,9 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                 {booking.provider && (
                   <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                     <span className="font-medium">Provider:</span>
-                    <span className="truncate">{booking.provider.businessName}</span>
+                    <span className="truncate">
+                      {booking.provider.businessName || booking.provider.user?.name || 'N/A'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -783,8 +806,21 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
 }
 
 // Helper function for timeline steps
-function getTimelineSteps(status: string, payment: any) {
-  // Debug logging for payment status
+function getTimelineSteps(status: string, payment: any, paymentMethod?: "ONLINE" | "CASH") {
+  // CASH PAYMENT TIMELINE (Simplified - 5 steps, clearer labels)
+  if (paymentMethod === 'CASH') {
+    const steps = [
+      { id: "booked", label: "Booked", completed: true },
+      { id: "confirmed", label: "Confirmed", completed: ["CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+      { id: "in_progress", label: "In Progress", completed: ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+      { id: "pay_cash", label: "Pay Cash", completed: ["AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+      { id: "completed", label: "Completed", completed: status === "COMPLETED" }
+    ]
+    
+    return steps
+  }
+
+  // ONLINE/CARD PAYMENT TIMELINE (existing logic)
   console.log('🔍 Compact Timeline Debug:', {
     bookingStatus: status,
     payment: payment ? {
@@ -824,5 +860,4 @@ function getTimelineSteps(status: string, payment: any) {
   
   return steps
 }
-
 

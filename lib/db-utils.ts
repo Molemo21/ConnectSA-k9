@@ -132,17 +132,26 @@ const createDbWrapper = () => {
         delete: () => Promise.resolve(null),
         aggregate: () => Promise.resolve({ _sum: { amount: 0 }, _avg: { rating: 0 } }) 
       },
-      notification: { 
-        findFirst: () => Promise.resolve(null), 
-        findMany: () => Promise.resolve([]), 
-        findUnique: () => Promise.resolve(null), 
+      notification: {
+        findFirst: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
         count: () => Promise.resolve(0), 
         create: () => Promise.resolve(null),
         update: () => Promise.resolve(null),
         updateMany: () => Promise.resolve({ count: 0 }),
         delete: () => Promise.resolve(null),
         deleteMany: () => Promise.resolve({ count: 0 }),
-        aggregate: () => Promise.resolve({ _sum: { amount: 0 }, _avg: { rating: 0 } }) 
+      },
+      catalogueItem: {
+        findFirst: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        upsert: () => Promise.resolve(null),
       },
       review: { 
         findFirst: () => Promise.resolve(null), 
@@ -185,13 +194,6 @@ const createDbWrapper = () => {
         update: () => Promise.resolve(null),
         delete: () => Promise.resolve(null),
         deleteMany: () => Promise.resolve({ count: 0 })
-      },
-      adminAuditLog: { 
-        findFirst: () => Promise.resolve(null), 
-        findMany: () => Promise.resolve([]), 
-        findUnique: () => Promise.resolve(null), 
-        count: () => Promise.resolve(0),
-        create: () => Promise.resolve(null)
       },
       verificationToken: {
         findFirst: () => Promise.resolve(null),
@@ -296,6 +298,19 @@ const createDbWrapper = () => {
       aggregate: (args: any) => withRetry(() => prisma.review.aggregate(args), 'review.aggregate'),
     },
     
+    // Notification operations
+    notification: {
+      findFirst: (args: any) => withRetry(() => prisma.notification.findFirst(args), 'notification.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.notification.findMany(args), 'notification.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.notification.findUnique(args), 'notification.findUnique'),
+      count: (args: any) => withRetry(() => prisma.notification.count(args), 'notification.count'),
+      create: (args: any) => withRetry(() => prisma.notification.create(args), 'notification.create'),
+      update: (args: any) => withRetry(() => prisma.notification.update(args), 'notification.update'),
+      updateMany: (args: any) => withRetry(() => prisma.notification.updateMany(args), 'notification.updateMany'),
+      delete: (args: any) => withRetry(() => prisma.notification.delete(args), 'notification.delete'),
+      deleteMany: (args: any) => withRetry(() => prisma.notification.deleteMany(args), 'notification.deleteMany'),
+    },
+    
     // Payout operations
     payout: {
       findFirst: (args: any) => withRetry(() => prisma.payout.findFirst(args), 'payout.findFirst'),
@@ -339,14 +354,6 @@ const createDbWrapper = () => {
       deleteMany: (args: any) => withRetry(() => prisma.providerService.deleteMany(args), 'providerService.deleteMany'),
     },
     
-    // AdminAuditLog operations
-    adminAuditLog: {
-      findFirst: (args: any) => withRetry(() => prisma.adminAuditLog.findFirst(args), 'adminAuditLog.findFirst'),
-      findMany: (args: any) => withRetry(() => prisma.adminAuditLog.findMany(args), 'adminAuditLog.findMany'),
-      findUnique: (args: any) => withRetry(() => prisma.adminAuditLog.findUnique(args), 'adminAuditLog.findUnique'),
-      count: (args: any) => withRetry(() => prisma.adminAuditLog.count(args), 'adminAuditLog.count'),
-      create: (args: any) => withRetry(() => prisma.adminAuditLog.create(args), 'adminAuditLog.create'),
-    },
 
     // VerificationToken operations
     verificationToken: {
@@ -380,6 +387,18 @@ const createDbWrapper = () => {
       update: (args: any) => withRetry(() => prisma.bookingDraft.update(args), 'bookingDraft.update'),
       delete: (args: any) => withRetry(() => prisma.bookingDraft.delete(args), 'bookingDraft.delete'),
       deleteMany: (args: any) => withRetry(() => prisma.bookingDraft.deleteMany(args), 'bookingDraft.deleteMany'),
+    },
+    
+    // CatalogueItem operations
+    catalogueItem: {
+      findFirst: (args: any) => withRetry(() => prisma.catalogueItem.findFirst(args), 'catalogueItem.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.catalogueItem.findMany(args), 'catalogueItem.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.catalogueItem.findUnique(args), 'catalogueItem.findUnique'),
+      count: (args: any) => withRetry(() => prisma.catalogueItem.count(args), 'catalogueItem.count'),
+      create: (args: any) => withRetry(() => prisma.catalogueItem.create(args), 'catalogueItem.create'),
+      update: (args: any) => withRetry(() => prisma.catalogueItem.update(args), 'catalogueItem.update'),
+      delete: (args: any) => withRetry(() => prisma.catalogueItem.delete(args), 'catalogueItem.delete'),
+      upsert: (args: any) => withRetry(() => prisma.catalogueItem.upsert(args), 'catalogueItem.upsert'),
     },
     
     // Transaction operations

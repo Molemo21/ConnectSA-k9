@@ -41,7 +41,7 @@ interface BookingTimelineProps {
   onBookingClick?: (booking: Booking) => void
 }
 
-const getStatusInfo = (status: string, hasPayment?: boolean) => {
+const getStatusInfo = (status: string, hasPayment?: boolean, paymentMethod?: string) => {
   switch (status) {
     case "PENDING":
       return {
@@ -52,8 +52,10 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
         description: "Finding the best provider"
       }
     case "CONFIRMED":
+      // For cash: step 2 (confirmed), payment not yet due
+      // For online: step 2 (confirmed), need payment before starting
       return {
-        label: hasPayment ? "Confirmed & Paid" : "Confirmed",
+        label: paymentMethod === 'CASH' ? "Confirmed" : hasPayment ? "Confirmed & Paid" : "Confirmed",
         color: "bg-blue-900/50 text-blue-400 border-blue-800/50",
         icon: CheckCircle,
         step: 2,
@@ -68,27 +70,29 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
         description: "Payment in escrow"
       }
     case "IN_PROGRESS":
+      // For cash: step 3 (in progress includes payment arrangement)
+      // For online: step 4 (payment already secured in escrow)
       return {
         label: "In Progress",
         color: "bg-purple-900/50 text-purple-400 border-purple-800/50",
         icon: Loader2,
-        step: 4,
+        step: paymentMethod === 'CASH' ? 3 : 4,
         description: "Work in progress"
       }
     case "AWAITING_CONFIRMATION":
       return {
-        label: "Awaiting Confirmation",
+        label: paymentMethod === 'CASH' ? "Pay Cash" : "Awaiting Confirmation",
         color: "bg-orange-900/50 text-orange-400 border-orange-800/50",
         icon: AlertCircle,
-        step: 5,
-        description: "Confirm completion"
+        step: paymentMethod === 'CASH' ? 4 : 5,
+        description: paymentMethod === 'CASH' ? "Payment due to provider" : "Confirm completion"
       }
     case "COMPLETED":
       return {
         label: "Completed",
         color: "bg-green-900/50 text-green-400 border-green-800/50",
         icon: CheckCircle,
-        step: 6,
+        step: paymentMethod === 'CASH' ? 5 : 6,
         description: "Service completed"
       }
     case "CANCELLED":
@@ -118,17 +122,27 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
   }
 }
 
-const getTimelineSteps = (status: string, hasPayment?: boolean) => {
-  const allSteps = [
-    { id: 1, label: "Booked", icon: Calendar },
-    { id: 2, label: "Confirmed", icon: CheckCircle },
-    { id: 3, label: "Payment", icon: RandIconSimple },
-    { id: 4, label: "In Progress", icon: Loader2 },
-    { id: 5, label: "Awaiting", icon: AlertCircle },
-    { id: 6, label: "Completed", icon: CheckCircle }
-  ]
+const getTimelineSteps = (status: string, hasPayment?: boolean, paymentMethod?: string) => {
+  // For cash: 5 steps (skip Payment step, clearer labels)
+  // For online: 6 steps (include Payment/escrow step)
+  const allSteps = paymentMethod === 'CASH' 
+    ? [
+        { id: 1, label: "Booked", icon: Calendar },
+        { id: 2, label: "Confirmed", icon: CheckCircle },
+        { id: 3, label: "In Progress", icon: Loader2 },
+        { id: 4, label: "Pay Cash", icon: AlertCircle },
+        { id: 5, label: "Completed", icon: CheckCircle }
+      ]
+    : [
+        { id: 1, label: "Booked", icon: Calendar },
+        { id: 2, label: "Confirmed", icon: CheckCircle },
+        { id: 3, label: "Payment", icon: RandIconSimple },
+        { id: 4, label: "In Progress", icon: Loader2 },
+        { id: 5, label: "Awaiting", icon: AlertCircle },
+        { id: 6, label: "Completed", icon: CheckCircle }
+      ]
 
-  const currentStep = getStatusInfo(status, hasPayment).step
+  const currentStep = getStatusInfo(status, hasPayment, paymentMethod).step
   
   return allSteps.map(step => ({
     ...step,
@@ -146,9 +160,9 @@ function BookingTimelineItem({
   isLast: boolean;
   onBookingClick?: (booking: Booking) => void;
 }) {
-  const statusInfo = getStatusInfo(booking.status, booking.payment)
+  const statusInfo = getStatusInfo(booking.status, booking.payment, booking.paymentMethod)
   const StatusIcon = statusInfo.icon
-  const timelineSteps = getTimelineSteps(booking.status, booking.payment)
+  const timelineSteps = getTimelineSteps(booking.status, booking.payment, booking.paymentMethod)
   const [showDetails, setShowDetails] = useState(false)
 
   return (
@@ -202,7 +216,9 @@ function BookingTimelineItem({
             {booking.provider && (
               <>
                 <span>•</span>
-                <span className="truncate">{booking.provider.businessName}</span>
+                <span className="truncate">
+                  {booking.provider.businessName || booking.provider.user?.name || 'Provider'}
+                </span>
               </>
             )}
           </div>

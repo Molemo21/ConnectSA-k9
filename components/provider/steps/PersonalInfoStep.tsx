@@ -14,7 +14,6 @@ interface PersonalInfoStepProps {
     businessName: string
     description: string
     experience: number
-    hourlyRate: number
     location: string
   }
   onChange: (data: Partial<PersonalInfoStepProps['data']>) => void
@@ -44,7 +43,6 @@ export function PersonalInfoStep({
       data.businessName.trim().length >= 2 &&
       data.description.trim().length >= 20 &&
       data.experience >= 0 &&
-      data.hourlyRate >= 1 &&
       data.location.trim().length >= 2
     )
   }
@@ -188,34 +186,6 @@ export function PersonalInfoStep({
               )}
             </div>
 
-            <div className="space-y-3">
-              <Label htmlFor="hourlyRate" className="text-sm font-bold text-white flex items-center gap-2 drop-shadow-lg">
-                <div className="w-2 h-2 bg-yellow-400 rounded-full shadow-lg"></div>
-                Hourly Rate (ZAR) *
-              </Label>
-              <div className="relative group">
-                <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/60 w-5 h-5 group-focus-within:text-yellow-400 transition-colors duration-300" />
-                <Input
-                  id="hourlyRate"
-                  type="number"
-                  min="1"
-                  max="10000"
-                  value={data.hourlyRate || ''}
-                  onChange={(e) => handleFieldChange('hourlyRate', parseInt(e.target.value) || 0)}
-                  placeholder="500"
-                  className={cn(
-                    "h-14 pl-12 bg-black/30 border-white/30 text-white placeholder:text-white/70 focus:bg-black/40 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition-all duration-300",
-                    errors.hourlyRate && touched.hourlyRate && "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                  )}
-                />
-              </div>
-              {errors.hourlyRate && touched.hourlyRate && (
-                <p className="text-sm text-red-300 flex items-center gap-1">
-                  <span className="w-1 h-1 bg-red-400 rounded-full"></span>
-                  {errors.hourlyRate}
-                </p>
-              )}
-            </div>
           </div>
         </CardContent>
       </Card>

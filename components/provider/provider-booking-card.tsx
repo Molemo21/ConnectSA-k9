@@ -227,9 +227,14 @@ export function ProviderBookingCard({
               </div>
             )}
             {showReview && booking.review && (
-              <div className="flex items-center space-x-2 text-sm">
-                <Star className="w-4 h-4 text-yellow-500" />
-                <span className="text-gray-700">{booking.review?.rating || 0}/5 stars</span>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2 text-sm">
+                  <Star className="w-4 h-4 text-yellow-500" />
+                  <span className="text-gray-700">{booking.review?.rating || 0}/5 stars</span>
+                </div>
+                {booking.review.comment && (
+                  <p className="text-xs text-gray-600 line-clamp-2">“{booking.review.comment}”</p>
+                )}
               </div>
             )}
           </div>

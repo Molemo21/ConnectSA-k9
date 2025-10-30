@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor } from "@/lib/paystack";
 import { logPayment } from "@/lib/logger";
-import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { createNotification } from "@/lib/notification-service";
 
 export const dynamic = 'force-dynamic'
-
-// Create Prisma client instance with working configuration
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: "postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=15&pool_timeout=60&connection_limit=5"
-    }
-  },
-  log: ['error'],
-  errorFormat: 'pretty'
-});
 
 // Enhanced types for better type safety
 interface TransferRecipientData {
@@ -255,6 +244,76 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         details: "This booking doesn't have an associated provider."
       }, { status: 400 });
     }
+
+    // PHASE 4: Handle CASH payment completion flow (OPTION A - Client pays -> Provider confirms)
+    if (booking.paymentMethod === 'CASH') {
+      console.log(`💰 Processing cash payment completion for booking ${bookingId}`);
+      
+      // Ensure payment exists (TypeScript guard)
+      if (!booking.payment) {
+        return NextResponse.json({
+          success: false,
+          error: "No payment found for this booking",
+          details: "This booking doesn't have an associated payment record."
+        }, { status: 400 });
+      }
+      
+      // Check that payment is in CASH_PENDING status (awaiting client payment)
+      if (booking.payment.status !== 'CASH_PENDING') {
+        return NextResponse.json({ 
+          success: false,
+          error: "Payment already processed",
+          details: `Payment status is already ${booking.payment.status}. This booking cannot be paid again.`,
+          currentStatus: booking.payment.status
+        }, { status: 400 });
+      }
+
+      // Client pays cash - Update payment to CASH_PAID, booking stays AWAITING_CONFIRMATION
+      const paymentId = booking.payment.id; // Store payment ID for transaction
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await prisma.$transaction(async (tx: any) => {
+        // Update payment status to CASH_PAID (client confirms they paid, waiting for provider)
+        const updatedPayment = await tx.payment.update({
+          where: { id: paymentId },
+          data: {
+            status: 'CASH_PAID',
+            paidAt: new Date(),
+          }
+        });
+        
+        // Keep booking in AWAITING_CONFIRMATION (waiting for provider to confirm receipt)
+        // Note: We don't change booking status here - provider will complete it
+        
+        return { updatedPayment };
+      });
+
+      console.log(`✅ Cash payment claimed by client, waiting for provider confirmation:`, {
+        bookingId: bookingId,
+        bookingStatus: booking.status,
+        paymentStatus: result.updatedPayment.status
+      });
+
+      // Create notification for provider - they need to confirm they received the cash
+      try {
+        await createNotification({
+          userId: booking.provider.userId,
+          type: 'PAYMENT_RECEIVED',
+          title: 'Payment Claimed - Confirm Cash Received',
+          content: `Client claims they paid R${booking.totalAmount.toFixed(2)} in cash for "${booking.service?.name || 'Service'}". Please confirm you received the payment to complete the booking.`
+        });
+      } catch (notificationError) {
+        console.warn('Failed to send notification:', notificationError);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Payment claim submitted! Provider will confirm receipt to complete the booking.",
+        bookingId: bookingId,
+        status: "AWAITING_CONFIRMATION"
+      });
+    }
+
+    // CONTINUE WITH EXISTING ONLINE PAYMENT LOGIC BELOW...
 
     // 5. Enhanced payment status validation with flexible business rules
     console.log(`🔍 Payment status validation for booking ${bookingId}:`, {
@@ -535,7 +594,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
               message: 'Recipient simulated successfully in test mode'
             };
           } else {
-            recipientResponse = await paystackClient.createTransferRecipient(recipientData);
+            recipientResponse = await paystackClient.createRecipient(recipientData);
           }
           
           if (!recipientResponse.status) {
@@ -580,6 +639,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       }
 
       // 13. Initiate transfer
+      if (!recipientCode) {
+        throw new Error('Recipient code is required for transfer but was not generated');
+      }
+      
       console.log(`💸 Initiating transfer to recipient ${recipientCode} for amount ${booking.payment.amount}...`);
       
       let transferResponse;
@@ -684,7 +747,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         } catch (completionError) {
           console.error(`❌ Failed to complete payment release:`, completionError);
           // Don't throw here - the transfer was successful, just status update failed
-          logPayment.warn('escrow_release', 'Transfer successful but status update failed', {
+          logPayment.warning('escrow_release', 'Transfer successful but status update failed', {
             bookingId: booking.id,
             paymentId: booking.payment.id,
             transferCode: transferResponse.data.transfer_code,
@@ -737,17 +800,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         // Notify client that payment is being released
         await createNotification({
           userId: user.id,
-          type: NotificationTemplates.PAYMENT_RELEASE_INITIATED.type,
-          title: NotificationTemplates.PAYMENT_RELEASE_INITIATED.title,
-          content: NotificationTemplates.PAYMENT_RELEASE_INITIATED.content(booking.service?.name || 'Service', booking.payment.amount)
+          type: 'PAYMENT_RELEASED',
+          title: 'Payment Released',
+          content: `Payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. The funds are being transferred to the provider.`
         });
 
         // Notify provider that payment is being released
         await createNotification({
           userId: booking.provider.userId,
-          type: NotificationTemplates.PAYMENT_RECEIVED_PROVIDER.type,
-          title: NotificationTemplates.PAYMENT_RECEIVED_PROVIDER.title,
-          content: NotificationTemplates.PAYMENT_RECEIVED_PROVIDER.content(booking.service?.name || 'Service', booking.payment.amount)
+          type: 'ESCROW_RELEASED',
+          title: 'Payment Released',
+          content: `Escrow payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. Funds should appear in your account within 1-3 business days.`
         });
       } catch (notificationError) {
         console.warn('Failed to send notifications:', notificationError);
@@ -829,7 +892,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         }
       }
 
-      logPayment.error('escrow_release', 'Payment release failed', {
+      logPayment.error('escrow_release', 'Payment release failed', transferError instanceof Error ? transferError : new Error(errorMessage), {
         bookingId: bookingId,
         paymentId: booking.payment.id,
         error: errorMessage,
@@ -849,7 +912,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
 
   } catch (error) {
     console.error(`❌ Payment release error after ${Date.now() - startTime}ms:`, error);
-    logPayment.error('escrow_release', 'Payment release API failed', {
+    logPayment.error('escrow_release', 'Payment release API failed', error instanceof Error ? error : new Error('Unknown error'), {
       bookingId: bookingId,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,

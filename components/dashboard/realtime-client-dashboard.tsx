@@ -64,7 +64,8 @@ import {
   Upload,
   Wifi,
   WifiOff,
-  Activity
+  Activity,
+  Banknote
 } from "lucide-react"
 import { useSocket, SocketEvent } from "@/lib/socket-client"
 import { toast } from "react-hot-toast"
@@ -80,6 +81,7 @@ interface Booking {
   address: string
   createdAt: string
   updatedAt: string
+  paymentMethod?: "ONLINE" | "CASH"
   service: {
     id: string
     name: string
@@ -366,6 +368,12 @@ export function RealtimeClientDashboard() {
         return "bg-blue-100 text-blue-800"
       case "RELEASED":
         return "bg-green-100 text-green-800"
+      case "CASH_PENDING":
+        return "bg-yellow-100 text-yellow-800"
+      case "CASH_RECEIVED":
+        return "bg-green-100 text-green-800"
+      case "CASH_VERIFIED":
+        return "bg-emerald-100 text-emerald-800"
       case "FAILED":
         return "bg-red-100 text-red-800"
       default:
@@ -578,6 +586,16 @@ export function RealtimeClientDashboard() {
                         </div>
                       )}
 
+                      {booking.paymentMethod === 'CASH' && booking.payment && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Banknote className="h-4 w-4 text-purple-600" />
+                          <span className="text-gray-600">Method:</span>
+                          <Badge className="bg-purple-100 text-purple-800">
+                            Cash Payment
+                          </Badge>
+                        </div>
+                      )}
+
                       {booking.payment?.payout && (
                         <div className="flex items-center gap-2 text-sm">
                           <TrendingUp className="h-4 w-4 text-gray-600" />
@@ -637,6 +655,24 @@ export function RealtimeClientDashboard() {
       </div>
 
       {/* Floating Action Button */}
+      <MobileFloatingActionButton
+        icon={<Plus className="h-6 w-6" />}
+        onClick={() => window.location.href = '/services'}
+        label="Book Service"
+      />
+
+      {/* Bottom Navigation */}
+      <MobileBottomNav
+        activeTab="dashboard"
+        onTabChange={(tab) => {
+          if (tab === 'services') window.location.href = '/services'
+          if (tab === 'profile') window.location.href = '/profile'
+        }}
+      />
+    </div>
+  )
+}
+
       <MobileFloatingActionButton
         icon={<Plus className="h-6 w-6" />}
         onClick={() => window.location.href = '/services'}

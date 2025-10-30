@@ -24,7 +24,9 @@ import {
   RefreshCw,
   AlertTriangle,
   UserCheck,
-  UserX
+  UserX,
+  FileText,
+  Mail
 } from "lucide-react"
 import { showToast } from "@/lib/toast"
 import { AdminProviderDetailsModal } from "./admin-provider-details-modal-enhanced"
@@ -636,4 +638,6 @@ export function AdminProviderManagementEnhanced({ onProviderSelect, onStatsUpdat
     />
   </>
   )
+}
+
 }

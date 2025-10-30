@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { X, Clock, MapPin, User, Package } from "lucide-react"
+import { X, Clock, MapPin, User, Package, Loader2 } from "lucide-react"
 
 export function BookingSummaryDrawer({
   data,
@@ -21,11 +22,23 @@ export function BookingSummaryDrawer({
   onConfirm: () => Promise<void>
 }) {
   const { provider, scheduled, address, notes, package: pkg } = data
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const formatDuration = (mins: number) => {
     if (mins < 60) return `${mins}m`
     const h = Math.floor(mins / 60)
     const m = mins % 60
     return m ? `${h}h ${m}m` : `${h}h`
+  }
+
+  const handleConfirm = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onConfirm()
+    } finally {
+      // Parent typically closes the drawer; re-enable just in case.
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -36,7 +49,7 @@ export function BookingSummaryDrawer({
             <Package className="w-5 h-5 text-blue-400" />
             <h3 className="text-white font-semibold">Booking Summary</h3>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white">
+          <button onClick={onClose} className="text-white/70 hover:text-white disabled:opacity-50" disabled={isSubmitting}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -85,15 +98,25 @@ export function BookingSummaryDrawer({
 
         <div className="space-y-2">
           <Button
-            onClick={onConfirm}
-            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+            onClick={handleConfirm}
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white disabled:opacity-70"
+            aria-busy={isSubmitting}
           >
-            Confirm & Book
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Booking...
+              </>
+            ) : (
+              'Confirm & Book'
+            )}
           </Button>
           <Button
             variant="outline"
             onClick={onClose}
-            className="w-full border-white/20 text-white/80 hover:bg-white/10"
+            disabled={isSubmitting}
+            className="w-full border-white/20 text-white/80 hover:bg-white/10 disabled:opacity-50"
           >
             Back to Packages
           </Button>

@@ -11,6 +11,7 @@ import { MobileStatsCard } from "@/components/ui/mobile-stats-card"
 import { MobileActionCard } from "@/components/ui/mobile-action-card"
 import { MobileTabbedSection } from "@/components/ui/mobile-tabbed-section"
 import { MobileCollapsibleSection } from "@/components/ui/mobile-collapsible-section"
+import Link from "next/link"
 import { 
   Star, 
   Calendar, 
@@ -673,6 +674,11 @@ export function MobileProviderDashboard() {
                 badge={completedBookings.length.toString()}
                 defaultOpen={false}
               >
+                <div className="mb-2">
+                  <Link href="/provider/reviews" className="text-xs text-blue-600 hover:underline">
+                    View all reviews
+                  </Link>
+                </div>
                 <div className="space-y-3">
                   {completedBookings.map((booking) => (
                     <ProviderBookingCard

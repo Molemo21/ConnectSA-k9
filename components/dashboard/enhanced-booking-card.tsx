@@ -52,6 +52,7 @@ interface Booking {
     comment?: string | null
   } | null
   createdAt: Date // Add creation date
+  paymentMethod?: "ONLINE" | "CASH" // Add payment method
 }
 
 interface ModalBooking {
@@ -85,8 +86,30 @@ interface EnhancedBookingCardProps {
   onRefresh?: (bookingId: string) => Promise<void>
 }
 
-const getTimelineSteps = (status: string, payment?: { status: string } | null) => {
-  // Debug logging for payment status
+const getTimelineSteps = (status: string, payment?: { status: string } | null, paymentMethod?: "ONLINE" | "CASH") => {
+  // CASH PAYMENT TIMELINE (Simplified - 5 steps, clearer labels)
+  if (paymentMethod === 'CASH') {
+    const steps = [
+      { id: "booked", label: "Booked", completed: true },
+      { id: "confirmed", label: "Confirmed", completed: ["CONFIRMED", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+      { id: "in_progress", label: "In Progress", completed: ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+      { id: "pay_cash", label: "Pay Cash", completed: ["AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+      { id: "completed", label: "Completed", completed: status === "COMPLETED" }
+    ]
+    
+    // Handle special cases
+    if (status === "CANCELLED") {
+      return steps.map(step => ({ ...step, completed: step.id === "booked" }))
+    }
+    
+    if (status === "DISPUTED") {
+      return steps.map(step => ({ ...step, completed: ["booked", "confirmed"].includes(step.id) }))
+    }
+    
+    return steps
+  }
+
+  // ONLINE/CARD PAYMENT TIMELINE (existing logic)
   console.log('🔍 Enhanced Timeline Debug:', {
     bookingStatus: status,
     payment: payment ? {
@@ -141,6 +164,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const [showDetails, setShowDetails] = useState(false)
   const [showActionsModal, setShowActionsModal] = useState(false)
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [isConfirmingCompletion, setIsConfirmingCompletion] = useState(false)
   const [isFlipping, setIsFlipping] = useState(false)
   const [previousStatus, setPreviousStatus] = useState(booking.status)
 
@@ -166,10 +190,10 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return hoursDiff < 24
   }
 
-  const timelineSteps = getTimelineSteps(booking.status, booking.payment)
+  const timelineSteps = getTimelineSteps(booking.status, booking.payment, booking.paymentMethod)
   
-  // Enhanced payment status checking with better logic
-  const hasPayment = booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(booking.payment.status)
+  // Enhanced payment status checking with better logic (includes cash payment statuses)
+  const hasPayment = booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'CASH_RECEIVED', 'CASH_VERIFIED'].includes(booking.payment.status)
   const isPaymentProcessing = booking.payment && ['PENDING'].includes(booking.payment.status)
   const isPaymentInEscrow = booking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)
 
@@ -297,19 +321,42 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
   const canCancel = ["PENDING", "CONFIRMED"].includes(booking.status)
   // If booking is confirmed and no completed/escrowed payment, allow pay/continue
-  const canPay = (booking.status === "CONFIRMED") && (!booking.payment || booking.payment.status === 'PENDING' || booking.payment.status === 'FAILED')
+  // For cash payments, don't show pay button - payment is handled directly with provider
+  const canPay = (booking.paymentMethod === "ONLINE") && (booking.status === "CONFIRMED") && (!booking.payment || booking.payment.status === 'PENDING' || booking.payment.status === 'FAILED')
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
-  const canConfirmCompletion = (booking.status === "AWAITING_CONFIRMATION") || 
-    (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
+  // Enhanced canConfirmCompletion logic
+  const canConfirmCompletion = () => {
+    if (booking.status === 'AWAITING_CONFIRMATION') {
+      if (booking.paymentMethod === 'ONLINE') {
+        return booking.payment && 
+               ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status);
+      }
+      
+      // For CASH: Only show button when payment is CASH_PENDING (client needs to pay)
+      // After payment, it becomes CASH_PAID - button should be hidden at that point
+      if (booking.paymentMethod === 'CASH') {
+        return booking.payment && booking.payment.status === 'CASH_PENDING';
+      }
+    }
+    
+    return false;
+  }
+
+  const shouldShowConfirmButton = canConfirmCompletion()
   
-  // Hide button if payment is already released
-  const isPaymentReleased = booking.payment && ["RELEASED", "COMPLETED"].includes(booking.payment.status)
+  // Hide button if payment is already released (for online) or received (for cash)
+  const isPaymentReleased = booking.payment && 
+    (["RELEASED", "COMPLETED"].includes(booking.payment.status) || 
+     (booking.paymentMethod === "CASH" && ["CASH_RECEIVED", "CASH_VERIFIED", "CASH_PAID"].includes(booking.payment.status)))
   const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)
   
   // Prevent payment if already processing or stuck
   const isPaymentInProgress = isProcessingPayment || isPaymentStuck()
 
   const handleConfirmCompletion = async () => {
+    if (isConfirmingCompletion) return; // Prevent duplicate clicks
+    
+    setIsConfirmingCompletion(true);
     try {
       console.log(`🚀 Attempting to confirm completion for booking ${booking.id}`);
       
@@ -324,14 +371,20 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       if (response.ok) {
         const data = await response.json()
         console.log(`✅ Success response:`, data);
-        showToast.success(data.message || "Job completion confirmed! Payment will be released to provider.")
-        onStatusChange?.(booking.id, "COMPLETED")
-        // Refresh the page to update the status
-        window.location.reload()
+        showToast.success(data.message || "Payment submitted! Provider will confirm receipt.")
+        onStatusChange?.(booking.id, "AWAITING_CONFIRMATION")
+        
+        // Refresh the booking data instead of reloading the entire page
+        if (onRefresh) {
+          await onRefresh(booking.id);
+        } else {
+          // Fallback to reload if onRefresh is not available
+          setTimeout(() => window.location.reload(), 1000);
+        }
       } else {
         const errorData = await response.json()
         console.error(`❌ Error response:`, errorData);
-        showToast.error(errorData.error || "Failed to confirm completion")
+        showToast.error(errorData.error || "Failed to submit payment")
         
         // If it's an authentication error, redirect to login
         if (response.status === 401) {
@@ -342,6 +395,8 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     } catch (error) {
       console.error("❌ Confirm completion error:", error)
       showToast.error("Network error. Please try again.")
+    } finally {
+      setIsConfirmingCompletion(false);
     }
   }
 
@@ -361,7 +416,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       ? {
           businessName: booking.provider.businessName,
           user: {
-            name: booking.provider.user.name,
+            name: booking.provider.user?.name || 'N/A',
             phone: booking.provider.user.phone ?? "",
           },
         }
@@ -492,6 +547,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             onCheckStatus={handleCheckStatus}
             allowContinue={booking.status === 'CONFIRMED'}
             bookingStatus={booking.status}
+            paymentMethod={booking.paymentMethod}
           />
           
           {/* Premium Details Grid */}
@@ -607,14 +663,24 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 </Button>
               )}
               
-              {canConfirmCompletion && !isPaymentReleased && (
+              {shouldShowConfirmButton && !isPaymentReleased && (
                 <Button 
                   size="sm" 
                   onClick={handleConfirmCompletion} 
                   className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+                  disabled={isConfirmingCompletion}
                 >
-                  <CheckCircle className="w-4 h-4 mr-1" />
-                  Confirm Completion
+                  {isConfirmingCompletion ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      {booking.paymentMethod === 'CASH' ? 'Submitting...' : 'Processing...'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      {booking.paymentMethod === 'CASH' ? 'Pay Cash' : 'Confirm Completion'}
+                    </>
+                  )}
                 </Button>
               )}
               
@@ -693,7 +759,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   <span className="text-sm font-medium text-white/60">Provider Details:</span>
                   <div className="mt-1 text-sm text-white/60">
                     <p>Name: {booking.provider?.user.name}</p>
-                    <p>Business: {booking.provider?.businessName}</p>
+                    <p>Business: {booking.provider?.businessName || 'N/A'}</p>
                     {booking.provider?.user.phone && (
                       <p>Phone: {booking.provider?.user.phone}</p>
                     )}

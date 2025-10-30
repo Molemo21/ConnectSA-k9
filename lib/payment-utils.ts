@@ -22,6 +22,15 @@ export async function processPayment(bookingId: string): Promise<PaymentResult> 
     if (response.ok) {
       const data = await response.json()
       
+      // Handle cash payments - don't redirect to payment gateway
+      if (data.isCashPayment) {
+        return {
+          success: true,
+          message: data.message || "Cash payment booking created successfully! Payment will be confirmed by provider.",
+          bookingStatus: "CONFIRMED"
+        }
+      }
+      
       // If we get an authorization URL, prepare for redirect to Paystack
       if (data.authorizationUrl) {
         return {
@@ -58,7 +67,7 @@ export async function processPayment(bookingId: string): Promise<PaymentResult> 
               }
             }
 
-            if (payment?.status === 'ESCROW' || payment?.status === 'HELD_IN_ESCROW' || payment?.status === 'RELEASED' || payment?.status === 'COMPLETED') {
+            if (payment?.status === 'ESCROW' || payment?.status === 'HELD_IN_ESCROW' || payment?.status === 'RELEASED' || payment?.status === 'COMPLETED' || payment?.status === 'CASH_RECEIVED' || payment?.status === 'CASH_VERIFIED') {
               return {
                 success: true,
                 message: "Payment already completed.",

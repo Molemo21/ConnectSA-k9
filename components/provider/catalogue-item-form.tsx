@@ -68,16 +68,20 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('/api/services');
+      console.log("🔍 Fetching provider's selected services for catalogue creation...");
+      const response = await fetch('/api/provider/services');
       if (response.ok) {
         const data = await response.json();
         setServices(data);
+        console.log(`✅ Loaded ${data.length} selected services for catalogue creation`);
+      } else {
+        throw new Error(`Failed to fetch services: ${response.status}`);
       }
     } catch (error) {
-      console.error('Failed to fetch services:', error);
+      console.error('Failed to fetch provider services:', error);
       toast({
         title: "Error",
-        description: "Failed to load services",
+        description: "Failed to load your selected services",
         variant: "destructive"
       });
     } finally {
@@ -185,7 +189,7 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
       <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
         <CardContent className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-400">Loading services...</p>
+          <p className="mt-2 text-gray-400">Loading your selected services...</p>
         </CardContent>
       </Card>
     );

@@ -841,12 +841,14 @@ export function DashboardContent() {
                                   <div>
                                     <h4 className="text-sm font-medium text-gray-300 mb-2">Provider</h4>
                                     <div className="bg-gray-800 rounded-lg p-3">
-                                      <p className="text-sm font-medium text-gray-100">{booking.provider.user.name}</p>
-                                      <p className="text-xs text-gray-400">{booking.provider.businessName}</p>
-                                      {booking.provider.user.phone && (
+                                      <p className="text-sm font-medium text-gray-100">{booking.provider.user?.name || 'N/A'}</p>
+                                      {booking.provider.businessName && (
+                                        <p className="text-xs text-gray-400">{booking.provider.businessName}</p>
+                                      )}
+                                      {booking.provider.user?.phone && (
                                         <div className="flex items-center space-x-2 mt-2">
                                           <Phone className="w-4 h-4 text-gray-400" />
-                                          <span className="text-xs text-gray-300">{booking.provider.user.phone}</span>
+                                          <span className="text-xs text-gray-300">{booking.provider.user?.phone || ''}</span>
                                         </div>
                                       )}
                                     </div>

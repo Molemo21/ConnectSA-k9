@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
-import { PrismaClient } from "@prisma/client"; // Import PrismaClient directly
+import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor, PAYMENT_CONSTANTS } from "@/lib/paystack";
 import { z } from "zod";
 import { logPayment } from "@/lib/logger";
 
-// Create Prisma client instance with working configuration
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: "postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=15&pool_timeout=60&connection_limit=5"
-    }
-  },
-  log: ['error'],
-  errorFormat: 'pretty'
-});
 
 export const dynamic = 'force-dynamic'
 
@@ -74,7 +64,7 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // Get booking with simplified query
+    // Get booking with simplified query (including paymentMethod)
     const booking = await prisma.booking.findUnique({ 
       where: { id: bookingId },
       select: {
@@ -84,6 +74,7 @@ export async function POST(request: NextRequest) {
         serviceId: true,
         status: true,
         totalAmount: true,
+        paymentMethod: true,
         client: {
           select: {
             id: true,
@@ -109,7 +100,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Validate booking status
+    // Check if this is a cash payment - if so, don't process here
+    if (booking.paymentMethod === 'CASH') {
+      // For cash payments, the payment record should already exist with CASH_PENDING status
+      const existingCashPayment = await prisma.payment.findUnique({
+        where: { bookingId: booking.id },
+      });
+
+      if (existingCashPayment && existingCashPayment.status === 'CASH_PENDING') {
+        return NextResponse.json({
+          success: true,
+          message: "This booking uses cash payment. Payment will be confirmed by the provider when service is completed.",
+          payment: {
+            id: existingCashPayment.id,
+            status: existingCashPayment.status,
+            amount: existingCashPayment.amount
+          },
+          isCashPayment: true
+        });
+      }
+
+      // If payment doesn't exist yet for cash, return error
+      return NextResponse.json({
+        error: "Cash payment record not found. Please contact support.",
+      }, { status: 400 });
+    }
+
+    // Validate booking status (only for online payments)
     if (!["CONFIRMED", "PENDING", "ACCEPTED"].includes(booking.status)) {
       return NextResponse.json({ 
         error: "Payment can only be made for confirmed, pending, or accepted bookings" 
@@ -150,12 +167,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Client email is required for payment" }, { status: 400 });
     }
 
-    // Check if payment already exists and is completed
+    // Check if payment already exists and is completed (for online payments only)
     const existingPayment = await prisma.payment.findFirst({
       where: { 
         bookingId: bookingId,
         status: {
-          in: ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED']
+          in: ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'CASH_RECEIVED', 'CASH_VERIFIED']
         }
       }
     });

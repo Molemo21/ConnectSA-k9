@@ -72,8 +72,25 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-        // Update booking status to AWAITING_CONFIRMATION (not COMPLETED)
-        const updatedBooking = await db.booking.update({
+    // For cash payments: Ensure payment status is set to CASH_PENDING so client can pay
+    let result;
+    if (booking.paymentMethod === 'CASH' && booking.payment) {
+      // Update both booking status and payment status in a transaction
+      const updatedBooking = await db.$transaction(async (tx) => {
+        // Update payment status to CASH_PENDING if not already in a valid cash payment state
+        // Only update if it's not already CASH_PENDING or CASH_PAID (if client already paid, don't override)
+        if (!['CASH_PENDING', 'CASH_PAID', 'CASH_RECEIVED'].includes(booking.payment.status)) {
+          await tx.payment.update({
+            where: { id: booking.payment.id },
+            data: { status: 'CASH_PENDING' }
+          });
+          console.log(`💰 Updated cash payment status from ${booking.payment.status} to CASH_PENDING for booking ${bookingId}`);
+        } else {
+          console.log(`💰 Cash payment status already correct: ${booking.payment.status} for booking ${bookingId}`);
+        }
+
+        // Update booking status to AWAITING_CONFIRMATION
+        const updated = await tx.booking.update({
           where: { id: bookingId },
           data: { status: "AWAITING_CONFIRMATION" },
           include: {
@@ -84,7 +101,27 @@ export async function POST(request: NextRequest) {
           }
         });
 
-    const result = { booking: updatedBooking };
+        return updated;
+      });
+
+      result = { booking: updatedBooking };
+    } else {
+      // For online payments: Just update booking status
+      const updatedBooking = await db.booking.update({
+        where: { id: bookingId },
+        data: { status: "AWAITING_CONFIRMATION" },
+        include: {
+          client: true,
+          service: true,
+          provider: true,
+          payment: true
+        }
+      });
+
+      result = { booking: updatedBooking };
+    }
+
+    // result is now defined in both branches above
 
     // Create notification for client about job completion
     try {

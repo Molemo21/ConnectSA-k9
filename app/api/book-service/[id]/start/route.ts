@@ -45,8 +45,34 @@ export async function POST(request: NextRequest) {
     if (!["CONFIRMED", "PENDING_EXECUTION"].includes(booking.status)) {
       return NextResponse.json({ error: "Booking is not ready to start" }, { status: 400 });
     }
-    if (!booking.payment) {
-      return NextResponse.json({ error: "Payment required before starting job" }, { status: 400 });
+
+    // Payment validation based on payment method
+    if (booking.paymentMethod === 'ONLINE') {
+      // For online payments, ensure payment is secured in escrow
+      if (!booking.payment || !['PENDING', 'ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)) {
+        return NextResponse.json({ 
+          error: "Payment required before starting job",
+          details: "Online bookings require secure payment in escrow first."
+        }, { status: 400 });
+      }
+    } else if (booking.paymentMethod === 'CASH') {
+      // For cash payments, we only need the payment record to exist
+      if (!booking.payment) {
+        return NextResponse.json({ 
+          error: "Payment record not found",
+          details: "Cash bookings require a payment record for tracking."
+        }, { status: 400 });
+      }
+      
+      // Cash can start even with CASH_PENDING
+      if (booking.payment.status === 'CASH_PENDING') {
+        console.log(`💰 Cash booking starting - payment will be collected after completion`);
+      }
+    } else {
+      // Legacy bookings without payment method specified
+      if (!booking.payment) {
+        return NextResponse.json({ error: "Payment required before starting job" }, { status: 400 });
+      }
     }
 
     const updated = await prisma.booking.update({
