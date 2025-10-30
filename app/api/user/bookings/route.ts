@@ -279,16 +279,3 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
-
-  } catch (error) {
-    logDashboard.error('client', 'dashboard_load', 'User bookings API: Error fetching bookings', error as Error, {
-      error_code: 'INTERNAL_ERROR',
-      metadata: { errorMessage: (error as Error).message }
-    });
-    
-    return NextResponse.json({ 
-      error: "Internal server error",
-      message: "Failed to fetch user bookings"
-    }, { status: 500 });
-  }
-}

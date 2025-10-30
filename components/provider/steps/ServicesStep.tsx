@@ -236,36 +236,3 @@ export function ServicesStep({
   )
 }
 
-            })}
-          </div>
-
-      {/* No Results */}
-          {filteredServices.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-400">
-            No services found matching "{searchTerm}"
-          </p>
-            </div>
-          )}
-
-      {/* Navigation */}
-      <div className="flex justify-between pt-6">
-          <Button 
-            variant="outline" 
-            onClick={onBack} 
-          disabled={isSubmitting}
-          className="border-white/20 text-white hover:bg-white/10"
-          >
-            Back
-          </Button>
-        <Button 
-          onClick={onNext}
-          disabled={!canProceed || isSubmitting}
-          className="bg-primary hover:bg-primary/90"
-        >
-          {isSubmitting ? "Saving..." : "Next"}
-        </Button>
-      </div>
-    </div>
-  )
-}

@@ -240,14 +240,3 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
-      console.error("❌ Error stack:", error.stack)
-    }
-
-    console.error("❌ Returning 500 error response")
-    return NextResponse.json({
-      error: "Internal server error",
-      message: "Failed to submit provider onboarding",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 })
-  }
-}
