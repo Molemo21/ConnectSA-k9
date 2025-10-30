@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Write build artifacts to a fresh directory to avoid stale OneDrive locks
-  distDir: '.next-dev',
+  // Use .next-dev for local development to avoid OneDrive locks, .next for production
+  distDir: process.env.VERCEL ? '.next' : '.next-dev',
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { SERVICES } from '@/config/services';
-import { prisma } from '@/lib/db-utils';
+import { db } from '@/lib/db-utils';
 
 // Helper function to validate service exists and is a cleaning service
 export async function validateCleaningService(serviceId: string) {
-  const service = await prisma.service.findUnique({
+  const service = await db.service.findUnique({
     where: { id: serviceId },
     select: {
       id: true,
