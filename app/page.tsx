@@ -98,6 +98,8 @@ export default function HomePage() {
     // Footer links
     footerServices: false,
     footerBookService: false,
+    testProvider: false,
+    testProviderDashboard: false,
     footerBecomeProvider: false,
     footerAbout: false,
     footerDashboard: false,
@@ -115,7 +117,9 @@ export default function HomePage() {
     linkedin: false,
     // Header links
     headerServices: false,
-    headerSignIn: false
+    headerSignIn: false,
+    // Test button
+    testProvider: false
   })
   const [showGlobalLoader] = useState(false)
 
@@ -256,6 +260,28 @@ export default function HomePage() {
               isUnderConstruction={isUnderConstruction}
               user={user}
             />
+
+            {/* Test Buttons - In Hero Section */}
+            <div className="absolute bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+              <LoadingLink
+                href="/test-provider-selection"
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-4 py-2 rounded-lg shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
+                onClick={() => handleButtonClick('testProvider', () => {})}
+              >
+                <span>🧪</span>
+                <span className="hidden sm:inline">Test Provider Cards</span>
+                <span className="sm:hidden">Test Cards</span>
+              </LoadingLink>
+              <LoadingLink
+                href="/test-provider-dashboard"
+                className="bg-orange-500 hover:bg-orange-600 text-black font-semibold px-4 py-2 rounded-lg shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
+                onClick={() => handleButtonClick('testProviderDashboard', () => {})}
+              >
+                <span>🧪</span>
+                <span className="hidden sm:inline">Test Provider Dashboard</span>
+                <span className="sm:hidden">Test Dashboard</span>
+              </LoadingLink>
+            </div>
           </div>
       </div>
 

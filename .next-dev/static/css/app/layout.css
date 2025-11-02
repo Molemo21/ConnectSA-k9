@@ -1,6 +1,6 @@
-/*!*************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[12].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[12].use[3]!./app/globals.css ***!
-  \*************************************************************************************************************************************************************************************************************************************************************/
+/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/.pnpm/next@14.2.32_@babel+core@7._f37a6f559989085e15f473fa19285327/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[12].use[2]!./node_modules/.pnpm/next@14.2.32_@babel+core@7._f37a6f559989085e15f473fa19285327/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[12].use[3]!./app/globals.css ***!
+  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
 *, ::before, ::after {
   --tw-border-spacing-x: 0;
   --tw-border-spacing-y: 0;
@@ -1385,8 +1385,14 @@ video {
 .max-h-\[calc\(90vh-200px\)\] {
   max-height: calc(90vh - 200px);
 }
+.max-h-full {
+  max-height: 100%;
+}
 .max-h-screen {
   max-height: 100vh;
+}
+.min-h-\[100px\] {
+  min-height: 100px;
 }
 .min-h-\[140px\] {
   min-height: 140px;
@@ -1830,6 +1836,12 @@ video {
 .cursor-pointer {
   cursor: pointer;
 }
+.cursor-zoom-in {
+  cursor: zoom-in;
+}
+.cursor-zoom-out {
+  cursor: zoom-out;
+}
 .touch-none {
   touch-action: none;
 }
@@ -2122,6 +2134,10 @@ video {
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
 }
+.rounded-t-lg {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
 .rounded-tl-sm {
   border-top-left-radius: calc(var(--radius) - 4px);
 }
@@ -2408,6 +2424,13 @@ video {
 .border-purple-400\/30 {
   border-color: rgb(192 132 252 / 0.3);
 }
+.border-purple-500 {
+  --tw-border-opacity: 1;
+  border-color: rgb(168 85 247 / var(--tw-border-opacity, 1));
+}
+.border-purple-500\/30 {
+  border-color: rgb(168 85 247 / 0.3);
+}
 .border-purple-500\/50 {
   border-color: rgb(168 85 247 / 0.5);
 }
@@ -2560,6 +2583,9 @@ video {
 .bg-black {
   --tw-bg-opacity: 1;
   background-color: rgb(0 0 0 / var(--tw-bg-opacity, 1));
+}
+.bg-black\/0 {
+  background-color: rgb(0 0 0 / 0);
 }
 .bg-black\/10 {
   background-color: rgb(0 0 0 / 0.1);
@@ -2802,6 +2828,9 @@ video {
 .bg-green-500\/20 {
   background-color: rgb(34 197 94 / 0.2);
 }
+.bg-green-500\/90 {
+  background-color: rgb(34 197 94 / 0.9);
+}
 .bg-green-600 {
   --tw-bg-opacity: 1;
   background-color: rgb(22 163 74 / var(--tw-bg-opacity, 1));
@@ -2901,6 +2930,9 @@ video {
 .bg-purple-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(168 85 247 / var(--tw-bg-opacity, 1));
+}
+.bg-purple-500\/0 {
+  background-color: rgb(168 85 247 / 0);
 }
 .bg-purple-500\/10 {
   background-color: rgb(168 85 247 / 0.1);
@@ -3373,9 +3405,17 @@ video {
   --tw-gradient-to: rgb(234 179 8 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
+.via-black {
+  --tw-gradient-to: rgb(0 0 0 / 0)  var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), #000 var(--tw-gradient-via-position), var(--tw-gradient-to);
+}
 .via-black\/20 {
   --tw-gradient-to: rgb(0 0 0 / 0)  var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), rgb(0 0 0 / 0.2) var(--tw-gradient-via-position), var(--tw-gradient-to);
+}
+.via-black\/40 {
+  --tw-gradient-to: rgb(0 0 0 / 0)  var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), rgb(0 0 0 / 0.4) var(--tw-gradient-via-position), var(--tw-gradient-to);
 }
 .via-black\/50 {
   --tw-gradient-to: rgb(0 0 0 / 0)  var(--tw-gradient-to-position);
@@ -3691,6 +3731,10 @@ video {
 }
 .fill-yellow-500 {
   fill: #eab308;
+}
+.object-contain {
+  -o-object-fit: contain;
+     object-fit: contain;
 }
 .object-cover {
   -o-object-fit: cover;
@@ -4367,6 +4411,9 @@ video {
   --tw-text-opacity: 1;
   color: rgb(254 240 138 / var(--tw-text-opacity, 1));
 }
+.text-yellow-200\/80 {
+  color: rgb(254 240 138 / 0.8);
+}
 .text-yellow-300 {
   --tw-text-opacity: 1;
   color: rgb(253 224 71 / var(--tw-text-opacity, 1));
@@ -4398,6 +4445,9 @@ video {
 .underline {
   text-decoration-line: underline;
 }
+.decoration-purple-400\/50 {
+  text-decoration-color: rgb(192 132 252 / 0.5);
+}
 .underline-offset-2 {
   text-underline-offset: 2px;
 }
@@ -4411,6 +4461,12 @@ video {
 .placeholder-gray-400::placeholder {
   --tw-placeholder-opacity: 1;
   color: rgb(156 163 175 / var(--tw-placeholder-opacity, 1));
+}
+.placeholder-white\/40::-moz-placeholder {
+  color: rgb(255 255 255 / 0.4);
+}
+.placeholder-white\/40::placeholder {
+  color: rgb(255 255 255 / 0.4);
 }
 .opacity-0 {
   opacity: 0;
@@ -4558,6 +4614,9 @@ video {
 }
 .ring-purple-500\/30 {
   --tw-ring-color: rgb(168 85 247 / 0.3);
+}
+.ring-purple-500\/50 {
+  --tw-ring-color: rgb(168 85 247 / 0.5);
 }
 .ring-ring {
   --tw-ring-color: hsl(var(--ring));
@@ -5457,6 +5516,24 @@ video {
   background: #94a3b8;
 }
 
+/* Hide scrollbar utility */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Scrollbar hide class (alternative naming) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Custom scrollbar for dark backgrounds */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
@@ -6088,6 +6165,9 @@ html {
   --tw-border-opacity: 1;
   border-color: rgb(192 132 252 / var(--tw-border-opacity, 1));
 }
+.hover\:border-purple-400\/50:hover {
+  border-color: rgb(192 132 252 / 0.5);
+}
 .hover\:border-red-400:hover {
   --tw-border-opacity: 1;
   border-color: rgb(248 113 113 / var(--tw-border-opacity, 1));
@@ -6143,6 +6223,9 @@ html {
 }
 .hover\:bg-black\/60:hover {
   background-color: rgb(0 0 0 / 0.6);
+}
+.hover\:bg-black\/70:hover {
+  background-color: rgb(0 0 0 / 0.7);
 }
 .hover\:bg-black\/80:hover {
   background-color: rgb(0 0 0 / 0.8);
@@ -6298,6 +6381,10 @@ html {
 }
 .hover\:bg-orange-500\/30:hover {
   background-color: rgb(249 115 22 / 0.3);
+}
+.hover\:bg-orange-600:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(234 88 12 / var(--tw-bg-opacity, 1));
 }
 .hover\:bg-orange-700:hover {
   --tw-bg-opacity: 1;
@@ -6618,6 +6705,9 @@ html {
 .hover\:underline:hover {
   text-decoration-line: underline;
 }
+.hover\:decoration-purple-300:hover {
+  text-decoration-color: #d8b4fe;
+}
 .hover\:underline-offset-4:hover {
   text-underline-offset: 4px;
 }
@@ -6876,6 +6966,14 @@ html {
 .disabled\:cursor-not-allowed:disabled {
   cursor: not-allowed;
 }
+.disabled\:bg-gray-600:disabled {
+  --tw-bg-opacity: 1;
+  background-color: rgb(75 85 99 / var(--tw-bg-opacity, 1));
+}
+.disabled\:text-gray-400:disabled {
+  --tw-text-opacity: 1;
+  color: rgb(156 163 175 / var(--tw-text-opacity, 1));
+}
 .disabled\:opacity-50:disabled {
   opacity: 0.5;
 }
@@ -6963,6 +7061,11 @@ html {
   --tw-scale-y: 1.1;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
+.group\/image:hover .group-hover\/image\:scale-110 {
+  --tw-scale-x: 1.1;
+  --tw-scale-y: 1.1;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
 .group\/item:hover .group-hover\/item\:scale-110 {
   --tw-scale-x: 1.1;
   --tw-scale-y: 1.1;
@@ -6999,6 +7102,15 @@ html {
 }
 .group:hover .group-hover\:\!bg-blue-500\/20 {
   background-color: rgb(59 130 246 / 0.2) !important;
+}
+.group:hover .group-hover\:bg-black\/20 {
+  background-color: rgb(0 0 0 / 0.2);
+}
+.group:hover .group-hover\:bg-black\/30 {
+  background-color: rgb(0 0 0 / 0.3);
+}
+.group:hover .group-hover\:bg-purple-500\/10 {
+  background-color: rgb(168 85 247 / 0.1);
 }
 .group:hover .group-hover\:bg-white\/50 {
   background-color: rgb(255 255 255 / 0.5);
@@ -7276,6 +7388,9 @@ html {
 .data-\[panel-group-direction\=vertical\]\:flex-col[data-panel-group-direction="vertical"] {
   flex-direction: column;
 }
+.data-\[state\=active\]\:border-purple-500\/30[data-state="active"] {
+  border-color: rgb(168 85 247 / 0.3);
+}
 .data-\[active\]\:bg-accent\/50[data-active] {
   background-color: hsl(var(--accent) / 0.5);
 }
@@ -7285,9 +7400,18 @@ html {
 .data-\[state\=active\]\:bg-background[data-state="active"] {
   background-color: hsl(var(--background));
 }
+.data-\[state\=active\]\:bg-blue-500\/20[data-state="active"] {
+  background-color: rgb(59 130 246 / 0.2);
+}
 .data-\[state\=active\]\:bg-blue-600[data-state="active"] {
   --tw-bg-opacity: 1;
   background-color: rgb(37 99 235 / var(--tw-bg-opacity, 1));
+}
+.data-\[state\=active\]\:bg-green-500\/20[data-state="active"] {
+  background-color: rgb(34 197 94 / 0.2);
+}
+.data-\[state\=active\]\:bg-purple-500\/20[data-state="active"] {
+  background-color: rgb(168 85 247 / 0.2);
 }
 .data-\[state\=checked\]\:bg-primary[data-state="checked"] {
   background-color: hsl(var(--primary));
@@ -7313,8 +7437,20 @@ html {
 .data-\[selected\=true\]\:text-accent-foreground[data-selected="true"] {
   color: hsl(var(--accent-foreground));
 }
+.data-\[state\=active\]\:text-blue-300[data-state="active"] {
+  --tw-text-opacity: 1;
+  color: rgb(147 197 253 / var(--tw-text-opacity, 1));
+}
 .data-\[state\=active\]\:text-foreground[data-state="active"] {
   color: hsl(var(--foreground));
+}
+.data-\[state\=active\]\:text-green-300[data-state="active"] {
+  --tw-text-opacity: 1;
+  color: rgb(134 239 172 / var(--tw-text-opacity, 1));
+}
+.data-\[state\=active\]\:text-purple-300[data-state="active"] {
+  --tw-text-opacity: 1;
+  color: rgb(216 180 254 / var(--tw-text-opacity, 1));
 }
 .data-\[state\=active\]\:text-white[data-state="active"] {
   --tw-text-opacity: 1;
@@ -7937,6 +8073,14 @@ html {
     width: auto;
   }
 
+  .sm\:max-w-4xl {
+    max-width: 56rem;
+  }
+
+  .sm\:max-w-lg {
+    max-width: 32rem;
+  }
+
   .sm\:max-w-md {
     max-width: 28rem;
   }
@@ -8379,6 +8523,10 @@ html {
 
   .md\:h-6 {
     height: 1.5rem;
+  }
+
+  .md\:h-64 {
+    height: 16rem;
   }
 
   .md\:h-8 {
@@ -9117,9 +9265,9 @@ html {
 .\[\&_tr\]\:border-b tr {
   border-bottom-width: 1px;
 }
-/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[2].use[1]!./node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[14].oneOf[2].use[2]!./node_modules/next/font/google/target.css?{"path":"app\\layout.tsx","import":"Inter","arguments":[{"subsets":["latin"]}],"variableName":"inter"} ***!
-  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/*!*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/.pnpm/next@14.2.32_@babel+core@7._f37a6f559989085e15f473fa19285327/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[2].use[1]!./node_modules/.pnpm/next@14.2.32_@babel+core@7._f37a6f559989085e15f473fa19285327/node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[14].oneOf[2].use[2]!./node_modules/.pnpm/next@14.2.32_@babel+core@7._f37a6f559989085e15f473fa19285327/node_modules/next/font/google/target.css?{"path":"app\\layout.tsx","import":"Inter","arguments":[{"subsets":["latin"]}],"variableName":"inter"} ***!
+  \*****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
 /* cyrillic-ext */
 @font-face {
   font-family: '__Inter_f367f3';

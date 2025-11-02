@@ -47,7 +47,9 @@ export async function POST(request: NextRequest) {
     console.log('Using service ID:', actualServiceId);
 
     // Find available providers for the service
-    const providers = await db.provider.findMany({
+    let providers;
+    try {
+      providers = await db.provider.findMany({
       where: {
         services: {
           some: { serviceId: actualServiceId },
@@ -60,6 +62,8 @@ export async function POST(request: NextRequest) {
           select: {
             name: true,
             email: true,
+            phone: true,
+            avatar: true,
           }
         },
         services: {
@@ -70,12 +74,36 @@ export async function POST(request: NextRequest) {
                 name: true,
                 description: true,
                 basePrice: true,
+                category: {
+                  select: {
+                    name: true
+                  }
+                }
               }
             }
           }
         },
-        // Note: Removed bookings query to avoid Prisma enum validation issues
-        // Availability will be checked separately using a raw query
+        catalogueItems: {
+          where: {
+            serviceId: actualServiceId,
+            isActive: true
+          },
+          include: {
+            service: {
+              select: {
+                name: true,
+                category: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            },
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
         _count: {
           select: {
             bookings: {
@@ -85,6 +113,11 @@ export async function POST(request: NextRequest) {
         }
       },
     });
+      console.log(`✅ Found ${providers.length} providers from database query`);
+    } catch (queryError) {
+      console.error("❌ Database query error:", queryError);
+      throw queryError;
+    }
 
     // Filter out providers who are busy on the requested date/time
     // Use raw query to avoid Prisma enum validation issues
@@ -115,37 +148,75 @@ export async function POST(request: NextRequest) {
 
     // Calculate provider ratings and stats
     const providersWithStats = availableProviders.map(provider => {
-      // Get reviews from bookings using raw query to avoid Prisma enum issues
-      const allReviews = []; // Simplified for now - reviews will be empty
-      
-      const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
-      const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
-      
-      const providerData = {
-        id: provider.id,
-        businessName: provider.businessName,
-        status: provider.status,
-        available: provider.available,
-        location: provider.location,
-        hourlyRate: provider.hourlyRate || 0,
-        user: provider.user,
-        service: provider.services[0]?.service,
-        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
-        totalReviews: allReviews.length,
-        completedJobs: provider._count.bookings,
-        recentReviews: allReviews.slice(0, 3), // Show only 3 recent reviews
-        isAvailable: true,
-      };
+      try {
+        // Get reviews from bookings using raw query to avoid Prisma enum issues
+        const allReviews = []; // Simplified for now - reviews will be empty
+        
+        const totalRating = allReviews.length > 0 ? allReviews.reduce((sum, review) => sum + review.rating, 0) : 0;
+        const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
+        
+        // Format catalogue items - reviews will be fetched separately if needed
+        const catalogueItems = (provider.catalogueItems || []).map(item => {
+          try {
+            return {
+              id: item.id,
+              title: item.title,
+              price: item.price,
+              currency: item.currency || 'ZAR',
+              durationMins: item.durationMins,
+              images: item.images || [],
+              serviceId: item.serviceId,
+              service: {
+                name: item.service?.name || '',
+                category: {
+                  name: item.service?.category?.name || ''
+                }
+              },
+              reviews: [] // Reviews will be empty for now - can be enhanced later to fetch from bookings
+            }
+          } catch (itemError) {
+            console.error(`Error formatting catalogue item ${item.id}:`, itemError)
+            return null
+          }
+        }).filter((item): item is NonNullable<typeof item> => item !== null)
 
-      console.log('📊 Provider data prepared:', { 
-        id: providerData.id, 
-        businessName: providerData.businessName,
-        serviceName: providerData.service?.name,
-        hourlyRate: providerData.hourlyRate
-      });
+        const providerData = {
+          id: provider.id,
+          businessName: provider.businessName,
+          description: provider.description || '',
+          experience: provider.experience || 0,
+          status: provider.status,
+          available: provider.available,
+          location: provider.location,
+          hourlyRate: provider.hourlyRate || 0,
+          user: provider.user,
+          service: {
+            name: provider.services[0]?.service?.name || '',
+            description: provider.services[0]?.service?.description || '',
+            category: provider.services[0]?.service?.category?.name || ''
+          },
+          averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+          totalReviews: allReviews.length,
+          completedJobs: provider._count?.bookings || 0,
+          recentReviews: allReviews.slice(0, 3), // Show only 3 recent reviews
+          isAvailable: true,
+          catalogueItems: catalogueItems
+        };
 
-      return providerData;
-    });
+        console.log('📊 Provider data prepared:', { 
+          id: providerData.id, 
+          businessName: providerData.businessName,
+          serviceName: providerData.service?.name,
+          hourlyRate: providerData.hourlyRate,
+          catalogueItemsCount: catalogueItems.length
+        });
+
+        return providerData;
+      } catch (providerError) {
+        console.error(`Error processing provider ${provider.id}:`, providerError);
+        return null;
+      }
+    }).filter((provider): provider is NonNullable<typeof provider> => provider !== null);
 
     // Sort by rating (highest first), then by completed jobs
     providersWithStats.sort((a, b) => {
@@ -178,12 +249,15 @@ export async function POST(request: NextRequest) {
     console.error("Provider discovery error:", {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      error: error
+      error: error,
+      name: error instanceof Error ? error.name : 'Unknown',
+      cause: error instanceof Error ? error.cause : undefined
     });
     
     return NextResponse.json({ 
       error: "Internal server error",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      type: error instanceof Error ? error.name : 'Unknown'
     }, { status: 500 });
   }
 } 

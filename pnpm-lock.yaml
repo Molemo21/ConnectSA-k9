@@ -11,8 +11,11 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.3.2
         version: 3.10.0(react-hook-form@7.62.0(react@18.3.1))
+      '@next/swc-win32-x64-msvc':
+        specifier: 14.2.32
+        version: 14.2.32
       '@prisma/client':
-        specifier: ^6.17.1
+        specifier: ^6.17.0
         version: 6.17.1(prisma@6.17.1(typescript@5.9.2))(typescript@5.9.2)
       '@radix-ui/react-accordion':
         specifier: ^1.1.1
@@ -119,9 +122,6 @@ importers:
       cmdk:
         specifier: ^0.2.0
         version: 0.2.1(@types/react@18.3.24)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      crypto:
-        specifier: ^1.0.1
-        version: 1.0.1
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
@@ -155,9 +155,6 @@ importers:
       pino:
         specifier: ^9.11.0
         version: 9.11.0
-      prisma:
-        specifier: ^6.17.1
-        version: 6.17.1(typescript@5.9.2)
       react:
         specifier: ^18
         version: 18.3.1
@@ -258,6 +255,9 @@ importers:
       postcss:
         specifier: ^8
         version: 8.5.6
+      prisma:
+        specifier: ^6.17.0
+        version: 6.17.1(typescript@5.9.2)
       supertest:
         specifier: ^6.3.3
         version: 6.3.4
@@ -2341,10 +2341,6 @@ packages:
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
-
-  crypto@1.0.1:
-    resolution: {integrity: sha512-VxBKmeNcqQdiUQUW2Tzq0t377b54N2bMtXO/qiLa+6eRRmmC4qT3D4OnTGoT/U6O9aklQ/jTwbOtRMTTY8G0Ig==}
-    deprecated: This package is no longer supported. It's now a built-in Node module. If you've depended on crypto, you should switch to the one that's built-in.
 
   css.escape@1.5.1:
     resolution: {integrity: sha512-YUifsXXuknHlUsmlgyY0PKzgPOr7/FjCePfHNt0jxm83wHZi44VDMQ7/fGNkjY3/jV1MC+1CmZbaHzugyeRtpg==}
@@ -5541,8 +5537,7 @@ snapshots:
   '@next/swc-win32-ia32-msvc@14.2.32':
     optional: true
 
-  '@next/swc-win32-x64-msvc@14.2.32':
-    optional: true
+  '@next/swc-win32-x64-msvc@14.2.32': {}
 
   '@noble/hashes@1.8.0': {}
 
@@ -7237,8 +7232,6 @@ snapshots:
       path-key: 3.1.1
       shebang-command: 2.0.0
       which: 2.0.2
-
-  crypto@1.0.1: {}
 
   css.escape@1.5.1: {}
 

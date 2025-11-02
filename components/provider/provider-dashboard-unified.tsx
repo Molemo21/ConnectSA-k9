@@ -33,6 +33,21 @@ import { MobileTabbedSection } from "@/components/ui/mobile-tabbed-section"
 import { MobileCollapsibleSection } from "@/components/ui/mobile-collapsible-section"
 
 import { SetupProgressBar } from "@/components/provider/setup-progress-bar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Image from "next/image"
 
 
 import { 
@@ -145,7 +160,9 @@ import {
 
   Briefcase as JobIcon,
 
-  Package
+  Package,
+
+  ZoomIn
 
 } from "lucide-react"
 
@@ -168,6 +185,7 @@ import Link from "next/link"
 import { useCataloguePricing } from "@/lib/feature-flags"
 
 import { ProviderCatalogueDashboard } from "@/components/provider/provider-catalogue-dashboard"
+import { ProfileManagementSection } from "@/components/provider/profile-management-section"
 
 
 
@@ -2398,7 +2416,14 @@ function ProviderMainContent({
 
         )
 
-
+      case "profile":
+        return (
+          <ProfileManagementSection 
+            user={user}
+            dashboardState={dashboardState}
+            refreshData={refreshData}
+          />
+        )
 
       default:
 
@@ -3614,6 +3639,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     }))
 
   }, [])
+
 
 
 
