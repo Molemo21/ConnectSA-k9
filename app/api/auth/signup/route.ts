@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
           },
         })
         // Send verification email
-        const baseUrl = request.nextUrl.origin || "http://localhost:3000"
+        const baseUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
         const verificationLink = `${baseUrl}/verify-email?token=${token}`
         await sendVerificationEmail(
           validatedData.email,
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Verification token created successfully for new user ${user.email}`)
 
     // Send verification email
-    const baseUrl = request.nextUrl.origin || "http://localhost:3000"
+    const baseUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     
     // Check if there's a booking draft to preserve across devices
     const draftId = request.headers.get('x-draft-id') || 

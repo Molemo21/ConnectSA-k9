@@ -1,0 +1,73 @@
+{
+  "info": {
+    "name": "ConnectSA - Notification E2E",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "E2E requests to exercise booking/payment flows and verify in-app + email notifications."
+  },
+  "item": [
+    {
+      "name": "Test Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{baseUrl}}/api/test-email", "host": ["{{baseUrl}}"], "path": ["api","test-email"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"to\": \"{{testEmailTo}}\",\n  \"subject\": \"E2E Notification Test\",\n  \"message\": \"This is a test.\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Accept Booking",
+      "request": {
+        "method": "POST",
+        "url": { "raw": "{{baseUrl}}/api/book-service/{{bookingId}}/accept", "host": ["{{baseUrl}}"], "path": ["api","book-service","{{bookingId}}","accept"] }
+      }
+    },
+    {
+      "name": "Start Job",
+      "request": {
+        "method": "POST",
+        "url": { "raw": "{{baseUrl}}/api/book-service/{{bookingId}}/start", "host": ["{{baseUrl}}"], "path": ["api","book-service","{{bookingId}}","start"] }
+      }
+    },
+    {
+      "name": "Complete Job",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"photos\": [],\n  \"notes\": \"done\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/book-service/{{bookingId}}/complete", "host": ["{{baseUrl}}"], "path": ["api","book-service","{{bookingId}}","complete"] }
+      }
+    },
+    {
+      "name": "Verify Payment",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"reference\": \"{{paystackRef}}\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/payment/verify", "host": ["{{baseUrl}}"], "path": ["api","payment","verify"] }
+      }
+    },
+    {
+      "name": "Release Payment",
+      "request": {
+        "method": "POST",
+        "url": { "raw": "{{baseUrl}}/api/book-service/{{bookingId}}/release-payment", "host": ["{{baseUrl}}"], "path": ["api","book-service","{{bookingId}}","release-payment"] }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "testEmailTo", "value": "you@example.com" },
+    { "key": "bookingId", "value": "REPLACE_WITH_BOOKING_ID" },
+    { "key": "paystackRef", "value": "REPLACE_WITH_PAYSTACK_REF" }
+  ]
+}
+
+
+
+
+

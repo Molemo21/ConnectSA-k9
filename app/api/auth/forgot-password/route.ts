@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         // Test email service
         try {
           const { sendPasswordResetEmail } = await import('@/lib/email');
-          const baseUrl = request.nextUrl.origin || 'http://localhost:3000';
+          const baseUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
           const resetLink = `${baseUrl}/reset-password?token=${token}`;
           
           const emailResult = await sendPasswordResetEmail(

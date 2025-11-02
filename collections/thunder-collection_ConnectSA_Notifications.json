@@ -1,0 +1,48 @@
+{
+  "client": "Thunder Client",
+  "collectionName": "ConnectSA - Notifications",
+  "dateExported": "2025-10-30",
+  "version": "1.1",
+  "folders": [],
+  "requests": [
+    {
+      "_id": "test-email",
+      "colId": "root",
+      "containerId": "",
+      "name": "Test Email",
+      "url": "{{baseUrl}}/api/test-email",
+      "method": "POST",
+      "sortNum": 100,
+      "created": "2025-10-30T00:00:00.000Z",
+      "modified": "2025-10-30T00:00:00.000Z",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "type": "json",
+        "raw": {
+          "to": "{{testEmailTo}}",
+          "subject": "E2E Notification Test",
+          "message": "This is a test."
+        }
+      }
+    }
+  ],
+  "settings": {
+    "options": {}
+  },
+  "env": [
+    {
+      "name": "local",
+      "variables": [
+        { "name": "baseUrl", "value": "http://localhost:3000" },
+        { "name": "testEmailTo", "value": "you@example.com" }
+      ]
+    }
+  ]
+}
+
+
+
+
+
