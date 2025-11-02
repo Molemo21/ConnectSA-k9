@@ -162,7 +162,9 @@ import {
 
   Package,
 
-  ZoomIn
+  ZoomIn,
+
+  FileText
 
 } from "lucide-react"
 
@@ -571,61 +573,6 @@ function ProviderDesktopSidebar({
 
 
 
-      {/* Sidebar Footer - ProLiink Logo Colors */}
-
-      <div className={`p-4 border-t border-gray-300/20 transition-all duration-300 ${isCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100 h-auto'}`}>
-
-        <div className="bg-blue-400/10 backdrop-blur-sm rounded-lg p-3 border border-blue-400/20">
-
-          <div className="flex items-center space-x-2 mb-2">
-
-            <Bell className="w-4 h-4 text-blue-400" />
-
-            <span className="text-sm font-medium text-white">Quick Actions</span>
-
-          </div>
-
-          <div className="space-y-2">
-
-            <Button 
-
-              size="sm" 
-
-              className="w-full justify-start bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 transition-all duration-200 hover:scale-[1.02] min-h-[44px] text-white"
-
-              onClick={() => window.location.href = '/provider/profile'}
-
-            >
-
-              <Plus className="w-4 h-4 mr-2" />
-
-              Update Profile
-
-            </Button>
-
-            <Button 
-
-              size="sm" 
-
-              variant="outline" 
-
-              className="w-full justify-start border-blue-400/30 text-gray-300 hover:bg-blue-400/10 hover:text-white hover:border-blue-400/50 transition-all duration-200 hover:scale-[1.02] min-h-[44px]"
-
-              onClick={() => window.location.href = '/provider/bank-details'}
-
-            >
-
-              <CreditCard className="w-4 h-4 mr-2" />
-
-              Bank Details
-
-            </Button>
-
-          </div>
-
-        </div>
-
-      </div>
 
     </div>
 
@@ -2423,6 +2370,131 @@ function ProviderMainContent({
             dashboardState={dashboardState}
             refreshData={refreshData}
           />
+        )
+
+      case "support":
+        return (
+          <div className="space-y-6">
+            <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5 text-blue-400" />
+                  Support Center
+                </CardTitle>
+                <CardDescription className="text-gray-300">
+                  Get help and support for your provider account
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Contact Information */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="bg-black/60 backdrop-blur-sm border-gray-300/20">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full flex items-center justify-center">
+                            <Mail className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-semibold text-white mb-1">Email Support</h4>
+                            <p className="text-white/80">support@proliinkconnect.co.za</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-black/60 backdrop-blur-sm border-gray-300/20">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                            <PhoneIcon className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-semibold text-white mb-1">Phone Support</h4>
+                            <p className="text-white/80">+27 11 123 4567</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Help Resources */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-4">Help Resources</h3>
+                    <div className="space-y-3">
+                      <Card className="bg-black/60 backdrop-blur-sm border-gray-300/20 hover:bg-black/80 transition-colors cursor-pointer">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <FileText className="w-5 h-5 text-blue-400" />
+                              <div>
+                                <h4 className="text-white font-medium">Provider Guide</h4>
+                                <p className="text-gray-400 text-sm">Learn how to manage your provider account</p>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-black/60 backdrop-blur-sm border-gray-300/20 hover:bg-black/80 transition-colors cursor-pointer">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <MessageSquare className="w-5 h-5 text-green-400" />
+                              <div>
+                                <h4 className="text-white font-medium">FAQs</h4>
+                                <p className="text-gray-400 text-sm">Frequently asked questions</p>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-black/60 backdrop-blur-sm border-gray-300/20 hover:bg-black/80 transition-colors cursor-pointer">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Shield className="w-5 h-5 text-purple-400" />
+                              <div>
+                                <h4 className="text-white font-medium">Account Security</h4>
+                                <p className="text-gray-400 text-sm">Tips to keep your account secure</p>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div>
+                    <h3 className="text-xl font-semibold text-white mb-4">Quick Actions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start border-blue-400/30 text-gray-300 hover:bg-blue-400/10 hover:text-white hover:border-blue-400/50"
+                        onClick={() => window.open('mailto:support@proliinkconnect.co.za', '_blank')}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Send Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start border-green-400/30 text-gray-300 hover:bg-green-400/10 hover:text-white hover:border-green-400/50"
+                        onClick={() => window.open('tel:+27111234567', '_blank')}
+                      >
+                        <PhoneIcon className="w-4 h-4 mr-2" />
+                        Call Support
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )
 
       default:

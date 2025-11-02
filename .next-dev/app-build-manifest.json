@@ -11,20 +11,25 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/book-service/page": [
+    "/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/book-service/page.js"
+      "static/chunks/app/dashboard/page.js"
     ],
-    "/test-provider-selection/page": [
+    "/dashboard/loading": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/test-provider-selection/page.js"
+      "static/chunks/app/dashboard/loading.js"
     ],
-    "/test-provider-dashboard/page": [
+    "/provider/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/test-provider-dashboard/page.js"
+      "static/chunks/app/provider/dashboard/page.js"
+    ],
+    "/provider/dashboard/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/provider/dashboard/loading.js"
     ]
   }
 }

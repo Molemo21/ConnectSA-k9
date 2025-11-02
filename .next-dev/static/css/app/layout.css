@@ -6154,6 +6154,9 @@ html {
   --tw-border-opacity: 1;
   border-color: rgb(134 239 172 / var(--tw-border-opacity, 1));
 }
+.hover\:border-green-400\/50:hover {
+  border-color: rgb(74 222 128 / 0.5);
+}
 .hover\:border-primary\/50:hover {
   border-color: hsl(var(--primary) / 0.5);
 }
@@ -6339,6 +6342,9 @@ html {
 .hover\:bg-green-100:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(220 252 231 / var(--tw-bg-opacity, 1));
+}
+.hover\:bg-green-400\/10:hover {
+  background-color: rgb(74 222 128 / 0.1);
 }
 .hover\:bg-green-50:hover {
   --tw-bg-opacity: 1;
