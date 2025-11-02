@@ -97,22 +97,3 @@ export function ConfirmPanel({ booking, onVerify }: ConfirmPanelProps) {
   )
 }
 
-
-
-          <Button onClick={verifyPayment} disabled={verifying} className="w-full">
-            {verifying ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Verifying Payment...
-              </>
-            ) : (
-              'Verify Payment'
-            )}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-

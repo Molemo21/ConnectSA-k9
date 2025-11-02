@@ -1,6 +1,0 @@
-{
-  "/api/book-service/discover-providers/route": "app/api/book-service/discover-providers/route.js",
-  "/api/bookings/drafts/route": "app/api/bookings/drafts/route.js",
-  "/api/catalogue/route": "app/api/catalogue/route.js",
-  "/api/book-service/send-offer-enhanced/route": "app/api/book-service/send-offer-enhanced/route.js"
-}
