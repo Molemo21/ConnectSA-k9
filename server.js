@@ -15,6 +15,66 @@ const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 
 /**
+ * Validate environment variables at startup
+ * This will fail fast with clear error messages if critical variables are missing
+ */
+if (process.env.NODE_ENV === 'production') {
+  try {
+    // Import and validate environment variables
+    // Note: We use dynamic import since this is CommonJS and the validation is ESM
+    // For production, we'll validate critical variables inline
+    console.log('🔍 Validating production environment variables...');
+    
+    const requiredVars = [
+      'DATABASE_URL',
+      'DIRECT_URL',
+      'JWT_SECRET',
+      'NEXTAUTH_SECRET',
+      'NEXTAUTH_URL',
+      'NEXT_PUBLIC_APP_URL',
+      'RESEND_API_KEY',
+      'FROM_EMAIL',
+      'PAYSTACK_SECRET_KEY',
+      'PAYSTACK_PUBLIC_KEY'
+    ];
+    
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      console.error('\n❌ CRITICAL: Missing required environment variables:');
+      missingVars.forEach(varName => console.error(`   - ${varName}`));
+      console.error('\n🚨 Application cannot start without these variables.\n');
+      process.exit(1);
+    }
+    
+    // Validate JWT secrets are long enough
+    if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+      console.error('\n❌ CRITICAL: JWT_SECRET must be at least 32 characters long\n');
+      process.exit(1);
+    }
+    
+    if (process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET.length < 32) {
+      console.error('\n❌ CRITICAL: NEXTAUTH_SECRET must be at least 32 characters long\n');
+      process.exit(1);
+    }
+    
+    // Validate URLs use HTTPS in production
+    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.startsWith('https://')) {
+      console.warn('\n⚠️  WARNING: NEXT_PUBLIC_APP_URL should use HTTPS in production');
+    }
+    
+    if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.startsWith('https://')) {
+      console.warn('\n⚠️  WARNING: NEXTAUTH_URL should use HTTPS in production');
+    }
+    
+    console.log('✅ Environment validation passed\n');
+  } catch (error) {
+    console.error('❌ Error validating environment:', error);
+    process.exit(1);
+  }
+}
+
+/**
  * Check if an error is a OneDrive file lock error
  */
 function isOneDriveLockError(error) {
