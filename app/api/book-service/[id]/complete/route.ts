@@ -4,6 +4,7 @@ import { db } from "@/lib/db-utils";
 import { z } from "zod";
 import { PAYMENT_CONSTANTS } from "@/lib/paystack";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 export const dynamic = 'force-dynamic'
 
@@ -123,20 +124,31 @@ export async function POST(request: NextRequest) {
 
     // result is now defined in both branches above
 
-    // Create notification for client about job completion
+    // Create in-app + email notification for client about job completion
     try {
       const notificationData = NotificationTemplates.JOB_COMPLETED(result.booking);
-      await createNotification({
+      await sendMultiChannelNotification({
         userId: result.booking.client.id,
         type: notificationData.type,
         title: notificationData.title,
-        content: notificationData.content
-      });
-      console.log(`🔔 Job completion notification sent to client: ${result.booking.client.email}`);
+        content: notificationData.content,
+        metadata: { booking: result.booking }
+      }, {
+        channels: ['in-app', 'email', 'push'],
+        email: {
+          to: result.booking.client?.email || '',
+          subject: notificationData.title
+        },
+        push: {
+          userId: result.booking.client.id,
+          title: notificationData.title,
+          body: notificationData.content,
+          url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
+        }
+      })
+      console.log(`🔔 Job completion notification sent (in-app + email) to client: ${result.booking.client.email}`);
     } catch (notificationError) {
-      console.error('❌ Failed to create job completion notification:', notificationError);
-      // Don't fail the request if notification fails - this is expected if the notification table doesn't exist yet
-      console.log('ℹ️ Continuing without notification (notification table may not exist yet)');
+      console.error('❌ Failed to send job completion notification:', notificationError);
     }
 
     console.log(`Job completion proof submitted for booking ${bookingId}`);

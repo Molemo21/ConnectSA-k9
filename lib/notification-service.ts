@@ -214,19 +214,19 @@ export const NotificationTemplates = {
   BOOKING_CREATED: (booking: any) => ({
     type: 'BOOKING_CREATED' as NotificationType,
     title: 'New Booking Request',
-    content: `You have a new booking request for ${booking.service?.name || 'service'} from ${booking.client?.name || 'a client'}. Please review and respond.`
+    content: `You have a new booking request for ${booking.service?.name || 'service'} from ${booking.client?.name || 'a client'}. Please review and respond. Booking #${booking.id}`
   }),
 
   BOOKING_ACCEPTED: (booking: any) => ({
     type: 'BOOKING_ACCEPTED' as NotificationType,
     title: 'Booking Accepted!',
-    content: `Great news! Your booking for ${booking.service?.name || 'service'} has been accepted by ${booking.provider?.businessName || 'the provider'}. You can now proceed with payment.`
+    content: `Great news! Your booking for ${booking.service?.name || 'service'} has been accepted by ${booking.provider?.businessName || 'the provider'}. You can now proceed with payment. Booking #${booking.id}`
   }),
 
   BOOKING_DECLINED: (booking: any) => ({
     type: 'BOOKING_DECLINED' as NotificationType,
     title: 'Booking Declined',
-    content: `Unfortunately, your booking for ${booking.service?.name || 'service'} was declined. Don't worry, you can try booking with another provider.`
+    content: `Unfortunately, your booking for ${booking.service?.name || 'service'} was declined. Don't worry, you can try booking with another provider. Booking #${booking.id}`
   }),
 
   BOOKING_CANCELLED: (booking: any, cancelledBy: 'client' | 'provider') => ({
@@ -250,13 +250,13 @@ export const NotificationTemplates = {
   JOB_STARTED: (booking: any) => ({
     type: 'JOB_STARTED' as NotificationType,
     title: 'Job Started',
-    content: `Great news! ${booking.provider?.businessName || 'The provider'} has started working on your ${booking.service?.name || 'service'}.`
+    content: `Great news! ${booking.provider?.businessName || 'The provider'} has started working on your ${booking.service?.name || 'service'}. Booking #${booking.id}`
   }),
 
   JOB_COMPLETED: (booking: any) => ({
     type: 'JOB_COMPLETED' as NotificationType,
     title: 'Job Completed',
-    content: `Your ${booking.service?.name || 'service'} has been completed! Please review the work and confirm completion to release payment.`
+    content: `Your ${booking.service?.name || 'service'} has been completed! Please review the work and confirm completion to release payment. Booking #${booking.id}`
   }),
 
   DISPUTE_CREATED: (booking: any, disputeType: string) => ({

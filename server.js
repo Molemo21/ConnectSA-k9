@@ -14,6 +14,108 @@ const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 
+/**
+ * Check if an error is a OneDrive file lock error
+ */
+function isOneDriveLockError(error) {
+  if (!error) return false;
+  
+  // Handle string errors
+  if (typeof error === 'string') {
+    return error.includes('UNKNOWN: unknown error') &&
+           error.includes('errno: -4094') &&
+           (error.includes('.next-dev') || error.includes('.next'));
+  }
+  
+  // Handle object errors
+  if (typeof error !== 'object') return false;
+  
+  const errno = error.errno;
+  const code = error.code || '';
+  const path = error.path || '';
+  const message = error.message || '';
+  
+  // Check for OneDrive lock error characteristics
+  const hasOneDriveErrno = errno === -4094;
+  const hasUnknownCode = code === 'UNKNOWN';
+  const hasNextPath = path.includes('.next-dev') || path.includes('.next');
+  const hasNextMessage = message.includes('.next-dev') || message.includes('.next');
+  
+  return (
+    (hasOneDriveErrno && hasUnknownCode) ||
+    (hasOneDriveErrno && hasNextPath) ||
+    (hasOneDriveErrno && hasNextMessage) ||
+    (hasUnknownCode && hasNextPath && hasOneDriveErrno)
+  );
+}
+
+/**
+ * Filter OneDrive errors from console output
+ */
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+console.error = function(...args) {
+  // Check if any argument contains OneDrive lock error
+  const shouldSuppress = args.some(arg => {
+    if (typeof arg === 'object' && arg !== null) {
+      return isOneDriveLockError(arg);
+    }
+    if (typeof arg === 'string') {
+      return arg.includes('UNKNOWN: unknown error') && 
+             arg.includes('errno: -4094') &&
+             (arg.includes('.next-dev') || arg.includes('.next'));
+    }
+    return false;
+  });
+  
+  if (!shouldSuppress) {
+    originalConsoleError.apply(console, args);
+  }
+  // Silently suppress OneDrive errors
+};
+
+console.warn = function(...args) {
+  // Check if any argument contains OneDrive lock error
+  const shouldSuppress = args.some(arg => {
+    if (typeof arg === 'object' && arg !== null) {
+      return isOneDriveLockError(arg);
+    }
+    if (typeof arg === 'string') {
+      return arg.includes('UNKNOWN: unknown error') && 
+             arg.includes('errno: -4094') &&
+             (arg.includes('.next-dev') || arg.includes('.next'));
+    }
+    return false;
+  });
+  
+  if (!shouldSuppress) {
+    originalConsoleWarn.apply(console, args);
+  }
+  // Silently suppress OneDrive warnings
+};
+
+/**
+ * Process-level error handlers to catch unhandled errors
+ */
+process.on('uncaughtException', (error) => {
+  if (isOneDriveLockError(error)) {
+    // Silently suppress OneDrive errors
+    return;
+  }
+  // Log other uncaught exceptions
+  originalConsoleError('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  if (isOneDriveLockError(reason)) {
+    // Silently suppress OneDrive promise rejections
+    return;
+  }
+  // Log other unhandled rejections
+  originalConsoleError('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // Create Next.js app
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -25,7 +127,17 @@ app.prepare().then(() => {
       const parsedUrl = parse(req.url, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
-      console.error('Error occurred handling', req.url, err);
+      // Suppress noisy OneDrive file lock errors (-4094 on Windows)
+      if (isOneDriveLockError(err)) {
+        // For OneDrive lock errors, just retry or return gracefully
+        // The file will be available on next request
+        res.statusCode = 503;
+        res.end('Service temporarily unavailable - file sync in progress');
+        return;
+      }
+      
+      // Log and handle other errors
+      originalConsoleError('Error occurred handling', req.url, err);
       res.statusCode = 500;
       res.end('internal server error');
     }

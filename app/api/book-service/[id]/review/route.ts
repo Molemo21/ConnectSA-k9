@@ -3,6 +3,8 @@ export const runtime = 'nodejs'
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 export const dynamic = 'force-dynamic'
 
@@ -78,7 +80,36 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Notify the provider (in-app/email)
+    // Notify the provider (in-app + email)
+    try {
+      const notificationData = NotificationTemplates.REVIEW_SUBMITTED(booking, validated.rating)
+      // fetch provider's user email
+      const provider = await prisma.provider.findUnique({
+        where: { id: booking.providerId },
+        include: { user: true }
+      })
+      await sendMultiChannelNotification({
+        userId: provider?.userId || '',
+        type: notificationData.type,
+        title: notificationData.title,
+        content: notificationData.content,
+        metadata: { booking: { id: booking.id, service: booking['service'] } }
+      }, {
+        channels: ['in-app', 'email', 'push'],
+        email: {
+          to: provider?.user?.email || '',
+          subject: notificationData.title
+        },
+        push: {
+          userId: provider?.userId || '',
+          title: notificationData.title,
+          body: notificationData.content,
+          url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/provider/bookings/${bookingId}`
+        }
+      })
+    } catch (err) {
+      console.warn('Failed to send review notification', err)
+    }
     // TODO: Update average ratings for the provider
 
     return NextResponse.json({ 

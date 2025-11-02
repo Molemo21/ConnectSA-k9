@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 // import { useWebSocket } from "@/hooks/use-websocket"
 
@@ -22,15 +22,6 @@ import { ConsolidatedMobileHeaderProvider } from "@/components/ui/consolidated-m
 
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
 
-import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
-
-import { MobileStatsCard } from "@/components/ui/mobile-stats-card"
-
-import { MobileActionCard } from "@/components/ui/mobile-action-card"
-
-import { MobileTabbedSection } from "@/components/ui/mobile-tabbed-section"
-
-import { MobileCollapsibleSection } from "@/components/ui/mobile-collapsible-section"
 
 import { SetupProgressBar } from "@/components/provider/setup-progress-bar"
 
@@ -53,27 +44,11 @@ import {
 
   Play, 
 
-  Users, 
-
   MapPin,
-
-  Phone,
-
-  MessageCircle,
-
-  Eye,
 
   Loader2,
 
-  Filter,
-
-  Search,
-
-  CalendarDays,
-
   BarChart3,
-
-  Settings,
 
   Bell,
 
@@ -82,18 +57,6 @@ import {
   RefreshCw,
 
   Home,
-
-  Wrench,
-
-  Paintbrush,
-
-  Zap,
-
-  Car,
-
-  Scissors,
-
-  Menu,
 
   X,
 
@@ -105,37 +68,7 @@ import {
 
   HelpCircle,
 
-  Bell as NotificationIcon,
-
-  GripVertical,
-
-  RotateCcw,
-
-  Phone as PhoneIcon,
-
-  Mail,
-
-  MoreVertical,
-
-  Heart,
-
-  Share2,
-
-  Activity,
-
-  Wallet,
-
-  MessageSquare,
-
-  Shield,
-
   Briefcase,
-
-  Target,
-
-  Award,
-
-  TrendingDown,
 
   LogIn,
 
@@ -143,27 +76,25 @@ import {
 
   Plus,
 
-  Briefcase as JobIcon,
-
   Package
 
 } from "lucide-react"
 
-import { showToast, handleApiError } from "@/lib/toast"
-
-import { useSocket } from "@/lib/socket-client"
+import { showToast } from "@/lib/toast"
 
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
-import { ProviderBookingCard } from "./provider-booking-card"
-
-import { ProviderEarningsChart } from "./provider-earnings-chart"
-
 import { BankDetailsForm } from "./bank-details-form"
 
-import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
+// Type for bank details (matches InitialBankDetails from bank-details-form)
+type InitialBankDetails = {
+  bankName?: string
+  bankCode?: string
+  accountNumber?: string
+  accountName?: string
+}
 
-import Link from "next/link"
+import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
 
 import { useCataloguePricing } from "@/lib/feature-flags"
 
@@ -273,23 +204,20 @@ interface ProviderStats {
 
 
 
-interface AuthState {
 
-  isAuthenticated: boolean
 
-  isLoading: boolean
 
-  error: string | null
-
-  user: any | null
-
+interface User {
+  id: string
+  name?: string | null
+  email: string
+  role?: string
+  image?: string | null
 }
-
-
 
 interface UnifiedProviderDashboardProps {
 
-  initialUser?: any
+  initialUser?: User | null
 
 }
 
@@ -307,7 +235,8 @@ function ProviderDesktopSidebar({
 
   totalBookings, 
 
-  pendingBookings,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  pendingBookings: _pendingBookings, // Used for API consistency but not in this component
 
   isCollapsed,
 
@@ -319,7 +248,7 @@ function ProviderDesktopSidebar({
 
   setActiveSection: (section: string) => void
 
-  user: any
+  user: User | null
 
   totalBookings: number
 
@@ -635,7 +564,8 @@ function ProviderMainContent({
 
   isRefreshing, 
 
-  lastRefresh, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  lastRefresh: _lastRefresh, // Part of API but not used in this component
 
   selectedFilter, 
 
@@ -663,7 +593,8 @@ function ProviderMainContent({
 
   processingAction,
 
-  handleBankDetailsChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  handleBankDetailsChange: _handleBankDetailsChange, // Part of API but not used in this component
 
   dashboardState,
 
@@ -675,7 +606,7 @@ function ProviderMainContent({
 
   setActiveSection: (section: string) => void
 
-  user: any
+  user: User | null
 
   bookings: Booking[]
 
@@ -713,11 +644,15 @@ function ProviderMainContent({
 
   processingAction: boolean
 
-  handleBankDetailsChange: (bankDetails: any) => void
+  handleBankDetailsChange: (bankDetails: unknown) => void
 
-  dashboardState: any
+  dashboardState: {
+    auth: { isAuthenticated: boolean; isLoading: boolean; error: string | null; user: User | null }
+    data: { bookings: Booking[]; stats: ProviderStats; currentProviderId: string; hasBankDetails: boolean; bankDetails: unknown | null }
+    ui: { loading: boolean; error: string | null; lastRefresh: Date; selectedFilter: string; activeSection: string; isCollapsed: boolean; acceptingBooking: string | null; acceptError: string | null; acceptSuccess: string | null; processingAction: boolean }
+  }
 
-  memoizedBankDetails: any
+  memoizedBankDetails: unknown | null
 
 }) {
   // State for cash payment confirmation dialog
@@ -736,7 +671,7 @@ function ProviderMainContent({
   })
 
   // Helper function to normalize payment method for consistent comparison
-  const normalizePaymentMethod = (paymentMethod: any): 'CASH' | 'ONLINE' | null => {
+  const normalizePaymentMethod = (paymentMethod: unknown): 'CASH' | 'ONLINE' | null => {
     if (!paymentMethod) return null;
     const normalized = String(paymentMethod).toUpperCase().trim();
     if (normalized === 'CASH') return 'CASH';
@@ -750,17 +685,11 @@ function ProviderMainContent({
 
   const totalBookings = safeBookings.length
 
-  const completedBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "COMPLETED").length
-
   const pendingBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "PENDING").length
 
   const confirmedBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "CONFIRMED").length
 
-  const pendingExecutionBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "PENDING_EXECUTION").length
-
   const inProgressBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "IN_PROGRESS").length
-
-  const awaitingConfirmationBookings = safeBookings.filter(b => b && typeof b.status === 'string' && b.status === "AWAITING_CONFIRMATION").length
 
 
 
@@ -822,19 +751,20 @@ function ProviderMainContent({
 
     
     
-    // Sort by creation date (most recent first) to ensure recent bookings appear at the top
+      // Sort by creation date (most recent first) to ensure recent bookings appear at the top
 
     return filtered.sort((a, b) => {
 
-      const dateA = new Date(a.createdAt || a.scheduledDate || 0)
+      const dateA = new Date(a.scheduledDate || 0)
 
-      const dateB = new Date(b.createdAt || b.scheduledDate || 0)
+      const dateB = new Date(b.scheduledDate || 0)
 
       return dateB.getTime() - dateA.getTime() // Descending order (newest first)
 
     })
 
-  }, [safeBookings, selectedFilter])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookings, selectedFilter]) // safeBookings is derived from bookings inline, using bookings is correct
 
 
 
@@ -1042,7 +972,7 @@ function ProviderMainContent({
 
                       <p className="text-gray-400 text-sm mb-4">
 
-                        You're all caught up! New bookings will appear here when they come in.
+                        You&apos;re all caught up! New bookings will appear here when they come in.
 
                       </p>
 
@@ -1480,7 +1410,10 @@ function ProviderMainContent({
 
                     <ComponentErrorBoundary key={booking.id} componentName={`BookingCard-${booking.id}`}>
 
-                      <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
+                      <Card 
+                        className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200"
+                        data-booking-id={booking.id}
+                      >
 
                   <CardContent className="p-6">
 
@@ -1787,7 +1720,7 @@ function ProviderMainContent({
                                 isOpen: true,
                                 bookingId: booking.id,
                                 amount: booking.totalAmount,
-                                clientName: booking.client?.name || booking.client?.user?.name || 'Client',
+                                clientName: booking.client?.name || 'Client',
                                 serviceName: booking.service?.name || 'Service'
                               });
                             }}
@@ -2216,8 +2149,6 @@ function ProviderMainContent({
 
           const safeData = safeDashboardState.data || {}
 
-          const bankDetails = safeData.bankDetails || null
-
           const hasBankDetails = safeData.hasBankDetails || false
 
           
@@ -2308,7 +2239,7 @@ function ProviderMainContent({
 
                     <BankDetailsForm 
 
-                      initialBankDetails={memoizedBankDetails}
+                      initialBankDetails={(memoizedBankDetails as InitialBankDetails | null) || undefined}
 
                       // DISABLED: No callback to prevent infinite loops
 
@@ -2346,7 +2277,7 @@ function ProviderMainContent({
 
               <div className="text-xs text-gray-500 mb-4">
 
-                Error: {bankError.message}
+                Error: {bankError instanceof Error ? bankError.message : String(bankError)}
 
               </div>
 
@@ -2392,7 +2323,7 @@ function ProviderMainContent({
 
           <div className="space-y-6">
 
-            <ProviderCatalogueDashboard providerId={user?.id} />
+            <ProviderCatalogueDashboard providerId={user?.id || ''} />
 
           </div>
 
@@ -2428,7 +2359,7 @@ function ProviderMainContent({
 
       console.error('Active section:', activeSection)
 
-      console.error('Error stack:', error.stack)
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
 
       console.error('Dashboard state:', {
 
@@ -2464,7 +2395,7 @@ function ProviderMainContent({
 
           <div className="text-xs text-gray-500 mb-4">
 
-            Error: {error?.message || error?.toString() || 'Unknown error'}
+            Error: {error instanceof Error ? error.message : (typeof error === 'object' && error !== null && 'message' in error ? String((error as { message?: string }).message || error) : String(error)) || 'Unknown error'}
 
           </div>
 
@@ -2577,6 +2508,7 @@ function ProviderMainContent({
 export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboardProps = {}) {
 
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   
   
@@ -2585,6 +2517,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   const isInitialized = useRef(false)
 
   const lastRefreshTime = useRef(0) // Initialize to 0 so initial fetch isn't blocked by cooldown
+  
+  // Track authenticated user in ref for immediate synchronous access (avoids race conditions)
+  const authenticatedUserRef = useRef<User | null>(initialUser || null)
 
   const [mounted, setMounted] = useState(false)
 
@@ -2602,7 +2537,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       isLoading: !initialUser,
 
-      error: null,
+      error: null as string | null,
 
       user: initialUser || null
 
@@ -2638,7 +2573,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       currentProviderId: "",
 
-      hasBankDetails: false
+      hasBankDetails: false,
+
+      bankDetails: null as unknown | null
 
     },
 
@@ -2679,8 +2616,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
 
   // Stable authentication check function
-
-  const checkAuthentication = useCallback(async () => {
+  // Returns { success: boolean, user: any | null } to avoid race conditions with state updates
+  const checkAuthentication = useCallback(async (): Promise<{ success: boolean; user: User | null }> => {
 
     try {
 
@@ -2694,21 +2631,55 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       
       
-      const response = await fetch('/api/auth/me', {
+      // Add timeout to prevent hanging
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      let response: Response | null = null
+      try {
+        response = await fetch('/api/auth/me', {
 
-        method: 'GET',
+          method: 'GET',
 
-        credentials: 'include',
+          credentials: 'include',
 
-        headers: {
+          headers: {
 
-          'Content-Type': 'application/json',
+            'Content-Type': 'application/json',
 
-        },
+          },
 
-      })
+          signal: controller.signal
 
+        })
+        
+        clearTimeout(timeoutId)
 
+      } catch (fetchError: unknown) {
+        clearTimeout(timeoutId)
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.error('❌ Authentication check timed out')
+          // Clear ref on timeout
+          authenticatedUserRef.current = null
+          setDashboardState(prev => ({
+            ...prev,
+            auth: {
+              isAuthenticated: false,
+              isLoading: false,
+              error: 'Authentication check timed out',
+              user: null
+            }
+          }))
+          return { success: false, user: null }
+        }
+        // Re-throw to be caught by outer catch
+        throw fetchError
+      }
+
+      // Response is guaranteed to be defined here if we didn't return above
+      if (!response) {
+        throw new Error('Failed to get response from authentication check')
+      }
 
       if (response.status === 401) {
 
@@ -2730,9 +2701,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
         }))
 
+        // Clear ref on 401
+        authenticatedUserRef.current = null
+        
         router.push('/login')
 
-        return false
+        return { success: false, user: null }
 
       }
 
@@ -2740,6 +2714,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       if (!response.ok) {
 
+        // Clear ref on error
+        authenticatedUserRef.current = null
+        
         throw new Error(`Authentication check failed: ${response.status}`)
 
       }
@@ -2770,7 +2747,10 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
         }))
 
-        return true
+        // Update ref immediately for synchronous access
+        authenticatedUserRef.current = data.user
+        
+        return { success: true, user: data.user }
 
       } else {
 
@@ -2791,10 +2771,13 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           }
 
         }))
+        
+        // Clear ref if not provider
+        authenticatedUserRef.current = null
 
         router.push('/dashboard')
 
-        return false
+        return { success: false, user: data.user }
 
       }
 
@@ -2819,8 +2802,11 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         }
 
       }))
+      
+      // Clear ref on error
+      authenticatedUserRef.current = null
 
-      return false
+      return { success: false, user: null }
 
     }
 
@@ -2885,8 +2871,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
 
   // Stable provider data fetch function with retry logic
-
-  const fetchProviderData = useCallback(async (retryCount = 0, force = false) => {
+  // authenticatedUser: optional user object to bypass state check (avoids race conditions)
+  const fetchProviderData = useCallback(async (retryCount = 0, force = false, authenticatedUser?: User | null) => {
 
     const maxRetries = 3;
 
@@ -2906,18 +2892,26 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     
     
-    // Use initialUser or check authentication state without circular dependency
-
-    const isAuthenticated = initialUser || dashboardState.auth.isAuthenticated;
-
-    
+    // Check authentication - use provided user, ref, initialUser, or state (in priority order)
+    // authenticatedUser parameter avoids race conditions when called right after checkAuthentication
+    // authenticatedUserRef provides immediate synchronous access to avoid state update delays
+    const currentUser = authenticatedUser || authenticatedUserRef.current || initialUser || dashboardState.auth.user;
+    const isAuthenticated = !!currentUser;
     
     if (!isAuthenticated) {
-
-      console.log('Not authenticated, skipping provider data fetch')
-
+      console.log('Not authenticated, skipping provider data fetch', { 
+        hasAuthenticatedUser: !!authenticatedUser,
+        hasRefUser: !!authenticatedUserRef.current,
+        hasInitialUser: !!initialUser,
+        stateHasUser: !!dashboardState.auth.user,
+        stateIsAuthenticated: dashboardState.auth.isAuthenticated 
+      })
+      // Clear loading state if not authenticated
+      setDashboardState(prev => ({
+        ...prev,
+        ui: { ...prev.ui, loading: false }
+      }))
       return
-
     }
 
 
@@ -2972,15 +2966,17 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       if (response.status === 401) {
 
-        const authSuccess = await checkAuthentication()
+        console.log('⚠️ 401 Unauthorized - re-authenticating...')
+        const authResult = await checkAuthentication()
 
-        if (!authSuccess) {
+        if (!authResult.success || !authResult.user) {
 
+          console.log('❌ Re-authentication failed')
           setDashboardState(prev => ({
 
             ...prev,
 
-            ui: { ...prev.ui, error: 'Authentication expired. Please log in again.' }
+            ui: { ...prev.ui, loading: false, error: 'Authentication expired. Please log in again.' }
 
           }))
 
@@ -2988,14 +2984,19 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
         }
 
-        // Retry with current retry count instead of recursive call
-
+        console.log('✅ Re-authentication successful, retrying fetch...')
+        // Retry with force=true to bypass cooldown and pass authenticated user to avoid race condition
         if (retryCount < maxRetries) {
 
-          return fetchProviderData(retryCount + 1)
+          return fetchProviderData(retryCount + 1, true, authResult.user) // Force retry after auth with user
 
         }
 
+        // Max retries reached
+        setDashboardState(prev => ({
+          ...prev,
+          ui: { ...prev.ui, loading: false, error: 'Failed to fetch data after re-authentication' }
+        }))
         return
 
       }
@@ -3006,10 +3007,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
 
-        console.error('Provider data fetch failed:', response.status, errorData)
+        console.error('❌ Provider data fetch failed:', response.status, errorData)
 
-        // Don't throw error, just set empty data
-
+        // Set empty data and clear loading state
         setDashboardState(prev => ({
 
           ...prev,
@@ -3020,25 +3020,29 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
             stats: {
 
-              totalBookings: 0,
-
-              completedBookings: 0,
-
-              pendingBookings: 0,
-
+              pendingJobs: 0,
+              confirmedJobs: 0,
+              pendingExecutionJobs: 0,
+              inProgressJobs: 0,
+              completedJobs: 0,
               totalEarnings: 0,
-
-              monthlyEarnings: 0
+              thisMonthEarnings: 0,
+              averageRating: 0,
+              totalReviews: 0
 
             },
 
-            hasBankDetails: false
+            currentProviderId: "",
+            hasBankDetails: false,
+            bankDetails: null
 
           },
 
-          loading: false,
-
-          error: `Failed to load data: ${errorData.error || 'Unknown error'}`
+          ui: {
+            ...prev.ui,
+            loading: false,
+            error: `Failed to load data: ${errorData.error || 'Unknown error'}`
+          }
 
         }))
 
@@ -3050,7 +3054,18 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       const data = await response.json()
 
-      console.log('Provider dashboard data:', data)
+      console.log('✅ Provider dashboard data received:', {
+        success: data.success,
+        bookingsCount: data.bookings?.length || 0,
+        stats: data.stats,
+        providerId: data.providerId,
+        message: data.message
+      })
+
+      if (!data.success) {
+        console.error('❌ API returned success: false', data)
+        throw new Error(data.message || 'Failed to fetch provider data')
+      }
 
 
 
@@ -3066,13 +3081,17 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
           currentProviderId: data.providerId || "",
 
-          hasBankDetails: prev.data.hasBankDetails
+          hasBankDetails: prev.data.hasBankDetails,
+
+          bankDetails: prev.data.bankDetails
 
         },
 
         ui: {
 
           ...prev.ui,
+
+          loading: false, // ✅ Set loading to false after successful fetch
 
           error: null,
 
@@ -3104,7 +3123,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       
       
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
 
         console.log('Request timed out');
 
@@ -3116,22 +3135,19 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
         console.log(`Retrying in ${(retryCount + 1) * 2} seconds...`);
 
-        // Use a ref to track retry attempts to prevent infinite loops
+        // Retry after delay - don't return, let finally block handle state
+        setTimeout(() => {
 
-        const retryTimeoutId = setTimeout(() => {
-
-          fetchProviderData(retryCount + 1);
+          fetchProviderData(retryCount + 1, force);
 
         }, (retryCount + 1) * 2000);
 
-        
-        
-        // Store timeout ID for cleanup if component unmounts
-
-        return () => clearTimeout(retryTimeoutId);
+        // Don't clear loading state on retry - keep it loading while retrying
+        return;
 
       } else {
 
+        // Max retries reached - show error
         setDashboardState(prev => ({
 
           ...prev,
@@ -3152,17 +3168,23 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     } finally {
 
-      setDashboardState(prev => ({
+      // Only clear loading if not retrying (retryCount check happens before finally)
+      // This ensures loading stays true during retries
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      if (retryCount >= maxRetries) {
+        setDashboardState(prev => ({
 
-        ...prev,
+          ...prev,
 
-        ui: { ...prev.ui, loading: false }
+          ui: { ...prev.ui, loading: false }
 
-      }))
+        }))
+      }
 
     }
 
-  }, [checkAuthentication, initialUser]) // Remove dashboardState.auth.isAuthenticated to prevent loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUser, checkAuthentication]) // checkAuthentication is stable via useCallback, checkBankDetails intentionally excluded to prevent loops
 
 
 
@@ -3318,7 +3340,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     return safeData.bankDetails || null
 
-  }, [dashboardState.data.bankDetails])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dashboardState.data.bankDetails]) // Only depends on bankDetails, not entire dashboardState
 
 
 
@@ -3340,23 +3363,96 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       console.log('Initializing provider dashboard...')
 
-      // Skip authentication check if initialUser was provided (already authenticated on server)
+      try {
 
-      if (initialUser) {
+        // Skip authentication check if initialUser was provided (already authenticated on server)
 
-        console.log('Using initialUser from server, fetching data immediately')
+        if (initialUser) {
 
-        await fetchProviderData(0, true) // Force fetch on initial load
+          console.log('Using initialUser from server, fetching data immediately')
+          
+          // Ensure ref is set with initialUser
+          authenticatedUserRef.current = initialUser
 
-      } else {
+          try {
+            // Pass initialUser to fetchProviderData to avoid any race conditions
+            await fetchProviderData(0, true, initialUser) // Force fetch on initial load with user
+            console.log('✅ Initial data fetch completed successfully')
+          } catch (error) {
+            console.error('❌ Initial data fetch failed:', error)
+            // Loading state will be cleared by fetchProviderData error handler
+          }
 
-        const authSuccess = await checkAuthentication()
+        } else {
 
-        if (authSuccess) {
+          console.log('No initialUser, checking authentication...')
+          
+          // Add timeout to prevent infinite loading
+          const authCheckPromise = checkAuthentication()
+          const timeoutPromise = new Promise<{ success: boolean; user: User | null }>((resolve) => {
+            setTimeout(() => {
+              console.warn('⚠️ Authentication check timeout (10s)')
+              resolve({ success: false, user: null })
+            }, 10000)
+          })
+          
+          const authResult = await Promise.race([authCheckPromise, timeoutPromise])
+          console.log('Authentication check result:', { 
+            success: authResult.success, 
+            hasUser: !!authResult.user,
+            userRole: authResult.user?.role 
+          })
 
-          await fetchProviderData(0, true) // Force fetch on initial load
+          if (authResult.success && authResult.user) {
+
+            console.log('Auth successful, fetching provider data...', {
+              userId: authResult.user.id,
+              userEmail: authResult.user.email,
+              userRole: authResult.user.role
+            })
+            
+            // Ref is already updated in checkAuthentication, but ensure it's set here too
+            authenticatedUserRef.current = authResult.user
+            
+            try {
+              // Pass the authenticated user directly to avoid race condition with state update
+              await fetchProviderData(0, true, authResult.user) // Force fetch on initial load with authenticated user
+              console.log('✅ Provider data fetch completed')
+            } catch (error) {
+              console.error('❌ Provider data fetch failed:', error)
+              // Error handler in fetchProviderData will clear loading state
+            }
+
+          } else {
+
+            // Auth failed - ensure loading state is cleared
+            console.log('❌ Authentication failed, clearing loading state', {
+              success: authResult.success,
+              hasUser: !!authResult.user
+            })
+            setDashboardState(prev => ({
+              ...prev,
+              auth: { ...prev.auth, isLoading: false },
+              ui: { ...prev.ui, loading: false }
+            }))
+
+          }
 
         }
+
+      } catch (error) {
+
+        console.error('Error initializing dashboard:', error)
+
+        // Ensure loading state is cleared even on error
+
+        setDashboardState(prev => ({
+
+          ...prev,
+
+          ui: { ...prev.ui, loading: false, error: 'Failed to initialize dashboard' }
+
+        }))
 
       }
 
@@ -3368,10 +3464,24 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       initializeDashboard()
     } else {
       // FIX: Use setTimeout to defer initialization until after hydration when no initialUser
+      // Also add timeout fallback to prevent infinite loading
       setTimeout(initializeDashboard, 0)
+      
+      // Safety timeout: Clear loading state after 30 seconds if nothing happens
+      const safetyTimeout = setTimeout(() => {
+        console.warn('⚠️ Dashboard initialization timeout - clearing loading state')
+        setDashboardState(prev => ({
+          ...prev,
+          auth: { ...prev.auth, isLoading: false },
+          ui: { ...prev.ui, loading: false, error: 'Dashboard initialization timed out. Please refresh.' }
+        }))
+      }, 30000)
+      
+      // Store timeout for cleanup
+      return () => clearTimeout(safetyTimeout)
     }
 
-  }, []) // Empty dependency array to prevent infinite loop
+  }, [initialUser, checkAuthentication, fetchProviderData]) // Include dependencies - functions are memoized with useCallback
 
 
 
@@ -3419,7 +3529,8 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     return () => clearInterval(pollInterval)
 
-  }, [mounted]) // Remove fetchProviderData dependency to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]) // fetchProviderData intentionally excluded to prevent infinite loop
 
 
 
@@ -3483,7 +3594,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
 
 
-  // Handle URL parameters for tab navigation
+  // Handle URL parameters for tab navigation and bookingId
 
   useEffect(() => {
 
@@ -3491,11 +3602,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     
     
-    // Read URL parameters on mount
-
-    const urlParams = new URLSearchParams(window.location.search)
-
-    const tab = urlParams.get('tab')
+    // Read URL parameters using Next.js searchParams hook (reactive to router changes)
+    const tab = searchParams.get('tab') || searchParams.get('section') // Support both for backward compatibility
+    const bookingId = searchParams.get('bookingId')
 
     
     
@@ -3513,11 +3622,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       
       
-      // Clean up URL by removing the tab parameter
+      // Clean up URL by removing the tab/section parameter (but keep bookingId if present)
 
       const newUrl = new URL(window.location.href)
 
       newUrl.searchParams.delete('tab')
+      newUrl.searchParams.delete('section')
 
       window.history.replaceState({}, '', newUrl.toString())
 
@@ -3525,7 +3635,78 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
     }
 
-  }, [mounted, setActiveSection])
+    // Handle bookingId - scroll to and highlight specific booking card
+    if (bookingId && dashboardState.data.bookings?.length > 0) {
+      console.log(`🔍 Booking ID detected in URL: ${bookingId}, attempting to scroll to card`, {
+        totalBookings: dashboardState.data.bookings.length,
+        activeSection: dashboardState.ui.activeSection
+      })
+      
+      // Wait for DOM to render and section to switch (if tab was changed)
+      const scrollTimeout = setTimeout(() => {
+        // Debug: Check all booking cards with data-booking-id
+        const allBookingCards = document.querySelectorAll('[data-booking-id]')
+        console.log(`🔎 Found ${allBookingCards.length} booking cards with data-booking-id attribute`, {
+          lookingFor: bookingId,
+          availableIds: Array.from(allBookingCards).map(card => card.getAttribute('data-booking-id'))
+        })
+        
+        const bookingCard = document.querySelector(`[data-booking-id="${bookingId}"]`)
+        
+        if (bookingCard) {
+          // Scroll to card with smooth behavior
+          bookingCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          })
+          
+          // Add highlight animation
+          bookingCard.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30', 'transition-all', 'duration-300')
+          
+          // Remove highlight after 3 seconds
+          setTimeout(() => {
+            bookingCard.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30')
+          }, 3000)
+          
+          console.log(`✅ Successfully scrolled to booking card: ${bookingId}`)
+        } else {
+          console.warn(`⚠️ Booking card not found for bookingId: ${bookingId}. Card may not be rendered yet.`)
+          
+          // Retry after a longer delay (in case bookings are still loading)
+          setTimeout(() => {
+            const retryCard = document.querySelector(`[data-booking-id="${bookingId}"]`)
+            if (retryCard) {
+              retryCard.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center',
+                inline: 'nearest'
+              })
+              retryCard.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30', 'transition-all', 'duration-300')
+              setTimeout(() => {
+                retryCard.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30')
+              }, 3000)
+              console.log(`✅ Successfully found and scrolled to booking card on retry: ${bookingId}`)
+            } else {
+              console.error(`❌ Booking card still not found after retry: ${bookingId}`)
+            }
+          }, 1500)
+        }
+        
+        // Clean up URL by removing bookingId parameter
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('bookingId')
+        window.history.replaceState({}, '', newUrl.toString())
+      }, tab ? 1000 : 500) // Wait longer if tab was switched
+      
+      // Clean up scroll timeout on unmount
+      return () => clearTimeout(scrollTimeout)
+    } else if (bookingId && dashboardState.data.bookings?.length === 0) {
+      // Bookings not loaded yet - wait for them
+      console.log(`⏳ Bookings not loaded yet, bookingId will be handled when bookings are available: ${bookingId}`)
+    }
+
+  }, [mounted, setActiveSection, dashboardState.data.bookings, dashboardState.ui.activeSection, searchParams])
 
 
 
@@ -3769,7 +3950,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
           acceptingBooking: null,
 
-          acceptError: error.message || 'Failed to accept booking'
+          acceptError: error instanceof Error ? error.message : 'Failed to accept booking'
 
         }
 
@@ -3779,7 +3960,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       // Show error message (you could add a toast notification here)
 
-      console.error('❌ Failed to accept booking:', error.message)
+      console.error('❌ Failed to accept booking:', error instanceof Error ? error.message : String(error))
 
     }
 
@@ -3883,7 +4064,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       // You could add a toast notification here
 
-      console.error('❌ Failed to start job:', error.message)
+      console.error('❌ Failed to start job:', error instanceof Error ? error.message : String(error))
 
     } finally {
 
@@ -4007,7 +4188,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       // You could add a toast notification here
 
-      console.error('❌ Failed to complete job:', error.message)
+      console.error('❌ Failed to complete job:', error instanceof Error ? error.message : String(error))
 
     } finally {
 
@@ -4357,7 +4538,6 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           showUserMenu={true} 
           user={dashboardState.auth.user}
           userStats={memoizedUserStats}
-          showNotifications={true}
         />
       </div>
       

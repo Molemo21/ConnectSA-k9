@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 export const dynamic = 'force-dynamic'
 
@@ -80,19 +81,31 @@ export async function POST(request: NextRequest) {
       data: { status: "IN_PROGRESS" },
     });
 
-    // Create notification for client that job has started
+    // Create in-app + email notification for client that job has started
     try {
       const notificationData = NotificationTemplates.JOB_STARTED(booking);
-      await createNotification({
+      await sendMultiChannelNotification({
         userId: booking.clientId,
         type: notificationData.type,
         title: notificationData.title,
-        content: notificationData.content
-      });
-      console.log(`🔔 Job started notification sent to client: ${booking.client?.email || 'unknown'}`);
+        content: notificationData.content,
+        metadata: { booking }
+      }, {
+        channels: ['in-app', 'email', 'push'],
+        email: {
+          to: booking.client?.email || '',
+          subject: notificationData.title
+        },
+        push: {
+          userId: booking.clientId,
+          title: notificationData.title,
+          body: notificationData.content,
+          url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
+        }
+      })
+      console.log(`🔔 Job started notification sent (in-app + email) to client: ${booking.client?.email || 'unknown'}`);
     } catch (notificationError) {
-      console.error('❌ Failed to create job started notification:', notificationError);
-      // Don't fail the request if notification fails
+      console.error('❌ Failed to send job started notification:', notificationError);
     }
 
     return NextResponse.json({ 

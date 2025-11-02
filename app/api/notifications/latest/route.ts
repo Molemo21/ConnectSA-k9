@@ -16,14 +16,29 @@ export async function GET(request: NextRequest) {
     const notifications = await getUserNotifications(user.id, 1)
     const latestNotification = notifications[0] || null
 
+    // Serialize Date objects to ISO strings for JSON response
+    const serializedNotification = latestNotification ? {
+      ...latestNotification,
+      createdAt: latestNotification.createdAt instanceof Date 
+        ? latestNotification.createdAt.toISOString() 
+        : latestNotification.createdAt,
+      updatedAt: latestNotification.updatedAt instanceof Date 
+        ? latestNotification.updatedAt.toISOString() 
+        : latestNotification.updatedAt
+    } : null
+
     return NextResponse.json({
-      notification: latestNotification,
+      notification: serializedNotification,
       success: true
     })
   } catch (error) {
     console.error("Get latest notification error:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        message: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     )
   }

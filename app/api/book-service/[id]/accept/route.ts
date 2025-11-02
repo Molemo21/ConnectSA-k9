@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic'
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 // Test endpoint to verify route accessibility
 export async function GET(request: NextRequest) {
@@ -106,19 +107,31 @@ export async function POST(request: NextRequest) {
       newStatus: updated.status
     });
 
-    // Create notification for client about booking acceptance
+    // Create in-app + email notification for client about booking acceptance
     try {
       const notificationData = NotificationTemplates.BOOKING_ACCEPTED(booking);
-      await createNotification({
+      await sendMultiChannelNotification({
         userId: booking.clientId,
         type: notificationData.type,
         title: notificationData.title,
-        content: notificationData.content
-      });
-      console.log(`🔔 Booking acceptance notification sent to client: ${booking.client?.email || 'unknown'}`);
+        content: notificationData.content,
+        metadata: { booking }
+      }, {
+        channels: ['in-app', 'email', 'push'],
+        email: {
+          to: booking.client?.email || '',
+          subject: notificationData.title
+        },
+        push: {
+          userId: booking.clientId,
+          title: notificationData.title,
+          body: notificationData.content,
+          url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
+        }
+      })
+      console.log(`🔔 Booking acceptance notification sent to client (in-app + email): ${booking.client?.email || 'unknown'}`);
     } catch (notificationError) {
-      console.error('❌ Failed to create booking acceptance notification:', notificationError);
-      // Don't fail the request if notification fails
+      console.error('❌ Failed to send booking acceptance notification:', notificationError);
     }
 
     // Broadcast real-time update to client

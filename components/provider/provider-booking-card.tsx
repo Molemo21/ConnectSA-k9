@@ -136,7 +136,10 @@ export function ProviderBookingCard({
   const StatusIcon = statusInfo.icon
 
   return (
-    <Card className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500">
+    <Card 
+      className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-blue-500"
+      data-booking-id={booking.id}
+    >
       <CardContent className="p-4 sm:p-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-3 sm:space-y-0">

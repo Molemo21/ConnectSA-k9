@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 export const dynamic = 'force-dynamic'
 
@@ -57,19 +58,31 @@ export async function POST(request: NextRequest) {
       data: { status: "CANCELLED" },
     });
 
-    // Create notification for client about booking decline
+    // Create in-app + email notification for client about booking decline
     try {
       const notificationData = NotificationTemplates.BOOKING_DECLINED(booking);
-      await createNotification({
+      await sendMultiChannelNotification({
         userId: booking.clientId,
         type: notificationData.type,
         title: notificationData.title,
-        content: notificationData.content
-      });
-      console.log(`🔔 Booking decline notification sent to client: ${booking.client?.email || 'unknown'}`);
+        content: notificationData.content,
+        metadata: { booking }
+      }, {
+        channels: ['in-app', 'email', 'push'],
+        email: {
+          to: booking.client?.email || '',
+          subject: notificationData.title
+        },
+        push: {
+          userId: booking.clientId,
+          title: notificationData.title,
+          body: notificationData.content,
+          url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
+        }
+      })
+      console.log(`🔔 Booking decline notification sent (in-app + email) to client: ${booking.client?.email || 'unknown'}`);
     } catch (notificationError) {
-      console.error('❌ Failed to create booking decline notification:', notificationError);
-      // Don't fail the request if notification fails
+      console.error('❌ Failed to send booking decline notification:', notificationError);
     }
 
     // Broadcast real-time update to client
