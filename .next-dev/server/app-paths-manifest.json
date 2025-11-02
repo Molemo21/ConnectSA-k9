@@ -1,9 +1,1 @@
-{
-  "/page": "app/page.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/provider/bookings/route": "app/api/provider/bookings/route.js",
-  "/test-provider-dashboard/page": "app/test-provider-dashboard/page.js",
-  "/api/provider/setup-progress/route": "app/api/provider/setup-progress/route.js",
-  "/api/provider/settings/route": "app/api/provider/settings/route.js",
-  "/api/provider/catalogue/route": "app/api/provider/catalogue/route.js"
-}
+{}
