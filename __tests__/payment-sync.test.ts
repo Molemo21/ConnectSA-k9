@@ -9,6 +9,7 @@
  * - Real-time updates function correctly
  */
 
+import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { PaymentStatusSync } from '@/components/ui/payment-status-sync';
 import { SynchronizedBookingCard } from '@/components/dashboard/synchronized-booking-card';

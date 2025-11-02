@@ -673,20 +673,3 @@ export function RealtimeClientDashboard() {
   )
 }
 
-      <MobileFloatingActionButton
-        icon={<Plus className="h-6 w-6" />}
-        onClick={() => window.location.href = '/services'}
-        label="Book Service"
-      />
-
-      {/* Bottom Navigation */}
-      <MobileBottomNav
-        activeTab="dashboard"
-        onTabChange={(tab) => {
-          if (tab === 'services') window.location.href = '/services'
-          if (tab === 'profile') window.location.href = '/profile'
-        }}
-      />
-    </div>
-  )
-}

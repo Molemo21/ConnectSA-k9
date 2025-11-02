@@ -79,10 +79,11 @@ export const sampleErrorScenarios = {
           }
         }
       });
-    },
+    }
+  },
 
-    // Failed payment scenarios
-    failedPayment: {
+  // Failed payment scenarios
+  failedPayment: {
       paystackError: () => {
         const logger = new CentralizedLogger(getLoggingConfig());
         logger.paymentError('init', 'Paystack payment initialization failed', new Error('Paystack API error'), {
@@ -149,8 +150,8 @@ export const sampleErrorScenarios = {
       }
     },
 
-    // Dashboard API errors
-    dashboardErrors: {
+  // Dashboard API errors
+  dashboardErrors: {
       unauthorizedAccess: () => {
         const logger = new CentralizedLogger(getLoggingConfig());
         logger.dashboardError('provider', 'dashboard_load', 'Unauthorized dashboard access attempt', new Error('Unauthorized'), {
@@ -181,7 +182,6 @@ export const sampleErrorScenarios = {
         });
       }
     }
-  };
 };
 
 // Function to run all sample error scenarios
