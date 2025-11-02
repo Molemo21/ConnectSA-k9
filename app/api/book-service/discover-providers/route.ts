@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
           select: {
             name: true,
             email: true,
+            phone: true,
+            avatar: true,
           }
         },
         services: {
@@ -70,8 +72,34 @@ export async function POST(request: NextRequest) {
                 name: true,
                 description: true,
                 basePrice: true,
+                category: {
+                  select: {
+                    name: true
+                  }
+                }
               }
             }
+          }
+        },
+        catalogueItems: {
+          where: {
+            serviceId: actualServiceId,
+            isActive: true
+          },
+          include: {
+            service: {
+              select: {
+                name: true,
+                category: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            },
+          },
+          orderBy: {
+            createdAt: 'desc'
           }
         },
         // Note: Removed bookings query to avoid Prisma enum validation issues
@@ -113,39 +141,180 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Batch fetch reviews for all catalogue items efficiently (avoid N+1 queries)
+    // Collect all catalogue item IDs across all providers
+    const allCatalogueItemIds = availableProviders.flatMap(
+      p => (p.catalogueItems || []).map(item => item.id)
+    );
+
+    // Create a map to store reviews by catalogueItemId for O(1) lookup
+    const reviewsByCatalogueItem = new Map<string, Array<{
+      id: string;
+      rating: number;
+      comment: string | null;
+      createdAt: Date;
+      booking: {
+        client: {
+          name: string;
+        } | null;
+      };
+    }>>();
+
+    // Batch fetch all reviews for catalogue items in ONE efficient query
+    if (allCatalogueItemIds.length > 0) {
+      try {
+        const reviewsForCatalogueItems = await db.review.findMany({
+          where: {
+            booking: {
+              catalogueItemId: {
+                in: allCatalogueItemIds
+              },
+              status: 'COMPLETED' // Only get reviews for completed bookings
+            }
+          },
+          include: {
+            booking: {
+              include: {
+                client: {
+                  select: {
+                    name: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc' // Most recent reviews first
+          },
+          take: 100 // Limit total reviews to prevent large responses (roughly 10 per item if 10 providers)
+        });
+
+        // Group reviews by catalogueItemId
+        for (const review of reviewsForCatalogueItems) {
+          const catalogueItemId = review.booking.catalogueItemId;
+          if (catalogueItemId) {
+            if (!reviewsByCatalogueItem.has(catalogueItemId)) {
+              reviewsByCatalogueItem.set(catalogueItemId, []);
+            }
+            reviewsByCatalogueItem.get(catalogueItemId)!.push({
+              id: review.id,
+              rating: review.rating,
+              comment: review.comment,
+              createdAt: review.createdAt,
+              booking: {
+                client: review.booking.client ? {
+                  name: review.booking.client.name
+                } : null
+              }
+            });
+          }
+        }
+
+        // Limit reviews per catalogue item to 10 most recent
+        for (const [catalogueItemId, reviews] of reviewsByCatalogueItem.entries()) {
+          if (reviews.length > 10) {
+            reviewsByCatalogueItem.set(catalogueItemId, reviews.slice(0, 10));
+          }
+        }
+
+        const totalReviewsFetched = reviewsForCatalogueItems.length;
+        const itemsWithReviews = reviewsByCatalogueItem.size;
+        console.log(`📊 Reviews fetched: ${totalReviewsFetched} reviews for ${itemsWithReviews} catalogue items`);
+      } catch (reviewError) {
+        console.error('❌ Error fetching reviews for catalogue items:', reviewError);
+        // Continue without reviews - this is not critical for the main flow
+        console.log('⚠️ Continuing without reviews - catalogue items will show with empty reviews array');
+      }
+    } else {
+      console.log('📊 No catalogue items found - skipping review fetch');
+    }
+
     // Calculate provider ratings and stats
     const providersWithStats = availableProviders.map(provider => {
-      // Get reviews from bookings using raw query to avoid Prisma enum issues
-      const allReviews = []; // Simplified for now - reviews will be empty
-      
-      const totalRating = allReviews.reduce((sum, review) => sum + review.rating, 0);
-      const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
-      
-      const providerData = {
-        id: provider.id,
-        businessName: provider.businessName,
-        status: provider.status,
-        available: provider.available,
-        location: provider.location,
-        hourlyRate: provider.hourlyRate || 0,
-        user: provider.user,
-        service: provider.services[0]?.service,
-        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
-        totalReviews: allReviews.length,
-        completedJobs: provider._count.bookings,
-        recentReviews: allReviews.slice(0, 3), // Show only 3 recent reviews
-        isAvailable: true,
-      };
+      try {
+        // Get reviews from bookings using raw query to avoid Prisma enum issues
+        const allReviews = []; // Simplified for now - reviews will be empty
+        
+        const totalRating = allReviews.length > 0 ? allReviews.reduce((sum, review) => sum + review.rating, 0) : 0;
+        const averageRating = allReviews.length > 0 ? totalRating / allReviews.length : 0;
+        
+        // Format catalogue items with reviews
+        const catalogueItems = (provider.catalogueItems || []).map(item => {
+          try {
+            // Get reviews for this specific catalogue item from the pre-fetched map
+            const itemReviews = reviewsByCatalogueItem.get(item.id) || [];
+            
+            return {
+              id: item.id,
+              title: item.title,
+              price: item.price,
+              currency: item.currency || 'ZAR',
+              durationMins: item.durationMins,
+              images: item.images || [], // Images array from database
+              serviceId: item.serviceId,
+              service: {
+                name: item.service?.name || '',
+                category: {
+                  name: item.service?.category?.name || ''
+                }
+              },
+              reviews: itemReviews.map(review => ({
+                id: review.id,
+                rating: review.rating,
+                comment: review.comment || undefined, // Convert null to undefined for optional field
+                createdAt: review.createdAt.toISOString(), // Convert Date to ISO string
+                booking: {
+                  client: review.booking.client ? {
+                    name: review.booking.client.name
+                  } : undefined
+                }
+              }))
+            }
+          } catch (itemError) {
+            console.error(`Error formatting catalogue item ${item.id}:`, itemError)
+            return null
+          }
+        }).filter((item): item is NonNullable<typeof item> => item !== null)
+        
+        const providerData = {
+          id: provider.id,
+          businessName: provider.businessName,
+          description: provider.description || '',
+          experience: provider.experience || 0,
+          status: provider.status,
+          available: provider.available,
+          location: provider.location,
+          hourlyRate: provider.hourlyRate || 0,
+          user: provider.user,
+          service: {
+            name: provider.services[0]?.service?.name || '',
+            description: provider.services[0]?.service?.description || '',
+            category: provider.services[0]?.service?.category?.name || ''
+          },
+          averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+          totalReviews: allReviews.length,
+          completedJobs: provider._count?.bookings || 0,
+          recentReviews: allReviews.slice(0, 3), // Show only 3 recent reviews
+          isAvailable: true,
+          catalogueItems: catalogueItems
+        };
 
-      console.log('📊 Provider data prepared:', { 
-        id: providerData.id, 
-        businessName: providerData.businessName,
-        serviceName: providerData.service?.name,
-        hourlyRate: providerData.hourlyRate
-      });
+        const totalReviewsForProvider = catalogueItems.reduce((sum, item) => sum + item.reviews.length, 0);
+        console.log('📊 Provider data prepared:', { 
+          id: providerData.id, 
+          businessName: providerData.businessName,
+          serviceName: providerData.service?.name,
+          hourlyRate: providerData.hourlyRate,
+          catalogueItemsCount: catalogueItems.length,
+          totalReviewsCount: totalReviewsForProvider
+        });
 
-      return providerData;
-    });
+        return providerData;
+      } catch (providerError) {
+        console.error(`Error processing provider ${provider.id}:`, providerError);
+        return null;
+      }
+    }).filter((provider): provider is NonNullable<typeof provider> => provider !== null);
 
     // Sort by rating (highest first), then by completed jobs
     providersWithStats.sort((a, b) => {

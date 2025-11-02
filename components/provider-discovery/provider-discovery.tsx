@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { ArrowLeft, ArrowRight, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
-import { ProviderGrid } from "./provider-grid"
+import { ProviderCatalogueGrid } from "./provider-catalogue-grid"
 import { ProviderDetailsModal } from "./provider-details-modal"
 import { BookingSummaryDrawer } from "@/components/booking/BookingSummaryDrawer"
 import { BookingLoginModal } from "@/components/ui/booking-login-modal"
@@ -195,7 +195,7 @@ export function ProviderDiscovery({
     }
   }
 
-  const handleAcceptProvider = async (providerId: string) => {
+  const handleAcceptProvider = async (providerId: string, catalogueItemId?: string) => {
     setIsProcessing(true)
     try {
       // Validate that we have all required data
@@ -515,19 +515,15 @@ export function ProviderDiscovery({
 
       <div className="space-y-6 animate-fade-in">
       {/* Providers Grid */}
-      <ProviderGrid
+      <ProviderCatalogueGrid
         providers={providers}
         serviceId={serviceId}
-        onProviderSelected={handleAcceptProvider}
+        onProviderSelected={(providerId, catalogueItemId) => {
+          handleAcceptProvider(providerId, catalogueItemId)
+        }}
         onBack={onBack}
         isProcessing={isProcessing}
-        declinedProviders={declinedProviders}
-        onRetryDeclined={retryDeclinedProviders}
-        onPackageSelected={(provider, item) => {
-          setSelectedProvider(provider)
-          setSelectedPackage(item)
-          setShowSummary(true)
-        }}
+        providerCount={providers.length}
       />
 
       {/* Alternative Times Display */}
