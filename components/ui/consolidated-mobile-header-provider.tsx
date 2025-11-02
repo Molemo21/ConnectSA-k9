@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -19,7 +19,8 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useLogout } from "@/hooks/use-logout"
-import { ProviderNotificationPopup } from "./provider-notification-popup"
+import { useNotifications } from "@/hooks/use-notifications"
+import { NotificationPopup } from "./notification-popup"
 import Link from "next/link"
 
 interface ConsolidatedMobileHeaderProviderProps {
@@ -55,83 +56,171 @@ export function ConsolidatedMobileHeaderProvider({
   const router = useRouter()
   const { logout, isLoggingOut } = useLogout()
 
-  // Mock provider notifications - in a real app, this would come from an API
-  const [notifications, setNotifications] = useState([
-    {
-      id: '1',
-      title: 'New Booking Request',
-      message: 'John Smith requested carpet cleaning for tomorrow at 2:00 PM. Amount: R450',
-      type: 'booking' as const,
-      timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 minutes ago
-      read: false,
-      priority: 'high' as const,
-      actionUrl: '/provider/dashboard?section=jobs',
-      actionText: 'Review Booking'
-    },
-    {
-      id: '2',
-      title: 'Payment Received',
-      message: 'Payment of R450 has been processed for your plumbing service booking.',
-      type: 'payment' as const,
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-      read: false,
-      priority: 'medium' as const,
-      actionUrl: '/provider/dashboard?section=earnings',
-      actionText: 'View Earnings'
-    },
-    {
-      id: '3',
-      title: 'New Review Received',
-      message: 'Sarah Johnson left a 5-star review for your cleaning service: "Excellent work!"',
-      type: 'review' as const,
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-      read: true,
-      priority: 'low' as const,
-      actionUrl: '/provider/dashboard?section=reviews',
-      actionText: 'View Review'
-    },
-    {
-      id: '4',
-      title: 'Booking Reminder',
-      message: 'You have a cleaning service scheduled for today at 10:00 AM at 123 Main Street.',
-      type: 'urgent' as const,
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-      read: false,
-      priority: 'high' as const,
-      actionUrl: '/provider/dashboard?section=jobs',
-      actionText: 'View Details'
-    },
-    {
-      id: '5',
-      title: 'System Update',
-      message: 'New features added to your provider dashboard. Check out the improved booking management.',
-      type: 'system' as const,
-      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      read: true,
-      priority: 'low' as const
-    }
-  ])
-
-  const unreadCount = notifications.filter(n => !n.read).length
-
-  const handleMarkAsRead = (notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
-      )
-    )
-  }
-
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read: true }))
-    )
-  }
+  // Use real notifications from API
+  const { 
+    notifications: apiNotifications, 
+    unreadCount, 
+    isLoading: notificationsLoading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification
+  } = useNotifications()
 
   // Prevent hydration mismatch by only running on client
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Transform API notifications to NotificationPopup format (same logic as SafeUserMenu)
+  const transformToPopupFormat = useMemo(() => {
+    if (!apiNotifications || apiNotifications.length === 0 || !mounted) return []
+    
+    return apiNotifications.map((notif) => {
+      // Map notification type to popup type
+      const getPopupType = (type: string): 'success' | 'warning' | 'info' | 'error' => {
+        const upperType = type.toUpperCase()
+        if (upperType.includes('PAYMENT_RECEIVED') || 
+            upperType.includes('BOOKING_ACCEPTED') || 
+            upperType.includes('JOB_COMPLETED') ||
+            upperType.includes('PAYMENT_RELEASED') ||
+            upperType.includes('ESCROW_RELEASED') ||
+            upperType.includes('CATALOGUE_SETUP_COMPLETED') ||
+            upperType.includes('REVIEW_SUBMITTED')) {
+          return 'success'
+        }
+        if (upperType.includes('DECLINED') || 
+            upperType.includes('FAILED') || 
+            upperType.includes('CANCELLED')) {
+          return 'error'
+        }
+        if (upperType.includes('DISPUTE')) {
+          return 'warning'
+        }
+        return 'info'
+      }
+
+      // Generate action URL from notification type (same logic as SafeUserMenu)
+      const getActionDetails = (type: string, userId: string) => {
+        const upperType = type.toUpperCase()
+        
+        // Extract booking ID from message if possible (improved regex to handle various formats)
+        let bookingId: string | null = null
+        
+        // Check for "Booking ID:" format first (most specific)
+        let match = notif.message.match(/booking\s+id\s*:\s*([a-zA-Z0-9_-]{3,})/i)
+        if (match && match[1] && match[1].toUpperCase() !== 'ID') {
+          bookingId = match[1]
+        } else {
+          // Then try: booking #ID format (most common) - must have # symbol
+          match = notif.message.match(/booking\s*#\s*([a-zA-Z0-9_-]{3,})/i)
+          if (match && match[1] && match[1].toUpperCase() !== 'ID') {
+            bookingId = match[1]
+          } else {
+            // Last try: "on booking" or "for booking" followed by ID
+            match = notif.message.match(/(?:on|for)\s+booking\s+(?:#\s*)?([a-zA-Z0-9_-]{3,})/i)
+            if (match && match[1] && match[1].toUpperCase() !== 'ID') {
+              bookingId = match[1]
+            }
+          }
+        }
+        
+        // Additional validation: booking ID should not be common words
+        if (bookingId) {
+          const commonWords = ['request', 'for', 'id', 'the', 'you', 'your', 'from', 'has', 'was', 'been', 'with', 'this', 'that', 'can', 'will', 'now', 'may']
+          if (commonWords.includes(bookingId.toLowerCase())) {
+            bookingId = null
+          }
+        }
+        
+        if (upperType.includes('BOOKING')) {
+          if (user?.role === 'PROVIDER') {
+            return {
+              actionUrl: bookingId 
+                ? `/provider/dashboard?tab=jobs&bookingId=${bookingId}`
+                : '/provider/dashboard?tab=jobs',
+              actionText: 'View Booking'
+            }
+          } else {
+            return {
+              actionUrl: bookingId 
+                ? `/dashboard?bookingId=${bookingId}`
+                : '/dashboard',
+              actionText: 'View Booking'
+            }
+          }
+        }
+        
+        if (upperType.includes('PAYMENT') || upperType.includes('ESCROW')) {
+          if (user?.role === 'PROVIDER') {
+            return {
+              actionUrl: bookingId
+                ? `/provider/dashboard?tab=earnings&bookingId=${bookingId}`
+                : '/provider/dashboard?tab=earnings',
+              actionText: 'View Payment'
+            }
+          } else {
+            return {
+              actionUrl: bookingId
+                ? `/dashboard?bookingId=${bookingId}`
+                : '/dashboard',
+              actionText: 'View Payment'
+            }
+          }
+        }
+        
+        if (upperType.includes('REVIEW')) {
+          if (user?.role === 'PROVIDER') {
+            return {
+              actionUrl: bookingId
+                ? `/provider/dashboard?tab=reviews&bookingId=${bookingId}`
+                : '/provider/dashboard?tab=reviews',
+              actionText: 'View Review'
+            }
+          } else {
+            return {
+              actionUrl: bookingId
+                ? `/dashboard?bookingId=${bookingId}`
+                : '/dashboard',
+              actionText: 'View Review'
+            }
+          }
+        }
+
+        if (upperType.includes('CATALOGUE')) {
+          return {
+            actionUrl: '/provider/dashboard?tab=catalogue',
+            actionText: 'View Catalogue'
+          }
+        }
+        
+        // Default fallback
+        return {
+          actionUrl: user?.role === 'PROVIDER' ? '/provider/dashboard' : '/dashboard',
+          actionText: 'View Details'
+        }
+      }
+
+      const actionDetails = getActionDetails(notif.type, notif.userId)
+      
+      // Handle date: API returns ISO string (already transformed in hook)
+      const timestamp = typeof notif.createdAt === 'string' 
+        ? notif.createdAt 
+        : (notif.createdAt as Date).toISOString()
+
+      return {
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        type: getPopupType(notif.type),
+        timestamp: timestamp,
+        read: notif.isRead,
+        actionUrl: actionDetails.actionUrl,
+        actionText: actionDetails.actionText
+      }
+    })
+  }, [apiNotifications, user?.role, mounted])
+
+  const notifications = transformToPopupFormat
 
   // Close menu when route changes
   useEffect(() => {
@@ -253,14 +342,15 @@ export function ConsolidatedMobileHeaderProvider({
               size="sm"
               className="relative p-2 text-gray-300 hover:text-white hover:bg-white/10"
               onClick={() => setShowNotificationPopup(true)}
+              disabled={notificationsLoading || !mounted}
             >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>
-                </div>
-              )}
-            </Button>
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && mounted && (
+                  <div className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-semibold shadow-lg">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </div>
+                )}
+              </Button>
 
             {/* User Menu */}
             {user ? (
@@ -482,14 +572,17 @@ export function ConsolidatedMobileHeaderProvider({
         </div>
       )}
 
-      {/* Provider Notification Popup */}
-      <ProviderNotificationPopup
-        isOpen={showNotificationPopup}
-        onClose={() => setShowNotificationPopup(false)}
-        notifications={notifications}
-        onMarkAsRead={handleMarkAsRead}
-        onMarkAllAsRead={handleMarkAllAsRead}
-      />
+      {/* Notification Popup */}
+      {mounted && (
+        <NotificationPopup
+          isOpen={showNotificationPopup}
+          onClose={() => setShowNotificationPopup(false)}
+          notifications={notifications}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onDelete={deleteNotification}
+        />
+      )}
     </>
   )
 }

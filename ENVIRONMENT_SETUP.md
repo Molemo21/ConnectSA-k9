@@ -1,4 +1,4 @@
-# 🔧 Environment Configuration for Paystack Webhooks
+# 🔧 Environment Configuration and Local Development
 
 ## 📋 **Environment Variables Setup**
 
@@ -23,6 +23,52 @@ PAYSTACK_PUBLIC_KEY=your_paystack_public_key
 # App Configuration
 NEXTAUTH_SECRET=your_nextauth_secret
 NEXTAUTH_URL=http://localhost:3000
+```
+
+## 🧑‍💻 Local Development Best Practices
+
+### Package Manager
+- Use pnpm via Corepack:
+```
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm install
+```
+
+### Local Database (recommended)
+Run a local Postgres to avoid remote DB latency during development:
+```
+docker compose -f docker-compose.dev.yml up -d
+```
+Configure `.env.local`:
+```
+DATABASE_URL=postgresql://connectsa:connectsa@127.0.0.1:5432/connectsa
+DIRECT_URL=postgresql://connectsa:connectsa@127.0.0.1:5432/connectsa
+```
+
+Generate Prisma client (skip running migrations if not needed):
+```
+pnpm exec prisma generate
+```
+
+### Email Provider
+```
+RESEND_API_KEY=your_resend_api_key
+FROM_EMAIL=no-reply@app.proliinkconnect.co.za
+```
+
+### Start Dev Server
+```
+pnpm dev
+# or
+node server.js
+```
+
+### Test Email Endpoint
+```
+curl -X POST http://localhost:3000/api/test-email \
+  -H "Content-Type: application/json" \
+  -d '{"to":"you@example.com","subject":"E2E Notification Test","message":"This is a test."}'
 ```
 
 ### **Paystack Webhook Secret (Conditional)**
