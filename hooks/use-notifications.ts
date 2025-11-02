@@ -6,7 +6,7 @@ interface Notification {
   userId: string
   type: string
   title: string
-  content: string
+  message: string
   isRead: boolean
   createdAt: string
   user: {
@@ -49,7 +49,17 @@ export function useNotifications(): UseNotificationsReturn {
       }
 
       const data = await response.json()
-      setNotifications(data.notifications || [])
+      
+      // Transform API response to match our interface
+      // API returns Prisma objects with Date objects, we need ISO strings
+      const transformedNotifications = (data.notifications || []).map((notif: any) => ({
+        ...notif,
+        createdAt: typeof notif.createdAt === 'string' 
+          ? notif.createdAt 
+          : new Date(notif.createdAt).toISOString()
+      }))
+      
+      setNotifications(transformedNotifications)
       setUnreadCount(data.unreadCount || 0)
     } catch (err) {
       console.error('Error fetching notifications:', err)
@@ -187,6 +197,65 @@ export function useRealtimeNotifications() {
   const { toast } = useToast()
   const [lastNotificationId, setLastNotificationId] = useState<string | null>(null)
 
+  // Determine notification type and variant for toast
+  const getNotificationVariant = useCallback((notification: any) => {
+    const type = (notification.type || '').toUpperCase()
+    const title = (notification.title || '').toUpperCase()
+    
+    // Determine if it's destructive (error)
+    if (type.includes('DECLINED') || 
+        type.includes('FAILED') || 
+        type.includes('CANCELLED') ||
+        type.includes('ERROR') ||
+        title.includes('DECLINED') ||
+        title.includes('FAILED') ||
+        title.includes('CANCELLED')) {
+      return 'destructive'
+    }
+    
+    // Default variant for success, warning, info
+    return 'default'
+  }, [])
+
+  // Get appropriate styling class based on notification type
+  const getNotificationStyles = useCallback((notification: any) => {
+    const type = (notification.type || '').toUpperCase()
+    const title = (notification.title || '').toUpperCase()
+    
+    if (type.includes('PAYMENT_RECEIVED') || 
+        type.includes('PAYMENT_RELEASED') ||
+        type.includes('BOOKING_ACCEPTED') ||
+        type.includes('JOB_COMPLETED') ||
+        type.includes('REVIEW_SUBMITTED') ||
+        title.includes('PAYMENT') ||
+        title.includes('SUCCESS')) {
+      return {
+        className: 'border-green-200 bg-green-50 text-green-900',
+        icon: '✅'
+      }
+    }
+    
+    if (type.includes('DISPUTE') || type.includes('WARNING')) {
+      return {
+        className: 'border-amber-200 bg-amber-50 text-amber-900',
+        icon: '⚠️'
+      }
+    }
+    
+    if (type.includes('BOOKING') || type.includes('SCHEDULE')) {
+      return {
+        className: 'border-blue-200 bg-blue-50 text-blue-900',
+        icon: '📅'
+      }
+    }
+    
+    // Default info style
+    return {
+      className: 'border-blue-200 bg-blue-50 text-blue-900',
+      icon: 'ℹ️'
+    }
+  }, [])
+
   const checkForNewNotifications = useCallback(async () => {
     try {
       const response = await fetch('/api/notifications/latest', {
@@ -201,17 +270,45 @@ export function useRealtimeNotifications() {
       if (latestNotification && latestNotification.id !== lastNotificationId) {
         setLastNotificationId(latestNotification.id)
         
-        // Show toast for new notification
+        // Determine variant and styles
+        const variant = getNotificationVariant(latestNotification)
+        const styles = getNotificationStyles(latestNotification)
+        
+        // Show enhanced toast for new notification
+        // Note: Action buttons require JSX, so we'll include the URL in the description
+        // for now. Users can click the notification popup for full navigation.
+        const actionUrl = (() => {
+          const type = (latestNotification.type || '').toUpperCase()
+          if (type.includes('BOOKING')) {
+            return '/provider/dashboard?section=jobs'
+          }
+          if (type.includes('PAYMENT') || type.includes('ESCROW')) {
+            return '/provider/dashboard?section=earnings'
+          }
+          if (type.includes('REVIEW')) {
+            return '/provider/dashboard?section=reviews'
+          }
+          return null
+        })()
+        
+        // Enhance description with action hint if URL exists
+        let enhancedDescription = latestNotification.message || latestNotification.content
+        if (actionUrl && enhancedDescription) {
+          enhancedDescription = `${enhancedDescription} Click the notification bell to view details.`
+        }
+        
         toast({
           title: latestNotification.title,
-          description: latestNotification.content,
-          duration: 5000
+          description: enhancedDescription,
+          variant: variant as 'default' | 'destructive',
+          className: variant === 'default' ? styles.className : undefined,
+          duration: 6000
         })
       }
     } catch (err) {
       console.error('Error checking for new notifications:', err)
     }
-  }, [lastNotificationId, toast])
+  }, [lastNotificationId, toast, getNotificationVariant, getNotificationStyles])
 
   // Check for new notifications every 10 seconds
   useEffect(() => {

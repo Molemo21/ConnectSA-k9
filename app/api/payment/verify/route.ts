@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { paystackClient } from "@/lib/paystack";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 import { z } from "zod";
 
 export const dynamic = 'force-dynamic'
@@ -168,25 +169,37 @@ export async function POST(request: NextRequest) {
         newBookingStatus: result.updatedBooking.status
       });
 
-      // Create notification for provider about payment received
+      // Notify provider about payment received (in-app + email)
       try {
         const notificationData = NotificationTemplates.PAYMENT_RECEIVED(payment.booking);
-        await createNotification({
+        await sendMultiChannelNotification({
           userId: payment.booking.provider.user.id,
           type: notificationData.type,
           title: notificationData.title,
-          content: notificationData.content
-        });
-        logger.info('Provider payment notification created', {
+          content: notificationData.content,
+          metadata: { booking: payment.booking }
+        }, {
+          channels: ['in-app', 'email', 'push'],
+          email: {
+            to: payment.booking.provider.user.email,
+            subject: notificationData.title
+          },
+          push: {
+            userId: payment.booking.provider.user.id,
+            title: notificationData.title,
+            body: notificationData.content,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/provider/bookings/${payment.bookingId}`
+          }
+        })
+        logger.info('Provider payment notification sent (in-app + email)', {
           reference,
           providerId: payment.booking.provider.user.id
         });
       } catch (notificationError) {
-        logger.warn('Could not create payment notification', {
+        logger.warn('Could not send payment notification', {
           reference,
           error: notificationError instanceof Error ? notificationError.message : 'Unknown error'
         });
-        // Continue without notification - payment status is more important
       }
 
       return NextResponse.json({

@@ -59,68 +59,69 @@ enum PaymentStatus {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String   @id @default(cuid())
+  email         String   @unique
   name          String
   password      String?
   phone         String?
   avatar        String?
-  role          UserRole  @default(CLIENT)
-  emailVerified Boolean   @default(false)
-  isActive      Boolean   @default(true)
-  googleId      String?   @unique
-  appleId       String?   @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          UserRole @default(CLIENT)
+  emailVerified Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  googleId      String?  @unique
+  appleId       String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Relations
-  provider      Provider?
-  bookings      Booking[] @relation("ClientBookings")
-  adminReviews  ProviderReview[]
-  verificationTokens VerificationToken[]
+  provider            Provider?
+  bookings            Booking[]            @relation("ClientBookings")
+  adminReviews        ProviderReview[]
+  verificationTokens  VerificationToken[]
   passwordResetTokens PasswordResetToken[]
-  bookingDrafts BookingDraft[]
-  notifications Notification[]
+  bookingDrafts       BookingDraft[]
+  notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
 
   @@map("users")
 }
 
 model Provider {
-  id              String          @id @default(cuid())
-  userId          String          @unique
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessName    String?
-  description     String?
-  experience      Int?
-  hourlyRate      Float?
-  location        String?
-  idDocument      String?
+  id             String         @id @default(cuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName   String?
+  description    String?
+  experience     Int?
+  hourlyRate     Float?
+  location       String?
+  idDocument     String?
   proofOfAddress String?
-  certifications  String[]
-  profileImages   String[]
-  status          ProviderStatus  @default(PENDING)
-  available       Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  
+  certifications String[]
+  profileImages  String[]
+  status         ProviderStatus @default(PENDING)
+  available      Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
   // Catalogue setup tracking fields
-  catalogueSetupCompleted    Boolean   @default(false)
+  catalogueSetupCompleted   Boolean   @default(false)
   catalogueSetupCompletedAt DateTime?
-  
+
   // Bank details fields
-  bankName        String?
-  bankCode        String?
-  accountNumber   String?
-  accountName     String?
-  recipientCode   String?         @map("recipient_code")
+  bankName      String?
+  bankCode      String?
+  accountNumber String?
+  accountName   String?
+  recipientCode String? @map("recipient_code")
 
   // Relations
-  bookings        Booking[]        @relation("ProviderBookings")
-  services        ProviderService[]
-  catalogueItems  CatalogueItem[]  // New relation for catalogue items
-  reviews         Review[]
-  adminReviews    ProviderReview[]
-  bookingDrafts   BookingDraft[]
+  bookings       Booking[]         @relation("ProviderBookings")
+  services       ProviderService[]
+  catalogueItems CatalogueItem[] // New relation for catalogue items
+  reviews        Review[]
+  adminReviews   ProviderReview[]
+  bookingDrafts  BookingDraft[]
 
   @@map("providers")
 }
@@ -136,11 +137,11 @@ model Service {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  bookings    Booking[]
-  providers   ProviderService[]
+  bookings       Booking[]
+  providers      ProviderService[]
   catalogueItems CatalogueItem[] // New relation for catalogue items
-  category    ServiceCategory @relation(fields: [categoryId], references: [id])
-  bookingDrafts BookingDraft[]
+  category       ServiceCategory   @relation(fields: [categoryId], references: [id])
+  bookingDrafts  BookingDraft[]
 
   @@map("services")
 }
@@ -155,7 +156,7 @@ model ServiceCategory {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  services    Service[]
+  services Service[]
 
   @@map("service_categories")
 }
@@ -164,7 +165,7 @@ model Booking {
   id            String        @id @default(cuid())
   clientId      String
   providerId    String
-  serviceId      String
+  serviceId     String
   scheduledDate DateTime
   duration      Int
   totalAmount   Float
@@ -177,15 +178,15 @@ model Booking {
   updatedAt     DateTime      @updatedAt
 
   // New catalogue-based pricing fields (nullable for backward compatibility)
-  catalogueItemId    String?  // Nullable for backward compatibility
-  bookedPrice        Float?   // Snapshot of catalogue item price
-  bookedCurrency     String?  // Snapshot of catalogue item currency
-  bookedDurationMins Int?     // Snapshot of catalogue item duration
+  catalogueItemId    String? // Nullable for backward compatibility
+  bookedPrice        Float? // Snapshot of catalogue item price
+  bookedCurrency     String? // Snapshot of catalogue item currency
+  bookedDurationMins Int? // Snapshot of catalogue item duration
 
   // Relations
-  client        User          @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Restrict)
-  provider      Provider      @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Restrict)
-  service       Service       @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  client        User           @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Restrict)
+  provider      Provider       @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Restrict)
+  service       Service        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   catalogueItem CatalogueItem? @relation(fields: [catalogueItemId], references: [id], onDelete: SetNull)
   payment       Payment?
   review        Review?
@@ -194,28 +195,28 @@ model Booking {
 }
 
 model Payment {
-  id                String        @id @default(cuid())
-  bookingId        String        @unique
-  amount            Float
-  paystackRef       String        @unique
-  status            PaymentStatus
-  paidAt            DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  
+  id          String        @id @default(cuid())
+  bookingId   String        @unique
+  amount      Float
+  paystackRef String        @unique
+  status      PaymentStatus
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
   // Additional fields from production database
-  escrowAmount      Float?        @map("escrow_amount")
-  platformFee      Float?        @map("platform_fee")
-  transactionId     String?       @map("transaction_id")
-  authorizationUrl String?       @map("authorization_url")
-  accessCode        String?       @map("access_code")
-  currency          String?
-  errorMessage      String?       @map("error_message")
-  providerResponse  Json?         @map("provider_response")
-  userId            String?       @map("user_id")
+  escrowAmount     Float?  @map("escrow_amount")
+  platformFee      Float?  @map("platform_fee")
+  transactionId    String? @map("transaction_id")
+  authorizationUrl String? @map("authorization_url")
+  accessCode       String? @map("access_code")
+  currency         String?
+  errorMessage     String? @map("error_message")
+  providerResponse Json?   @map("provider_response")
+  userId           String? @map("user_id")
 
   // Relations
-  booking           Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
 
   @@map("payments")
 }
@@ -229,21 +230,21 @@ model Review {
   createdAt  DateTime @default(now())
 
   // Relations
-  booking    Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Restrict)
 
   @@map("reviews")
 }
 
 model ProviderService {
-  id         String  @id @default(cuid())
+  id         String @id @default(cuid())
   providerId String
   serviceId  String
   customRate Float?
 
   // Relations
-  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, serviceId])
   @@map("provider_services")
@@ -258,8 +259,8 @@ model ProviderReview {
   createdAt  DateTime       @default(now())
 
   // Relations
-  provider   Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  admin      User           @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  admin    User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@map("ProviderReview")
 }
@@ -272,7 +273,7 @@ model VerificationToken {
   createdAt DateTime @default(now())
 
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("VerificationToken")
 }
@@ -285,7 +286,7 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("PasswordResetToken")
 }
@@ -321,31 +322,46 @@ model Notification {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
 
-// New CatalogueItem model for catalogue-based pricing
-model CatalogueItem {
-  id          String   @id @default(cuid())
-  providerId  String
-  serviceId   String
-  title       String
-  shortDesc   String
-  longDesc    String?
-  price       Float
-  currency    String   @default("ZAR")
-  durationMins Int
-  images      String[] // Array of image URLs
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
 
   // Relations
-  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  bookings    Booking[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
+
+// New CatalogueItem model for catalogue-based pricing
+model CatalogueItem {
+  id           String   @id @default(cuid())
+  providerId   String
+  serviceId    String
+  title        String
+  shortDesc    String
+  longDesc     String?
+  price        Float
+  currency     String   @default("ZAR")
+  durationMins Int
+  images       String[] // Array of image URLs
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  provider Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service  Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  bookings Booking[]
 
   @@map("catalogue_items")
 }

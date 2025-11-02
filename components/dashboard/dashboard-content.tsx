@@ -76,6 +76,72 @@ export function DashboardContent() {
     }
   })
 
+  // Handle bookingId URL parameter - scroll to and highlight specific booking card
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    // Use Next.js searchParams hook for reactive URL parameter reading
+    const bookingId = searchParams.get('bookingId')
+    
+    if (bookingId && bookings && bookings.length > 0) {
+      console.log(`🔍 Booking ID detected in URL: ${bookingId}, attempting to scroll to card`)
+      
+      // Wait for DOM to render
+      const scrollTimeout = setTimeout(() => {
+        const bookingCard = document.querySelector(`[data-booking-id="${bookingId}"]`)
+        
+        if (bookingCard) {
+          // Scroll to card with smooth behavior
+          bookingCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          })
+          
+          // Add highlight animation
+          bookingCard.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30', 'transition-all', 'duration-300')
+          
+          // Remove highlight after 3 seconds
+          setTimeout(() => {
+            bookingCard.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30')
+          }, 3000)
+          
+          console.log(`✅ Successfully scrolled to booking card: ${bookingId}`)
+        } else {
+          console.warn(`⚠️ Booking card not found for bookingId: ${bookingId}. Card may not be rendered yet.`)
+          
+          // Retry after a longer delay (in case bookings are still loading)
+          setTimeout(() => {
+            const retryCard = document.querySelector(`[data-booking-id="${bookingId}"]`)
+            if (retryCard) {
+              retryCard.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center',
+                inline: 'nearest'
+              })
+              retryCard.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30', 'transition-all', 'duration-300')
+              setTimeout(() => {
+                retryCard.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30')
+              }, 3000)
+              console.log(`✅ Successfully found and scrolled to booking card on retry: ${bookingId}`)
+            } else {
+              console.error(`❌ Booking card still not found after retry: ${bookingId}`)
+            }
+          }, 1500)
+        }
+        
+        // Clean up URL by removing bookingId parameter
+        const newUrl = new URL(window.location.href)
+        newUrl.searchParams.delete('bookingId')
+        window.history.replaceState({}, '', newUrl.toString())
+      }, 500)
+      
+      return () => clearTimeout(scrollTimeout)
+    } else if (bookingId && (!bookings || bookings.length === 0)) {
+      console.log(`⏳ Bookings not loaded yet, bookingId will be handled when bookings are available: ${bookingId}`)
+    }
+  }, [bookings, searchParams])
+
   // Manual refresh function with proper error handling
   const handleManualRefresh = async () => {
     if (isRefreshing) {

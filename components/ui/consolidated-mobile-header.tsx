@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,8 @@ import {
   Loader2
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
+import { useNotifications } from "@/hooks/use-notifications"
+import { NotificationPopup } from "./notification-popup"
 
 interface ConsolidatedMobileHeaderProps {
   user: {
@@ -62,10 +64,178 @@ export function ConsolidatedMobileHeader({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  
+  // Use real notifications from API
+  const { 
+    notifications: apiNotifications, 
+    unreadCount, 
+    isLoading: notificationsLoading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification
+  } = useNotifications()
   const menuRef = useRef<HTMLDivElement>(null)
   const firstFocusableRef = useRef<HTMLButtonElement>(null)
   const lastFocusableRef = useRef<HTMLButtonElement>(null)
   const confirmRef = useRef<HTMLDivElement>(null)
+
+  // Prevent hydration mismatch by only running on client
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Transform API notifications to NotificationPopup format (same logic as SafeUserMenu)
+  const transformToPopupFormat = useMemo(() => {
+    if (!apiNotifications || apiNotifications.length === 0 || !mounted) return []
+    
+    return apiNotifications.map((notif) => {
+      // Map notification type to popup type
+      const getPopupType = (type: string): 'success' | 'warning' | 'info' | 'error' => {
+        const upperType = type.toUpperCase()
+        if (upperType.includes('PAYMENT_RECEIVED') || 
+            upperType.includes('BOOKING_ACCEPTED') || 
+            upperType.includes('JOB_COMPLETED') ||
+            upperType.includes('PAYMENT_RELEASED') ||
+            upperType.includes('ESCROW_RELEASED') ||
+            upperType.includes('CATALOGUE_SETUP_COMPLETED') ||
+            upperType.includes('REVIEW_SUBMITTED')) {
+          return 'success'
+        }
+        if (upperType.includes('DECLINED') || 
+            upperType.includes('FAILED') || 
+            upperType.includes('CANCELLED')) {
+          return 'error'
+        }
+        if (upperType.includes('DISPUTE')) {
+          return 'warning'
+        }
+        return 'info'
+      }
+
+      // Generate action URL from notification type (same logic as SafeUserMenu)
+      const getActionDetails = (type: string, userId: string) => {
+        const upperType = type.toUpperCase()
+        
+        // Extract booking ID from message if possible (improved regex to handle various formats)
+        let bookingId: string | null = null
+        
+        // Check for "Booking ID:" format first (most specific)
+        let match = notif.message.match(/booking\s+id\s*:\s*([a-zA-Z0-9_-]{3,})/i)
+        if (match && match[1] && match[1].toUpperCase() !== 'ID') {
+          bookingId = match[1]
+        } else {
+          // Then try: booking #ID format (most common) - must have # symbol
+          match = notif.message.match(/booking\s*#\s*([a-zA-Z0-9_-]{3,})/i)
+          if (match && match[1] && match[1].toUpperCase() !== 'ID') {
+            bookingId = match[1]
+          } else {
+            // Last try: "on booking" or "for booking" followed by ID
+            match = notif.message.match(/(?:on|for)\s+booking\s+(?:#\s*)?([a-zA-Z0-9_-]{3,})/i)
+            if (match && match[1] && match[1].toUpperCase() !== 'ID') {
+              bookingId = match[1]
+            }
+          }
+        }
+        
+        // Additional validation: booking ID should not be common words
+        if (bookingId) {
+          const commonWords = ['request', 'for', 'id', 'the', 'you', 'your', 'from', 'has', 'was', 'been', 'with', 'this', 'that', 'can', 'will', 'now', 'may']
+          if (commonWords.includes(bookingId.toLowerCase())) {
+            bookingId = null
+          }
+        }
+        
+        if (upperType.includes('BOOKING')) {
+          if (user?.role === 'PROVIDER') {
+            return {
+              actionUrl: bookingId 
+                ? `/provider/dashboard?tab=jobs&bookingId=${bookingId}`
+                : '/provider/dashboard?tab=jobs',
+              actionText: 'View Booking'
+            }
+          } else {
+            return {
+              actionUrl: bookingId 
+                ? `/dashboard?bookingId=${bookingId}`
+                : '/dashboard',
+              actionText: 'View Booking'
+            }
+          }
+        }
+        
+        if (upperType.includes('PAYMENT') || upperType.includes('ESCROW')) {
+          if (user?.role === 'PROVIDER') {
+            return {
+              actionUrl: bookingId
+                ? `/provider/dashboard?tab=earnings&bookingId=${bookingId}`
+                : '/provider/dashboard?tab=earnings',
+              actionText: 'View Payment'
+            }
+          } else {
+            return {
+              actionUrl: bookingId
+                ? `/dashboard?bookingId=${bookingId}`
+                : '/dashboard',
+              actionText: 'View Payment'
+            }
+          }
+        }
+        
+        if (upperType.includes('REVIEW')) {
+          if (user?.role === 'PROVIDER') {
+            return {
+              actionUrl: bookingId
+                ? `/provider/dashboard?tab=reviews&bookingId=${bookingId}`
+                : '/provider/dashboard?tab=reviews',
+              actionText: 'View Review'
+            }
+          } else {
+            return {
+              actionUrl: bookingId
+                ? `/dashboard?bookingId=${bookingId}`
+                : '/dashboard',
+              actionText: 'View Review'
+            }
+          }
+        }
+
+        if (upperType.includes('CATALOGUE')) {
+          return {
+            actionUrl: '/provider/dashboard?tab=catalogue',
+            actionText: 'View Catalogue'
+          }
+        }
+        
+        // Default fallback
+        return {
+          actionUrl: user?.role === 'PROVIDER' ? '/provider/dashboard' : '/dashboard',
+          actionText: 'View Details'
+        }
+      }
+
+      const actionDetails = getActionDetails(notif.type, notif.userId)
+      
+      // Handle date: API returns ISO string (already transformed in hook)
+      const timestamp = typeof notif.createdAt === 'string' 
+        ? notif.createdAt 
+        : (notif.createdAt as Date).toISOString()
+
+      return {
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        type: getPopupType(notif.type),
+        timestamp: timestamp,
+        read: notif.isRead,
+        actionUrl: actionDetails.actionUrl,
+        actionText: actionDetails.actionText
+      }
+    })
+  }, [apiNotifications, user?.role, mounted])
+
+  const notifications = transformToPopupFormat
 
 
   // Close menu when route changes
@@ -271,12 +441,16 @@ export function ConsolidatedMobileHeader({
               <Button
                 variant="ghost"
                 size="sm"
-                className="p-2 text-white/80 hover:text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
+                className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 min-h-[44px] min-w-[44px]"
                 aria-label="Notifications"
+                onClick={() => setShowNotificationPopup(true)}
+                disabled={notificationsLoading || !mounted}
               >
                 <Bell className="w-5 h-5" />
-                {hasNotifications && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                {unreadCount > 0 && mounted && (
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-semibold shadow-lg">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
                 )}
               </Button>
 
@@ -569,6 +743,18 @@ export function ConsolidatedMobileHeader({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Notification Popup */}
+      {mounted && (
+        <NotificationPopup
+          isOpen={showNotificationPopup}
+          onClose={() => setShowNotificationPopup(false)}
+          notifications={notifications}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onDelete={deleteNotification}
+        />
       )}
     </>
   )

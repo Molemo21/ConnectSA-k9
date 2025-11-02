@@ -14,6 +14,168 @@ const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 
+/**
+ * Validate environment variables at startup
+ * This will fail fast with clear error messages if critical variables are missing
+ */
+if (process.env.NODE_ENV === 'production') {
+  try {
+    // Import and validate environment variables
+    // Note: We use dynamic import since this is CommonJS and the validation is ESM
+    // For production, we'll validate critical variables inline
+    console.log('🔍 Validating production environment variables...');
+    
+    const requiredVars = [
+      'DATABASE_URL',
+      'DIRECT_URL',
+      'JWT_SECRET',
+      'NEXTAUTH_SECRET',
+      'NEXTAUTH_URL',
+      'NEXT_PUBLIC_APP_URL',
+      'RESEND_API_KEY',
+      'FROM_EMAIL',
+      'PAYSTACK_SECRET_KEY',
+      'PAYSTACK_PUBLIC_KEY'
+    ];
+    
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      console.error('\n❌ CRITICAL: Missing required environment variables:');
+      missingVars.forEach(varName => console.error(`   - ${varName}`));
+      console.error('\n🚨 Application cannot start without these variables.\n');
+      process.exit(1);
+    }
+    
+    // Validate JWT secrets are long enough
+    if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+      console.error('\n❌ CRITICAL: JWT_SECRET must be at least 32 characters long\n');
+      process.exit(1);
+    }
+    
+    if (process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET.length < 32) {
+      console.error('\n❌ CRITICAL: NEXTAUTH_SECRET must be at least 32 characters long\n');
+      process.exit(1);
+    }
+    
+    // Validate URLs use HTTPS in production
+    if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.startsWith('https://')) {
+      console.warn('\n⚠️  WARNING: NEXT_PUBLIC_APP_URL should use HTTPS in production');
+    }
+    
+    if (process.env.NEXTAUTH_URL && !process.env.NEXTAUTH_URL.startsWith('https://')) {
+      console.warn('\n⚠️  WARNING: NEXTAUTH_URL should use HTTPS in production');
+    }
+    
+    console.log('✅ Environment validation passed\n');
+  } catch (error) {
+    console.error('❌ Error validating environment:', error);
+    process.exit(1);
+  }
+}
+
+/**
+ * Check if an error is a OneDrive file lock error
+ */
+function isOneDriveLockError(error) {
+  if (!error) return false;
+  
+  // Handle string errors
+  if (typeof error === 'string') {
+    return error.includes('UNKNOWN: unknown error') &&
+           error.includes('errno: -4094') &&
+           (error.includes('.next-dev') || error.includes('.next'));
+  }
+  
+  // Handle object errors
+  if (typeof error !== 'object') return false;
+  
+  const errno = error.errno;
+  const code = error.code || '';
+  const path = error.path || '';
+  const message = error.message || '';
+  
+  // Check for OneDrive lock error characteristics
+  const hasOneDriveErrno = errno === -4094;
+  const hasUnknownCode = code === 'UNKNOWN';
+  const hasNextPath = path.includes('.next-dev') || path.includes('.next');
+  const hasNextMessage = message.includes('.next-dev') || message.includes('.next');
+  
+  return (
+    (hasOneDriveErrno && hasUnknownCode) ||
+    (hasOneDriveErrno && hasNextPath) ||
+    (hasOneDriveErrno && hasNextMessage) ||
+    (hasUnknownCode && hasNextPath && hasOneDriveErrno)
+  );
+}
+
+/**
+ * Filter OneDrive errors from console output
+ */
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+console.error = function(...args) {
+  // Check if any argument contains OneDrive lock error
+  const shouldSuppress = args.some(arg => {
+    if (typeof arg === 'object' && arg !== null) {
+      return isOneDriveLockError(arg);
+    }
+    if (typeof arg === 'string') {
+      return arg.includes('UNKNOWN: unknown error') && 
+             arg.includes('errno: -4094') &&
+             (arg.includes('.next-dev') || arg.includes('.next'));
+    }
+    return false;
+  });
+  
+  if (!shouldSuppress) {
+    originalConsoleError.apply(console, args);
+  }
+  // Silently suppress OneDrive errors
+};
+
+console.warn = function(...args) {
+  // Check if any argument contains OneDrive lock error
+  const shouldSuppress = args.some(arg => {
+    if (typeof arg === 'object' && arg !== null) {
+      return isOneDriveLockError(arg);
+    }
+    if (typeof arg === 'string') {
+      return arg.includes('UNKNOWN: unknown error') && 
+             arg.includes('errno: -4094') &&
+             (arg.includes('.next-dev') || arg.includes('.next'));
+    }
+    return false;
+  });
+  
+  if (!shouldSuppress) {
+    originalConsoleWarn.apply(console, args);
+  }
+  // Silently suppress OneDrive warnings
+};
+
+/**
+ * Process-level error handlers to catch unhandled errors
+ */
+process.on('uncaughtException', (error) => {
+  if (isOneDriveLockError(error)) {
+    // Silently suppress OneDrive errors
+    return;
+  }
+  // Log other uncaught exceptions
+  originalConsoleError('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  if (isOneDriveLockError(reason)) {
+    // Silently suppress OneDrive promise rejections
+    return;
+  }
+  // Log other unhandled rejections
+  originalConsoleError('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // Create Next.js app
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -25,7 +187,17 @@ app.prepare().then(() => {
       const parsedUrl = parse(req.url, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
-      console.error('Error occurred handling', req.url, err);
+      // Suppress noisy OneDrive file lock errors (-4094 on Windows)
+      if (isOneDriveLockError(err)) {
+        // For OneDrive lock errors, just retry or return gracefully
+        // The file will be available on next request
+        res.statusCode = 503;
+        res.end('Service temporarily unavailable - file sync in progress');
+        return;
+      }
+      
+      // Log and handle other errors
+      originalConsoleError('Error occurred handling', req.url, err);
       res.statusCode = 500;
       res.end('internal server error');
     }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { createNotification, NotificationTemplates } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 import { z } from "zod";
 
 export const dynamic = 'force-dynamic'
@@ -112,23 +113,32 @@ export async function POST(request: NextRequest) {
       });
 
       if (fullBooking) {
-        // Notify the other party (client or provider)
-        const otherPartyId = user.role === 'CLIENT' 
-          ? fullBooking.provider.user.id 
-          : fullBooking.client.id;
-        
+        // Notify the other party (client or provider) - in-app + email
+        const isClient = user.role === 'CLIENT'
+        const otherParty = isClient ? fullBooking.provider.user : fullBooking.client
         const notificationData = NotificationTemplates.DISPUTE_CREATED(fullBooking, validated.reason);
-        await createNotification({
-          userId: otherPartyId,
+        await sendMultiChannelNotification({
+          userId: otherParty.id,
           type: notificationData.type,
           title: notificationData.title,
-          content: notificationData.content
-        });
+          content: notificationData.content,
+          metadata: { booking: fullBooking }
+        }, {
+          channels: ['in-app', 'email', 'push'],
+          email: {
+            to: otherParty.email,
+            subject: notificationData.title
+          },
+          push: {
+            userId: otherParty.id,
+            title: notificationData.title,
+            body: notificationData.content,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
+          }
+        })
 
         // TODO: Send notification to admin about new dispute
-        // TODO: Send email notifications
-
-        console.log(`🔔 Dispute notification sent to other party: ${otherPartyId}`);
+        console.log(`🔔 Dispute notification sent (in-app + email) to other party: ${otherParty.id}`);
       }
     } catch (notificationError) {
       console.error('❌ Failed to create dispute notification:', notificationError);

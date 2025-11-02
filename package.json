@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
+    "dev:clean": "node scripts/clean-next-build.js && node server.js",
+    "dev:quiet": "node scripts/suppress-onedrive-errors.js node server.js",
     "build": "prisma generate && next build",
     "start": "node server.js",
     "lint": "next lint",
@@ -27,6 +29,10 @@
     "test:websocket:integration": "node scripts/integration-test.js",
     "test:websocket:all": "node scripts/run-all-tests.js",
     "test:websocket:manual": "echo 'Visit http://localhost:3000/websocket-test for manual testing'",
+    "test:notification-view-details": "node scripts/test-notification-view-details.js",
+    "test:notification-view-details:url": "node scripts/test-notification-view-details.js --url",
+    "test:notification-view-details:browser": "node scripts/test-notification-view-details-browser.js",
+    "test:notification-view-details:e2e": "playwright test __tests__/e2e/notification-view-details.spec.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -123,6 +129,7 @@
     "tsx": "^4.7.0",
     "uuid": "^13.0.0",
     "vaul": "^0.9.0",
+    "web-push": "^3.6.7",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -135,6 +142,7 @@
     "@types/react-dom": "^18",
     "@types/supertest": "^2.0.16",
     "@types/uuid": "^10.0.0",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.32",

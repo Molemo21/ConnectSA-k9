@@ -5,6 +5,7 @@
 
 # next.js
 /.next/
+/.next-dev/
 /out/
 
 # production
@@ -25,3 +26,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# System files
+nul
+
+# Debug/test files
+app/api/debug/
+test-*.html
+test-*.js
+test-notification-*.html
+test-notification-*.js
+
+# OneDrive specific (development only)
+scripts/move-project-outside-onedrive.js
+scripts/suppress-onedrive-errors.js
+scripts/unlock-file.js

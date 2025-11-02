@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { paystackClient, paymentProcessor } from "@/lib/paystack";
 import { logPayment } from "@/lib/logger";
 import { createNotification } from "@/lib/notification-service";
+import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 export const dynamic = 'force-dynamic'
 
@@ -797,21 +798,47 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
 
       // 16. Send notifications
       try {
-        // Notify client that payment is being released
-        await createNotification({
+        // Notify client that payment is being released (in-app + email)
+        await sendMultiChannelNotification({
           userId: user.id,
           type: 'PAYMENT_RELEASED',
           title: 'Payment Released',
-          content: `Payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. The funds are being transferred to the provider.`
-        });
+          content: `Payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. The funds are being transferred to the provider.`,
+          metadata: { booking }
+        }, {
+          channels: ['in-app', 'email', 'push'],
+          email: {
+            to: booking.client?.email || '',
+            subject: 'Payment Released'
+          },
+          push: {
+            userId: user.id,
+            title: 'Payment Released',
+            body: `Payment of R${booking.payment.amount.toFixed(2)} has been released.`,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
+          }
+        })
 
-        // Notify provider that payment is being released
-        await createNotification({
+        // Notify provider that payment is being released (in-app + email + push)
+        await sendMultiChannelNotification({
           userId: booking.provider.userId,
           type: 'ESCROW_RELEASED',
           title: 'Payment Released',
-          content: `Escrow payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. Funds should appear in your account within 1-3 business days.`
-        });
+          content: `Escrow payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. Funds should appear in your account within 1-3 business days.`,
+          metadata: { booking }
+        }, {
+          channels: ['in-app', 'email', 'push'],
+          email: {
+            to: booking.provider?.user?.email || '',
+            subject: 'Payment Released'
+          },
+          push: {
+            userId: booking.provider.userId,
+            title: 'Payment Released',
+            body: `Escrow payment of R${booking.payment.amount.toFixed(2)} has been released. Funds should appear within 1-3 business days.`,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/provider/bookings/${bookingId}`
+          }
+        })
       } catch (notificationError) {
         console.warn('Failed to send notifications:', notificationError);
         // Don't fail the entire operation for notification errors

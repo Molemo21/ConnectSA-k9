@@ -4,6 +4,9 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { ClientRoot } from "@/components/client-root"
+import { ServiceWorkerRegistrar } from "@/components/system/ServiceWorkerRegistrar"
+import { NotificationRealtimeToaster } from "@/components/system/NotificationRealtimeToaster"
+import { PushNotificationPrompt } from "@/components/ui/push-notification-prompt"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -25,6 +28,9 @@ export default function RootLayout({
         <ClientRoot>
           {children}
           <Toaster />
+          <ServiceWorkerRegistrar />
+          <NotificationRealtimeToaster />
+          <PushNotificationPrompt />
         </ClientRoot>
       </body>
     </html>

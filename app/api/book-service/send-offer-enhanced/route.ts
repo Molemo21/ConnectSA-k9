@@ -395,24 +395,53 @@ export async function POST(request: NextRequest) {
       });
 
       if (fullBooking) {
-        // Notify provider about new booking
+        const { sendMultiChannelNotification } = await import('@/lib/notification-service-enhanced')
+
+        // Notify provider about new booking (in-app + email)
         const providerNotification = NotificationTemplates.BOOKING_CREATED(fullBooking);
-        await createNotification({
+        await sendMultiChannelNotification({
           userId: fullBooking.provider.user.id,
           type: providerNotification.type,
           title: providerNotification.title,
-          content: providerNotification.content
-        });
+          content: providerNotification.content,
+          metadata: { booking: fullBooking }
+        }, {
+          channels: ['in-app', 'email', 'push'],
+          email: {
+            to: fullBooking.provider.user.email,
+            subject: providerNotification.title
+          },
+          push: {
+            userId: fullBooking.provider.user.id,
+            title: providerNotification.title,
+            body: providerNotification.content,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/provider/bookings/${fullBooking.id}`
+          }
+        })
 
-        // Notify client about booking creation
-        await createNotification({
+        // Notify client about booking creation (in-app + email + push)
+        const clientTitle = 'Booking Request Sent'
+        await sendMultiChannelNotification({
           userId: fullBooking.client.id,
           type: 'BOOKING_CREATED',
-          title: 'Booking Request Sent',
-          content: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent to ${fullBooking.provider?.businessName || 'the provider'}. You'll be notified when they respond.`
-        });
+          title: clientTitle,
+          content: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent to ${fullBooking.provider?.businessName || 'the provider'}. You'll be notified when they respond.`,
+          metadata: { booking: fullBooking }
+        }, {
+          channels: ['in-app', 'email', 'push'],
+          email: {
+            to: fullBooking.client.email,
+            subject: clientTitle
+          },
+          push: {
+            userId: fullBooking.client.id,
+            title: clientTitle,
+            body: `Your booking request for ${fullBooking.service?.name || 'service'} has been sent.`,
+            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${fullBooking.id}`
+          }
+        })
 
-        console.log(`🔔 Notifications sent: Provider ${fullBooking.provider.user.email}, Client ${fullBooking.client.email}`);
+        console.log(`🔔 Notifications sent (in-app + email): Provider ${fullBooking.provider.user.email}, Client ${fullBooking.client.email}`);
       }
     } catch (notificationError) {
       console.error('❌ Failed to create booking notifications:', notificationError);

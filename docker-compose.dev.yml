@@ -1,0 +1,25 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: connectsa
+      POSTGRES_PASSWORD: connectsa
+      POSTGRES_DB: connectsa
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connectsa"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  db_data:
+
+
+
+
+

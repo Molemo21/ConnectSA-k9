@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send verification email via Resend
-    const baseUrl = request.nextUrl.origin || "http://localhost:3000"
+    const baseUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     const verificationLink = `${baseUrl}/verify-email?token=${token}`
     console.log(`📧 Verification link for resend: ${verificationLink}`)
 

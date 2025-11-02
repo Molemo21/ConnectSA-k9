@@ -1161,6 +1161,154 @@ export function MobileClientDashboard() {
     error: refreshError 
   } = useBookingData(initialBookings)
 
+  // Handle bookingId URL parameter - scroll to and highlight specific booking card
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    // Function to handle scrolling to booking card
+    const scrollToBookingCard = (bookingId: string) => {
+      if (!bookingId) return
+      
+      console.log('🔎 Scroll effect triggered:', {
+        bookingId: bookingId,
+        bookingsCount: bookings?.length || 0,
+        bookingsLoaded: !!bookings,
+        currentUrl: window.location.href
+      })
+      
+      if (bookings && bookings.length > 0) {
+        console.log(`🔍 Booking ID detected in URL: ${bookingId}, attempting to scroll to card`)
+        console.log(`📊 Total bookings available: ${bookings.length}`)
+        console.log(`🔎 Looking for booking card with data-booking-id="${bookingId}"`)
+        
+        // Check all booking IDs in DOM for debugging
+        const allBookingCards = document.querySelectorAll('[data-booking-id]')
+        const availableIds = Array.from(allBookingCards).map(card => card.getAttribute('data-booking-id'))
+        console.log(`📋 Found ${allBookingCards.length} booking cards with data-booking-id attribute:`, availableIds)
+        
+        // Wait for DOM to render
+        const scrollTimeout = setTimeout(() => {
+          const bookingCard = document.querySelector(`[data-booking-id="${bookingId}"]`)
+          
+          if (bookingCard) {
+            console.log(`✅ Found booking card in DOM for: ${bookingId}`)
+            
+            // Scroll to card with smooth behavior
+            bookingCard.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center',
+              inline: 'nearest'
+            })
+            
+            // Add highlight animation
+            bookingCard.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30', 'transition-all', 'duration-300')
+            
+            // Remove highlight after 3 seconds
+            setTimeout(() => {
+              bookingCard.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30')
+            }, 3000)
+            
+            console.log(`✅ Successfully scrolled to booking card: ${bookingId}`)
+            
+            // Clean up URL by removing bookingId parameter
+            const newUrl = new URL(window.location.href)
+            newUrl.searchParams.delete('bookingId')
+            window.history.replaceState({}, '', newUrl.toString())
+            console.log(`🧹 URL cleaned up, removed bookingId parameter`)
+          } else {
+            console.warn(`⚠️ Booking card not found for bookingId: ${bookingId}. Card may not be rendered yet.`)
+            console.log(`🔍 Available booking IDs in DOM:`, availableIds)
+            
+            // Retry after a longer delay (in case bookings are still loading)
+            setTimeout(() => {
+              const retryCard = document.querySelector(`[data-booking-id="${bookingId}"]`)
+              if (retryCard) {
+                console.log(`✅ Found booking card on retry for: ${bookingId}`)
+                retryCard.scrollIntoView({ 
+                  behavior: 'smooth', 
+                  block: 'center',
+                  inline: 'nearest'
+                })
+                retryCard.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30', 'transition-all', 'duration-300')
+                setTimeout(() => {
+                  retryCard.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-75', 'bg-blue-50/30')
+                }, 3000)
+                console.log(`✅ Successfully found and scrolled to booking card on retry: ${bookingId}`)
+                
+                // Clean up URL
+                const newUrl = new URL(window.location.href)
+                newUrl.searchParams.delete('bookingId')
+                window.history.replaceState({}, '', newUrl.toString())
+                console.log(`🧹 URL cleaned up after retry`)
+              } else {
+                console.error(`❌ Booking card still not found after retry: ${bookingId}`)
+                console.error(`❌ All available booking IDs in DOM:`, document.querySelectorAll('[data-booking-id]').length)
+              }
+            }, 1500)
+          }
+        }, 500)
+        
+        return () => clearTimeout(scrollTimeout)
+      } else {
+        console.log(`⏳ Bookings not loaded yet, bookingId will be handled when bookings are available: ${bookingId}`)
+        console.log(`⏳ Current bookings state:`, { bookings: bookings, count: bookings?.length || 0 })
+      }
+    }
+    
+    // Method 1: Check searchParams (might not be reactive immediately)
+    const bookingIdFromParams = searchParams.get('bookingId')
+    
+    // Method 2: Also check URL directly (more reliable for immediate navigation)
+    const urlParams = new URLSearchParams(window.location.search)
+    const bookingIdFromUrl = urlParams.get('bookingId')
+    
+    const bookingId = bookingIdFromParams || bookingIdFromUrl
+    
+    console.log('🔍 Checking for bookingId:', {
+      fromSearchParams: bookingIdFromParams,
+      fromUrl: bookingIdFromUrl,
+      using: bookingId,
+      currentUrl: window.location.href
+    })
+    
+    if (bookingId) {
+      scrollToBookingCard(bookingId)
+    }
+    
+    // Also listen for popstate events (back/forward navigation)
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const bookingId = urlParams.get('bookingId')
+      if (bookingId) {
+        console.log('🔄 PopState detected, checking for bookingId:', bookingId)
+        scrollToBookingCard(bookingId)
+      }
+    }
+    
+    window.addEventListener('popstate', handlePopState)
+    
+    // Also check URL periodically when navigating (fallback)
+    const checkUrlInterval = setInterval(() => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const currentBookingId = urlParams.get('bookingId')
+      if (currentBookingId && currentBookingId !== bookingId) {
+        console.log('🔄 URL change detected via interval:', currentBookingId)
+        scrollToBookingCard(currentBookingId)
+      }
+    }, 500)
+    
+    // Cleanup after 5 seconds (should be enough time for navigation)
+    const cleanupInterval = setTimeout(() => {
+      clearInterval(checkUrlInterval)
+    }, 5000)
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      clearInterval(checkUrlInterval)
+      clearTimeout(cleanupInterval)
+    }
+  }, [bookings, searchParams])
+
   // Handle payment callback automatically using the proper hook
   usePaymentCallback({
     onRefreshBooking: refreshBooking,

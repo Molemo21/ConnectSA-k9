@@ -2,6 +2,44 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 
+/**
+ * Security Headers Configuration
+ * 
+ * Best practices security headers for production deployment
+ */
+function getSecurityHeaders(response: NextResponse): NextResponse {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Security headers (always apply in production, optional in development)
+  if (isProduction) {
+    // Prevent MIME type sniffing
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    
+    // Prevent clickjacking attacks
+    response.headers.set('X-Frame-Options', 'DENY');
+    
+    // Enable XSS protection (legacy browsers)
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    
+    // Enforce HTTPS (HSTS)
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+    
+    // Referrer Policy - control referrer information
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    
+    // Permissions Policy (formerly Feature Policy)
+    response.headers.set(
+      'Permissions-Policy',
+      'geolocation=(), microphone=(), camera=()'
+    );
+  }
+
+  return response;
+}
+
 // Paths that don't require authentication
 const PUBLIC_PATHS = [
   '/',
@@ -83,7 +121,8 @@ export async function middleware(request: NextRequest) {
   // For public paths, always allow access without any auth checks
   if (isPublicPath) {
     console.log('🔓 Public path accessed:', pathname)
-    return NextResponse.next()
+    const response = NextResponse.next()
+    return getSecurityHeaders(response)
   }
 
   try {
@@ -91,7 +130,8 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api/')) {
       // Allow public API endpoints
       if (isPublicApi) {
-        return NextResponse.next()
+        const response = NextResponse.next()
+        return getSecurityHeaders(response)
       }
 
       // Check authentication for protected API endpoints
@@ -154,7 +194,8 @@ export async function middleware(request: NextRequest) {
     }
 
     console.log('✅ Authenticated access to:', pathname)
-    return NextResponse.next()
+    const response = NextResponse.next()
+    return getSecurityHeaders(response)
   } catch (error) {
     console.error('Middleware error:', error)
     // For API routes, return error response
@@ -165,6 +206,7 @@ export async function middleware(request: NextRequest) {
       )
     }
     // For other routes, continue
-    return NextResponse.next()
+    const response = NextResponse.next()
+    return getSecurityHeaders(response)
   }
 }

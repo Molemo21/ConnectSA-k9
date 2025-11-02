@@ -223,6 +223,16 @@ const createDbWrapper = () => {
         delete: () => Promise.resolve(null),
         deleteMany: () => Promise.resolve({ count: 0 }),
       },
+      pushSubscription: {
+        findFirst: () => Promise.resolve(null),
+        findMany: () => Promise.resolve([]),
+        findUnique: () => Promise.resolve(null),
+        count: () => Promise.resolve(0),
+        create: () => Promise.resolve(null),
+        update: () => Promise.resolve(null),
+        delete: () => Promise.resolve(null),
+        deleteMany: () => Promise.resolve({ count: 0 }),
+      },
       notification: {
         findFirst: () => Promise.resolve(null),
         findMany: () => Promise.resolve([]),
@@ -399,6 +409,18 @@ const createDbWrapper = () => {
       update: (args: any) => withRetry(() => prisma.catalogueItem.update(args), 'catalogueItem.update'),
       delete: (args: any) => withRetry(() => prisma.catalogueItem.delete(args), 'catalogueItem.delete'),
       upsert: (args: any) => withRetry(() => prisma.catalogueItem.upsert(args), 'catalogueItem.upsert'),
+    },
+
+    // PushSubscription operations
+    pushSubscription: {
+      findFirst: (args: any) => withRetry(() => prisma.pushSubscription.findFirst(args), 'pushSubscription.findFirst'),
+      findMany: (args: any) => withRetry(() => prisma.pushSubscription.findMany(args), 'pushSubscription.findMany'),
+      findUnique: (args: any) => withRetry(() => prisma.pushSubscription.findUnique(args), 'pushSubscription.findUnique'),
+      count: (args: any) => withRetry(() => prisma.pushSubscription.count(args), 'pushSubscription.count'),
+      create: (args: any) => withRetry(() => prisma.pushSubscription.create(args), 'pushSubscription.create'),
+      update: (args: any) => withRetry(() => prisma.pushSubscription.update(args), 'pushSubscription.update'),
+      delete: (args: any) => withRetry(() => prisma.pushSubscription.delete(args), 'pushSubscription.delete'),
+      deleteMany: (args: any) => withRetry(() => prisma.pushSubscription.deleteMany(args), 'pushSubscription.deleteMany'),
     },
     
     // Transaction operations
