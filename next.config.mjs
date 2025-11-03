@@ -4,21 +4,35 @@ const nextConfig = {
   // If you see file lock errors, run: node scripts/clean-next-build.js
   // To exclude from OneDrive: Right-click folder > OneDrive > Always keep on this device
   distDir: '.next',
+  
+  // PRODUCTION-READY: Build configuration
+  // TypeScript errors: STRICT in production (catch real bugs)
+  // ESLint warnings: Allowed temporarily (style/quality issues - will fix in follow-up)
   eslint: {
+    // TODO: Remove this after cleanup - see ESLINT_CLEANUP_PLAN.md
+    // Temporarily allowing ESLint warnings for deployment (unused imports, any types)
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    // Keep TypeScript strict - we want to catch real type errors
+    ignoreBuildErrors: false,
   },
+  
   images: {
     unoptimized: true,
   },
-  // Disable React Strict Mode to prevent double mounting in development
-  reactStrictMode: false,
+  
+  // SAFE: Enable React Strict Mode for production best practices
+  // Your codebase already handles hydration properly (see HYDRATION_FIX_README.md)
+  // Strict Mode helps catch potential issues and is a React best practice
+  reactStrictMode: true,
+  
   // Use SWC minifier (Next.js default) to avoid deprecation warnings
   swcMinify: true,
-  // Enable source maps for better error tracking
-  productionBrowserSourceMaps: true,
+  
+  // SECURITY: Disable source maps in production to prevent source code exposure
+  // Source maps can expose your source code, API endpoints, and internal logic
+  productionBrowserSourceMaps: false,
   // Add webpack config for better error reporting
   webpack: (config, { dev }) => {
     if (dev) {

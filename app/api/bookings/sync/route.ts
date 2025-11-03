@@ -60,12 +60,18 @@ export async function GET(request: NextRequest) {
     const includePaymentStatus = searchParams.get('includePaymentStatus') !== 'false';
     const etag = request.headers.get('if-none-match');
 
-    console.log('📡 Synchronized bookings API request:', {
+    if (process.env.NODE_ENV === 'development') {
+
+
+      console.log('📡 Synchronized bookings API request:', {
       userId: user.id,
       forceRefresh,
       includePaymentStatus,
       etag: etag ? 'present' : 'none'
     });
+
+
+    }
 
     // Fetch bookings with all related data
     const bookings = await db.booking.findMany({
@@ -89,7 +95,13 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    console.log(`📊 Found ${bookings.length} bookings for user ${user.id}`);
+    if (process.env.NODE_ENV === 'development') {
+
+
+      console.log(`📊 Found ${bookings.length} bookings for user ${user.id}`);
+
+
+    }
 
     // Enhance booking data with real-time payment verification
     const enhancedBookings = await Promise.all(
@@ -105,7 +117,11 @@ export async function GET(request: NextRequest) {
             const verification = await paystackClient.verifyPayment(booking.payment.paystackRef);
             
             if (verification.status && verification.data.status === 'success' && booking.payment.status === 'PENDING') {
-              console.log(`🔄 Payment ${booking.payment.paystackRef} verified as successful, updating status`);
+              if (process.env.NODE_ENV === 'development') {
+
+                console.log(`🔄 Payment ${booking.payment.paystackRef} verified as successful, updating status`);
+
+              }
               
               // Update payment status in database
               await db.payment.update({
@@ -134,7 +150,13 @@ export async function GET(request: NextRequest) {
                 transactionId: verification.data.id?.toString() || null,
               };
 
-              console.log(`✅ Payment ${booking.payment.paystackRef} updated to ESCROW`);
+              if (process.env.NODE_ENV === 'development') {
+
+
+                console.log(`✅ Payment ${booking.payment.paystackRef} updated to ESCROW`);
+
+
+              }
             }
           } catch (verificationError) {
             console.warn(`⚠️ Failed to verify payment ${booking.payment.paystackRef}:`, verificationError);
@@ -169,7 +191,11 @@ export async function GET(request: NextRequest) {
 
     // Check if client has up-to-date data
     if (!forceRefresh && etag === responseETag) {
-      console.log('📦 Client has up-to-date data, returning 304');
+      if (process.env.NODE_ENV === 'development') {
+
+        console.log('📦 Client has up-to-date data, returning 304');
+
+      }
       return new NextResponse(null, { status: 304 });
     }
 
@@ -200,7 +226,13 @@ export async function GET(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, If-None-Match');
 
-    console.log(`📤 Returning ${enhancedBookings.length} bookings with metadata:`, metadata);
+    if (process.env.NODE_ENV === 'development') {
+
+
+      console.log(`📤 Returning ${enhancedBookings.length} bookings with metadata:`, metadata);
+
+
+    }
 
     return response;
 
@@ -225,10 +257,16 @@ export async function GET(request: NextRequest) {
 
 // Handle OPTIONS requests for CORS
 export async function OPTIONS(request: NextRequest) {
+  // SECURITY: Restrict CORS to production URL instead of wildcard
+  // Frontend uses relative URLs, so this is safe
+  const allowedOrigin = process.env.NODE_ENV === 'production'
+    ? process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || '*'
+    : request.headers.get('origin') || '*';
+  
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, If-None-Match',
       'Access-Control-Max-Age': '86400',
