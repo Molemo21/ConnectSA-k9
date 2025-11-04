@@ -40,7 +40,7 @@ export default function HomePage() {
   const [fadeSplash, setFadeSplash] = useState(false)
   const [contentReady, setContentReady] = useState(false)
   const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null)
-  const [isUnderConstruction, setIsUnderConstruction] = useState(true) // Set to true to enable construction mode
+  const [isUnderConstruction, setIsUnderConstruction] = useState(false) // Construction mode disabled
   const { t } = useLanguage()
 
   // Fetch user data with better error handling
