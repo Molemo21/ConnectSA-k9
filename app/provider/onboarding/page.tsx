@@ -21,7 +21,6 @@ interface FormData {
   businessName: string
   description: string
   experience: number
-  hourlyRate: number
   location: string
   // Services
   selectedServices: string[]
@@ -41,7 +40,6 @@ const initialFormData: FormData = {
   businessName: "",
   description: "",
   experience: 0,
-  hourlyRate: 0,
   location: "",
   selectedServices: [],
   idDocument: "",
@@ -183,7 +181,6 @@ export default function ProviderOnboardingPage() {
               businessName: formData.businessName,
               description: formData.description,
               experience: formData.experience,
-              hourlyRate: formData.hourlyRate,
               location: formData.location,
             }}
             onChange={(data) => handleFormDataChange(data)}

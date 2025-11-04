@@ -848,6 +848,7 @@ packages:
   '@next/swc-win32-x64-msvc@14.2.32':
     resolution: {integrity: sha512-2N0lSoU4GjfLSO50wvKpMQgKd4HdI2UHEhQPPPnlgfBJlOgJxkjpkYBqzk08f1gItBB6xF/n+ykso2hgxuydsA==}
     engines: {node: '>= 10'}
+    cpu: [x64]
     os: [win32]
 
   '@noble/hashes@1.8.0':

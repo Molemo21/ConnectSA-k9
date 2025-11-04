@@ -14,7 +14,6 @@ const onboardingSchema = z.object({
   businessName: z.string().min(2, "Business name must be at least 2 characters"),
   description: z.string().min(20, "Description must be at least 20 characters"),
   experience: z.number().min(0, "Experience must be 0 or greater"),
-  hourlyRate: z.number().min(1, "Hourly rate must be at least 1"),
   location: z.string().min(2, "Location must be at least 2 characters"),
   
   // Services
@@ -90,7 +89,6 @@ export async function POST(request: NextRequest) {
           businessName: validatedData.businessName,
           description: validatedData.description,
           experience: validatedData.experience,
-          hourlyRate: validatedData.hourlyRate,
           location: validatedData.location,
           status: "PENDING",
           // Document fields
@@ -115,7 +113,6 @@ export async function POST(request: NextRequest) {
           businessName: validatedData.businessName,
           description: validatedData.description,
           experience: validatedData.experience,
-          hourlyRate: validatedData.hourlyRate,
           location: validatedData.location,
           status: "PENDING",
           // Document fields

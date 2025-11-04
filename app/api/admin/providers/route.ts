@@ -217,6 +217,10 @@ export async function PUT(request: NextRequest) {
     }
   } catch (error) {
     console.error("Error updating provider:", error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ 
+      error: errorMessage,
+      message: errorMessage 
+    }, { status: 500 })
   }
 }

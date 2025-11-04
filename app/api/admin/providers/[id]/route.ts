@@ -5,7 +5,7 @@ import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   // Skip during build time
   if (process.env.NEXT_PHASE === 'phase-production-build') {
@@ -14,7 +14,7 @@ export async function GET(
     }, { status: 503 });
   }
 
-  const { id } = params;
+  const { id } = await Promise.resolve(params);
 
   // Get the admin user from the request
   const admin = await getCurrentUser();
@@ -28,6 +28,10 @@ export async function GET(
       select: {
         id: true,
         businessName: true,
+        description: true,
+        experience: true,
+        location: true,
+        hourlyRate: true,
         status: true,
         createdAt: true,
         updatedAt: true,
@@ -40,6 +44,25 @@ export async function GET(
             emailVerified: true,
             createdAt: true
           }
+        },
+        adminReviews: {
+          select: {
+            id: true,
+            comment: true,
+            status: true,
+            createdAt: true,
+            admin: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 10
         }
       }
     });
@@ -59,6 +82,7 @@ export async function GET(
 
     return NextResponse.json({
       ...provider,
+      providerReviews: provider.adminReviews || [],
       stats
     });
   } catch (error) {
@@ -69,7 +93,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   // Skip during build time
   if (process.env.NEXT_PHASE === 'phase-production-build') {
@@ -78,7 +102,7 @@ export async function PATCH(
     }, { status: 503 });
   }
 
-  const { id } = params;
+  const { id } = await Promise.resolve(params);
   const { status, comment } = await request.json();
 
   if (!Object.values(ProviderStatus).includes(status)) {

@@ -4,6 +4,8 @@ const nextConfig = {
   // If you see file lock errors, run: node scripts/clean-next-build.js
   // To exclude from OneDrive: Right-click folder > OneDrive > Always keep on this device
   distDir: '.next',
+  // Externalize Node.js modules for server components
+  serverComponentsExternalPackages: ['web-push'],
   eslint: {
     ignoreDuringBuilds: true,
   },
