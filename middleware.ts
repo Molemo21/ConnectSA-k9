@@ -45,6 +45,7 @@ const PUBLIC_PATHS = [
   '/',
   '/services',
   '/book-service',
+  '/become-provider',
   '/login',
   '/signup',
   '/verify-email',

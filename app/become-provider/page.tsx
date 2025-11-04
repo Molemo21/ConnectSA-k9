@@ -232,7 +232,7 @@ export default function BecomeProvider() {
           <div 
             className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
             style={{
-              backgroundImage: "url('/provider.jpg')"
+              backgroundImage: "url('/proliink meet.png')"
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/50 to-transparent sm:from-black/80 sm:via-black/40" />
@@ -486,12 +486,12 @@ export default function BecomeProvider() {
         </div>
       </section>
 
-      {/* Enhanced Scroll Parallax Section with proliink meet.png */}
+      {/* Enhanced Scroll Parallax Section with provider.jpg */}
       <div className="relative h-screen overflow-hidden">
         <div 
           className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: "url('/proliink meet.png')"
+            backgroundImage: "url('/provider.jpg')"
           }}
         />
         <div className="absolute inset-0 bg-black/70" />
