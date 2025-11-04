@@ -224,7 +224,7 @@ export function ProviderCard({ provider, onAccept, onDecline, onViewDetails }: P
               className="text-purple-400 border-purple-500/50 hover:bg-purple-500/20 hover:border-purple-400"
             >
               <Eye className="w-4 h-4 mr-1" />
-              View Details
+              View Portfolio
             </Button>
           </div>
           

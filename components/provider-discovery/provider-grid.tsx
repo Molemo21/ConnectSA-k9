@@ -55,7 +55,7 @@ interface Provider {
 interface ProviderGridProps {
   providers: Provider[]
   serviceId: string
-  onProviderSelected: (providerId: string) => void
+  onProviderSelected: (providerId: string, providerData?: any) => void
   onBack: () => void
   isProcessing?: boolean
   declinedProviders?: string[]
@@ -96,7 +96,9 @@ export function ProviderGrid({
 
   const handleAcceptProvider = async (providerId: string) => {
     try {
-      onProviderSelected(providerId)
+      // Find and pass provider data
+      const provider = providers.find(p => p.id === providerId)
+      onProviderSelected(providerId, provider)
     } catch (error) {
       showToast.error("Failed to select provider. Please try again.")
     }
@@ -270,7 +272,7 @@ export function ProviderGrid({
                         className="text-purple-400 border-purple-500/50 hover:bg-purple-500/20 hover:border-purple-400 text-xs sm:text-sm flex-1 sm:flex-none"
                       >
                         <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                        Details
+                        Portfolio
                       </Button>
                     </div>
                     

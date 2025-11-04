@@ -56,7 +56,7 @@ export function BookingSummaryDrawer({
 
         <Card className="bg-white/5 border-white/10 mb-4">
           <CardHeader>
-            <CardTitle className="text-white text-base">Selected Package</CardTitle>
+            <CardTitle className="text-white text-base">Selected Service</CardTitle>
           </CardHeader>
           <CardContent className="text-white/80 space-y-2">
             <div className="flex items-center justify-between">
@@ -118,7 +118,7 @@ export function BookingSummaryDrawer({
             disabled={isSubmitting}
             className="w-full border-white/20 text-white/80 hover:bg-white/10 disabled:opacity-50"
           >
-            Back to Packages
+            Back to Services
           </Button>
           <div className="text-xs text-white/50 text-center">
             Your price/duration is snapshotted and won’t change after booking.

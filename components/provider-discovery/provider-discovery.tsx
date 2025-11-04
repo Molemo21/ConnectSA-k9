@@ -54,7 +54,7 @@ interface ProviderDiscoveryProps {
   address: string
   notes?: string
   paymentMethod: "ONLINE" | "CASH"
-  onProviderSelected: (providerId: string) => void
+  onProviderSelected: (providerId: string, providerData?: any) => void
   onBack: () => void
   onLoginSuccess?: () => void
   onCancelBooking?: () => void
@@ -306,7 +306,9 @@ export function ProviderDiscovery({
       const data = await response.json()
       console.log('✅ Send-offer success:', data);
       showToast.success(data.message)
-      onProviderSelected(providerId)
+      // Pass provider data if available
+      const providerData = providers.find(p => p.id === providerId)
+      onProviderSelected(providerId, providerData)
     } catch (error) {
       console.error('❌ Send offer error:', error)
       showToast.error('Failed to send job offer. Please try again.')
@@ -620,7 +622,7 @@ export function ProviderDiscovery({
             }
             await res.json()
             setShowSummary(false)
-            onProviderSelected(selectedProvider.id)
+            onProviderSelected(selectedProvider.id, selectedProvider)
           }}
         />
       )}

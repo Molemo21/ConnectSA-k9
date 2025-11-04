@@ -191,7 +191,7 @@ export function ProviderCatalogueGrid({
   const handleSelectProvider = (providerId: string) => {
     const selectedItemId = selectedItems[providerId]
     if (!selectedItemId) {
-      showToast.error("Please select a package first")
+      showToast.error("Please select a service first")
       return
     }
     onProviderSelected?.(providerId, selectedItemId)
@@ -337,9 +337,9 @@ export function ProviderCatalogueGrid({
                       {provider.catalogueItems.length > 0 && (
                         <div className="px-4 pt-4 pb-2">
                           <div className="flex items-center justify-between mb-2">
-                            <Label className="text-white/70 text-xs sm:text-sm font-medium">Select Package</Label>
+                            <Label className="text-white/70 text-xs sm:text-sm font-medium">Select Service</Label>
                             <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-xs">
-                              {provider.catalogueItems.length} Package{provider.catalogueItems.length !== 1 ? 's' : ''}
+                              {provider.catalogueItems.length} Service{provider.catalogueItems.length !== 1 ? 's' : ''}
                             </Badge>
                           </div>
                           
@@ -419,7 +419,7 @@ export function ProviderCatalogueGrid({
                         </div>
                       )}
 
-                      {/* 3. Package Information */}
+                      {/* 3. Service Information */}
                       <div className="px-4 pb-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <h3 className="text-base sm:text-lg font-semibold text-white">{selectedItem.title}</h3>
@@ -478,7 +478,7 @@ export function ProviderCatalogueGrid({
                           className="text-blue-400 border-blue-500/50 hover:bg-blue-500/20 hover:border-blue-400 text-xs sm:text-sm flex-1"
                         >
                           <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                          Details
+                          Portfolio
                         </Button>
                         <Button
                           size="sm"
@@ -494,7 +494,7 @@ export function ProviderCatalogueGrid({
                   ) : (
                     <div className="p-4 text-center">
                       <Package className="w-12 h-12 mx-auto text-white/40 mb-2" />
-                      <p className="text-white/60 text-sm">No package selected</p>
+                      <p className="text-white/60 text-sm">No service selected</p>
                     </div>
                   )}
               </CardContent>
@@ -601,7 +601,7 @@ export function ProviderCatalogueGrid({
                   Service Catalogue - {provider.businessName || provider.user.name}
                 </DialogTitle>
                 <DialogDescription className="text-white/70">
-                  Select a package to view details
+                  Select a service to view details
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
@@ -664,7 +664,7 @@ export function ProviderCatalogueGrid({
                         <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/10 transition-colors" />
                       </div>
 
-                      {/* Package Info */}
+                      {/* Service Info */}
                       <div className="p-3 bg-white/5 border-t border-white/10">
                         <h4 className="text-white font-semibold text-sm truncate mb-1">
                           {item.title}
@@ -932,7 +932,7 @@ export function ProviderCatalogueGrid({
         <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm">
           <CardContent className="p-8 text-center">
             <Package className="w-12 h-12 mx-auto text-white/40 mb-4" />
-            <p className="text-white/80 mb-2">No providers with packages available</p>
+            <p className="text-white/80 mb-2">No providers with services available</p>
             <p className="text-white/60 text-sm">Providers need to have catalogue items to appear here</p>
           </CardContent>
         </Card>

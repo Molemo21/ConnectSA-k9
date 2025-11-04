@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2, ArrowLeft, AlertTriangle } from "lucide-react"
+import { ArrowRight, Calendar, Clock, MapPin, FileText, CheckCircle, Loader2, ArrowLeft, AlertTriangle, User } from "lucide-react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { ProviderDiscovery } from "@/components/provider-discovery/provider-discovery"
 import { BookingLoginModal } from "@/components/ui/booking-login-modal"
@@ -161,6 +161,7 @@ function BookServiceContent() {
   const [confirmation, setConfirmation] = useState<any>(null);
   const [showProviderDiscovery, setShowProviderDiscovery] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<any>(null);
   const [activeStep, setActiveStep] = useState<'FORM' | 'REVIEW' | 'DISCOVERY' | 'CONFIRM'>('FORM')
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null) // null = checking, true = logged in, false = not logged in
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -465,9 +466,26 @@ function BookServiceContent() {
   };
 
   // Handle provider selection
-  const handleProviderSelected = (providerId: string) => {
+  const handleProviderSelected = async (providerId: string, providerData?: any) => {
     addDebugInfo(`Provider selected: ${providerId}`);
     setSelectedProviderId(providerId);
+    
+    // Fetch provider details if not provided
+    let providerDetails = providerData;
+    if (!providerDetails) {
+      try {
+        const res = await fetch(`/api/admin/providers/${providerId}`);
+        if (res.ok) {
+          const data = await res.json();
+          providerDetails = data;
+        }
+      } catch (error) {
+        console.error('Failed to fetch provider details:', error);
+      }
+    }
+    
+    setSelectedProvider(providerDetails);
+    
     // The booking is already created by send-offer, just show confirmation
     setConfirmation({
       success: true,
@@ -475,6 +493,7 @@ function BookServiceContent() {
         ? "Provider selected successfully! Pay cash directly to your provider after service completion."
         : "Provider selected successfully! Your job offer has been sent.",
       providerId: providerId,
+      provider: providerDetails,
       paymentMethod: form.paymentMethod
     });
     setShowProviderDiscovery(false);

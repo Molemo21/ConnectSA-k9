@@ -196,16 +196,16 @@ export function ServiceCatalogueModal({ provider, serviceId, isOpen, onClose, on
           <CardContent className="p-6 max-h-[70vh] overflow-y-auto">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Available Packages</h3>
+                <h3 className="text-lg font-semibold text-white">Available Services</h3>
                 <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                  {items.length} Packages
+                  {items.length} Services
                 </Badge>
               </div>
 
-              {loading && <div className="text-white/70 text-sm">Loading packages...</div>}
+              {loading && <div className="text-white/70 text-sm">Loading services...</div>}
               {error && <div className="text-red-400 text-sm">{error}</div>}
               {!loading && !error && items.length === 0 && (
-                <div className="text-white/60 text-sm">No active packages for this service.</div>
+                <div className="text-white/60 text-sm">No active services for this service.</div>
               )}
               {!loading && !error && items.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -224,7 +224,7 @@ export function ServiceCatalogueModal({ provider, serviceId, isOpen, onClose, on
                           className="bg-blue-600 hover:bg-blue-700"
                           onClick={() => onSelect?.(item)}
                         >
-                          Select Package
+                          Select Service
                         </Button>
                       </CardContent>
                     </Card>
@@ -275,7 +275,7 @@ export function ServiceCatalogueModal({ provider, serviceId, isOpen, onClose, on
           <div className="p-6 border-t border-white/10">
           <div className="flex items-center justify-between">
             <div className="text-sm text-white/70">
-                Select a package to continue to booking
+                Select a service to continue to booking
             </div>
               <Button
                 onClick={onClose}

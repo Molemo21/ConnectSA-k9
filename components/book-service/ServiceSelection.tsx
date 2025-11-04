@@ -324,9 +324,6 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{service.name}</span>
-                      <span className="text-sm text-blue-400 font-semibold">
-                        R{service.basePrice.toFixed(0)}
-                      </span>
                     </div>
                     {service.description && (
                       <p className="text-xs text-white/60 mt-1">
