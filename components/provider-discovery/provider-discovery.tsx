@@ -91,9 +91,7 @@ export function ProviderDiscovery({
 
   // Debug modal state changes
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 [ProviderDiscovery] Modal state changed:', { showLoginModal, isUnauthorized })
-    }
+    console.log('🔍 [ProviderDiscovery] Modal state changed:', { showLoginModal, isUnauthorized })
   }, [showLoginModal, isUnauthorized])
 
   useEffect(() => {
@@ -105,13 +103,11 @@ export function ProviderDiscovery({
       setLoading(true)
       setError(null)
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [ProviderDiscovery] Starting provider discovery...')
-        console.log('🔍 [ProviderDiscovery] ServiceId:', serviceId)
-        console.log('🔍 [ProviderDiscovery] Date:', date)
-        console.log('🔍 [ProviderDiscovery] Time:', discoveryTime)
-        console.log('🔍 [ProviderDiscovery] Address:', address)
-      }
+      console.log('🔍 [ProviderDiscovery] Starting provider discovery...')
+      console.log('🔍 [ProviderDiscovery] ServiceId:', serviceId)
+      console.log('🔍 [ProviderDiscovery] Date:', date)
+      console.log('🔍 [ProviderDiscovery] Time:', discoveryTime)
+      console.log('🔍 [ProviderDiscovery] Address:', address)
       
       // Validate required fields before making API call
       if (!serviceId || !date || !discoveryTime || !address) {
@@ -129,14 +125,12 @@ export function ProviderDiscovery({
         return
       }
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Sending provider discovery request:', {
-          serviceId,
-          date,
-          time,
-          address
-        });
-      }
+      console.log('Sending provider discovery request:', {
+        serviceId,
+        date,
+        time,
+        address
+      });
 
       const response = await fetch('/api/book-service/discover-providers', {
         method: 'POST',
@@ -152,10 +146,8 @@ export function ProviderDiscovery({
         const errorData = await response.json()
         const errorMessage = errorData.error || 'Failed to discover providers'
         console.error('❌ [ProviderDiscovery] API error:', errorData);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('❌ [ProviderDiscovery] Response status:', response.status);
-          console.log('❌ [ProviderDiscovery] Error message:', errorMessage);
-        }
+        console.log('❌ [ProviderDiscovery] Response status:', response.status);
+        console.log('❌ [ProviderDiscovery] Error message:', errorMessage);
         
         if (response.status === 503) {
           setError('The system is briefly updating. Please try again in a moment.')
@@ -165,9 +157,7 @@ export function ProviderDiscovery({
 
         // Check if it's an unauthorized error
         if (response.status === 401 && errorMessage === 'Unauthorized') {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔐 [ProviderDiscovery] Unauthorized detected - showing login modal');
-          }
+          console.log('🔐 [ProviderDiscovery] Unauthorized detected - showing login modal');
           setIsUnauthorized(true)
           setShowLoginModal(true)
           return
@@ -214,13 +204,6 @@ export function ProviderDiscovery({
         return
       }
 
-      // Package selection is now required
-      if (!catalogueItemId) {
-        showToast.error('Please select a package before booking')
-        setIsProcessing(false)
-        return
-      }
-
       // Validate serviceId format (accept both CUID and UUID formats)
       const cuidRegex = /^[a-z0-9]{25}$/i;
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -233,7 +216,6 @@ export function ProviderDiscovery({
       const requestData = {
         providerId, 
         serviceId, 
-        catalogueItemId, // Required: package selection
         date, 
         time, 
         address, 
@@ -243,9 +225,7 @@ export function ProviderDiscovery({
         timezoneOffsetMinutes: new Date().getTimezoneOffset()
       };
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🚀 Sending job offer with data:', requestData);
-      }
+      console.log('🚀 Sending job offer with data:', requestData);
 
       const response = await fetch('/api/book-service/send-offer-enhanced', {
         method: 'POST',
@@ -253,9 +233,7 @@ export function ProviderDiscovery({
         body: JSON.stringify(requestData)
       })
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📥 Send-offer response status:', response && 'status' in response ? (response as any).status : 'unknown');
-      }
+      console.log('📥 Send-offer response status:', response && 'status' in response ? (response as any).status : 'unknown');
 
       if (!response || typeof response.ok !== 'boolean') {
         throw new Error('Network error')
@@ -284,9 +262,7 @@ export function ProviderDiscovery({
 
         // Handle authentication errors by showing login modal
         if (response.status === 401) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔐 Authentication required, showing login modal');
-          }
+          console.log('🔐 Authentication required, showing login modal');
           setShowLoginModal(true);
           setIsUnauthorized(true);
           return;
@@ -305,16 +281,16 @@ export function ProviderDiscovery({
             errorMessage = `API returned ${response.status} with no error details`;
           }
           
-          // Check for alternative times
-          if (errorData.details && errorData.details.alternativeTimes) {
-            alternativeTimes = errorData.details.alternativeTimes;
-            setAlternativeTimes(alternativeTimes);
-            setLastError(errorMessage);
-          } else {
-            setAlternativeTimes([]);
-            setLastError(errorMessage);
-          }
+                  // Check for alternative times
+        if (errorData.details && errorData.details.alternativeTimes) {
+          alternativeTimes = errorData.details.alternativeTimes;
+          setAlternativeTimes(alternativeTimes);
+          setLastError(errorMessage);
+        } else {
+          setAlternativeTimes([]);
+          setLastError(errorMessage);
         }
+      }
       
       // Show error with alternative times if available
       if (alternativeTimes && alternativeTimes.length > 0) {
@@ -325,15 +301,13 @@ export function ProviderDiscovery({
       }
       
       return;
-    }
+      }
 
-    const data = await response.json()
-    if (process.env.NODE_ENV === 'development') {
+      const data = await response.json()
       console.log('✅ Send-offer success:', data);
-    }
-    showToast.success(data.message)
-    onProviderSelected(providerId)
-  } catch (error) {
+      showToast.success(data.message)
+      onProviderSelected(providerId)
+    } catch (error) {
       console.error('❌ Send offer error:', error)
       showToast.error('Failed to send job offer. Please try again.')
     } finally {
@@ -406,9 +380,7 @@ export function ProviderDiscovery({
     setLoading(true) // Show loading state while retrying
     
     // Retry provider discovery after successful login
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 [ProviderDiscovery] Retrying provider discovery after successful login...')
-    }
+    console.log('🔄 [ProviderDiscovery] Retrying provider discovery after successful login...')
     discoverProviders()
     onLoginSuccess?.()
     showToast.success("Welcome back! Finding available providers for your booking...")
@@ -435,21 +407,6 @@ export function ProviderDiscovery({
       // Fallback: Navigate to the book-service page to start fresh
       window.location.href = '/book-service'
     }
-  }
-
-  // Utility: compute next 3 half-hour slots from provided time
-  const computeNextSlots = (t: string) => {
-    const [hh, mm] = t.split(':').map(n => parseInt(n, 10))
-    const base = new Date()
-    base.setHours(hh || 8, mm || 0, 0, 0)
-    const slots: string[] = []
-    for (let i = 1; i <= 3; i++) {
-      const d = new Date(base.getTime() + i * 30 * 60000)
-      const h = String(d.getHours()).padStart(2, '0')
-      const m = String(d.getMinutes()).padStart(2, '0')
-      slots.push(`${h}:${m}`)
-    }
-    return slots
   }
 
   if (loading) {
@@ -485,6 +442,21 @@ export function ProviderDiscovery({
     )
   }
 
+  // Utility: compute next 3 half-hour slots from provided time
+  const computeNextSlots = (t: string) => {
+    const [hh, mm] = t.split(':').map(n => parseInt(n, 10))
+    const base = new Date()
+    base.setHours(hh || 8, mm || 0, 0, 0)
+    const slots: string[] = []
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(base.getTime() + i * 30 * 60000)
+      const h = String(d.getHours()).padStart(2, '0')
+      const m = String(d.getMinutes()).padStart(2, '0')
+      slots.push(`${h}:${m}`)
+    }
+    return slots
+  }
+
   if (!providers || providers.length === 0) {
     return (
       <Card className="shadow-xl border-0 bg-black/90 backdrop-blur-sm animate-slide-in-up">
@@ -500,11 +472,7 @@ export function ProviderDiscovery({
             <div className="flex flex-wrap gap-2 justify-center">
               {computeNextSlots(discoveryTime || '08:00').map((slot) => (
                 <Button key={slot} variant="outline" className="border-gray-600 text-white hover:bg-gray-800"
-                  onClick={() => { 
-                    setDiscoveryTime(slot);
-                    setLoading(true);
-                    setTimeout(discoverProviders, 50);
-                  }}>
+                  onClick={() => { setDiscoveryTime(slot); setLoading(true); setTimeout(discoverProviders, 50) }}>
                   {slot}
                 </Button>
               ))}
@@ -656,6 +624,6 @@ export function ProviderDiscovery({
           }}
         />
       )}
-    </>  
+    </>
   )
 }

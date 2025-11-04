@@ -1,255 +1,168 @@
-# 🚀 Production Deployment Checklist
+# Booking Draft Preservation - Deployment Checklist
 
-**Last Updated**: $(date)  
-**Status**: ✅ Ready for Deployment
+## ✅ Completed Steps
 
----
+### 1. Code Implementation
+- [x] Created `lib/booking-draft.ts` - Core draft utility
+- [x] Created API endpoints for draft management
+- [x] Updated authentication handlers
+- [x] Updated booking flow components
+- [x] Created resume page
+- [x] Updated signup and verification flows
 
-## ✅ **Pre-Deployment Verification**
+### 2. Dependencies
+- [x] Installed `uuid` package
+- [x] Installed `@types/uuid` package
 
-### **Code Quality**
-- [x] All critical security fixes applied
-- [x] Build configuration production-ready
-- [x] CORS security fixes implemented
-- [x] Source maps disabled
-- [x] React Strict Mode enabled
-- [x] Syntax errors fixed
-- [ ] ESLint warnings (optional - see ESLINT_CLEANUP_PLAN.md)
+### 3. Database Schema
+- [x] Updated `prisma/schema.prisma` with `BookingDraft` model
+- [x] Created migration file
+- [x] Created manual SQL script for table creation
 
-### **Build Status**
-```bash
-# Run this to verify build works
-npm run build
-# Expected: Build succeeds (warnings are acceptable for now)
+### 4. Testing
+- [x] Created test script
+- [x] Verified file structure
+- [x] Tested UUID generation
+- [x] Verified API endpoint URLs
+
+## 🔄 Pending Steps
+
+### 1. Database Migration
+**Status**: ⚠️ Connection issue with production database
+**Action Required**: Run the SQL script manually in your database
+
+```sql
+-- Execute this in your Supabase SQL editor or psql
+CREATE TABLE IF NOT EXISTS "booking_drafts" (
+    "id" TEXT NOT NULL,
+    "serviceId" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "time" TEXT NOT NULL,
+    "address" TEXT NOT NULL,
+    "notes" TEXT,
+    "userId" TEXT,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "booking_drafts_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX IF NOT EXISTS "booking_drafts_userId_idx" ON "booking_drafts"("userId");
+CREATE INDEX IF NOT EXISTS "booking_drafts_expiresAt_idx" ON "booking_drafts"("expiresAt");
 ```
 
-### **Local Testing**
-- [ ] Test authentication flow
-- [ ] Test booking flow
-- [ ] Test dashboard loading
-- [ ] Test payment flow (if applicable)
+### 2. Manual Testing
+**Status**: ⏳ Ready to test
+**Action Required**: Follow the manual test guide
 
----
+1. **Test New User Signup Flow**:
+   - Start booking → Fill form → Sign up → Verify email → Continue booking
+   - Verify all data is preserved
 
-## 🔧 **Environment Variables Setup**
+2. **Test Existing User Login Flow**:
+   - Start booking → Fill form → Sign in → Continue booking
+   - Verify all data is preserved
 
-### **Required in Vercel Production**
+3. **Test Error Scenarios**:
+   - Expired drafts
+   - Network failures
+   - Invalid draft IDs
 
-Set these in **Vercel Dashboard → Settings → Environment Variables**:
+### 3. Production Deployment
+**Status**: ⏳ Ready to deploy
+**Action Required**: Deploy code to production
 
-#### **Application URLs** (Critical)
-```bash
-NEXT_PUBLIC_APP_URL=https://app.proliinkconnect.co.za
-NEXTAUTH_URL=https://app.proliinkconnect.co.za
-```
+1. **Code Deployment**:
+   - Deploy updated files to production
+   - Verify all endpoints are accessible
+   - Test basic functionality
 
-#### **Database** (Critical)
-```bash
-DATABASE_URL=<your-production-database-url>
-DIRECT_URL=<your-production-direct-url>
-PRISMA_DISABLE_PREPARED_STATEMENTS=true
-```
+2. **Database Verification**:
+   - Confirm `booking_drafts` table exists
+   - Test API endpoints
+   - Verify indexes are created
 
-#### **Authentication** (Critical)
-```bash
-JWT_SECRET=<your-jwt-secret-min-32-chars>
-NEXTAUTH_SECRET=<your-nextauth-secret-min-32-chars>
-JWT_EXPIRES_IN=7d
-```
+3. **Monitoring Setup**:
+   - Monitor draft creation/retrieval rates
+   - Track user flow completion rates
+   - Set up error alerts
 
-#### **Email Service** (Critical)
-```bash
-RESEND_API_KEY=re_<your-resend-api-key>
-FROM_EMAIL=no-reply@app.proliinkconnect.co.za
-```
+## 🧪 Testing Instructions
 
-#### **Payment Service** (Critical)
-```bash
-PAYSTACK_SECRET_KEY=sk_live_<your-production-key>
-PAYSTACK_PUBLIC_KEY=pk_live_<your-production-key>
-PAYSTACK_TEST_MODE=false
-PAYSTACK_WEBHOOK_SECRET=<your-webhook-secret>
-```
+### Quick Test
+1. Go to `https://app.proliinkconnect.co.za/book-service`
+2. Fill out the booking form
+3. Try to continue (should prompt for login)
+4. Sign up with a new email
+5. Verify email
+6. Check if booking data is preserved
 
-#### **Push Notifications** (Optional)
-```bash
-VAPID_PUBLIC_KEY=<your-vapid-public-key>
-VAPID_PRIVATE_KEY=<your-vapid-private-key>
-VAPID_SUBJECT=mailto:support@app.proliinkconnect.co.za
-```
+### API Testing
+Test these endpoints:
+- `POST /api/bookings/drafts` - Create draft
+- `GET /api/bookings/drafts/[id]` - Get draft
+- `DELETE /api/bookings/drafts/[id]` - Delete draft
+- `POST /api/bookings/drafts/[id]/merge` - Merge draft
 
-#### **Configuration**
-```bash
-NODE_ENV=production  # Auto-set by Vercel
-COOKIE_DOMAIN=app.proliinkconnect.co.za
-LOG_LEVEL=info
-```
+### Browser Testing
+Check browser console for:
+- Draft creation logs
+- Draft retrieval logs
+- Error messages
+- Network requests
 
----
+## 🔍 Verification Points
 
-## 📦 **Database Migrations**
+### Success Criteria
+- [ ] Users can start booking without being logged in
+- [ ] Booking data is preserved during signup process
+- [ ] Users can continue booking after email verification
+- [ ] No data loss occurs at any step
+- [ ] System handles errors gracefully
+- [ ] Performance impact is minimal
 
-### **If Applicable**
+### Monitoring Metrics
+- Draft creation success rate
+- Draft retrieval success rate
+- User flow completion rate
+- Error rates
+- Response times
 
-1. **Push Subscriptions Table** (if using push notifications):
-   ```sql
-   -- Run in Supabase SQL Editor
-   -- See: migrations/manual-add-push-subscriptions.sql
-   ```
+## 🚨 Rollback Plan
 
-2. **Verify Schema**:
-   ```bash
-   npx prisma db push --skip-generate
-   ```
+If issues occur:
+1. **Disable draft system**: Comment out draft saving in booking form
+2. **Revert to sessionStorage**: Use existing sessionStorage fallback
+3. **Database cleanup**: Remove `booking_drafts` table if needed
+4. **Code rollback**: Revert to previous version
 
----
+## 📞 Support
 
-## 🚀 **Deployment Steps**
+If you encounter issues:
+1. Check browser console for errors
+2. Verify database connectivity
+3. Test with clean browser session
+4. Check server logs
+5. Review implementation documentation
 
-### **Step 1: Commit Changes**
-```bash
-git add .
-git commit -m "feat: Production readiness improvements
+## 📋 Final Checklist
 
-- Security: Disable source maps, fix CORS
-- Config: Enable React Strict Mode
-- Build: Environment-aware configuration
-- Fix: Syntax errors in provider-discovery
+Before going live:
+- [ ] Database table created
+- [ ] All code deployed
+- [ ] Manual testing completed
+- [ ] Error handling verified
+- [ ] Performance acceptable
+- [ ] Monitoring in place
+- [ ] Rollback plan ready
 
-See PRODUCTION_READINESS_IMPLEMENTATION.md for details"
+## 🎉 Success!
 
-git push origin feature/multi-channel-notifications
-```
+Once all steps are completed, users will be able to:
+1. Start a booking without being logged in
+2. Sign up for an account
+3. Verify their email
+4. Continue their booking seamlessly
+5. Complete the booking without losing any progress
 
-### **Step 2: Merge to Main**
-```bash
-git checkout main
-git pull origin main
-git merge --no-ff feature/multi-channel-notifications
-git push origin main
-```
-
-### **Step 3: Deploy on Vercel**
-
-1. Go to Vercel Dashboard
-2. Select your project
-3. **Deployments** tab should auto-deploy from `main`
-4. Or manually trigger: **Redeploy** button
-
----
-
-## ✅ **Post-Deployment Verification**
-
-### **Health Checks**
-
-1. **Health Endpoint**:
-   ```bash
-   curl https://app.proliinkconnect.co.za/api/health
-   # Expected: 200 OK
-   ```
-
-2. **Homepage Loads**:
-   - Visit: `https://app.proliinkconnect.co.za`
-   - Verify: Page loads correctly
-
-3. **Critical Flows**:
-   - [ ] Login works
-   - [ ] Signup works
-   - [ ] Email verification links work (check URLs)
-   - [ ] Booking flow works
-   - [ ] Dashboard loads
-   - [ ] Payment processing works (if applicable)
-
----
-
-## 🔍 **Monitoring Checklist**
-
-### **First 24 Hours**
-
-- [ ] Monitor Vercel logs for errors
-- [ ] Check error tracking (if configured)
-- [ ] Verify authentication flows
-- [ ] Check email delivery
-- [ ] Verify payment processing
-- [ ] Monitor database connections
-
-### **Security Verification**
-
-- [ ] Source maps not exposed (check browser DevTools)
-- [ ] CORS headers correct (check Network tab)
-- [ ] Security headers present (check Response Headers)
-- [ ] HTTPS enforced
-- [ ] Cookies secure flag set
-
----
-
-## 🐛 **Rollback Plan**
-
-If something breaks:
-
-### **Quick Rollback**
-```bash
-# In Vercel Dashboard:
-1. Go to Deployments
-2. Find last working deployment
-3. Click "..." → "Promote to Production"
-```
-
-### **Code Rollback**
-```bash
-git revert <commit-hash>
-git push origin main
-```
-
----
-
-## 📊 **What Was Deployed**
-
-### **Security Improvements** ✅
-- Source maps disabled (prevents source exposure)
-- CORS restricted (prevents unauthorized access)
-- Security headers configured
-
-### **Configuration Improvements** ✅
-- React Strict Mode enabled
-- Environment-aware build config
-- Production builds catch TypeScript errors
-
-### **Bug Fixes** ✅
-- Syntax errors fixed
-- Function ordering corrected
-
----
-
-## 📝 **Post-Deployment Tasks**
-
-### **Immediate** (First Day)
-- Monitor for errors
-- Test critical user flows
-- Verify email delivery
-
-### **Short Term** (This Week)
-- Fix ESLint warnings (see ESLINT_CLEANUP_PLAN.md)
-- Improve type safety
-- Performance monitoring
-
-### **Long Term** (This Sprint)
-- Code quality improvements
-- Additional security audits
-- Performance optimizations
-
----
-
-## ✅ **Deployment Complete!**
-
-Once all checks pass:
-- ✅ Code deployed
-- ✅ Environment variables set
-- ✅ Critical flows working
-- ✅ Monitoring active
-
-**Next**: Schedule ESLint cleanup (see ESLINT_CLEANUP_PLAN.md)
-
----
-
-**Ready to deploy!** 🚀
+The booking draft preservation system will significantly improve user experience and reduce booking abandonment rates.

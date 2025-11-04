@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { db } from '@/lib/db-utils'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -88,17 +88,11 @@ export async function GET() {
   }
 }
 
-export async function OPTIONS(request: NextRequest) {
-  // SECURITY: Restrict CORS to production URL instead of wildcard
-  // Frontend uses relative URLs, so this is safe
-  const allowedOrigin = process.env.NODE_ENV === 'production'
-    ? process.env.NEXT_PUBLIC_APP_URL || request.headers.get('origin') || '*'
-    : request.headers.get('origin') || '*';
-  
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
