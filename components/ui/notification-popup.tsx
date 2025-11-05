@@ -227,14 +227,35 @@ export function NotificationPopup({
                   </span>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0 hover:bg-gray-200 rounded-lg"
-              >
-                <X className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center space-x-2">
+                {notifications.filter(n => !n.read).length > 0 && onMarkAllAsRead && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (onMarkAllAsRead) {
+                        try {
+                          await onMarkAllAsRead()
+                        } catch (error) {
+                          console.error('Failed to mark all notifications as read:', error)
+                        }
+                      }
+                    }}
+                    className="text-xs h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    <CheckCheck className="w-3 h-3 mr-1" />
+                    Mark all read
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  className="h-8 w-8 p-0 hover:bg-gray-200 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Content */}

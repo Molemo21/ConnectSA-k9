@@ -285,7 +285,7 @@ export default function BecomeProvider() {
                   }}
                 >
                   Turn Your Skills Into
-                  <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  <span className="block bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
                     Steady Income
                   </span>
                 </motion.h1>

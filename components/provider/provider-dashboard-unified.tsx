@@ -76,7 +76,9 @@ import {
 
   Plus,
 
-  Package
+  Package,
+
+  Activity
 
 } from "lucide-react"
 
@@ -766,7 +768,43 @@ function ProviderMainContent({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookings, selectedFilter]) // safeBookings is derived from bookings inline, using bookings is correct
 
+  // Find the current active job - priority order: IN_PROGRESS > PENDING_EXECUTION > CONFIRMED > PENDING
+  const currentJob = useMemo(() => {
+    if (!bookings || !Array.isArray(bookings)) return null;
 
+    const activeStatuses = ['IN_PROGRESS', 'PENDING_EXECUTION', 'CONFIRMED', 'PENDING', 'AWAITING_CONFIRMATION'];
+    const activeBookings = bookings.filter(b => 
+      b && b.id && b.status && activeStatuses.includes(b.status)
+    );
+
+    if (activeBookings.length === 0) return null;
+
+    // Priority order: IN_PROGRESS (highest) > PENDING_EXECUTION > CONFIRMED > PENDING > AWAITING_CONFIRMATION
+    const priorityOrder: Record<string, number> = {
+      'IN_PROGRESS': 1,
+      'PENDING_EXECUTION': 2,
+      'CONFIRMED': 3,
+      'PENDING': 4,
+      'AWAITING_CONFIRMATION': 5
+    };
+
+    // Sort by priority, then by scheduled date (most urgent first)
+    const sorted = activeBookings.sort((a, b) => {
+      const priorityA = priorityOrder[a.status] || 99;
+      const priorityB = priorityOrder[b.status] || 99;
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB; // Lower number = higher priority
+      }
+      
+      // If same priority, sort by scheduled date (earliest first)
+      const dateA = new Date(a.scheduledDate || 0).getTime();
+      const dateB = new Date(b.scheduledDate || 0).getTime();
+      return dateA - dateB;
+    });
+
+    return sorted[0] || null;
+  }, [bookings]);
 
   const renderSectionContent = () => {
 
@@ -783,6 +821,302 @@ function ProviderMainContent({
             {/* Setup Progress Bar - Show if not completed */}
 
             <SetupProgressBar />
+
+            {/* Current Active Job Card - Priority at Top */}
+            {currentJob && (
+              <Card className="bg-black border-blue-700/50 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200">
+                <CardHeader className="pb-3 sm:pb-4 px-3 sm:px-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white animate-pulse" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base sm:text-lg font-semibold text-white truncate">Current Active Job</CardTitle>
+                        <p className="text-xs sm:text-sm text-gray-300 truncate">Your most urgent job requiring attention</p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 text-xs sm:text-sm w-full sm:w-auto"
+                      onClick={() => setActiveSection('jobs')}
+                    >
+                      View All Jobs
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 px-3 sm:px-6 pb-3 sm:pb-6">
+                  <ComponentErrorBoundary componentName={`CurrentJobCard-${currentJob.id}`}>
+                    <div 
+                      className="bg-black border border-gray-700 rounded-lg hover:bg-gray-900 transition-all duration-200"
+                      data-booking-id={currentJob.id}
+                    >
+                      <div className="p-3 sm:p-6">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                          <div className="flex-1 space-y-3 sm:space-y-4 min-w-0">
+                            {/* Service Header */}
+                            <div className="flex items-start gap-2 sm:gap-4">
+                              <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-blue-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                                  <h3 className="text-base sm:text-lg font-semibold text-gray-100 break-words">{currentJob.service?.name || 'Unknown Service'}</h3>
+                                  {/* Payment Method Badge */}
+                                  {(() => {
+                                    const paymentMethod = normalizePaymentMethod(currentJob.paymentMethod);
+                                    if (!paymentMethod) return null;
+                                    
+                                    const isCash = paymentMethod === 'CASH';
+                                    
+                                    return (
+                                      <Badge 
+                                        variant="outline" 
+                                        className={
+                                          isCash
+                                            ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-300 text-xs' 
+                                            : 'border-green-400/50 bg-green-400/10 text-green-300 text-xs'
+                                        }
+                                        title={`Payment Method: ${isCash ? 'Cash' : 'Online'}`}
+                                      >
+                                        {isCash ? (
+                                          <Banknote className="w-3 h-3 mr-1" />
+                                        ) : (
+                                          <CreditCard className="w-3 h-3 mr-1" />
+                                        )}
+                                        {isCash ? 'Cash' : 'Online'}
+                                      </Badge>
+                                    );
+                                  })()}
+                                </div>
+                                <p className="text-xs sm:text-sm text-gray-300 break-words">
+                                  {currentJob.service?.name || 'No Service'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Client and Date Info */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Client</p>
+                                <p className="text-sm sm:text-base font-semibold text-white break-words">{currentJob.client?.name || 'Unknown Client'}</p>
+                                <p className="text-xs sm:text-sm text-gray-300 break-all">{currentJob.client?.email || 'No Email'}</p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Scheduled</p>
+                                <p className="text-sm sm:text-base font-semibold text-white">
+                                  {currentJob.scheduledDate ? new Date(currentJob.scheduledDate).toLocaleDateString('en-US', { 
+                                    weekday: 'short', 
+                                    month: 'short', 
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  }) : 'No Date'}
+                                </p>
+                                <p className="text-xs sm:text-sm text-gray-300 flex items-center gap-1">
+                                  <Clock className="w-3 h-3 flex-shrink-0" />
+                                  {currentJob.scheduledDate ? new Date(currentJob.scheduledDate).toLocaleTimeString('en-US', { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  }) : 'No Time'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Address and Amount */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 pt-2 border-t border-gray-600">
+                              <div className="flex items-start gap-2 text-xs sm:text-sm text-gray-300 min-w-0">
+                                <MapPin className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                                <span className="text-gray-200 break-words">{currentJob.address || 'No Address'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm sm:text-base">
+                                <span className="text-base sm:text-lg font-semibold text-gray-100">R{currentJob.totalAmount || currentJob.service?.basePrice || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status and Actions */}
+                          <div className="flex flex-row lg:flex-col lg:items-end gap-2 sm:gap-3 flex-shrink-0 w-full lg:w-auto border-t lg:border-t-0 border-gray-600 lg:border-0 pt-3 lg:pt-0">
+                            <Badge 
+                              className={
+                                currentJob.status === 'COMPLETED' 
+                                  ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                  : currentJob.status === 'IN_PROGRESS'
+                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                  : currentJob.status === 'PENDING_EXECUTION'
+                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                  : currentJob.status === 'CONFIRMED'
+                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                  : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                              }
+                            >
+                              {currentJob.status || 'UNKNOWN'}
+                            </Badge>
+
+                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'PENDING' && (
+                              <Button 
+                                size="sm" 
+                                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm flex-1 lg:flex-none"
+                                onClick={() => acceptBooking(currentJob.id)}
+                                disabled={acceptingBooking === currentJob.id}
+                              >
+                                {acceptingBooking === currentJob.id ? (
+                                  <div className="flex items-center justify-center">
+                                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">Accepting...</span>
+                                    <span className="sm:hidden">...</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center">
+                                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                    Accept Job
+                                  </div>
+                                )}
+                              </Button>
+                            )}
+
+                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'CONFIRMED' && (
+                              <>
+                                {/* For CASH payments: Show Start Job immediately */}
+                                {normalizePaymentMethod(currentJob.paymentMethod) === 'CASH' && (
+                                  <Button 
+                                    size="sm" 
+                                    className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm flex-1 lg:flex-none"
+                                    onClick={() => handleStartJob(currentJob.id)}
+                                    disabled={processingAction}
+                                  >
+                                    {processingAction ? (
+                                      <div className="flex items-center justify-center">
+                                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                                        <span className="hidden sm:inline">Starting...</span>
+                                        <span className="sm:hidden">...</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center justify-center">
+                                        <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                        Start Job
+                                      </div>
+                                    )}
+                                  </Button>
+                                )}
+                                
+                                {/* For ONLINE payments: Show accepted status (waiting for client to pay) */}
+                                {normalizePaymentMethod(currentJob.paymentMethod) === 'ONLINE' && (
+                                  <Button 
+                                    size="sm" 
+                                    className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 text-xs sm:text-sm flex-1 lg:flex-none"
+                                    disabled
+                                  >
+                                    <div className="flex items-center justify-center">
+                                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                      Accepted
+                                    </div>
+                                  </Button>
+                                )}
+                              </>
+                            )}
+
+                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'PENDING_EXECUTION' && (
+                              <Button 
+                                size="sm" 
+                                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm flex-1 lg:flex-none"
+                                onClick={() => handleStartJob(currentJob.id)}
+                                disabled={processingAction}
+                              >
+                                {processingAction ? (
+                                  <div className="flex items-center justify-center">
+                                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">Starting...</span>
+                                    <span className="sm:hidden">...</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center">
+                                    <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                    Start Job
+                                  </div>
+                                )}
+                              </Button>
+                            )}
+
+                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'IN_PROGRESS' && (
+                              <Button 
+                                size="sm" 
+                                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm flex-1 lg:flex-none"
+                                onClick={() => handleCompleteJob(currentJob.id)}
+                                disabled={processingAction}
+                              >
+                                {processingAction ? (
+                                  <div className="flex items-center justify-center">
+                                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">Completing...</span>
+                                    <span className="sm:hidden">...</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center">
+                                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                    Complete Job
+                                  </div>
+                                )}
+                              </Button>
+                            )}
+
+                            {/* Show button when client claimed they paid (CASH_PAID, AWAITING_CONFIRMATION) */}
+                            {normalizePaymentMethod(currentJob.paymentMethod) === 'CASH' && 
+                             currentJob.payment?.status === 'CASH_PAID' && 
+                             currentJob.status === 'AWAITING_CONFIRMATION' && (
+                              <Button 
+                                size="sm" 
+                                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg shadow-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm flex-1 lg:flex-none"
+                                onClick={() => {
+                                  setCashPaymentConfirmation({
+                                    isOpen: true,
+                                    bookingId: currentJob.id,
+                                    amount: currentJob.totalAmount,
+                                    clientName: currentJob.client?.name || 'Client',
+                                    serviceName: currentJob.service?.name || 'Service'
+                                  });
+                                }}
+                                disabled={processingAction}
+                              >
+                                {processingAction ? (
+                                  <div className="flex items-center justify-center">
+                                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">Processing...</span>
+                                    <span className="sm:hidden">...</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center">
+                                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                    <span className="hidden sm:inline">Confirm Payment</span>
+                                    <span className="sm:hidden">Confirm</span>
+                                  </div>
+                                )}
+                              </Button>
+                            )}
+
+                            {/* Generic "Awaiting Confirmation" - only show if cash payment button is not showing */}
+                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'AWAITING_CONFIRMATION' && 
+                             !(normalizePaymentMethod(currentJob.paymentMethod) === 'CASH' && currentJob.payment?.status === 'CASH_PAID') && (
+                              <Button 
+                                size="sm" 
+                                className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 text-xs sm:text-sm flex-1 lg:flex-none"
+                                disabled
+                              >
+                                <div className="flex items-center justify-center">
+                                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                  <span className="hidden sm:inline">Awaiting Confirmation</span>
+                                  <span className="sm:hidden">Awaiting</span>
+                                </div>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </ComponentErrorBoundary>
+                </CardContent>
+              </Card>
+            )}
 
             
             
@@ -2424,13 +2758,13 @@ function ProviderMainContent({
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-black/60 backdrop-blur-sm border-b border-gray-300/20 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white capitalize">
+      <div className="sticky top-0 z-10 bg-black/60 backdrop-blur-sm border-b border-gray-300/20 p-3 sm:p-4 lg:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-white capitalize truncate">
               {activeSection === 'bank' ? 'Bank Setup' : activeSection}
             </h1>
-            <p className="text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-400 mt-1 line-clamp-2">
               {activeSection === 'overview' && 'Manage your provider account and view key metrics'}
               {activeSection === 'jobs' && 'View and manage your job requests'}
               {activeSection === 'earnings' && 'Track your earnings and performance'}
@@ -2445,16 +2779,16 @@ function ProviderMainContent({
             size="sm"
             onClick={refreshData}
             disabled={isRefreshing}
-            className="border-gray-300/30 text-gray-300 hover:bg-blue-400/10 hover:text-white"
+            className="border-gray-300/30 text-gray-300 hover:bg-blue-400/10 hover:text-white text-xs sm:text-sm w-full sm:w-auto flex-shrink-0"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-3 sm:p-4 lg:p-6">
         {renderSectionContent()}
       </div>
 
