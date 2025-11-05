@@ -637,11 +637,35 @@ function BookServiceContent() {
                   Your job offer has been sent to the selected provider. They will respond within 2 hours.
                 </p>
                 <div className="space-y-4">
-                  <Button asChild className="w-full">
-                    <a href="/dashboard">View My Bookings</a>
+                  <Button 
+                    onClick={() => router.push('/dashboard')} 
+                    className="w-full"
+                  >
+                    View My Bookings
                   </Button>
-                  <Button variant="outline" asChild className="w-full">
-                    <a href="/book-service">Book Another Service</a>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      // Reset booking state and return to form
+                      setConfirmation(null)
+                      setActiveStep('FORM')
+                      setForm({
+                        serviceId: "",
+                        date: "",
+                        time: "",
+                        address: "",
+                        notes: "",
+                        paymentMethod: "ONLINE"
+                      })
+                      setSelectedProviderId(null)
+                      setSelectedProvider(null)
+                      setShowProviderDiscovery(false)
+                      // Scroll to top to show the form
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    className="w-full"
+                  >
+                    Book Another Service
                   </Button>
                 </div>
               </CardContent>

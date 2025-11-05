@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
-import { safeRedirect, getRedirectHistory } from "@/lib/redirect-guard"
+import { safeRedirect } from "@/lib/redirect-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -1116,41 +1116,8 @@ export function MobileClientDashboard() {
   const [selectedFilter, setSelectedFilter] = useState<string>("all")
   const [activeSection, setActiveSection] = useState<string>("overview")
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false)
-  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
 
   const searchParams = useSearchParams()
-
-  // Initialize redirect guard and show debug info
-  useEffect(() => {
-    console.log('🔍 Dashboard component mounted at:', window.location.href)
-    
-    // Show redirect history for debugging
-    const history = getRedirectHistory()
-    if (history.length > 0) {
-      console.log('📋 Recent redirect history:', history)
-    }
-    
-    // Track any redirects by monitoring location changes
-    const originalPushState = history.pushState
-    const originalReplaceState = history.replaceState
-    
-    history.pushState = function(...args) {
-      console.log('🚨 REDIRECT DETECTED: history.pushState', args[2])
-      console.trace('PushState call stack:')
-      return originalPushState.apply(this, args)
-    }
-    
-    history.replaceState = function(...args) {
-      console.log('🚨 REDIRECT DETECTED: history.replaceState', args[2])
-      console.trace('ReplaceState call stack:')
-      return originalReplaceState.apply(this, args)
-    }
-    
-    return () => {
-      history.pushState = originalPushState
-      history.replaceState = originalReplaceState
-    }
-  }, [])
 
   // Use the optimized booking data hook
   const { 
@@ -1618,55 +1585,6 @@ export function MobileClientDashboard() {
           className="bg-black/70 backdrop-blur-sm border-b border-white/20"
         />
 
-        {/* Debug Panel - Only show in development or when explicitly enabled */}
-        {(process.env.NODE_ENV === 'development' || showDebugPanel) && (
-          <div className="bg-yellow-50 border border-yellow-200 p-4 m-4 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-yellow-800">Debug Panel</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowDebugPanel(!showDebugPanel)}
-                className="text-xs"
-              >
-                {showDebugPanel ? 'Hide' : 'Show'} Debug
-              </Button>
-            </div>
-            
-            <div className="space-y-2 text-xs">
-              <div>
-                <strong>Current URL:</strong> {window.location.href}
-              </div>
-              <div>
-                <strong>User:</strong> {user ? `${user.email} (${user.role})` : 'Not authenticated'}
-              </div>
-              <div>
-                <strong>Auth Loading:</strong> {authLoading ? 'Yes' : 'No'}
-              </div>
-              <div>
-                <strong>Auth Error:</strong> {authError || 'None'}
-              </div>
-              
-              <div>
-                <strong>Redirect History:</strong>
-                <div className="mt-1 max-h-32 overflow-y-auto bg-white p-2 rounded border">
-                  {getRedirectHistory().length === 0 ? (
-                    <div className="text-gray-500">No redirects recorded</div>
-                  ) : (
-                    getRedirectHistory().map((redirect, index) => (
-                      <div key={index} className="text-xs border-b pb-1 mb-1">
-                        <div><strong>From:</strong> {redirect.from}</div>
-                        <div><strong>To:</strong> {redirect.to}</div>
-                        <div><strong>Reason:</strong> {redirect.reason}</div>
-                        <div><strong>Time:</strong> {new Date(redirect.timestamp).toLocaleTimeString()}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         <MainContent
           activeSection={activeSection}
           setActiveSection={setActiveSection}

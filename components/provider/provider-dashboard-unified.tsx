@@ -2520,6 +2520,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   
   // Track authenticated user in ref for immediate synchronous access (avoids race conditions)
   const authenticatedUserRef = useRef<User | null>(initialUser || null)
+  
+  // Track initialization timeout to clear it when initialization completes
+  const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const [mounted, setMounted] = useState(false)
 
@@ -3364,7 +3367,6 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       console.log('Initializing provider dashboard...')
 
       try {
-
         // Skip authentication check if initialUser was provided (already authenticated on server)
 
         if (initialUser) {
@@ -3378,6 +3380,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             // Pass initialUser to fetchProviderData to avoid any race conditions
             await fetchProviderData(0, true, initialUser) // Force fetch on initial load with user
             console.log('✅ Initial data fetch completed successfully')
+            
+            // Clear timeout on successful completion
+            if (initializationTimeoutRef.current) {
+              clearTimeout(initializationTimeoutRef.current)
+              initializationTimeoutRef.current = null
+            }
           } catch (error) {
             console.error('❌ Initial data fetch failed:', error)
             // Loading state will be cleared by fetchProviderData error handler
@@ -3418,6 +3426,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
               // Pass the authenticated user directly to avoid race condition with state update
               await fetchProviderData(0, true, authResult.user) // Force fetch on initial load with authenticated user
               console.log('✅ Provider data fetch completed')
+              
+              // Clear timeout on successful completion
+              if (initializationTimeoutRef.current) {
+                clearTimeout(initializationTimeoutRef.current)
+                initializationTimeoutRef.current = null
+              }
             } catch (error) {
               console.error('❌ Provider data fetch failed:', error)
               // Error handler in fetchProviderData will clear loading state
@@ -3435,6 +3449,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
               auth: { ...prev.auth, isLoading: false },
               ui: { ...prev.ui, loading: false }
             }))
+            
+            // Clear timeout on auth failure
+            if (initializationTimeoutRef.current) {
+              clearTimeout(initializationTimeoutRef.current)
+              initializationTimeoutRef.current = null
+            }
 
           }
 
@@ -3445,40 +3465,53 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
         console.error('Error initializing dashboard:', error)
 
         // Ensure loading state is cleared even on error
-
         setDashboardState(prev => ({
-
           ...prev,
-
           ui: { ...prev.ui, loading: false, error: 'Failed to initialize dashboard' }
-
         }))
+        
+        // Clear timeout on error
+        if (initializationTimeoutRef.current) {
+          clearTimeout(initializationTimeoutRef.current)
+          initializationTimeoutRef.current = null
+        }
 
       }
 
     }
 
+    // Set up safety timeout BEFORE initialization starts
+    // This timeout will be cleared when initialization completes successfully
+    initializationTimeoutRef.current = setTimeout(() => {
+      // Only show timeout error if loading state is still true (initialization didn't complete)
+      setDashboardState(prev => {
+        if (prev.ui.loading || prev.auth.isLoading) {
+          console.warn('⚠️ Dashboard initialization timeout (45s) - initialization may have failed')
+          return {
+            ...prev,
+            auth: { ...prev.auth, isLoading: false },
+            ui: { ...prev.ui, loading: false, error: 'Dashboard initialization timed out. Please refresh.' }
+          }
+        }
+        return prev
+      })
+    }, 45000) // Increased to 45 seconds to allow for slower networks
+    
     // Initialize immediately if initialUser is provided, otherwise defer slightly to prevent hydration issues
     if (initialUser) {
       // If we have initialUser, we can fetch immediately without setTimeout
       initializeDashboard()
     } else {
       // FIX: Use setTimeout to defer initialization until after hydration when no initialUser
-      // Also add timeout fallback to prevent infinite loading
       setTimeout(initializeDashboard, 0)
-      
-      // Safety timeout: Clear loading state after 30 seconds if nothing happens
-      const safetyTimeout = setTimeout(() => {
-        console.warn('⚠️ Dashboard initialization timeout - clearing loading state')
-        setDashboardState(prev => ({
-          ...prev,
-          auth: { ...prev.auth, isLoading: false },
-          ui: { ...prev.ui, loading: false, error: 'Dashboard initialization timed out. Please refresh.' }
-        }))
-      }, 30000)
-      
-      // Store timeout for cleanup
-      return () => clearTimeout(safetyTimeout)
+    }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current)
+        initializationTimeoutRef.current = null
+      }
     }
 
   }, [initialUser, checkAuthentication, fetchProviderData]) // Include dependencies - functions are memoized with useCallback

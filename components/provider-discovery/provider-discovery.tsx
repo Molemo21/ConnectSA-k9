@@ -222,10 +222,15 @@ export function ProviderDiscovery({
         notes,
         paymentMethod,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        timezoneOffsetMinutes: new Date().getTimezoneOffset()
+        timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        // Include catalogueItemId when a package is selected (catalogue-based pricing)
+        ...(catalogueItemId && { catalogueItemId })
       };
 
-      console.log('🚀 Sending job offer with data:', requestData);
+      console.log('🚀 Sending job offer with data:', {
+        ...requestData,
+        catalogueItemId: catalogueItemId || 'not provided (using legacy pricing)'
+      });
 
       const response = await fetch('/api/book-service/send-offer-enhanced', {
         method: 'POST',
