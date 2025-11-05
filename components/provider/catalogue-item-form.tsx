@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { X, Save, Package, Image, Clock, FileText, Sparkles } from 'lucide-react';
+import { ImageUpload } from '@/components/ui/image-upload';
 
 interface Service {
   id: string;
@@ -124,20 +125,10 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
     }
   };
 
-  const addImageUrl = () => {
-    const url = prompt('Enter image URL:');
-    if (url && url.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, url.trim()]
-      }));
-    }
-  };
-
-  const removeImage = (index: number) => {
+  const handleImagesChange = (images: string[]) => {
     setFormData(prev => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      images
     }));
   };
 
@@ -369,49 +360,19 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
           </div>
 
           {/* Images */}
-          <div className="space-y-4">
+          <div className="space-y-2">
             <Label className="text-white font-medium flex items-center gap-2">
               <Image className="w-4 h-4" />
               Images (Optional)
             </Label>
-            
-            <div className="space-y-3">
-              {formData.images.map((image, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-black/60 border border-gray-300/20 rounded-lg">
-                  <div className="w-12 h-12 bg-gray-700/50 rounded-lg flex items-center justify-center">
-                    <Image className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <Input 
-                    value={image} 
-                    readOnly 
-                    className="flex-1 bg-transparent border-none text-gray-300"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeImage(index)}
-                    className="border-red-300/20 text-red-300 hover:bg-red-700/50"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-              
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addImageUrl}
-                className="w-full border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
-              >
-                <Image className="w-4 h-4 mr-2" />
-                Add Image URL
-              </Button>
-            </div>
-            
-            <p className="text-xs text-gray-400">
-              Add up to 10 images to showcase your service. Images will be displayed in your package cards.
-            </p>
+            <ImageUpload
+              value={formData.images}
+              onChange={handleImagesChange}
+              maxImages={10}
+              allowUrls={true}
+              catalogueItemId={item?.id}
+              disabled={loading}
+            />
           </div>
 
           {/* Form Actions */}

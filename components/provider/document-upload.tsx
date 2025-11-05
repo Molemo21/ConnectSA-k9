@@ -59,41 +59,83 @@ export function DocumentUpload({ onDocumentsChange, initialDocuments, disabled =
       return
     }
 
+    // Map component type to API document type
+    const getDocumentType = (type: string): string => {
+      if (type === 'idDocument') return 'id-document'
+      if (type === 'proofOfAddress') return 'proof-of-address'
+      if (type.startsWith('certification')) return 'certification'
+      if (type.startsWith('profileImage')) return 'profile-image'
+      return 'certification' // default
+    }
+
+    const documentType = getDocumentType(type)
     setUploading(type)
 
     try {
-      // In a real implementation, you would upload to a file storage service
-      // For now, we'll simulate the upload
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const fileUrl = `https://example.com/uploads/${Date.now()}-${file.name}`
-      
-      setDocuments(prev => {
-        const newDocs = { ...prev }
-        if (type === 'idDocument') {
-          newDocs.idDocument = fileUrl
-        } else if (type === 'proofOfAddress') {
-          newDocs.proofOfAddress = fileUrl
-        } else if (type.startsWith('certification')) {
-          const index = parseInt(type.split('-')[1])
-          newDocs.certifications[index] = fileUrl
-        } else if (type.startsWith('profileImage')) {
-          const index = parseInt(type.split('-')[1])
-          newDocs.profileImages[index] = fileUrl
-        }
-        return newDocs
+      // Create FormData for upload
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', documentType)
+
+      // Upload to API
+      const response = await fetch('/api/upload/onboarding-document', {
+        method: 'POST',
+        body: formData,
       })
 
-      onDocumentsChange(documents)
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Upload failed' }))
+        throw new Error(error.error || 'Upload failed')
+      }
+
+      const data = await response.json()
+      const fileUrl = data.url || data.signedUrl
+
+      if (!fileUrl) {
+        throw new Error('No URL returned from upload')
+      }
+
+      // Update documents state
+      const updatedDocs = { ...documents }
+      if (type === 'idDocument') {
+        updatedDocs.idDocument = fileUrl
+      } else if (type === 'proofOfAddress') {
+        updatedDocs.proofOfAddress = fileUrl
+      } else if (type.startsWith('certification')) {
+        const index = parseInt(type.split('-')[1])
+        // Ensure array is large enough
+        while (updatedDocs.certifications.length <= index) {
+          updatedDocs.certifications.push('')
+        }
+        updatedDocs.certifications[index] = fileUrl
+      } else if (type.startsWith('profileImage')) {
+        const index = parseInt(type.split('-')[1])
+        // Ensure array is large enough
+        while (updatedDocs.profileImages.length <= index) {
+          updatedDocs.profileImages.push('')
+        }
+        updatedDocs.profileImages[index] = fileUrl
+      }
+
+      setDocuments(updatedDocs)
+
+      // Notify parent component of changes
+      onDocumentsChange({
+        idDocument: updatedDocs.idDocument,
+        proofOfAddress: updatedDocs.proofOfAddress,
+        certifications: updatedDocs.certifications,
+        profileImages: updatedDocs.profileImages,
+      })
       
       toast({
         title: "File uploaded successfully",
         description: `${file.name} has been uploaded`
       })
     } catch (error) {
+      console.error('Upload error:', error)
       toast({
         title: "Upload failed",
-        description: "Failed to upload file. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to upload file. Please try again.",
         variant: "destructive"
       })
     } finally {
