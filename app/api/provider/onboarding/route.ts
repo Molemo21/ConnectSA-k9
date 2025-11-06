@@ -130,6 +130,24 @@ export async function POST(request: NextRequest) {
       console.log("✅ Provider created:", provider.id)
     }
 
+    // Sync first profile image to user avatar if available
+    if (validatedData.profileImages && validatedData.profileImages.length > 0) {
+      console.log("🖼️ Syncing first profile image to user avatar...")
+      try {
+        await db.user.update({
+          where: { id: user.id },
+          data: {
+            avatar: validatedData.profileImages[0]
+          }
+        })
+        console.log("✅ User avatar updated with first profile image")
+      } catch (avatarError) {
+        console.error("❌ Failed to update user avatar:", avatarError)
+        // Don't fail the onboarding if avatar update fails
+        // Just log the error and continue
+      }
+    }
+
     // Update provider services
     console.log("🔧 Updating provider services...")
     if (validatedData.selectedServices.length > 0) {

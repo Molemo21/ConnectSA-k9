@@ -25,6 +25,13 @@ export default function ProviderList() {
   const [actionLoading, setActionLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [documentUrls, setDocumentUrls] = useState<{
+    idDocument?: string[];
+    proofOfAddress?: string[];
+    certifications: string[];
+    profileImages: string[];
+  } | null>(null);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -58,15 +65,56 @@ export default function ProviderList() {
     fetchProviders();
   }, []);
 
-  const openModal = (provider: ProviderWithUser) => {
+  const openModal = async (provider: ProviderWithUser) => {
     setSelectedProvider(provider);
     setComment('');
     setModalOpen(true);
+    // Fetch fresh document URLs
+    await fetchDocumentUrls(provider.id);
+  };
+
+  const fetchDocumentUrls = async (providerId: string) => {
+    try {
+      setLoadingDocuments(true);
+      const response = await fetch(`/api/admin/providers/${providerId}/documents`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.documents) {
+          setDocumentUrls(data.documents);
+        } else {
+          setDocumentUrls({
+            idDocument: [],
+            proofOfAddress: [],
+            certifications: [],
+            profileImages: [],
+          });
+        }
+      } else {
+        setDocumentUrls({
+          idDocument: [],
+          proofOfAddress: [],
+          certifications: [],
+          profileImages: [],
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching document URLs:', error);
+      setDocumentUrls({
+        idDocument: [],
+        proofOfAddress: [],
+        certifications: [],
+        profileImages: [],
+      });
+    } finally {
+      setLoadingDocuments(false);
+    }
   };
 
   const closeModal = () => {
     setSelectedProvider(null);
     setComment('');
+    setDocumentUrls(null);
     setModalOpen(false);
   };
 
@@ -169,30 +217,50 @@ export default function ProviderList() {
               </div>
               <div>
                 <strong>ID Document:</strong>{' '}
-                {selectedProvider.idDocument ? (
-                  <>
-                    <a href={selectedProvider.idDocument} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">Download</a>
-                    <img src={selectedProvider.idDocument} alt="ID Document" className="max-h-32 mt-2" />
-                  </>
+                {loadingDocuments ? (
+                  <span className="text-sm text-gray-500">Loading...</span>
+                ) : documentUrls?.idDocument && documentUrls.idDocument.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    {documentUrls.idDocument.map((url, idx) => (
+                      <div key={idx}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">View Document {documentUrls.idDocument.length > 1 ? `#${idx + 1}` : ''}</a>
+                        {url.match(/\.(jpg|jpeg|png|gif|webp)/i) && (
+                          <img src={url} alt={`ID Document ${idx + 1}`} className="max-h-32 mt-2" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 ) : 'N/A'}
               </div>
               <div>
                 <strong>Proof of Address:</strong>{' '}
-                {selectedProvider.proofOfAddress ? (
-                  <>
-                    <a href={selectedProvider.proofOfAddress} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">Download</a>
-                    <img src={selectedProvider.proofOfAddress} alt="Proof of Address" className="max-h-32 mt-2" />
-                  </>
+                {loadingDocuments ? (
+                  <span className="text-sm text-gray-500">Loading...</span>
+                ) : documentUrls?.proofOfAddress && documentUrls.proofOfAddress.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    {documentUrls.proofOfAddress.map((url, idx) => (
+                      <div key={idx}>
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">View Document {documentUrls.proofOfAddress.length > 1 ? `#${idx + 1}` : ''}</a>
+                        {url.match(/\.(jpg|jpeg|png|gif|webp)/i) && (
+                          <img src={url} alt={`Proof of Address ${idx + 1}`} className="max-h-32 mt-2" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 ) : 'N/A'}
               </div>
               <div>
                 <strong>Certifications:</strong>{' '}
-                {selectedProvider.certifications && selectedProvider.certifications.length > 0 ? (
-                  <ul className="list-disc ml-6">
-                    {selectedProvider.certifications.map((cert, idx) => (
+                {loadingDocuments ? (
+                  <span className="text-sm text-gray-500">Loading...</span>
+                ) : documentUrls?.certifications && documentUrls.certifications.length > 0 ? (
+                  <ul className="list-disc ml-6 mt-2">
+                    {documentUrls.certifications.map((url, idx) => (
                       <li key={idx}>
-                        <a href={cert} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">Download</a>
-                        <img src={cert} alt={`Certification ${idx + 1}`} className="max-h-32 mt-2" />
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline mr-2">View Certification {documentUrls.certifications.length > 1 ? `#${idx + 1}` : ''}</a>
+                        {url.match(/\.(jpg|jpeg|png|gif|webp)/i) && (
+                          <img src={url} alt={`Certification ${idx + 1}`} className="max-h-32 mt-2" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -200,11 +268,13 @@ export default function ProviderList() {
               </div>
               <div>
                 <strong>Profile Images:</strong>{' '}
-                {selectedProvider.profileImages && selectedProvider.profileImages.length > 0 ? (
+                {loadingDocuments ? (
+                  <span className="text-sm text-gray-500">Loading...</span>
+                ) : documentUrls?.profileImages && documentUrls.profileImages.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedProvider.profileImages.map((img, idx) => (
-                      <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
-                        <img src={img} alt={`Profile ${idx + 1}`} className="max-h-24 rounded" />
+                    {documentUrls.profileImages.map((url, idx) => (
+                      <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                        <img src={url} alt={`Profile ${idx + 1}`} className="max-h-24 rounded" onError={(e) => { e.currentTarget.style.display = 'none' }} />
                       </a>
                     ))}
                   </div>

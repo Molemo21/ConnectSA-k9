@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, ArrowLeft, Upload, FileText, CheckCircle, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 
 interface DocumentsStepProps {
   data: {
@@ -29,29 +30,147 @@ export function DocumentsStep({
   isSubmitting = false 
 }: DocumentsStepProps) {
   const [uploading, setUploading] = useState<string | null>(null)
+  const { toast } = useToast()
 
   const handleFileUpload = async (field: keyof DocumentsStepProps['data'], file: File) => {
     setUploading(field)
+    
     try {
-      // Simulate file upload - replace with actual upload logic
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // For now, just store the file name
-      const fileName = `${field}_${Date.now()}_${file.name}`
-      
-      if (field === 'certifications' || field === 'profileImages') {
-        onChange({ [field]: [...(data[field] as string[]), fileName] })
-      } else {
-        onChange({ [field]: fileName })
+      // Validate file type and size
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (file.size > maxSize) {
+        toast({
+          title: 'File too large',
+          description: 'Please upload files smaller than 5MB',
+          variant: 'destructive',
+        })
+        return
       }
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Please upload JPG, PNG, or PDF files only',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      // Map field name to API document type
+      const getDocumentType = (field: string): string => {
+        if (field === 'idDocument') return 'id-document'
+        if (field === 'proofOfAddress') return 'proof-of-address'
+        if (field === 'certifications') return 'certification'
+        if (field === 'profileImages') return 'profile-image'
+        return 'certification'
+      }
+
+      const documentType = getDocumentType(field)
+      
+      // Delete old file if replacing ID document or proof of address
+      if (field === 'idDocument' && data.idDocument) {
+        await handleDeleteDocument(data.idDocument);
+      }
+      if (field === 'proofOfAddress' && data.proofOfAddress) {
+        await handleDeleteDocument(data.proofOfAddress);
+      }
+      
+      // Create FormData for upload
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('documentType', documentType)
+
+      // Upload to API
+      const response = await fetch('/api/upload/onboarding-document', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Upload failed' }))
+        throw new Error(error.error || 'Upload failed')
+      }
+
+      const result = await response.json()
+      const fileUrl = result.url || result.signedUrl
+
+      if (!fileUrl) {
+        throw new Error('No URL returned from upload')
+      }
+
+      // Update form data with the signed URL
+      if (field === 'certifications' || field === 'profileImages') {
+        onChange({ [field]: [...(data[field] as string[]), fileUrl] })
+      } else {
+        onChange({ [field]: fileUrl })
+      }
+
+      toast({
+        title: 'File uploaded successfully',
+        description: `${file.name} has been uploaded`,
+      })
     } catch (error) {
       console.error('Upload failed:', error)
+      toast({
+        title: 'Upload failed',
+        description: error instanceof Error ? error.message : 'Upload failed. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
       setUploading(null)
     }
   }
 
-  const removeFile = (field: keyof DocumentsStepProps['data'], index?: number) => {
+  const handleDeleteDocument = async (url: string) => {
+    if (!url || !url.includes('supabase.co')) return;
+
+    try {
+      const response = await fetch('/api/upload/onboarding-document', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Delete failed' }));
+        console.warn('Failed to delete from storage:', error);
+        // Continue anyway - remove from UI
+        return false;
+      } else {
+        toast({
+          title: 'Document deleted',
+          description: 'Document has been removed from storage',
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      // Continue anyway - remove from UI
+      return false;
+    }
+  };
+
+  const removeFile = async (field: keyof DocumentsStepProps['data'], index?: number) => {
+    let urlToDelete: string | undefined;
+
+    if (field === 'certifications' || field === 'profileImages') {
+      const files = data[field] as string[]
+      if (index !== undefined && files[index]) {
+        urlToDelete = files[index];
+      }
+    } else {
+      urlToDelete = data[field] as string;
+    }
+
+    // Try to delete from storage if URL exists
+    if (urlToDelete) {
+      await handleDeleteDocument(urlToDelete);
+    }
+
+    // Remove from local state (always happens, even if storage delete fails)
     if (field === 'certifications' || field === 'profileImages') {
       const files = data[field] as string[]
       const newFiles = index !== undefined ? files.filter((_, i) => i !== index) : []
@@ -246,7 +365,7 @@ export function DocumentsStep({
               <li>• All documents must be clear and readable</li>
               <li>• Photos should be well-lit and in focus</li>
               <li>• PDF files are preferred for documents</li>
-              <li>• Maximum file size: 10MB per file</li>
+              <li>• Maximum file size: 5MB per file</li>
             </ul>
           </div>
         </div>

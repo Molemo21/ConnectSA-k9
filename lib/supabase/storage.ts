@@ -136,14 +136,29 @@ export async function deleteCatalogueImage(filePath: string): Promise<void> {
   try {
     const supabase = createSupabaseServerClient();
 
-    const { error } = await supabase.storage
+    console.log('Deleting image from storage:', {
+      bucket: BUCKET_NAME,
+      filePath,
+    });
+
+    const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .remove([filePath]);
 
     if (error) {
-      console.error('Error deleting image:', error);
+      console.error('Supabase storage delete error:', {
+        error,
+        filePath,
+        bucket: BUCKET_NAME,
+      });
       throw new Error(`Failed to delete image: ${error.message}`);
     }
+
+    console.log('Successfully deleted image:', {
+      filePath,
+      bucket: BUCKET_NAME,
+      data,
+    });
   } catch (error) {
     console.error('Error in deleteCatalogueImage:', error);
     throw error;
@@ -307,16 +322,313 @@ export async function deleteOnboardingDocument(filePath: string): Promise<void> 
   try {
     const supabase = createSupabaseServerClient();
 
-    const { error } = await supabase.storage
+    console.log('Deleting document from storage:', {
+      bucket: DOCUMENTS_BUCKET_NAME,
+      filePath,
+    });
+
+    const { data, error } = await supabase.storage
       .from(DOCUMENTS_BUCKET_NAME)
       .remove([filePath]);
 
     if (error) {
-      console.error('Error deleting document:', error);
+      console.error('Supabase storage delete error:', {
+        error,
+        filePath,
+        bucket: DOCUMENTS_BUCKET_NAME,
+      });
       throw new Error(`Failed to delete document: ${error.message}`);
     }
+
+    console.log('Successfully deleted document:', {
+      filePath,
+      bucket: DOCUMENTS_BUCKET_NAME,
+      data,
+    });
   } catch (error) {
     console.error('Error in deleteOnboardingDocument:', error);
+    throw error;
+  }
+}
+
+/**
+ * Extract file path from signed URL
+ * Supabase signed URL format: https://{project}.supabase.co/storage/v1/object/sign/{bucket}/{path}?token=...
+ */
+export function extractFilePathFromSignedUrl(signedUrl: string, bucketName: string): string | null {
+  try {
+    const url = new URL(signedUrl);
+    
+    // Extract path from signed URL structure
+    // Path format: /storage/v1/object/sign/{bucket}/{path}
+    const escapedBucket = bucketName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pathMatch = url.pathname.match(new RegExp(`/storage/v1/object/sign/${escapedBucket}/(.+)$`));
+    
+    if (pathMatch && pathMatch[1]) {
+      // Decode the path (it might be URL-encoded)
+      // Try decoding, but if it fails, use the original
+      let decodedPath: string;
+      try {
+        decodedPath = decodeURIComponent(pathMatch[1]);
+      } catch {
+        // If decoding fails, use the original path
+        decodedPath = pathMatch[1];
+      }
+      
+      // Log for debugging
+      console.log('Extracted path from signed URL:', {
+        originalPath: pathMatch[1],
+        decodedPath,
+        fullUrl: signedUrl,
+      });
+      
+      return decodedPath;
+    }
+    
+    // Try alternative: check if path is in query params (some Supabase versions)
+    const pathFromQuery = url.searchParams.get('path');
+    if (pathFromQuery) {
+      console.log('Found path in query params:', pathFromQuery);
+      return decodeURIComponent(pathFromQuery);
+    }
+    
+    console.warn('Could not extract path from signed URL:', {
+      pathname: url.pathname,
+      bucketName,
+      fullUrl: signedUrl,
+    });
+    
+    return null;
+  } catch (error) {
+    console.error('Error extracting file path from signed URL:', error, {
+      signedUrl,
+      bucketName,
+    });
+    return null;
+  }
+}
+
+/**
+ * Extract file path from public URL
+ * Supabase public URL format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
+ */
+export function extractFilePathFromPublicUrl(publicUrl: string, bucketName: string): string | null {
+  try {
+    const url = new URL(publicUrl);
+    
+    // Extract path from public URL structure
+    // Path format: /storage/v1/object/public/{bucket}/{path}
+    const escapedBucket = bucketName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pathMatch = url.pathname.match(new RegExp(`/storage/v1/object/public/${escapedBucket}/(.+)$`));
+    
+    if (pathMatch && pathMatch[1]) {
+      // Decode the path (it might be URL-encoded)
+      // Try decoding, but if it fails, use the original
+      let decodedPath: string;
+      try {
+        decodedPath = decodeURIComponent(pathMatch[1]);
+      } catch {
+        // If decoding fails, use the original path
+        decodedPath = pathMatch[1];
+      }
+      
+      // Log for debugging
+      console.log('Extracted path from public URL:', {
+        originalPath: pathMatch[1],
+        decodedPath,
+        fullUrl: publicUrl,
+      });
+      
+      return decodedPath;
+    }
+    
+    console.warn('Could not extract path from public URL:', {
+      pathname: url.pathname,
+      bucketName,
+      fullUrl: publicUrl,
+    });
+    
+    return null;
+  } catch (error) {
+    console.error('Error extracting file path from public URL:', error, {
+      publicUrl,
+      bucketName,
+    });
+    return null;
+  }
+}
+
+/**
+ * List all documents for a provider (admin access)
+ * Returns all document paths organized by type
+ */
+export async function listProviderDocuments(
+  providerId: string
+): Promise<{
+  idDocument?: string[];
+  proofOfAddress?: string[];
+  certifications: string[];
+  profileImages: string[];
+}> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const basePath = `providers/${providerId}/onboarding/`;
+
+    const result = {
+      idDocument: [] as string[],
+      proofOfAddress: [] as string[],
+      certifications: [] as string[],
+      profileImages: [] as string[],
+    };
+
+    // List each document type folder separately
+    const documentTypes: Array<{ type: 'id-document' | 'proof-of-address' | 'certification' | 'profile-image', key: keyof typeof result }> = [
+      { type: 'id-document', key: 'idDocument' },
+      { type: 'proof-of-address', key: 'proofOfAddress' },
+      { type: 'certification', key: 'certifications' },
+      { type: 'profile-image', key: 'profileImages' },
+    ];
+
+    for (const { type, key } of documentTypes) {
+      const folderPath = `${basePath}${type}/`;
+      
+      try {
+        const { data, error } = await supabase.storage
+          .from(DOCUMENTS_BUCKET_NAME)
+          .list(folderPath, {
+            limit: 1000,
+            sortBy: { column: 'name', order: 'asc' },
+          });
+
+        if (error) {
+          // Folder might not exist yet, which is fine
+          if (error.message?.includes('not found')) {
+            continue;
+          }
+          console.error(`Error listing ${type}:`, error);
+          continue;
+        }
+
+        if (data && data.length > 0) {
+          // Filter out folders (folders don't have metadata like id)
+          const files = data.filter((item) => item.id !== null && item.name);
+          
+          for (const file of files) {
+            if (file.name) {
+              result[key].push(`${folderPath}${file.name}`);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing ${type} folder:`, error);
+        // Continue with other document types
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in listProviderDocuments:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get signed URLs for multiple document paths (admin access)
+ * Returns signed URLs organized by document type
+ */
+export async function getProviderDocumentUrls(
+  providerId: string,
+  expiresIn: number = 24 * 60 * 60 // 24 hours default
+): Promise<{
+  idDocument?: string[];
+  proofOfAddress?: string[];
+  certifications: string[];
+  profileImages: string[];
+}> {
+  try {
+    // List all documents for the provider
+    const documents = await listProviderDocuments(providerId);
+
+    // Generate signed URLs for each document
+    const supabase = createSupabaseServerClient();
+    const result = {
+      idDocument: [] as string[],
+      proofOfAddress: [] as string[],
+      certifications: [] as string[],
+      profileImages: [] as string[],
+    };
+
+    // Process ID documents
+    if (documents.idDocument && documents.idDocument.length > 0) {
+      for (const path of documents.idDocument) {
+        try {
+          const { data, error } = await supabase.storage
+            .from(DOCUMENTS_BUCKET_NAME)
+            .createSignedUrl(path, expiresIn);
+
+          if (!error && data?.signedUrl) {
+            result.idDocument.push(data.signedUrl);
+          }
+        } catch (error) {
+          console.error(`Error generating signed URL for ${path}:`, error);
+        }
+      }
+    }
+
+    // Process proof of address
+    if (documents.proofOfAddress && documents.proofOfAddress.length > 0) {
+      for (const path of documents.proofOfAddress) {
+        try {
+          const { data, error } = await supabase.storage
+            .from(DOCUMENTS_BUCKET_NAME)
+            .createSignedUrl(path, expiresIn);
+
+          if (!error && data?.signedUrl) {
+            result.proofOfAddress.push(data.signedUrl);
+          }
+        } catch (error) {
+          console.error(`Error generating signed URL for ${path}:`, error);
+        }
+      }
+    }
+
+    // Process certifications
+    if (documents.certifications && documents.certifications.length > 0) {
+      for (const path of documents.certifications) {
+        try {
+          const { data, error } = await supabase.storage
+            .from(DOCUMENTS_BUCKET_NAME)
+            .createSignedUrl(path, expiresIn);
+
+          if (!error && data?.signedUrl) {
+            result.certifications.push(data.signedUrl);
+          }
+        } catch (error) {
+          console.error(`Error generating signed URL for ${path}:`, error);
+        }
+      }
+    }
+
+    // Process profile images
+    if (documents.profileImages && documents.profileImages.length > 0) {
+      for (const path of documents.profileImages) {
+        try {
+          const { data, error } = await supabase.storage
+            .from(DOCUMENTS_BUCKET_NAME)
+            .createSignedUrl(path, expiresIn);
+
+          if (!error && data?.signedUrl) {
+            result.profileImages.push(data.signedUrl);
+          }
+        } catch (error) {
+          console.error(`Error generating signed URL for ${path}:`, error);
+        }
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in getProviderDocumentUrls:', error);
     throw error;
   }
 }

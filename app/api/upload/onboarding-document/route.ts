@@ -172,3 +172,106 @@ export async function GET() {
   });
 }
 
+/**
+ * DELETE /api/upload/onboarding-document
+ * Delete an onboarding document
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    // Authenticate user
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'PROVIDER') {
+      return NextResponse.json(
+        { error: 'Unauthorized. Only providers can delete documents.' },
+        { status: 401 }
+      );
+    }
+
+    // Get provider
+    const provider = await prisma.provider.findUnique({
+      where: { userId: user.id },
+      select: { id: true, status: true },
+    });
+
+    if (!provider) {
+      return NextResponse.json(
+        { error: 'Provider not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get file URL from request body
+    const { url } = await request.json();
+
+    if (!url) {
+      return NextResponse.json(
+        { error: 'Document URL is required' },
+        { status: 400 }
+      );
+    }
+
+    // Import path extraction utility
+    const {
+      extractFilePathFromSignedUrl,
+      deleteOnboardingDocument,
+    } = await import('@/lib/supabase/storage');
+
+    // Extract file path from signed URL
+    const filePath = extractFilePathFromSignedUrl(url, 'provider-documents');
+
+    console.log('Delete request - URL:', url);
+    console.log('Delete request - Extracted path:', filePath);
+
+    if (!filePath) {
+      console.error('Failed to extract file path from URL:', url);
+      return NextResponse.json(
+        { error: 'Invalid document URL. Could not extract file path.' },
+        { status: 400 }
+      );
+    }
+
+    // Verify file belongs to this provider
+    if (!filePath.startsWith(`providers/${provider.id}/`)) {
+      return NextResponse.json(
+        { error: 'Unauthorized. You can only delete your own documents.' },
+        { status: 403 }
+      );
+    }
+
+    // Optional: Prevent deletion of required documents after approval
+    // Only allow deletion during onboarding (PENDING/INCOMPLETE status)
+    if (
+      provider.status === 'APPROVED' &&
+      (filePath.includes('/id-document/') ||
+        filePath.includes('/proof-of-address/'))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Cannot delete required documents after approval. Contact admin for assistance.',
+        },
+        { status: 403 }
+      );
+    }
+
+    // Delete from storage
+    console.log('Attempting to delete file at path:', filePath);
+    await deleteOnboardingDocument(filePath);
+    console.log('Successfully deleted file at path:', filePath);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Document deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : 'Failed to delete document',
+      },
+      { status: 500 }
+    );
+  }
+}
+

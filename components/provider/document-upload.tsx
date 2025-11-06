@@ -72,6 +72,14 @@ export function DocumentUpload({ onDocumentsChange, initialDocuments, disabled =
     setUploading(type)
 
     try {
+      // Delete old file if replacing ID document or proof of address
+      if (type === 'idDocument' && documents.idDocument) {
+        await handleDeleteDocument(documents.idDocument);
+      }
+      if (type === 'proofOfAddress' && documents.proofOfAddress) {
+        await handleDeleteDocument(documents.proofOfAddress);
+      }
+
       // Create FormData for upload
       const formData = new FormData()
       formData.append('file', file)
@@ -150,12 +158,58 @@ export function DocumentUpload({ onDocumentsChange, initialDocuments, disabled =
     }))
   }
 
-  const removeCertification = (index: number) => {
+  const handleDeleteDocument = async (url: string) => {
+    if (!url || !url.includes('supabase.co')) return;
+
+    try {
+      const response = await fetch('/api/upload/onboarding-document', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Delete failed' }));
+        console.warn('Failed to delete from storage:', error);
+        // Continue anyway - remove from UI
+        return false;
+      } else {
+        toast({
+          title: 'Document deleted',
+          description: 'Document has been removed from storage',
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      // Continue anyway - remove from UI
+      return false;
+    }
+  };
+
+  const removeCertification = async (index: number) => {
+    const url = documents.certifications[index];
+
+    // If URL exists and is a Supabase URL, try to delete from storage
+    if (url) {
+      await handleDeleteDocument(url);
+    }
+
+    // Remove from local state (always happens, even if storage delete fails)
+    const updatedCertifications = documents.certifications.filter((_, i) => i !== index);
     setDocuments(prev => ({
       ...prev,
-      certifications: prev.certifications.filter((_, i) => i !== index)
-    }))
-  }
+      certifications: updatedCertifications,
+    }));
+
+    // Notify parent
+    onDocumentsChange({
+      ...documents,
+      certifications: updatedCertifications,
+    });
+  };
 
   const addProfileImage = () => {
     setDocuments(prev => ({
@@ -164,11 +218,26 @@ export function DocumentUpload({ onDocumentsChange, initialDocuments, disabled =
     }))
   }
 
-  const removeProfileImage = (index: number) => {
+  const removeProfileImage = async (index: number) => {
+    const url = documents.profileImages[index];
+
+    // If URL exists and is a Supabase URL, try to delete from storage
+    if (url) {
+      await handleDeleteDocument(url);
+    }
+
+    // Remove from local state (always happens)
+    const updatedProfileImages = documents.profileImages.filter((_, i) => i !== index);
     setDocuments(prev => ({
       ...prev,
-      profileImages: prev.profileImages.filter((_, i) => i !== index)
-    }))
+      profileImages: updatedProfileImages,
+    }));
+
+    // Notify parent
+    onDocumentsChange({
+      ...documents,
+      profileImages: updatedProfileImages,
+    });
   }
 
   return (

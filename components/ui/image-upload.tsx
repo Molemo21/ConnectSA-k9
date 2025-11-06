@@ -214,11 +214,41 @@ export function ImageUpload({
   );
 
   const handleRemoveImage = useCallback(
-    (index: number) => {
+    async (index: number) => {
+      const imageUrl = value[index];
+
+      // If it's a Supabase URL, try to delete from storage
+      if (imageUrl && imageUrl.includes('supabase.co')) {
+        try {
+          const response = await fetch('/api/upload/catalogue-image', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: imageUrl }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Delete failed' }));
+            console.warn('Failed to delete image from storage:', error);
+            // Continue anyway - remove from UI
+          } else {
+            toast({
+              title: 'Image deleted',
+              description: 'Image has been removed from storage',
+            });
+          }
+        } catch (error) {
+          console.error('Error deleting image:', error);
+          // Continue anyway - remove from UI
+        }
+      }
+
+      // Remove from local state (always happens)
       const newValue = value.filter((_, i) => i !== index);
       onChange(newValue);
     },
-    [value, onChange]
+    [value, onChange, toast]
   );
 
   const handleAddUrl = useCallback(() => {

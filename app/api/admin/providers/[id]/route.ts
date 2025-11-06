@@ -33,6 +33,10 @@ export async function GET(
         location: true,
         hourlyRate: true,
         status: true,
+        idDocument: true,
+        proofOfAddress: true,
+        certifications: true,
+        profileImages: true,
         createdAt: true,
         updatedAt: true,
         user: {

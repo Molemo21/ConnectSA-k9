@@ -70,6 +70,7 @@ export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: s
         name: true,
         role: true,
         emailVerified: true,
+        avatar: true,
         provider: { select: { id: true } },
       },
     })

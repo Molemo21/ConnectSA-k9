@@ -88,10 +88,18 @@ export function ProviderDetailsModal({
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [comment, setComment] = useState("")
+  const [documentUrls, setDocumentUrls] = useState<{
+    idDocument?: string[];
+    proofOfAddress?: string[];
+    certifications: string[];
+    profileImages: string[];
+  } | null>(null)
+  const [loadingDocuments, setLoadingDocuments] = useState(false)
 
   useEffect(() => {
     if (isOpen && providerId) {
       fetchProviderDetails()
+      fetchDocumentUrls()
     }
   }, [isOpen, providerId])
 
@@ -117,6 +125,41 @@ export function ProviderDetailsModal({
       showToast.error('Error fetching provider details')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchDocumentUrls = async () => {
+    if (!providerId) return
+
+    try {
+      setLoadingDocuments(true)
+      const response = await fetch(`/api/admin/providers/${providerId}/documents`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.documents) {
+          setDocumentUrls(data.documents)
+        }
+      } else {
+        // If documents don't exist yet, that's okay - just set empty state
+        setDocumentUrls({
+          idDocument: [],
+          proofOfAddress: [],
+          certifications: [],
+          profileImages: [],
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching document URLs:', error)
+      // Don't show error toast - documents might not exist yet
+      setDocumentUrls({
+        idDocument: [],
+        proofOfAddress: [],
+        certifications: [],
+        profileImages: [],
+      })
+    } finally {
+      setLoadingDocuments(false)
     }
   }
 
@@ -297,34 +340,114 @@ export function ProviderDetailsModal({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="w-4 h-4" />
-                  Verification Status
+                  Verification Documents
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm">ID Document:</span>
-                    <Badge variant={provider.idDocument ? "default" : "secondary"}>
-                      {provider.idDocument ? "Uploaded" : "Missing"}
-                    </Badge>
+                {loadingDocuments ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    <span className="text-sm text-gray-500">Loading documents...</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm">Proof of Address:</span>
-                    <Badge variant={provider.proofOfAddress ? "default" : "secondary"}>
-                      {provider.proofOfAddress ? "Uploaded" : "Missing"}
-                    </Badge>
-                  </div>
-                </div>
-                {provider.certifications.length > 0 && (
-                  <div className="mt-4">
-                    <label className="text-sm font-medium text-gray-600">Certifications</label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {provider.certifications.map((cert, index) => (
-                        <Badge key={index} variant="outline">{cert}</Badge>
-                      ))}
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm font-medium">ID Document:</span>
+                          <Badge variant={documentUrls?.idDocument && documentUrls.idDocument.length > 0 ? "default" : "secondary"}>
+                            {documentUrls?.idDocument && documentUrls.idDocument.length > 0 ? "Uploaded" : "Missing"}
+                          </Badge>
+                        </div>
+                        {documentUrls?.idDocument && documentUrls.idDocument.length > 0 && (
+                          <div className="space-y-2">
+                            {documentUrls.idDocument.map((url, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline text-sm"
+                                >
+                                  View ID Document {documentUrls.idDocument.length > 1 ? `#${index + 1}` : ''}
+                                </a>
+                                {url.match(/\.(jpg|jpeg|png|gif|webp)/i) && (
+                                  <img src={url} alt={`ID Document ${index + 1}`} className="max-h-20 rounded border" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm font-medium">Proof of Address:</span>
+                          <Badge variant={documentUrls?.proofOfAddress && documentUrls.proofOfAddress.length > 0 ? "default" : "secondary"}>
+                            {documentUrls?.proofOfAddress && documentUrls.proofOfAddress.length > 0 ? "Uploaded" : "Missing"}
+                          </Badge>
+                        </div>
+                        {documentUrls?.proofOfAddress && documentUrls.proofOfAddress.length > 0 && (
+                          <div className="space-y-2">
+                            {documentUrls.proofOfAddress.map((url, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline text-sm"
+                                >
+                                  View Proof of Address {documentUrls.proofOfAddress.length > 1 ? `#${index + 1}` : ''}
+                                </a>
+                                {url.match(/\.(jpg|jpeg|png|gif|webp)/i) && (
+                                  <img src={url} alt={`Proof of Address ${index + 1}`} className="max-h-20 rounded border" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                    {documentUrls?.certifications && documentUrls.certifications.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Certifications ({documentUrls.certifications.length})</label>
+                        <div className="mt-2 space-y-2">
+                          {documentUrls.certifications.map((url, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 underline text-sm"
+                              >
+                                View Certification {documentUrls.certifications.length > 1 ? `#${index + 1}` : ''}
+                              </a>
+                              {url.match(/\.(jpg|jpeg|png|gif|webp)/i) && (
+                                <img src={url} alt={`Certification ${index + 1}`} className="max-h-20 rounded border" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {documentUrls?.profileImages && documentUrls.profileImages.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Profile Images ({documentUrls.profileImages.length})</label>
+                        <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {documentUrls.profileImages.map((url, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={url}
+                                alt={`Profile Image ${index + 1}`}
+                                className="w-full h-24 object-cover rounded border cursor-pointer hover:opacity-80"
+                                onClick={() => window.open(url, '_blank')}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
