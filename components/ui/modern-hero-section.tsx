@@ -18,7 +18,7 @@ interface ModernHeroSectionProps {
   onDashboardClick?: () => void
   showGetStarted?: boolean
   isUnderConstruction?: boolean
-  user?: { id: string; email: string; name: string } | null
+  user?: { id: string; email: string; name: string; role?: string } | null
 }
 
 export function ModernHeroSection({ 
@@ -179,20 +179,22 @@ export function ModernHeroSection({
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
               >
-                {/* Primary CTA - Always show Book Service */}
-                <EnhancedButton
-                  size="lg"
-                  className="w-full xs:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
-                  href="/book-service"
-                  loading={bookServiceLoading}
-                  loadingText="Booking..."
-                  onClick={onBookServiceClick}
-                  disabled={bookServiceLoading}
-                >
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  {t('hero.bookService')}
-                  <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </EnhancedButton>
+                {/* Primary CTA - Hide for providers */}
+                {user?.role !== 'PROVIDER' && (
+                  <EnhancedButton
+                    size="lg"
+                    className="w-full xs:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 group text-sm sm:text-base"
+                    href="/book-service"
+                    loading={bookServiceLoading}
+                    loadingText="Booking..."
+                    onClick={onBookServiceClick}
+                    disabled={bookServiceLoading}
+                  >
+                    <Search className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                    {t('hero.bookService')}
+                    <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </EnhancedButton>
+                )}
 
                 {/* Secondary CTA - Conditional based on login status */}
                 {user ? (

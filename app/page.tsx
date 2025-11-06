@@ -39,7 +39,7 @@ export default function HomePage() {
   const [showSplash, setShowSplash] = useState(true)
   const [fadeSplash, setFadeSplash] = useState(false)
   const [contentReady, setContentReady] = useState(false)
-  const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null)
+  const [user, setUser] = useState<{ id: string; email: string; name: string; role?: string } | null>(null)
   const [isUnderConstruction, setIsUnderConstruction] = useState(false) // Construction mode disabled
   const { t } = useLanguage()
 
