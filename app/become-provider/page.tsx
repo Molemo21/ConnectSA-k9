@@ -494,7 +494,7 @@ export default function BecomeProvider() {
             backgroundImage: "url('/provider.jpg')"
           }}
         />
-        <div className="absolute inset-0 bg-black/70" />
+        <div className="absolute inset-0 bg-black/80" />
         
         <div className="relative z-10 h-full flex items-center justify-center">
           <div className="text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
@@ -611,8 +611,8 @@ export default function BecomeProvider() {
                       {/* Front of Card */}
                       <div className="absolute inset-0 w-full h-full backface-hidden bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-xl">
                         <div className="text-center h-full flex flex-col justify-center">
-                          <div className={`w-16 h-16 bg-gradient-to-br ${step.color} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                            <Icon className="w-8 h-8 text-white" />
+                          <div className="w-16 h-16 bg-white/10 backdrop-blur-md border border-white/30 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:bg-white/15 group-hover:border-white/40">
+                            <Icon className="w-8 h-8 text-white/90" />
                           </div>
                           <div className="text-blue-400 font-bold text-lg mb-3">Step {step.step}</div>
                           <h3 className="text-xl font-bold text-white mb-3 group-hover:text-blue-300 transition-colors">

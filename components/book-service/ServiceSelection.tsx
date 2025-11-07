@@ -31,13 +31,42 @@ interface ServiceSelectionProps {
   onNext: () => void;
 }
 
+// Define subcategories for Beauty & Personal Care
+const BEAUTY_SUBCATEGORIES = {
+  'Hair Services': ['Haircut', 'Barbering', 'Braiding', 'Weave Installation'],
+  'Makeup & Lashes': ['Eyelash Extensions', 'Bridal Makeup', 'Makeup Application'],
+  'Nails': ['Manicure', 'Pedicure', 'Nail Extensions']
+};
+
+// Define subcategories for Cleaning Services
+const CLEANING_SUBCATEGORIES = {
+  'Home Cleaning': ['House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
+  'Specialized Cleaning': ['Carpet Cleaning', 'Cleaning Services']
+};
+
 export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionProps) {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+
+  // Check if selected category is Beauty & Personal Care
+  const isBeautyCategory = selectedCategory?.name === 'Beauty & Personal Care';
+  
+  // Check if selected category is Cleaning Services
+  const isCleaningCategory = selectedCategory?.name === 'Cleaning Services';
+  
+  // Get the appropriate subcategories based on category
+  const getSubcategories = () => {
+    if (isBeautyCategory) return BEAUTY_SUBCATEGORIES;
+    if (isCleaningCategory) return CLEANING_SUBCATEGORIES;
+    return null;
+  };
+  
+  const subcategories = getSubcategories();
 
   // Load categories with retry logic and fallback
   useEffect(() => {
@@ -63,6 +92,12 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
             // Auto-select the first category if available
             if (data.length > 0) {
               setSelectedCategory(data[0]);
+              // Auto-select first subcategory for Beauty or Cleaning category
+              if (data[0].name === 'Beauty & Personal Care') {
+                setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
+              } else if (data[0].name === 'Cleaning Services') {
+                setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
+              }
             }
           } else {
             // Fallback: fetch services directly from services API and group by category
@@ -110,6 +145,11 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                   // Auto-select the first category if available
                   if (categoryArray.length > 0) {
                     setSelectedCategory(categoryArray[0]);
+                    if (categoryArray[0].name === 'Beauty & Personal Care') {
+                      setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
+                    } else if (categoryArray[0].name === 'Cleaning Services') {
+                      setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
+                    }
                   }
                 } else {
                   throw new Error('No services available');
@@ -176,6 +216,11 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                   // Auto-select the first category if available
                   if (categoryArray.length > 0) {
                     setSelectedCategory(categoryArray[0]);
+                    if (categoryArray[0].name === 'Beauty & Personal Care') {
+                      setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
+                    } else if (categoryArray[0].name === 'Cleaning Services') {
+                      setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
+                    }
                   }
                   
                   setError(null); // Clear error since we have data
@@ -205,14 +250,64 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
     };
   }, [retryCount]);
 
-  // Filter based on search term - only filter services when a category is selected
-  const filteredItems = selectedCategory
-    ? selectedCategory.services.filter(service =>
+  // Reset subcategory when category changes
+  useEffect(() => {
+    if (isBeautyCategory) {
+      // Auto-select first subcategory when Beauty category is selected
+      if (!selectedSubcategory) {
+        setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
+      }
+    } else if (isCleaningCategory) {
+      // Auto-select first subcategory when Cleaning category is selected
+      if (!selectedSubcategory) {
+        setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
+      }
+    } else {
+      setSelectedSubcategory(null);
+    }
+  }, [selectedCategory, isBeautyCategory, isCleaningCategory, selectedSubcategory]);
+
+  // Filter services based on category and subcategory
+  const getFilteredServices = () => {
+    if (!selectedCategory) return [];
+
+    let services = selectedCategory.services;
+
+    // If Beauty category, filter by subcategory
+    if (isBeautyCategory && selectedSubcategory) {
+      const subcategoryServices = BEAUTY_SUBCATEGORIES[selectedSubcategory as keyof typeof BEAUTY_SUBCATEGORIES] || [];
+      services = services.filter(service => 
+        subcategoryServices.some(subName => 
+          service.name.toLowerCase().includes(subName.toLowerCase()) ||
+          subName.toLowerCase().includes(service.name.toLowerCase())
+        )
+      );
+    }
+    
+    // If Cleaning category, filter by subcategory
+    if (isCleaningCategory && selectedSubcategory) {
+      const subcategoryServices = CLEANING_SUBCATEGORIES[selectedSubcategory as keyof typeof CLEANING_SUBCATEGORIES] || [];
+      services = services.filter(service => 
+        subcategoryServices.some(subName => 
+          service.name.toLowerCase().includes(subName.toLowerCase()) ||
+          subName.toLowerCase().includes(service.name.toLowerCase())
+        )
+      );
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      services = services.filter(service =>
         service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-    : [];
+      );
+    }
+
+    return services;
+  };
+
+  const filteredItems = getFilteredServices();
 
   if (loading) {
     return (
@@ -289,6 +384,14 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
               onClick={() => {
                 setSelectedCategory(category);
                 setSearchTerm("");
+                // Reset subcategory when changing categories
+                if (category.name === 'Beauty & Personal Care') {
+                  setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
+                } else if (category.name === 'Cleaning Services') {
+                  setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
+                } else {
+                  setSelectedSubcategory(null);
+                }
               }}
               className={`text-base font-medium transition-all duration-300 ${
                 selectedCategory?.id === category.id
@@ -303,10 +406,34 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
         </div>
       </div>
 
+      {/* Subcategory Tabs (for Beauty & Personal Care and Cleaning Services) */}
+      {subcategories && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap justify-center gap-4">
+            {Object.keys(subcategories).map((subcategory) => (
+              <button
+                key={subcategory}
+                onClick={() => {
+                  setSelectedSubcategory(subcategory);
+                  setSearchTerm("");
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  selectedSubcategory === subcategory
+                    ? 'bg-white/20 text-white border-2 border-white/50'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white border-2 border-transparent'
+                }`}
+              >
+                {subcategory}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Services Dropdown */}
       {selectedCategory && (
         <div className="space-y-4">
-          {selectedCategory.services.length > 0 ? (
+          {filteredItems.length > 0 ? (
             <div className="max-w-md mx-auto">
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {filteredItems.map((service) => (
@@ -340,10 +467,14 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                 {selectedCategory.name === 'Hairstyling' ? '💇‍♀️' : '💄'}
               </div>
               <h4 className="text-lg font-medium text-white mb-2">
-                {selectedCategory.name} Services Coming Soon
+                {(isBeautyCategory || isCleaningCategory) && selectedSubcategory 
+                  ? `${selectedSubcategory} Coming Soon`
+                  : `${selectedCategory.name} Services Coming Soon`}
               </h4>
               <p className="text-white/60">
-                We're working on adding {selectedCategory.name.toLowerCase()} services. Check back soon!
+                {(isBeautyCategory || isCleaningCategory) && selectedSubcategory
+                  ? `We're working on adding ${selectedSubcategory.toLowerCase()} services. Check back soon!`
+                  : `We're working on adding ${selectedCategory.name.toLowerCase()} services. Check back soon!`}
               </p>
             </div>
           )}
@@ -351,7 +482,7 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
       )}
 
       {/* No Results */}
-      {selectedCategory && filteredItems.length === 0 && (
+      {selectedCategory && filteredItems.length === 0 && searchTerm && (
         <div className="text-center py-8">
           <p className="text-white/60">
             No services found matching "{searchTerm}"

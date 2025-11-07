@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { 
   CheckCircle,
   Shield,
@@ -239,13 +239,6 @@ export default function AboutPage() {
     { name: "Ezam Mngombane", role: "Intern (Social Media)", image: "/EM.jpg" },
   ]
 
-  const stats = [
-    { number: "10,000+", label: "Happy Customers" },
-    { number: "500+", label: "Verified Providers" },
-    { number: "50,000+", label: "Services Completed" },
-    { number: "4.8★", label: "Average Rating" },
-  ]
-
   return (
     <div className="min-h-screen gradient-bg-dark text-white relative overflow-hidden animate-fade-in">
       <BrandHeader showAuth={true} showUserMenu={false} />
@@ -283,103 +276,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Our Story */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-black relative overflow-hidden">
-        <div className="container px-4 md:px-6">
-          <div className="max-w-4xl mx-auto text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white animate-fade-in">
-              Our Story
-            </h2>
-            <div className="space-y-6 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-              <p className="text-lg text-gray-300 leading-relaxed">
-                ProLiink Connect was founded in 2024 with a simple yet powerful vision: to revolutionize how people connect with service professionals. What began as a solution to the frustration of finding reliable contractors has grown into a comprehensive platform that serves communities across Eastern Cape and beyond.
-              </p>
-              <p className="text-lg text-gray-300 leading-relaxed">
-                We recognized two critical problems in the service industry: clients struggled to find trustworthy, skilled professionals, while talented service providers lacked effective ways to market themselves and grow their businesses. ProLiink Connect bridges this gap, creating a marketplace where quality, reliability, and transparency are paramount.
-              </p>
-              <p className="text-lg text-gray-300 leading-relaxed">
-                Today, we're proud to be a leading platform in our market, with thousands of successful service connections made through our platform. As we continue to grow, we remain committed to our core mission: empowering both service providers and customers through technology that makes finding and booking services simpler, safer, and more efficient than ever before.
-              </p>
-            </div>
-          </div>
-          
-          {/* Enhanced Image placeholder */}
-          <div className="max-w-4xl mx-auto text-center animate-slide-in-up" style={{ animationDelay: '0.4s' }}>
-            <div className="w-full h-64 bg-gray-800/50 rounded-xl flex items-center justify-center border border-gray-700 backdrop-blur-sm shadow-xl hover:bg-gray-800/60 transition-all duration-300">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-white" />
-                </div>
-                <p className="text-gray-400 font-medium">ProLiink service professionals greeting a customer</p>
-                <p className="text-gray-500 text-sm mt-2">Building connections, one service at a time</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Our Values */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-900 relative overflow-hidden">
-        <div className="container px-4 md:px-6">
-          <div className="max-w-4xl mx-auto text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white animate-fade-in">
-              Our Mission & Values
-            </h2>
-            <p className="text-lg text-gray-300 leading-relaxed animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-              At ProLiink Connect, we're guided by a set of core values that shape everything we do.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {values.map((value, index) => {
-              const Icon = value.icon
-              return (
-                <Card key={index} className="bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all duration-300 hover:scale-105 shadow-xl backdrop-blur-sm animate-slide-in-up" style={{ animationDelay: `${0.1 * index}s` }}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-semibold text-white mb-2">{value.title}</h3>
-                        <p className="text-gray-300 leading-relaxed">{value.description}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-black relative overflow-hidden">
-        <div className="container px-4 md:px-6">
-          <div className="max-w-4xl mx-auto text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white animate-fade-in">
-              Our Impact
-            </h2>
-            <p className="text-lg text-gray-300 leading-relaxed animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-              Numbers that tell the story of our growing community and success.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center bg-gray-800/30 backdrop-blur-sm rounded-xl p-6 border border-gray-700 hover:bg-gray-800/50 transition-all duration-300 hover:scale-105 shadow-lg animate-slide-in-up" style={{ animationDelay: `${0.1 * index}s` }}>
-                <div className="text-3xl md:text-4xl font-bold text-blue-400 mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  {stat.number}
-                </div>
-                <div className="text-gray-300 text-sm md:text-base font-medium">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Team */}
       <section className="w-full py-12 md:py-24 lg:py-32 relative overflow-hidden">
         <div className="absolute inset-0 w-full h-full z-0">
@@ -403,22 +299,116 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Join Our Team */}
+      {/* Our Story */}
       <section className="w-full py-12 md:py-24 lg:py-32 bg-black relative overflow-hidden">
         <div className="container px-4 md:px-6">
-          <div className="max-w-4xl mx-auto text-center">
+          <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-6 text-white animate-fade-in">
-              Join Our Team
+              Our Story
             </h2>
-            <p className="text-lg text-gray-300 mb-8 leading-relaxed animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-              We're always looking for talented individuals who share our passion for connecting people and building innovative solutions.
-            </p>
-            <Button asChild size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg shadow-lg transition-all duration-300 hover:scale-105 animate-slide-in-up" style={{ animationDelay: '0.4s' }}>
-              <Link href="/contact">
-                View Open Positions
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-            </Button>
+            <div className="space-y-6 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
+              <p className="text-lg text-gray-300 leading-relaxed">
+                ProLiink Connect was founded in 2024 with a simple yet powerful vision: to revolutionize how people connect with service professionals. What began as a solution to the frustration of finding reliable contractors has grown into a comprehensive platform that serves communities across Eastern Cape and beyond.
+              </p>
+              <p className="text-lg text-gray-300 leading-relaxed">
+                We recognized two critical problems in the service industry: clients struggled to find trustworthy, skilled professionals, while talented service providers lacked effective ways to market themselves and grow their businesses. ProLiink Connect bridges this gap, creating a marketplace where quality, reliability, and transparency are paramount.
+              </p>
+              <p className="text-lg text-gray-300 leading-relaxed">
+                Today, we're proud to be a leading platform in our market, with thousands of successful service connections made through our platform. As we continue to grow, we remain committed to our core mission: empowering both service providers and customers through technology that makes finding and booking services simpler, safer, and more efficient than ever before.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Our Values */}
+      <section className="w-full py-16 md:py-24 lg:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
+        <div className="container px-4 md:px-6 relative z-10">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 bg-clip-text text-transparent animate-fade-in">
+                Our Mission & Values
+              </h2>
+              <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
+                At ProLiink Connect, we're guided by a set of core values that shape everything we do.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              {values.map((value, index) => {
+                const Icon = value.icon
+                return (
+                  <div
+                    key={index}
+                    className="group perspective-1000 h-[400px] animate-slide-in-up"
+                    style={{ animationDelay: `${0.15 * index}s` }}
+                  >
+                    {/* Flip Card Container */}
+                    <div className="relative w-full h-full preserve-3d transition-transform duration-700 group-hover:rotate-y-180">
+                      {/* Front Face */}
+                      <div className="absolute inset-0 backface-hidden rounded-2xl bg-gradient-to-br from-gray-800/40 to-gray-900/60 backdrop-blur-xl border border-gray-700/50 p-8 overflow-hidden">
+                        {/* Gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-blue-500/10 to-blue-600/10" />
+                        
+                        {/* Content */}
+                        <div className="relative z-10 h-full flex flex-col">
+                          {/* Icon */}
+                          <div className="mb-6">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg">
+                              <Icon className="w-8 h-8 text-white" />
+                            </div>
+                          </div>
+                          
+                          {/* Title */}
+                          <h3 className="text-2xl font-bold text-white mb-4">
+                            {value.title}
+                          </h3>
+                          
+                          {/* Description */}
+                          <p className="text-gray-400 leading-relaxed text-base flex-grow">
+                            {value.description}
+                          </p>
+                        </div>
+                        
+                        {/* Decorative corner accent */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-600/20 to-blue-500/20 rounded-bl-full" />
+                      </div>
+                      
+                      {/* Back Face */}
+                      <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl bg-gradient-to-br from-blue-600/90 to-blue-500/90 backdrop-blur-xl border border-blue-500/50 p-8 overflow-hidden shadow-2xl shadow-blue-500/30">
+                        {/* Content */}
+                        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center">
+                          {/* Icon - Larger on back */}
+                          <div className="mb-6">
+                            <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                              <Icon className="w-10 h-10 text-white" />
+                            </div>
+                          </div>
+                          
+                          {/* Title */}
+                          <h3 className="text-3xl font-bold text-white mb-4">
+                            {value.title}
+                          </h3>
+                          
+                          {/* Additional info or decorative element */}
+                          <div className="mt-4">
+                            <div className="w-16 h-1 bg-white/50 rounded-full mx-auto mb-4" />
+                            <p className="text-white/90 text-lg font-medium">
+                              Core Value
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Decorative elements */}
+                        <div className="absolute top-0 left-0 w-24 h-24 bg-white/10 rounded-br-full" />
+                        <div className="absolute bottom-0 right-0 w-24 h-24 bg-white/10 rounded-tl-full" />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       </section>
