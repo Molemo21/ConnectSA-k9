@@ -200,6 +200,10 @@ export async function GET(request: NextRequest) {
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
       paymentMethod: booking.paymentMethod, // Include payment method
+      // Catalogue pricing fields (for accurate price display)
+      bookedPrice: booking.bookedPrice,
+      bookedCurrency: booking.bookedCurrency,
+      catalogueItemId: booking.catalogueItemId,
       service: booking.service,
       provider: booking.provider,
       payment: booking.payment, // Include actual payment data

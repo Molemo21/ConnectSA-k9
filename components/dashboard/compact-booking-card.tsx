@@ -14,7 +14,9 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { processPayment, handlePaymentResult } from "@/lib/payment-utils"
 import { RandIconSimple } from "@/components/ui/rand-icon"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
 import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface Booking {
   id: string
@@ -39,6 +41,10 @@ interface Booking {
   status: string
   createdAt: string
   paymentMethod?: "ONLINE" | "CASH"
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     id: string
     amount: number
@@ -463,16 +469,13 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 text-xs sm:text-sm md:text-base">
                 <Calendar className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0" />
                 <span className="text-white/20 truncate">
-                  {new Date(booking.scheduledDate).toLocaleDateString()}
+                  {formatSADate(booking.scheduledDate)}
                 </span>
               </div>
               <div className="flex items-center space-x-1 sm:space-x-2 md:space-x-3 text-xs sm:text-sm md:text-base">
                 <Clock className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0" />
                 <span className="text-white/20">
-                  {new Date(booking.scheduledDate).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                  {formatSATime(booking.scheduledDate)}
                 </span>
               </div>
             </div>
@@ -483,7 +486,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
               </div>
               <div className="flex items-center justify-between text-xs sm:text-sm md:text-base">
                 <span className="text-white/20">Amount:</span>
-                <span className="font-semibold text-white">R{(booking.totalAmount || 0).toFixed(2)}</span>
+                <span className="font-semibold text-white">{formatBookingPrice(booking)}</span>
               </div>
             </div>
             {/* Additional info column for large screens */}
@@ -615,7 +618,7 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
                     ) : (
                       <RandIconSimple className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 mr-1" />
                     )}
-                    {isPaymentInProgress ? "Processing..." : `Pay R${(booking.totalAmount || 0).toFixed(2)}`}
+                    {isPaymentInProgress ? "Processing..." : `Pay ${formatBookingPrice(booking)}`}
                   </Button>
                 )}
                 

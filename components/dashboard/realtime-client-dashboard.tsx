@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { formatSADate, formatSATime } from '@/lib/date-utils'
+import { formatBookingPrice } from '@/lib/price-utils'
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -82,6 +83,10 @@ interface Booking {
   createdAt: string
   updatedAt: string
   paymentMethod?: "ONLINE" | "CASH"
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   service: {
     id: string
     name: string
@@ -573,7 +578,7 @@ export function RealtimeClientDashboard() {
                       
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <RandIconSimple className="h-4 w-4" />
-                        <span>R{(booking.totalAmount || 0).toFixed(2)}</span>
+                        <span>{formatBookingPrice(booking)}</span>
                       </div>
 
                       {booking.payment && (
@@ -636,7 +641,7 @@ export function RealtimeClientDashboard() {
                           }}
                         >
                           <RandIconSimple className="h-4 w-4 mr-2" />
-                          Pay R{(booking.totalAmount || 0).toFixed(2)}
+                          Pay {formatBookingPrice(booking)}
                         </Button>
                       )}
                       {booking.status === "PENDING" && (

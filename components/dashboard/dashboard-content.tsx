@@ -24,6 +24,7 @@ import { LoadingCard } from "@/components/ui/loading-spinner"
 import { useSmartBooking } from "@/hooks/use-smart-booking"
 import { SafeDateDisplay, SafeTimeOnlyDisplay } from "@/components/ui/safe-time-display"
 import { NotificationBell } from "@/components/ui/notification-bell"
+import { formatBookingPrice } from '@/lib/price-utils'
 
 // Helper function to get service icon
 function getServiceIcon(serviceName: string) {
@@ -897,7 +898,7 @@ export function DashboardContent() {
                                   <div className="flex items-center space-x-2">
                                     <DollarSign className="w-4 h-4 text-gray-400" />
                                     <span className="text-lg font-semibold text-gray-100">
-                                      R{booking.totalAmount?.toFixed(2) || '0.00'}
+                                      {formatBookingPrice(booking)}
                                     </span>
                                   </div>
                                 </div>

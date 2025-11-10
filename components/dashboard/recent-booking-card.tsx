@@ -25,6 +25,8 @@ import {
 import { showToast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import { RandIconSimple } from "@/components/ui/rand-icon"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface Booking {
   id: string
@@ -46,6 +48,10 @@ interface Booking {
   status: string
   address: string
   description?: string | null
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     id: string
     amount: number
@@ -477,16 +483,13 @@ export function RecentBookingCard({
               <div className="flex items-center space-x-2 text-sm">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-white/20">
-                  {new Date(booking.scheduledDate).toLocaleDateString()}
+                  {formatSADate(booking.scheduledDate)}
                 </span>
               </div>
               <div className="flex items-center space-x-2 text-sm">
                 <Clock className="w-4 h-4 text-gray-500" />
                 <span className="text-white/20">
-                  {new Date(booking.scheduledDate).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                  {formatSATime(booking.scheduledDate)}
                 </span>
               </div>
             </div>
@@ -498,7 +501,7 @@ export function RecentBookingCard({
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/20">Amount:</span>
-                <span className="font-semibold text-white">R{(booking.totalAmount || 0).toFixed(2)}</span>
+                <span className="font-semibold text-white">{formatBookingPrice(booking)}</span>
               </div>
             </div>
           </div>
@@ -597,7 +600,7 @@ export function RecentBookingCard({
                     <RandIconSimple className="w-4 h-4 mr-2 group-hover/btn:scale-110 transition-transform duration-300" />
                   )}
                   <span className="relative z-10">
-                    {isProcessingPayment ? "Processing..." : `Pay R${(booking.totalAmount || 0).toFixed(2)}`}
+                    {isProcessingPayment ? "Processing..." : `Pay ${formatBookingPrice(booking)}`}
                   </span>
                 </Button>
               )}

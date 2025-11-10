@@ -14,6 +14,7 @@ import { processPayment, handlePaymentResult } from "@/lib/payment-utils"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
 import { RandIconSimple } from "@/components/ui/rand-icon"
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface Booking {
   id: string
@@ -40,6 +41,10 @@ interface Booking {
   status: string
   address: string
   description?: string | null
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     id: string
     amount: number
@@ -597,7 +602,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent -skew-x-12 -translate-x-full group-hover/detail:translate-x-full transition-transform duration-1000 ease-out"></div>
                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-emerald-500/10 backdrop-blur-sm rounded-xl border border-emerald-400/30 hover:border-emerald-400/50 transition-all duration-500 group-hover/detail:shadow-lg group-hover/detail:shadow-emerald-400/20">
                   <span className="text-emerald-300 font-medium text-sm">Total Amount</span>
-                  <span className="font-bold text-lg text-transparent bg-gradient-to-r from-emerald-300 via-green-300 to-emerald-300 bg-clip-text">R{(booking.totalAmount || 0).toFixed(2)}</span>
+                  <span className="font-bold text-lg text-transparent bg-gradient-to-r from-emerald-300 via-green-300 to-emerald-300 bg-clip-text">{formatBookingPrice(booking)}</span>
                 </div>
               </div>
             </div>
@@ -659,7 +664,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   ) : (
                     <RandIconSimple className="w-4 h-4 mr-1" />
                   )}
-                  {isPaymentInProgress ? "Processing..." : `Pay R${(booking.totalAmount || 0).toFixed(2)}`}
+                  {isPaymentInProgress ? "Processing..." : `Pay ${formatBookingPrice(booking)}`}
                 </Button>
               )}
               

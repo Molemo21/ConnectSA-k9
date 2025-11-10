@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, User, Mail, Phone, Calendar, Shield, Briefcase, MessageSquare, AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 import { UserRole } from "@prisma/client"
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface UserDetails {
   id: string
@@ -48,6 +49,10 @@ interface UserDetails {
     status: string
     totalAmount: number
     scheduledDate: string
+    // Catalogue pricing fields (for accurate price display)
+    bookedPrice?: number | null
+    bookedCurrency?: string | null
+    catalogueItemId?: string | null
     provider: {
       user: {
         name: string
@@ -362,7 +367,7 @@ export function UserDetailsModal({ isOpen, onClose, userId }: UserDetailsModalPr
                       <div className="text-sm text-gray-600 space-y-1">
                         <p><strong>Provider:</strong> {booking.provider.user.name}</p>
                         <p><strong>Date:</strong> {new Date(booking.scheduledDate).toLocaleDateString()}</p>
-                        <p><strong>Amount:</strong> R{booking.totalAmount}</p>
+                        <p><strong>Amount:</strong> {formatBookingPrice(booking)}</p>
                         {booking.payment && (
                           <p><strong>Payment:</strong> {booking.payment.status}</p>
                         )}

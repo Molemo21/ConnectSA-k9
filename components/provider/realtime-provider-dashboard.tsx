@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react"
 import { formatSADate, formatSATime } from '@/lib/date-utils'
+import { formatBookingPrice } from '@/lib/price-utils'
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -85,6 +86,10 @@ interface Booking {
   address: string
   createdAt: string
   updatedAt: string
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   service: {
     id: string
     name: string
@@ -667,7 +672,7 @@ export function RealtimeProviderDashboard() {
                       
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <DollarSign className="h-4 w-4" />
-                        <span>R{booking.totalAmount.toFixed(2)}</span>
+                        <span>{formatBookingPrice(booking)}</span>
                       </div>
 
                       {booking.payment && (

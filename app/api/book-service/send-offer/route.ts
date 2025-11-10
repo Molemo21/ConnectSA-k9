@@ -20,6 +20,9 @@ const sendOfferSchema = z.object({
   time: z.string(), // e.g. "14:00"
   address: z.string().min(1),
   notes: z.string().optional(),
+  // Timezone context from client (optional for backward compatibility)
+  timezone: z.string().optional(),
+  timezoneOffsetMinutes: z.number().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -84,7 +87,30 @@ export async function POST(request: NextRequest) {
     console.log('📅 Starting date validation...');
     console.log('📅 Raw date and time:', { date: validated.date, time: validated.time });
     
-    const requestedDateTime = new Date(`${validated.date}T${validated.time}`);
+    // Parse date and time with client timezone offset when provided
+    // getTimezoneOffset() returns negative values for timezones ahead of UTC (e.g., -120 for SAST UTC+2)
+    // To convert local time to UTC: UTC = Local + offset (since offset is negative, adding it subtracts time)
+    let requestedDateTime: Date;
+    try {
+      const [y, m, d] = validated.date.split('-').map((n) => parseInt(n, 10));
+      const [hh, mm] = validated.time.split(':').map((n) => parseInt(n, 10));
+      const offset = typeof (body as any).timezoneOffsetMinutes === 'number' ? (body as any).timezoneOffsetMinutes : undefined;
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d) && !isNaN(hh) && !isNaN(mm) && typeof offset === 'number') {
+        // Fix: use + instead of - because offset is already negative for timezones ahead of UTC
+        const utcMillis = Date.UTC(y, (m - 1), d, hh, mm) + (offset * 60000);
+        requestedDateTime = new Date(utcMillis);
+      } else {
+        // Fallback: Assume South African timezone (UTC+2) if no offset provided
+        // This ensures consistent behavior even if client doesn't send timezone info
+        const saOffsetMinutes = -120; // SAST is UTC+2, so offset is -120 minutes
+        const utcMillis = Date.UTC(y, (m - 1), d, hh, mm) + (saOffsetMinutes * 60000);
+        requestedDateTime = new Date(utcMillis);
+      }
+    } catch {
+      // Last resort fallback to naive parsing (not ideal but prevents crashes)
+      requestedDateTime = new Date(`${validated.date}T${validated.time}`);
+    }
+    
     const now = new Date();
     
     console.log('📅 Date validation details:', { 
@@ -93,7 +119,8 @@ export async function POST(request: NextRequest) {
       isPast: requestedDateTime <= now,
       requestedTimestamp: requestedDateTime.getTime(),
       nowTimestamp: now.getTime(),
-      difference: requestedDateTime.getTime() - now.getTime()
+      difference: requestedDateTime.getTime() - now.getTime(),
+      timezoneOffset: (body as any).timezoneOffsetMinutes
     });
     
     if (requestedDateTime <= now) {
@@ -270,7 +297,7 @@ export async function POST(request: NextRequest) {
         clientId: user.id,
         providerId: validated.providerId,
         serviceId: actualServiceId,
-        scheduledDate: new Date(`${validated.date}T${validated.time}`),
+        scheduledDate: requestedDateTime,
         duration,
         totalAmount,
         platformFee,

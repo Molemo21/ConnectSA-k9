@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { RandIconSimple } from "@/components/ui/rand-icon"
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface Booking {
   id: string
@@ -26,6 +27,10 @@ interface Booking {
   scheduledDate: Date | string
   totalAmount: number
   status: string
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     status: string
     amount: number
@@ -212,7 +217,7 @@ function BookingTimelineItem({
           <div className="flex items-center space-x-4 text-xs text-gray-400 mb-2">
             <span>{new Date(booking.scheduledDate).toLocaleDateString()}</span>
             <span>•</span>
-            <span>R{(booking.totalAmount || 0).toFixed(2)}</span>
+            <span>{formatBookingPrice(booking)}</span>
             {booking.provider && (
               <>
                 <span>•</span>

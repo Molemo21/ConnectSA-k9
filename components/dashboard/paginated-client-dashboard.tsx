@@ -68,6 +68,8 @@ import {
 import { useSocket, SocketEvent } from "@/lib/socket-client"
 import { useBookingsPagination } from "@/lib/use-pagination"
 import { toast } from "react-hot-toast"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface Booking {
   id: string
@@ -80,6 +82,10 @@ interface Booking {
   address: string
   createdAt: string
   updatedAt: string
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   service: {
     id: string
     name: string
@@ -531,7 +537,7 @@ export function PaginatedClientDashboard() {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          {new Date(booking.scheduledDate).toLocaleDateString('en-ZA', {
+                          {formatSADate(booking.scheduledDate, {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -543,10 +549,7 @@ export function PaginatedClientDashboard() {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Clock className="h-4 w-4" />
                         <span>
-                          {new Date(booking.scheduledDate).toLocaleTimeString('en-ZA', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {formatSATime(booking.scheduledDate)}
                         </span>
                       </div>
                       
@@ -557,7 +560,7 @@ export function PaginatedClientDashboard() {
                       
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <DollarSign className="h-4 w-4" />
-                        <span>R{(booking.totalAmount || 0).toFixed(2)}</span>
+                        <span>{formatBookingPrice(booking)}</span>
                       </div>
 
                       {booking.payment && (
@@ -610,7 +613,7 @@ export function PaginatedClientDashboard() {
                           }}
                         >
                           <RandIconSimple className="h-4 w-4 mr-2" />
-                          Pay R{(booking.totalAmount || 0).toFixed(2)}
+                          Pay {formatBookingPrice(booking)}
                         </Button>
                       )}
                       {booking.status === "PENDING" && (

@@ -9,6 +9,12 @@ import { Calendar, Clock, MapPin, DollarSign, Package, User, Star } from 'lucide
 import { useToast } from '@/hooks/use-toast';
 import { useCataloguePricing } from '@/lib/feature-flags';
 
+// Helper function to format price with currency
+const formatPrice = (amount: number, currency?: string) => {
+  const currencySymbol = currency || 'R';
+  return `${currencySymbol} ${amount.toFixed(2)}`;
+};
+
 interface CatalogueItem {
   id: string;
   title: string;
@@ -253,15 +259,15 @@ export function BookingSummary({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">Service Fee:</span>
-                <span>R{totalAmount.toFixed(2)}</span>
+                <span>{formatPrice(totalAmount, selectedCatalogueItem?.currency)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Platform Fee (10%):</span>
-                <span>R{platformFee.toFixed(2)}</span>
+                <span>{formatPrice(platformFee, selectedCatalogueItem?.currency)}</span>
               </div>
               <div className="flex justify-between font-semibold text-lg border-t pt-2">
                 <span>Total:</span>
-                <span>R{(totalAmount + platformFee).toFixed(2)}</span>
+                <span>{formatPrice(totalAmount + platformFee, selectedCatalogueItem?.currency)}</span>
               </div>
             </div>
           </div>

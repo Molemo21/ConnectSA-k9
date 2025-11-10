@@ -68,6 +68,7 @@ import {
   AlertTriangle
 } from "lucide-react"
 import { showToast, handleApiError } from "@/lib/toast"
+import { formatBookingPrice } from '@/lib/price-utils'
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { ProviderBookingCard } from "./provider-booking-card"
 import { ProviderEarningsChart } from "./provider-earnings-chart"
@@ -93,6 +94,10 @@ interface Booking {
   status: string
   address: string
   description?: string
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     id: string
     amount: number
@@ -597,7 +602,7 @@ export function FixedProviderDashboard({ initialUser }: FixedProviderDashboardPr
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="h-4 w-4" />
-                        R{booking.totalAmount}
+                        {formatBookingPrice(booking)}
                       </span>
                     </div>
                   </div>

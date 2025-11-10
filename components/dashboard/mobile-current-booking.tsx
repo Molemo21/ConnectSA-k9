@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { RandIconSimple } from "@/components/ui/rand-icon"
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface Booking {
   id: string
@@ -29,6 +30,10 @@ interface Booking {
   status: string
   address: string
   description?: string | null
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     status: string
     amount: number
@@ -149,7 +154,7 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
           </div>
           <div className="flex items-center space-x-2 text-gray-400">
             <DollarSign className="w-3 h-3" />
-            <span>R{(booking.totalAmount || 0).toFixed(2)}</span>
+            <span>{formatBookingPrice(booking)}</span>
           </div>
         </div>
 
@@ -167,7 +172,7 @@ export function MobileCurrentBooking({ booking, onStatusChange, onRefresh }: Mob
               className="flex-1 bg-green-600 hover:bg-green-700 text-xs flex items-center justify-center"
             >
               <RandIconSimple className="w-3 h-3 mr-1" />
-              Pay R{(booking.totalAmount || 0).toFixed(2)}
+              Pay {formatBookingPrice(booking)}
             </Button>
           )}
           

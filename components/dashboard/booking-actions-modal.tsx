@@ -26,6 +26,8 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { showToast, handleApiError } from "@/lib/toast"
 import { StatusBadge } from "@/components/ui/status-badge"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
+import { formatBookingPrice } from '@/lib/price-utils'
 
 
 interface Booking {
@@ -47,6 +49,10 @@ interface Booking {
   status: string
   address: string
   description?: string
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     status: string
     amount: number
@@ -187,16 +193,13 @@ export function BookingActionsModal({
               <div className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">
-                  {new Date(booking.scheduledDate).toLocaleDateString()}
+                  {formatSADate(booking.scheduledDate)}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-gray-500" />
                 <span className="text-sm text-gray-600">
-                  {new Date(booking.scheduledDate).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                  {formatSATime(booking.scheduledDate)}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
@@ -205,7 +208,7 @@ export function BookingActionsModal({
               </div>
               <div className="flex items-center space-x-2">
                 <DollarSign className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">R{booking.totalAmount.toFixed(2)}</span>
+                <span className="text-sm text-gray-600">{formatBookingPrice(booking)}</span>
               </div>
             </div>
             

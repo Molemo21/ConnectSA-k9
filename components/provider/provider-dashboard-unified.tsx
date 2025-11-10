@@ -101,6 +101,8 @@ import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentE
 import { useCataloguePricing } from "@/lib/feature-flags"
 
 import { ProviderCatalogueDashboard } from "@/components/provider/provider-catalogue-dashboard"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
+import { formatBookingPrice } from '@/lib/price-utils'
 
 
 
@@ -149,6 +151,13 @@ interface Booking {
   description?: string
 
   paymentMethod?: "ONLINE" | "CASH"
+
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+
+  bookedCurrency?: string | null
+
+  catalogueItemId?: string | null
 
   payment?: {
 
@@ -906,7 +915,7 @@ function ProviderMainContent({
                               <div className="space-y-1">
                                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Scheduled</p>
                                 <p className="text-sm sm:text-base font-semibold text-white">
-                                  {currentJob.scheduledDate ? new Date(currentJob.scheduledDate).toLocaleDateString('en-US', { 
+                                  {currentJob.scheduledDate ? formatSADate(currentJob.scheduledDate, { 
                                     weekday: 'short', 
                                     month: 'short', 
                                     day: 'numeric',
@@ -915,10 +924,7 @@ function ProviderMainContent({
                                 </p>
                                 <p className="text-xs sm:text-sm text-gray-300 flex items-center gap-1">
                                   <Clock className="w-3 h-3 flex-shrink-0" />
-                                  {currentJob.scheduledDate ? new Date(currentJob.scheduledDate).toLocaleTimeString('en-US', { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
-                                  }) : 'No Time'}
+                                  {currentJob.scheduledDate ? formatSATime(currentJob.scheduledDate) : 'No Time'}
                                 </p>
                               </div>
                             </div>
@@ -930,7 +936,7 @@ function ProviderMainContent({
                                 <span className="text-gray-200 break-words">{currentJob.address || 'No Address'}</span>
                               </div>
                               <div className="flex items-center gap-2 text-sm sm:text-base">
-                                <span className="text-base sm:text-lg font-semibold text-gray-100">R{currentJob.totalAmount || currentJob.service?.basePrice || 0}</span>
+                                <span className="text-base sm:text-lg font-semibold text-gray-100">{formatBookingPrice({ bookedPrice: currentJob.bookedPrice, bookedCurrency: currentJob.bookedCurrency, totalAmount: currentJob.totalAmount || currentJob.service?.basePrice || 0 })}</span>
                               </div>
                             </div>
                           </div>
@@ -1606,7 +1612,7 @@ function ProviderMainContent({
 
                         </Badge>
 
-                        <p className="text-sm text-gray-400 mt-1">R{booking.totalAmount || booking.service?.basePrice || 0}</p>
+                        <p className="text-sm text-gray-400 mt-1">{formatBookingPrice({ bookedPrice: booking.bookedPrice, bookedCurrency: booking.bookedCurrency, totalAmount: booking.totalAmount || booking.service?.basePrice || 0 })}</p>
 
                       </div>
 
@@ -1824,13 +1830,13 @@ function ProviderMainContent({
 
                             <p className="text-white font-medium">
 
-                              {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString() : 'No Date'}
+                              {booking.scheduledDate ? formatSADate(booking.scheduledDate) : 'No Date'}
 
                             </p>
 
                             <p className="text-sm text-gray-400">
 
-                              {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleTimeString() : 'No Time'}
+                              {booking.scheduledDate ? formatSATime(booking.scheduledDate) : 'No Time'}
 
                             </p>
 
@@ -1852,7 +1858,7 @@ function ProviderMainContent({
 
                           <span className="flex items-center text-gray-400">
 
-                            R{booking.totalAmount || booking.service?.basePrice || 0}
+                            {formatBookingPrice({ bookedPrice: booking.bookedPrice, bookedCurrency: booking.bookedCurrency, totalAmount: booking.totalAmount || booking.service?.basePrice || 0 })}
 
                           </span>
 

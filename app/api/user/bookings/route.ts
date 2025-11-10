@@ -238,6 +238,10 @@ export async function GET(request: NextRequest) {
       address: booking.address,
       createdAt: booking.createdAt,
       updatedAt: booking.updatedAt,
+      // Catalogue pricing fields (for accurate price display)
+      bookedPrice: booking.bookedPrice,
+      bookedCurrency: booking.bookedCurrency,
+      catalogueItemId: booking.catalogueItemId,
       service: booking.service,
       provider: booking.provider,
       client: booking.client,

@@ -14,6 +14,10 @@ export interface Booking {
   address: string
   notes?: string
   totalAmount: number
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     id: string
     status: string

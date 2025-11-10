@@ -9,6 +9,7 @@ import { ConsolidatedMobileHeaderProvider } from "@/components/ui/consolidated-m
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
 import { MobileFloatingActionButton } from "@/components/ui/mobile-floating-action-button"
 import { MobileStatsCard } from "@/components/ui/mobile-stats-card"
+import { formatBookingPrice } from '@/lib/price-utils'
 import { 
   Star, 
   Calendar, 
@@ -83,6 +84,10 @@ interface Booking {
   status: string
   address: string
   description?: string
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     id: string
     amount: number
@@ -338,7 +343,7 @@ export function SimpleProviderDashboard({ initialUser }: SimpleProviderDashboard
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="h-4 w-4" />
-                        R{booking.totalAmount}
+                        {formatBookingPrice(booking)}
                       </span>
                     </div>
                   </div>

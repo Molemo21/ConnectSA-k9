@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Clock, MapPin, Edit, X, AlertTriangle, CheckCircle, Loader2, MessageCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
 
 interface Booking {
   id: string
@@ -186,16 +187,13 @@ export function BookingManagement({ booking, onUpdate }: BookingManagementProps)
               <div className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-gray-600">
-                  {new Date(booking.scheduledDate).toLocaleDateString()}
+                  {formatSADate(booking.scheduledDate)}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-gray-500" />
                 <span className="text-gray-600">
-                  {new Date(booking.scheduledDate).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                  {formatSATime(booking.scheduledDate)}
                 </span>
               </div>
             </div>

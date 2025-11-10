@@ -18,6 +18,8 @@ import {
   User,
   FileText
 } from "lucide-react"
+import { formatSADate, formatSATime } from '@/lib/date-utils'
+import { formatBookingPrice } from '@/lib/price-utils'
 
 interface Booking {
   id: string
@@ -36,6 +38,10 @@ interface Booking {
   status: string
   address: string
   description?: string
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null
+  bookedCurrency?: string | null
+  catalogueItemId?: string | null
   payment?: {
     id: string
     amount: number
@@ -201,16 +207,13 @@ export function ProviderBookingCard({
             <div className="flex items-center space-x-2 text-sm">
               <Calendar className="w-4 h-4 text-gray-500" />
               <span className="text-gray-700">
-                {booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString() : 'No Date'}
+                {booking.scheduledDate ? formatSADate(booking.scheduledDate) : 'No Date'}
               </span>
             </div>
             <div className="flex items-center space-x-2 text-sm">
               <Clock className="w-4 h-4 text-gray-500" />
               <span className="text-gray-700">
-                {new Date(booking.scheduledDate).toLocaleTimeString([], { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
+                {booking.scheduledDate ? formatSATime(booking.scheduledDate) : 'No Time'}
               </span>
             </div>
             <div className="flex items-start space-x-2 text-sm">
@@ -221,7 +224,7 @@ export function ProviderBookingCard({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">Amount:</span>
-              <span className="font-semibold text-gray-900">R{booking.totalAmount?.toFixed(2) || '0.00'}</span>
+              <span className="font-semibold text-gray-900">{formatBookingPrice(booking)}</span>
             </div>
             {hasPaymentInEscrowOrBeyond && (
               <div className="flex items-center space-x-2 text-sm">

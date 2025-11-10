@@ -31,6 +31,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PaymentStatusSync, isPaymentPaid } from '@/components/ui/payment-status-sync';
 import { usePaymentSync, invalidatePaymentCache } from '@/hooks/use-payment-sync';
 import { showToast } from '@/lib/utils';
+import { formatBookingPrice } from '@/lib/price-utils';
 
 interface Booking {
   id: string;
@@ -42,6 +43,10 @@ interface Booking {
   address: string;
   createdAt: string;
   updatedAt: string;
+  // Catalogue pricing fields (for accurate price display)
+  bookedPrice?: number | null;
+  bookedCurrency?: string | null;
+  catalogueItemId?: string | null;
   service?: {
     name: string;
     category: string;
@@ -425,7 +430,7 @@ export function SynchronizedBookingCard({
           </div>
           <div className="flex items-center space-x-1">
             <DollarSign className="w-4 h-4" />
-            <span>R{currentBooking.totalAmount}</span>
+            <span>{formatBookingPrice(currentBooking)}</span>
           </div>
         </div>
       </div>
