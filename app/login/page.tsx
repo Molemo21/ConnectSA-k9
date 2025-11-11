@@ -10,13 +10,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { showToast } from "@/lib/toast"
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, CheckCircle } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [needsVerification, setNeedsVerification] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -55,6 +58,9 @@ export default function LoginPage() {
 
       if (response.ok) {
         console.log('✅ Login successful!')
+        // Clear verification state on successful login
+        setNeedsVerification(false)
+        setResendSuccess(false)
         showToast.success("Welcome back! You've been successfully logged in.")
         
         console.log('🔄 About to redirect to:', data.redirectUrl || "/dashboard")
@@ -84,13 +90,63 @@ export default function LoginPage() {
         }, 500) // Reduced delay for faster redirect
       } else {
         console.error('❌ Login failed:', data.error)
-        showToast.error(data.error || "Login failed. Please check your credentials and try again.")
+        
+        // Check if error is due to unverified email
+        if (response.status === 403 && data.error?.toLowerCase().includes('verify your email')) {
+          setNeedsVerification(true)
+          setResendSuccess(false) // Reset success state on new login attempt
+          showToast.error("Please verify your email before logging in.")
+        } else {
+          setNeedsVerification(false) // Clear verification state for other errors
+          showToast.error(data.error || "Login failed. Please check your credentials and try again.")
+        }
       }
     } catch (error) {
       console.error("❌ Login error:", error)
+      setNeedsVerification(false) // Clear verification state on network errors
       showToast.error("Network error. Please check your connection and try again.")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleResendVerification = async () => {
+    if (!formData.email.trim()) {
+      showToast.error("Please enter your email address first.")
+      return
+    }
+
+    setIsResending(true)
+    setResendSuccess(false)
+
+    try {
+      console.log('📧 Resending verification email to:', formData.email)
+      
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      })
+
+      const data = await response.json()
+      console.log('📧 Resend response:', data)
+
+      if (response.ok) {
+        setResendSuccess(true)
+        showToast.success("Verification email sent! Please check your inbox and spam folder.")
+      } else {
+        // Handle specific error cases
+        if (response.status === 429) {
+          showToast.error("Too many attempts. Please wait a few minutes before trying again.")
+        } else {
+          showToast.error(data.error || "Failed to send verification email. Please try again.")
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error resending verification email:', error)
+      showToast.error("Network error. Please check your connection and try again.")
+    } finally {
+      setIsResending(false)
     }
   }
 
@@ -141,7 +197,14 @@ export default function LoginPage() {
                       type="email"
                       placeholder="Enter your email"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value })
+                        // Clear verification state when user changes email
+                        if (needsVerification) {
+                          setNeedsVerification(false)
+                          setResendSuccess(false)
+                        }
+                      }}
                       className="pl-10 bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
                       required
                       aria-label="Email Address"
@@ -185,6 +248,39 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
+
+                {/* Resend Verification Email Section */}
+                {needsVerification && (
+                  <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4 space-y-3 animate-fade-in">
+                    <p className="text-sm text-blue-300">
+                      Need a new verification email? We&apos;ll send a fresh link to <strong className="text-blue-200">{formData.email}</strong>
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResendVerification}
+                      disabled={isResending || resendSuccess}
+                      className="w-full border-blue-400/50 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 disabled:opacity-50"
+                    >
+                      {isResending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : resendSuccess ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Email Sent! Check your inbox
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Resend Verification Email
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
 
                 <Button type="submit" disabled={isLoading} className="w-full">
                   {isLoading ? (
