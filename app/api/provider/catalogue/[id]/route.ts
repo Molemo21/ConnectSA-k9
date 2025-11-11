@@ -65,13 +65,53 @@ export async function PUT(
       }
     });
 
+    console.log('✅ Catalogue item updated successfully:', updatedItem.id);
     return NextResponse.json(updatedItem);
   } catch (error) {
-    console.error('Failed to update catalogue item:', error);
-    return NextResponse.json(
-      { error: 'Failed to update catalogue item' }, 
-      { status: 500 }
-    );
+    console.error('❌ Failed to update catalogue item:', error);
+    
+    // Handle Zod validation errors specifically
+    if (error instanceof z.ZodError) {
+      console.error('❌ Validation errors:', error.errors);
+      const errorDetails = error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message,
+        code: err.code
+      }));
+      
+      return NextResponse.json({
+        error: 'Validation failed',
+        message: 'Please check the form fields and try again',
+        details: errorDetails
+      }, { status: 400 });
+    }
+
+    // Handle Prisma/database errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as { code?: string; meta?: any; message?: string };
+      console.error('❌ Database error:', {
+        code: prismaError.code,
+        message: prismaError.message
+      });
+      
+      if (prismaError.code === 'P2025') {
+        return NextResponse.json({
+          error: 'Not found',
+          message: 'Catalogue item not found or you do not have permission to update it'
+        }, { status: 404 });
+      }
+      
+      return NextResponse.json({
+        error: 'Database error',
+        message: 'Failed to update catalogue item. Please try again.'
+      }, { status: 500 });
+    }
+
+    // Generic error handling
+    return NextResponse.json({
+      error: 'Failed to update catalogue item',
+      message: error instanceof Error ? error.message : 'Unknown error occurred. Please try again.'
+    }, { status: 500 });
   }
 }
 
@@ -133,13 +173,31 @@ export async function DELETE(
       where: { id: params.id }
     });
 
+    console.log('✅ Catalogue item deleted successfully:', params.id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete catalogue item:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete catalogue item' }, 
-      { status: 500 }
-    );
+    console.error('❌ Failed to delete catalogue item:', error);
+    
+    // Handle Prisma/database errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as { code?: string; message?: string };
+      console.error('❌ Database error:', {
+        code: prismaError.code,
+        message: prismaError.message
+      });
+      
+      if (prismaError.code === 'P2025') {
+        return NextResponse.json({
+          error: 'Not found',
+          message: 'Catalogue item not found or you do not have permission to delete it'
+        }, { status: 404 });
+      }
+    }
+    
+    return NextResponse.json({
+      error: 'Failed to delete catalogue item',
+      message: error instanceof Error ? error.message : 'Unknown error occurred. Please try again.'
+    }, { status: 500 });
   }
 }
 

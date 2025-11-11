@@ -92,32 +92,223 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Client-side validation before submission
+    if (!formData.serviceId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a service",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!formData.title || formData.title.trim().length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a package title",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!formData.shortDesc || formData.shortDesc.trim().length < 10) {
+      toast({
+        title: "Validation Error",
+        description: "Short description must be at least 10 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (formData.shortDesc.length > 200) {
+      toast({
+        title: "Validation Error",
+        description: "Short description must be less than 200 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!formData.price || formData.price <= 0 || formData.price > 100000 || isNaN(formData.price)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid price between R1 and R100,000",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!formData.durationMins || formData.durationMins < 15 || formData.durationMins > 480 || isNaN(formData.durationMins)) {
+      toast({
+        title: "Validation Error",
+        description: "Duration must be between 15 minutes and 8 hours (480 minutes)",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (formData.images && formData.images.length > 0) {
+      const invalidUrls = formData.images.filter(img => {
+        try {
+          new URL(img);
+          return false;
+        } catch {
+          return true;
+        }
+      });
+      
+      if (invalidUrls.length > 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please provide valid image URLs",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     setLoading(true);
 
     try {
+      console.log('📦 Submitting catalogue item:', formData);
+      console.log('📦 Form data details:', {
+        serviceId: formData.serviceId,
+        title: formData.title,
+        shortDesc: formData.shortDesc,
+        shortDescLength: formData.shortDesc?.length || 0,
+        price: formData.price,
+        durationMins: formData.durationMins,
+        currency: formData.currency,
+        images: formData.images,
+        imagesCount: formData.images?.length || 0
+      });
+      
       const url = item ? `/api/provider/catalogue/${item.id}` : '/api/provider/catalogue';
       const method = item ? 'PUT' : 'POST';
+
+      // Sanitize and prepare data for API
+      const sanitizedData = {
+        serviceId: formData.serviceId.trim(),
+        title: formData.title.trim(),
+        shortDesc: formData.shortDesc.trim(),
+        longDesc: formData.longDesc?.trim() || undefined,
+        price: Number(formData.price),
+        currency: formData.currency || 'ZAR',
+        durationMins: Number(formData.durationMins),
+        images: formData.images && formData.images.length > 0 ? formData.images : undefined
+      };
+
+      // Final validation check before sending
+      if (!sanitizedData.serviceId || sanitizedData.serviceId.length === 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a service",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!sanitizedData.title || sanitizedData.title.length === 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a package title",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!sanitizedData.shortDesc || sanitizedData.shortDesc.length < 10) {
+        toast({
+          title: "Validation Error",
+          description: "Short description must be at least 10 characters",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(sanitizedData.price) || sanitizedData.price <= 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid price",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(sanitizedData.durationMins) || sanitizedData.durationMins < 15) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid duration (minimum 15 minutes)",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      const requestBody = JSON.stringify(sanitizedData);
+      console.log('📦 Request body (sanitized):', requestBody);
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: requestBody
       });
 
+      const data = await response.json();
+
       if (response.ok) {
+        console.log('✅ Catalogue item saved successfully');
         toast({
           title: "Success",
-          description: item ? "Catalogue item updated" : "Catalogue item created"
+          description: item ? "Catalogue item updated successfully" : "Catalogue item created successfully"
         });
         onSuccess();
       } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save catalogue item');
+        console.error('❌ Failed to save catalogue item:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data,
+          fullResponse: JSON.stringify(data, null, 2)
+        });
+        
+        // Handle validation errors with details
+        if (response.status === 400 && data.details && Array.isArray(data.details)) {
+          const validationErrors = data.details.map((err: any) => {
+            const fieldName = err.field === 'serviceId' ? 'Service' :
+                            err.field === 'shortDesc' ? 'Short Description' :
+                            err.field === 'title' ? 'Title' :
+                            err.field === 'price' ? 'Price' :
+                            err.field === 'durationMins' ? 'Duration' :
+                            err.field === 'images' ? 'Images' :
+                            err.field;
+            return `${fieldName}: ${err.message}`;
+          }).join(', ');
+          
+          toast({
+            title: "Validation Error",
+            description: `Please fix the following: ${validationErrors}`,
+            variant: "destructive"
+          });
+        } else {
+          // Handle other errors
+          const errorMessage = data.message || data.error || 'Failed to save catalogue item';
+          toast({
+            title: data.error || "Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
+      console.error('❌ Error submitting catalogue item:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save catalogue item",
+        description: error instanceof Error ? error.message : "Network error. Please check your connection and try again.",
         variant: "destructive"
       });
     } finally {
@@ -311,10 +502,14 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
               <Input
                 id="price"
                 type="number"
-                value={formData.price}
-                onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
-                placeholder="0"
+                value={formData.price || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : Number(e.target.value);
+                  setFormData(prev => ({ ...prev, price: isNaN(value) ? 0 : value }));
+                }}
+                placeholder="Enter price"
                 min="1"
+                step="0.01"
                 className="bg-black/60 border-gray-300/20 text-white placeholder-gray-400 focus:ring-blue-400/50 focus:border-blue-400/50"
                 required
               />
@@ -345,11 +540,15 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
               <Input
                 id="durationMins"
                 type="number"
-                value={formData.durationMins}
-                onChange={(e) => setFormData(prev => ({ ...prev, durationMins: Number(e.target.value) }))}
+                value={formData.durationMins || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? 0 : Number(e.target.value);
+                  setFormData(prev => ({ ...prev, durationMins: isNaN(value) ? 0 : value }));
+                }}
                 placeholder="60"
                 min="15"
                 max="480"
+                step="15"
                 className="bg-black/60 border-gray-300/20 text-white placeholder-gray-400 focus:ring-blue-400/50 focus:border-blue-400/50"
                 required
               />
