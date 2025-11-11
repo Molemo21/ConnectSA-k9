@@ -3157,6 +3157,71 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
 
 
+  // Provider status check function - ensures provider has correct status before accessing dashboard
+  const checkProviderStatus = useCallback(async (): Promise<{ shouldContinue: boolean; status?: string }> => {
+    try {
+      console.log('🔍 Checking provider status...')
+      
+      const response = await fetch('/api/provider/status', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        console.warn('⚠️ Provider status check failed:', response.status)
+        // If status check fails, allow dashboard to load (graceful degradation)
+        // This prevents blocking users if there's a temporary API issue
+        return { shouldContinue: true }
+      }
+
+      const data = await response.json()
+      const provider = data.provider
+
+      if (!provider) {
+        console.log('⚠️ No provider record found, redirecting to onboarding')
+        router.push('/provider/onboarding')
+        return { shouldContinue: false }
+      }
+
+      const status = provider.status
+      console.log('📊 Provider status:', status)
+
+      // Redirect based on provider status
+      if (status === 'INCOMPLETE' || status === 'REJECTED') {
+        console.log('🔄 Provider status is INCOMPLETE/REJECTED, redirecting to onboarding')
+        router.push('/provider/onboarding')
+        return { shouldContinue: false, status }
+      }
+
+      if (status === 'PENDING') {
+        console.log('⏳ Provider status is PENDING, redirecting to pending page')
+        router.push('/provider/pending')
+        return { shouldContinue: false, status }
+      }
+
+      if (status === 'APPROVED' || status === 'ACTIVE') {
+        console.log('✅ Provider status is APPROVED/ACTIVE, allowing dashboard access')
+        return { shouldContinue: true, status }
+      }
+
+      // Unknown status - default to onboarding for safety
+      console.warn('⚠️ Unknown provider status:', status, ', redirecting to onboarding')
+      router.push('/provider/onboarding')
+      return { shouldContinue: false, status }
+
+    } catch (error) {
+      console.error('❌ Error checking provider status:', error)
+      // On error, allow dashboard to load (graceful degradation)
+      // This prevents blocking users if there's a network issue
+      return { shouldContinue: true }
+    }
+  }, [router])
+
+
+
   // WebSocket connection for real-time updates - only initialize after mount
 
   // const { connected, error: socketError, reconnect, isPolling } = useSocket({
@@ -3711,10 +3776,22 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
         if (initialUser) {
 
-          console.log('Using initialUser from server, fetching data immediately')
+          console.log('Using initialUser from server, checking provider status...')
           
           // Ensure ref is set with initialUser
           authenticatedUserRef.current = initialUser
+
+          // Check provider status before allowing dashboard access
+          const statusCheck = await checkProviderStatus()
+          if (!statusCheck.shouldContinue) {
+            console.log('🛑 Provider status check failed, redirecting...')
+            // Clear timeout since we're redirecting
+            if (initializationTimeoutRef.current) {
+              clearTimeout(initializationTimeoutRef.current)
+              initializationTimeoutRef.current = null
+            }
+            return // Exit early, redirect is happening
+          }
 
           try {
             // Pass initialUser to fetchProviderData to avoid any race conditions
@@ -3753,7 +3830,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
           if (authResult.success && authResult.user) {
 
-            console.log('Auth successful, fetching provider data...', {
+            console.log('Auth successful, checking provider status...', {
               userId: authResult.user.id,
               userEmail: authResult.user.email,
               userRole: authResult.user.role
@@ -3761,6 +3838,18 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             
             // Ref is already updated in checkAuthentication, but ensure it's set here too
             authenticatedUserRef.current = authResult.user
+
+            // Check provider status before allowing dashboard access
+            const statusCheck = await checkProviderStatus()
+            if (!statusCheck.shouldContinue) {
+              console.log('🛑 Provider status check failed, redirecting...')
+              // Clear timeout since we're redirecting
+              if (initializationTimeoutRef.current) {
+                clearTimeout(initializationTimeoutRef.current)
+                initializationTimeoutRef.current = null
+              }
+              return // Exit early, redirect is happening
+            }
             
             try {
               // Pass the authenticated user directly to avoid race condition with state update
@@ -3854,7 +3943,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       }
     }
 
-  }, [initialUser, checkAuthentication, fetchProviderData]) // Include dependencies - functions are memoized with useCallback
+  }, [initialUser, checkAuthentication, checkProviderStatus, fetchProviderData]) // Include dependencies - functions are memoized with useCallback
 
 
 
