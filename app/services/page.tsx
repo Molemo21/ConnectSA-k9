@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle, ChevronRight, Clock, DollarSign, Lock, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
+import { Footer } from "@/components/ui/footer"
 
 // Services data structure with exact specifications
 const services = [
@@ -520,57 +521,7 @@ export default function ServicesPage() {
         </section>
 
         {/* Footer */}
-        <footer className="w-full border-t border-gray-800 py-12 bg-black relative overflow-hidden">
-          <div className="container px-4 md:px-6">
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
-              <div className="animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
-                <h3 className="text-lg font-bold mb-4">
-                  <span className="flex flex-col">
-                    <span>ProL<span className="text-blue-600">i</span>nk</span>
-                    <span>Co<span className="text-blue-600">nn</span>ect</span>
-                  </span>
-                </h3>
-                <p className="text-sm text-gray-400 leading-relaxed">The smart way to link professionals and clients across South Africa.</p>
-              </div>
-              <div className="animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-                <h3 className="text-lg font-bold text-white mb-4">Quick Links</h3>
-                <ul className="space-y-3">
-                  <li><Link href="/about" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">About Us</Link></li>
-                  <li><Link href="/services" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">Services</Link></li>
-                  <li><Link href="/contact" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">Contact Us</Link></li>
-                </ul>
-              </div>
-              <div className="animate-slide-in-up" style={{ animationDelay: '0.3s' }}>
-                <h3 className="text-lg font-bold text-white mb-4">Services</h3>
-                <ul className="space-y-3">
-                  <li><Link href="/services" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">Browse All Services</Link></li>
-                  <li><Link href="/provider/onboarding" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">Become a Provider</Link></li>
-                </ul>
-              </div>
-              <div className="animate-slide-in-up" style={{ animationDelay: '0.4s' }}>
-                <h3 className="text-lg font-bold text-white mb-4">Contact Us</h3>
-                <address className="not-italic text-sm text-gray-400 leading-relaxed">
-                  <p className="mb-2">49 Leeds Street</p>
-                  <p className="mb-2">Cnr Leeds & Creister street</p>
-                  <p className="mb-2">Mthatha, Eastern Cape</p>
-                  <p className="mb-4">5099</p>
-                  <div className="space-y-1">
-                    <p>Email: <span className="text-blue-400">support@proliinkconnect.co.za</span></p>
-                    <p>Phone: <span className="text-blue-400">+27 68 947 6401</span></p>
-                  </div>
-                </address>
-              </div>
-            </div>
-            <div className="mt-8 border-t border-gray-800 pt-8 text-center animate-slide-in-up" style={{ animationDelay: '0.5s' }}>
-              <div className="flex justify-center space-x-6 mb-4">
-                <Link href="/privacy" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">Privacy Policy</Link>
-                <Link href="/terms" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">Terms of Service</Link>
-                <Link href="/contact" className="text-sm text-gray-400 hover:text-white transition-colors duration-200">Contact Us</Link>
-              </div>
-              <p className="text-sm text-gray-400">© 2024 ProLiink Connect. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </div>
   )

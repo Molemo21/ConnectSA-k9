@@ -32,7 +32,7 @@ import {
   CreditCard,
   Banknote
 } from "lucide-react"
-import { reverseGeocode } from "@/lib/geocoding"
+import { reverseGeocode, searchAddresses, searchAddressesGoogle, type AddressSuggestion } from "@/lib/geocoding"
 import { saveBookingDraft } from "@/lib/booking-draft"
 import { ServiceSelection } from "./ServiceSelection"
 import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel"
@@ -83,7 +83,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   const [notesCount, setNotesCount] = useState(value.notes?.length || 0)
   const [showRecentServices, setShowRecentServices] = useState(true)
   const [addressPlaceholder, setAddressPlaceholder] = useState("")
-  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE')
@@ -156,8 +156,8 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     "Mthatha, Eastern Cape, 5100"
   ]
 
-  // Address search function
-  const searchAddresses = async (query: string) => {
+  // Address search function with real geocoding API
+  const searchAddressesDebounced = async (query: string) => {
     if (query.length < 2) {
       setAddressSuggestions([])
       setShowSuggestions(false)
@@ -166,64 +166,88 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
 
     setIsSearchingAddress(true)
     
-    // Simulate API call delay
-    setTimeout(() => {
+    try {
+      // Check if Google Places API key is available
+      const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
+      
+      let suggestions: AddressSuggestion[] = []
+      
+      if (googleApiKey) {
+        // Use Google Places API if available (better results)
+        suggestions = await searchAddressesGoogle(query, googleApiKey, 8)
+      } else {
+        // Use OpenStreetMap Nominatim (free, no API key required)
+        suggestions = await searchAddresses(query, 8)
+      }
+      
+      // If no results from API, fall back to local addresses
+      if (suggestions.length === 0) {
+        const lowerQuery = query.toLowerCase()
+        const filtered = commonAddresses
+          .filter(address => address.toLowerCase().includes(lowerQuery))
+          .slice(0, 8)
+          .map(address => ({
+            address: address,
+            displayName: address
+          }))
+        suggestions = filtered
+      }
+      
+      setAddressSuggestions(suggestions)
+      setShowSuggestions(suggestions.length > 0)
+    } catch (error) {
+      console.error('Address search error:', error)
+      // Fallback to local addresses on error
       const lowerQuery = query.toLowerCase()
-      
-      // Enhanced search algorithm - prioritize exact matches and street-level addresses
-      const filtered = commonAddresses.filter(address => {
-        const lowerAddress = address.toLowerCase()
-        
-        // Exact street number match (e.g., "123" matches "123 Long Street")
-        if (lowerQuery.match(/^\d+$/) && lowerAddress.startsWith(lowerQuery)) {
-          return true
-        }
-        
-        // Street name match (e.g., "long" matches "Long Street")
-        if (lowerAddress.includes(lowerQuery)) {
-          return true
-        }
-        
-        // City/suburb match (e.g., "cape town" matches any Cape Town address)
-        const cityMatch = lowerAddress.includes(lowerQuery)
-        return cityMatch
-      })
-      
-      // Sort results: exact matches first, then street-level addresses, then city-level
-      const sorted = filtered.sort((a, b) => {
-        const aLower = a.toLowerCase()
-        const bLower = b.toLowerCase()
-        
-        // Exact query match gets highest priority
-        if (aLower.startsWith(lowerQuery) && !bLower.startsWith(lowerQuery)) return -1
-        if (bLower.startsWith(lowerQuery) && !aLower.startsWith(lowerQuery)) return 1
-        
-        // Street-level addresses (with numbers) get priority over city-level
-        const aHasNumber = /\d/.test(a)
-        const bHasNumber = /\d/.test(b)
-        if (aHasNumber && !bHasNumber) return -1
-        if (bHasNumber && !aHasNumber) return 1
-        
-        return 0
-      })
-      
-      setAddressSuggestions(sorted.slice(0, 8)) // Show top 8 suggestions
-      setShowSuggestions(true)
+      const filtered = commonAddresses
+        .filter(address => address.toLowerCase().includes(lowerQuery))
+        .slice(0, 8)
+        .map(address => ({
+          address: address,
+          displayName: address
+        }))
+      setAddressSuggestions(filtered)
+      setShowSuggestions(filtered.length > 0)
+    } finally {
       setIsSearchingAddress(false)
+    }
+  }
+
+  // Debounced address search
+  const searchAddressesTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
+  
+  const searchAddressesLocal = (query: string) => {
+    // Clear previous timeout
+    if (searchAddressesTimeoutRef.current) {
+      clearTimeout(searchAddressesTimeoutRef.current)
+    }
+    
+    // Set new timeout for debouncing (300ms delay)
+    searchAddressesTimeoutRef.current = setTimeout(() => {
+      searchAddressesDebounced(query)
     }, 300)
   }
 
   // Handle address input change
   const handleAddressChange = (newAddress: string) => {
     handleFieldChange('address', newAddress)
-    searchAddresses(newAddress)
+    searchAddressesLocal(newAddress)
   }
 
   // Handle suggestion selection
-  const handleSuggestionSelect = (suggestion: string) => {
-    handleFieldChange('address', suggestion)
+  const handleSuggestionSelect = (suggestion: AddressSuggestion) => {
+    handleFieldChange('address', suggestion.address)
     setShowSuggestions(false)
     setAddressSuggestions([])
+    
+    // If coordinates are available, store them for later use
+    if (suggestion.latitude && suggestion.longitude) {
+      // You can store coordinates in a separate state if needed
+      console.log('Selected address coordinates:', {
+        lat: suggestion.latitude,
+        lng: suggestion.longitude
+      })
+    }
   }
 
   // Service-specific room options
@@ -508,10 +532,11 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     }
   }, [value.serviceId, value.date, value.time, value.address, value.notes])
 
-  const canUseGeo = typeof window !== 'undefined' && (window as any).isSecureContext && !!navigator.geolocation
+  const canUseGeo = typeof window !== 'undefined' && !!navigator.geolocation
 
   const handleCurrentLocation = async () => {
-    if (!canUseGeo) {
+    // Check if geolocation is available
+    if (typeof window === 'undefined' || !navigator.geolocation) {
       setErrors(prev => ({ ...prev, address: 'Geolocation is not supported by this browser' }))
       return
     }
@@ -791,7 +816,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
                 <Label className="text-sm sm:text-base font-medium text-white">Service Address</Label>
                 <div className="relative">
-                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10" />
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10" />
                   <Input
                     value={value.address}
                     onChange={(e) => handleAddressChange(e.target.value)}
@@ -799,16 +824,30 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     onFocus={() => value.address.length >= 2 && setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder={addressPlaceholder || "Start typing your address..."}
-                    className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     autoComplete="street-address"
                     aria-autocomplete="list"
                     aria-expanded={showSuggestions}
                   />
                   
-                  {/* Loading indicator */}
-                  {isSearchingAddress && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  {/* Location icon on the right - clickable to get current location */}
+                  {!isSearchingAddress && !isGeocoding && (
+                    <button
+                      type="button"
+                      onClick={handleCurrentLocation}
+                      disabled={isGeocoding}
+                      className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-10 p-1 hover:bg-gray-700/50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      aria-label="Use current location"
+                      title="Click to use your current location"
+                    >
+                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 hover:text-blue-300 cursor-pointer" />
+                    </button>
+                  )}
+                  
+                  {/* Loading indicator - shows when searching address or getting location */}
+                  {(isSearchingAddress || isGeocoding) && (
+                    <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-10">
+                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-blue-400" />
                     </div>
                   )}
                   
@@ -823,9 +862,14 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                           role="option"
                           aria-selected={activeSuggestionIndex === index}
                         >
-                          <div className="flex items-center">
-                            <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-                            <span>{suggestion}</span>
+                          <div className="flex items-start">
+                            <MapPin className="w-4 h-4 mr-2 text-blue-400 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-white truncate">{suggestion.address}</div>
+                              {suggestion.displayName !== suggestion.address && (
+                                <div className="text-xs text-gray-400 truncate mt-0.5">{suggestion.displayName}</div>
+                              )}
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -841,26 +885,6 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                   <p className="text-white/60 mt-1">e.g., 123 Main Street, Cape Town, 8001</p>
                 </div>
                 
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full text-sm sm:text-base animate-slide-in-up"
-                  style={{ animationDelay: '0.3s' }}
-                  onClick={handleCurrentLocation}
-                  disabled={isGeocoding || !canUseGeo}
-                >
-                  {isGeocoding ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Getting location...
-                    </>
-                  ) : (
-                    <>
-                  <MapPin className="w-4 h-4 mr-2" />
-                  {canUseGeo ? 'Use my current location' : 'Current location unavailable'}
-                    </>
-                  )}
-                </Button>
                 {errors.address && <p className="text-xs sm:text-sm text-red-600">{errors.address}</p>}
               </div>
             </div>
