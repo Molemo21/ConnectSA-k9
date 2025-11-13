@@ -48,8 +48,6 @@ import {
 
   Loader2,
 
-  BarChart3,
-
   Bell,
 
   Banknote,
@@ -61,6 +59,8 @@ import {
   X,
 
   ChevronRight,
+
+  ChevronDown,
 
   User,
 
@@ -78,7 +78,11 @@ import {
 
   Package,
 
-  Activity
+  Activity,
+
+  Search,
+
+  ArrowUpDown
 
 } from "lucide-react"
 
@@ -604,8 +608,7 @@ function ProviderMainContent({
 
   processingAction,
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  handleBankDetailsChange: _handleBankDetailsChange, // Part of API but not used in this component
+  handleBankDetailsChange,
 
   dashboardState,
 
@@ -681,6 +684,13 @@ function ProviderMainContent({
     serviceName: null
   })
 
+  // State for job organization (search, sort, expanded sections)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortBy, setSortBy] = useState<"urgency" | "date" | "price" | "client">("urgency")
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([
+    'PENDING', 'IN_PROGRESS', 'PENDING_EXECUTION'
+  ]))
+
   // Helper function to normalize payment method for consistent comparison
   const normalizePaymentMethod = (paymentMethod: unknown): 'CASH' | 'ONLINE' | null => {
     if (!paymentMethod) return null;
@@ -704,7 +714,7 @@ function ProviderMainContent({
 
 
 
-  // Filter and sort bookings based on selected filter with defensive programming
+  // Filter, search, group, and sort bookings based on selected filter with defensive programming
 
   const filteredBookings = useMemo(() => {
 
@@ -760,22 +770,410 @@ function ProviderMainContent({
 
     }
 
-    
-    
-      // Sort by creation date (most recent first) to ensure recent bookings appear at the top
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim()
+      filtered = filtered.filter(booking => {
+        const serviceName = booking.service?.name?.toLowerCase() || ''
+        const clientName = booking.client?.name?.toLowerCase() || ''
+        const address = booking.address?.toLowerCase() || ''
+        const bookingId = booking.id?.toLowerCase() || ''
+        return serviceName.includes(searchLower) || 
+               clientName.includes(searchLower) || 
+               address.includes(searchLower) ||
+               bookingId.includes(searchLower)
+      })
+    }
 
-    return filtered.sort((a, b) => {
-
-      const dateA = new Date(a.scheduledDate || 0)
-
-      const dateB = new Date(b.scheduledDate || 0)
-
-      return dateB.getTime() - dateA.getTime() // Descending order (newest first)
-
+    // Sort bookings based on sortBy option
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "urgency": {
+          // Priority: PENDING > IN_PROGRESS > PENDING_EXECUTION > others, then by date
+          const urgencyOrder: Record<string, number> = {
+            'PENDING': 1,
+            'IN_PROGRESS': 2,
+            'PENDING_EXECUTION': 3,
+            'AWAITING_CONFIRMATION': 4,
+            'CONFIRMED': 5,
+            'COMPLETED': 6
+          }
+          const urgencyA = urgencyOrder[a.status as string] || 99
+          const urgencyB = urgencyOrder[b.status as string] || 99
+          if (urgencyA !== urgencyB) return urgencyA - urgencyB
+          // If same urgency, sort by date (newest first)
+          const dateA = new Date(a.scheduledDate || 0)
+          const dateB = new Date(b.scheduledDate || 0)
+          return dateB.getTime() - dateA.getTime()
+        }
+        
+        case "date": {
+          // Sort by scheduled date (newest first)
+          const dateA = new Date(a.scheduledDate || 0)
+          const dateB = new Date(b.scheduledDate || 0)
+          return dateB.getTime() - dateA.getTime()
+        }
+        
+        case "price": {
+          // Sort by price (highest first)
+          const priceA = a.totalAmount || a.bookedPrice || a.service?.basePrice || 0
+          const priceB = b.totalAmount || b.bookedPrice || b.service?.basePrice || 0
+          return priceB - priceA
+        }
+        
+        case "client": {
+          // Sort by client name (alphabetical)
+          const clientA = a.client?.name || ''
+          const clientB = b.client?.name || ''
+          return clientA.localeCompare(clientB)
+        }
+        
+        default:
+          return 0
+      }
     })
 
+    return filtered
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookings, selectedFilter]) // safeBookings is derived from bookings inline, using bookings is correct
+  }, [bookings, selectedFilter, searchTerm, sortBy]) // safeBookings is derived from bookings inline, using bookings is correct
+
+  // Group bookings by status when "all" filter is selected
+  const groupedBookings = useMemo(() => {
+    if (selectedFilter !== "all") return null
+    
+    const groups: Record<string, typeof filteredBookings> = {
+      'PENDING': [],
+      'IN_PROGRESS': [],
+      'PENDING_EXECUTION': [],
+      'AWAITING_CONFIRMATION': [],
+      'CONFIRMED': [],
+      'COMPLETED': []
+    }
+    
+    filteredBookings.forEach(booking => {
+      const status = booking.status as string
+      if (status && groups[status]) {
+        groups[status].push(booking)
+      }
+    })
+    
+    // Return only groups that have bookings
+    const result: Record<string, typeof filteredBookings> = {}
+    Object.keys(groups).forEach(status => {
+      if (groups[status].length > 0) {
+        result[status] = groups[status]
+      }
+    })
+    
+    return result
+  }, [filteredBookings, selectedFilter])
+
+  // Helper function to toggle section expansion
+  const toggleSection = (status: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(status)) {
+        newSet.delete(status)
+      } else {
+        newSet.add(status)
+      }
+      return newSet
+    })
+  }
+
+  // Helper function to render a booking card (used in both grouped and regular views)
+  const renderBookingCard = (booking: typeof filteredBookings[0]) => {
+    if (!booking || !booking.id || typeof booking.id !== 'string') {
+      return null
+    }
+
+    return (
+      <ComponentErrorBoundary key={booking.id} componentName={`BookingCard-${booking.id}`}>
+        <Card 
+          className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200"
+          data-booking-id={booking.id}
+        >
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="p-2 bg-blue-400/20 rounded-full">
+                    <Calendar className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-semibold text-white">{booking.service?.name || 'Unknown Service'}</h3>
+                      {(() => {
+                        const paymentMethod = normalizePaymentMethod(booking.paymentMethod);
+                        if (!paymentMethod) return null;
+                        const isCash = paymentMethod === 'CASH';
+                        return (
+                          <Badge 
+                            variant="outline" 
+                            className={
+                              isCash
+                                ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-300' 
+                                : 'border-green-400/50 bg-green-400/10 text-green-300'
+                            }
+                            title={`Payment Method: ${isCash ? 'Cash' : 'Online'}`}
+                          >
+                            {isCash ? (
+                              <Banknote className="w-3 h-3 mr-1" />
+                            ) : (
+                              <CreditCard className="w-3 h-3 mr-1" />
+                            )}
+                            {isCash ? 'Cash' : 'Online'}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
+                    <p className="text-sm text-gray-400">{booking.service?.category?.name || 'No Category'}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-400">Client</p>
+                    <p className="text-white font-medium">{booking.client?.name || 'Unknown Client'}</p>
+                    <p className="text-sm text-gray-400">{booking.client?.email || 'No Email'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Scheduled Date</p>
+                    <p className="text-white font-medium">
+                      {booking.scheduledDate ? formatSADate(booking.scheduledDate) : 'No Date'}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {booking.scheduledDate ? formatSATime(booking.scheduledDate) : 'No Time'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Location and Price - Prominent Display */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
+                      <MapPin className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide font-medium">Location</p>
+                      <p className="text-base font-semibold text-white break-words leading-tight">
+                        {booking.address || 'No Address'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 bg-green-500/20 rounded-lg flex-shrink-0">
+                      <Banknote className="w-5 h-5 text-green-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide font-medium">Price</p>
+                      <p className="text-xl font-bold text-green-400">
+                        {formatBookingPrice({ 
+                          bookedPrice: booking.bookedPrice, 
+                          bookedCurrency: booking.bookedCurrency, 
+                          totalAmount: booking.totalAmount || booking.service?.basePrice || 0 
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {booking.status === 'COMPLETED' && booking.review && (
+                  <div className="mt-3 text-sm text-gray-300">
+                    <div className="flex items-center gap-2">
+                      <Star className="w-4 h-4 text-yellow-400" />
+                      <span>{booking.review.rating}/5</span>
+                    </div>
+                    {booking.review.comment && (
+                      <p className="mt-1 text-xs text-gray-400 line-clamp-2">&ldquo;{booking.review.comment}&rdquo;</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex flex-col items-end space-y-2">
+                <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
+                  {booking.status || 'UNKNOWN'}
+                </Badge>
+
+                {booking.status === 'PENDING' && (
+                  <Button 
+                    size="sm" 
+                    className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => acceptBooking(booking.id)}
+                    disabled={acceptingBooking === booking.id}
+                  >
+                    {acceptingBooking === booking.id ? (
+                      <div className="flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Accepting...
+                      </div>
+                    ) : (
+                      'Accept Job'
+                    )}
+                  </Button>
+                )}
+
+                {booking.status === 'CONFIRMED' && (
+                  <>
+                    {normalizePaymentMethod(booking.paymentMethod) === 'CASH' && (
+                      <Button 
+                        size="sm" 
+                        className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleStartJob(booking.id)}
+                        disabled={processingAction}
+                      >
+                        {processingAction ? (
+                          <div className="flex items-center">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Starting...
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <Play className="h-4 w-4 mr-2" />
+                            Start Job
+                          </div>
+                        )}
+                      </Button>
+                    )}
+                    {normalizePaymentMethod(booking.paymentMethod) === 'ONLINE' && (
+                      <Button 
+                        size="sm" 
+                        className="bg-blue-400 hover:bg-blue-500 text-white"
+                        disabled
+                      >
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Accepted
+                        </div>
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {booking.status === 'PENDING_EXECUTION' && (
+                  <Button 
+                    size="sm" 
+                    className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handleStartJob(booking.id)}
+                    disabled={processingAction}
+                  >
+                    {processingAction ? (
+                      <div className="flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Starting...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <Play className="h-4 w-4 mr-2" />
+                        Start Job
+                      </div>
+                    )}
+                  </Button>
+                )}
+
+                {booking.status === 'IN_PROGRESS' && (
+                  <Button 
+                    size="sm" 
+                    className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handleCompleteJob(booking.id)}
+                    disabled={processingAction}
+                  >
+                    {processingAction ? (
+                      <div className="flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Completing...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Complete Job
+                      </div>
+                    )}
+                  </Button>
+                )}
+
+                {normalizePaymentMethod(booking.paymentMethod) === 'CASH' && 
+                 booking.payment?.status === 'CASH_PAID' && 
+                 booking.status === 'AWAITING_CONFIRMATION' && (
+                  <Button 
+                    size="sm" 
+                    className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setCashPaymentConfirmation({
+                        isOpen: true,
+                        bookingId: booking.id,
+                        amount: booking.totalAmount,
+                        clientName: booking.client?.name || 'Client',
+                        serviceName: booking.service?.name || 'Service'
+                      });
+                    }}
+                    disabled={processingAction}
+                  >
+                    {processingAction ? (
+                      <div className="flex items-center">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Confirming...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <Banknote className="h-4 w-4 mr-2" />
+                        Confirm Cash Received
+                      </div>
+                    )}
+                  </Button>
+                )}
+
+                {booking.status === 'AWAITING_CONFIRMATION' && 
+                 !(normalizePaymentMethod(booking.paymentMethod) === 'CASH' && booking.payment?.status === 'CASH_PAID') && (
+                  <Button 
+                    size="sm" 
+                    className="bg-yellow-400 hover:bg-yellow-500 text-white"
+                    disabled
+                  >
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-2" />
+                      {booking.paymentMethod === 'CASH' && booking.payment?.status !== 'CASH_PAID' 
+                        ? 'Awaiting Cash Payment' 
+                        : 'Awaiting Confirmation'}
+                    </div>
+                  </Button>
+                )}
+
+                {booking.status === 'COMPLETED' && (
+                  <Button 
+                    size="sm" 
+                    className="bg-gray-400 hover:bg-gray-500 text-white"
+                    disabled
+                  >
+                    <div className="flex items-center">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Completed
+                    </div>
+                  </Button>
+                )}
+
+                {(!booking.status || typeof booking.status !== 'string' || 
+                  !['PENDING', 'CONFIRMED', 'PENDING_EXECUTION', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(booking.status)) && (
+                  <Button 
+                    size="sm" 
+                    className="bg-gray-400 hover:bg-gray-500 text-white"
+                    disabled
+                  >
+                    <div className="flex items-center">
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Invalid Status
+                    </div>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </ComponentErrorBoundary>
+    )
+  }
 
   // Find the current active job - priority order: IN_PROGRESS > PENDING_EXECUTION > CONFIRMED > PENDING
   const currentJob = useMemo(() => {
@@ -1722,476 +2120,141 @@ function ProviderMainContent({
 
             </Card>
 
+            {/* Search and Sort Bar */}
+            <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  {/* Search Bar */}
+                  <div className="flex-1 w-full sm:w-auto">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by service, client, address, or booking ID..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-gray-900/50 border border-gray-300/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50"
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm("")}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
+                  {/* Sort Dropdown */}
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as "urgency" | "date" | "price" | "client")}
+                      className="px-3 py-2 bg-gray-900/50 border border-gray-300/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50"
+                    >
+                      <option value="urgency">Sort by Urgency</option>
+                      <option value="date">Sort by Date</option>
+                      <option value="price">Sort by Price</option>
+                      <option value="client">Sort by Client</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Jobs List */}
-
-            <div className="space-y-4">
-
-              {filteredBookings
-
-                .filter(booking => booking && booking.id && typeof booking.id === 'string')
-
-                .map((booking) => {
-
-                  // Additional validation to prevent React errors
-
-                  if (!booking || !booking.id || typeof booking.id !== 'string') {
-
-                    console.warn('Invalid booking object:', booking);
-
-                    return null;
-
+            {selectedFilter === "all" && groupedBookings ? (
+              // Grouped view when "all" is selected
+              <div className="space-y-4">
+                {Object.entries(groupedBookings).map(([status, bookings]) => {
+                  const isExpanded = expandedSections.has(status)
+                  const statusLabels: Record<string, string> = {
+                    'PENDING': 'Pending',
+                    'IN_PROGRESS': 'In Progress',
+                    'PENDING_EXECUTION': 'Pending Execution',
+                    'AWAITING_CONFIRMATION': 'Awaiting Confirmation',
+                    'CONFIRMED': 'Confirmed',
+                    'COMPLETED': 'Completed'
                   }
-
-                  
+                  const statusColors: Record<string, string> = {
+                    'PENDING': 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400',
+                    'IN_PROGRESS': 'bg-blue-500/20 border-blue-500/50 text-blue-400',
+                    'PENDING_EXECUTION': 'bg-orange-500/20 border-orange-500/50 text-orange-400',
+                    'AWAITING_CONFIRMATION': 'bg-purple-500/20 border-purple-500/50 text-purple-400',
+                    'CONFIRMED': 'bg-green-500/20 border-green-500/50 text-green-400',
+                    'COMPLETED': 'bg-gray-500/20 border-gray-500/50 text-gray-400'
+                  }
                   
                   return (
-
-                    <ComponentErrorBoundary key={booking.id} componentName={`BookingCard-${booking.id}`}>
-
-                      <Card 
-                        className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200"
-                        data-booking-id={booking.id}
+                    <Card key={status} className="bg-black/40 backdrop-blur-sm border-gray-300/20">
+                      <CardHeader 
+                        className="cursor-pointer hover:bg-gray-800/30 transition-colors"
+                        onClick={() => toggleSection(status)}
                       >
-
-                  <CardContent className="p-6">
-
-                    <div className="flex items-start justify-between">
-
-                      <div className="flex-1">
-
-                        <div className="flex items-center space-x-3 mb-3">
-
-                          <div className="p-2 bg-blue-400/20 rounded-full">
-
-                            <Calendar className="w-5 h-5 text-blue-400" />
-
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {isExpanded ? (
+                              <ChevronDown className="w-5 h-5 text-gray-400" />
+                            ) : (
+                              <ChevronRight className="w-5 h-5 text-gray-400" />
+                            )}
+                            <h3 className="text-lg font-semibold text-white">
+                              {statusLabels[status] || status}
+                            </h3>
+                            <Badge className={`${statusColors[status]} border`}>
+                              {bookings.length}
+                            </Badge>
                           </div>
-
-                          <div className="flex-1">
-
-                            <div className="flex items-center gap-2 mb-1">
-
-                              <h3 className="text-lg font-semibold text-white">{booking.service?.name || 'Unknown Service'}</h3>
-
-                              {/* Payment Method Badge */}
-                              {(() => {
-                                const paymentMethod = normalizePaymentMethod(booking.paymentMethod);
-                                if (!paymentMethod) return null;
+                        </div>
+                      </CardHeader>
+                      {isExpanded && (
+                        <CardContent className="pt-0">
+                          <div className="space-y-4">
+                            {bookings
+                              .filter(booking => booking && booking.id && typeof booking.id === 'string')
+                              .map((booking) => {
+                                if (!booking || !booking.id || typeof booking.id !== 'string') {
+                                  console.warn('Invalid booking object:', booking);
+                                  return null;
+                                }
                                 
-                                const isCash = paymentMethod === 'CASH';
-                                
-                                return (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={
-                                      isCash
-                                        ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-300' 
-                                        : 'border-green-400/50 bg-green-400/10 text-green-300'
-                                    }
-                                    title={`Payment Method: ${isCash ? 'Cash' : 'Online'}`}
-                                  >
-                                    {isCash ? (
-                                      <Banknote className="w-3 h-3 mr-1" />
-                                    ) : (
-                                      <CreditCard className="w-3 h-3 mr-1" />
-                                    )}
-                                    {isCash ? 'Cash' : 'Online'}
-                                  </Badge>
-                                );
-                              })()}
-
-                            </div>
-
-                            <p className="text-sm text-gray-400">{booking.service?.category?.name || 'No Category'}</p>
-
+                                return renderBookingCard(booking)
+                              })}
                           </div>
-
-                        </div>
-
-                        
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-
-                          <div>
-
-                            <p className="text-sm text-gray-400">Client</p>
-
-                            <p className="text-white font-medium">{booking.client?.name || 'Unknown Client'}</p>
-
-                            <p className="text-sm text-gray-400">{booking.client?.email || 'No Email'}</p>
-
-                          </div>
-
-                          <div>
-
-                            <p className="text-sm text-gray-400">Scheduled Date</p>
-
-                            <p className="text-white font-medium">
-
-                              {booking.scheduledDate ? formatSADate(booking.scheduledDate) : 'No Date'}
-
-                            </p>
-
-                            <p className="text-sm text-gray-400">
-
-                              {booking.scheduledDate ? formatSATime(booking.scheduledDate) : 'No Time'}
-
-                            </p>
-
-                          </div>
-
-                        </div>
-
-
-
-                        <div className="flex items-center space-x-4 text-sm">
-
-                          <span className="flex items-center text-gray-400">
-
-                            <MapPin className="w-4 h-4 mr-1" />
-
-                            {booking.address || 'No Address'}
-
-                          </span>
-
-                          <span className="flex items-center text-gray-400">
-
-                            {formatBookingPrice({ bookedPrice: booking.bookedPrice, bookedCurrency: booking.bookedCurrency, totalAmount: booking.totalAmount || booking.service?.basePrice || 0 })}
-
-                          </span>
-
-                        </div>
-
-                        {/* Review snippet for completed bookings */}
-                        {booking.status === 'COMPLETED' && booking.review && (
-                          <div className="mt-3 text-sm text-gray-300">
-                            <div className="flex items-center gap-2">
-                              <Star className="w-4 h-4 text-yellow-400" />
-                              <span>{booking.review.rating}/5</span>
-                            </div>
-                            {booking.review.comment && (
-                              <p className="mt-1 text-xs text-gray-400 line-clamp-2">“{booking.review.comment}”</p>
-                            )}
-                          </div>
-                        )}
-
-                      </div>
-
-                      
-                      
-                      <div className="flex flex-col items-end space-y-2">
-
-                        <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-
-                          {booking.status || 'UNKNOWN'}
-
-                        </Badge>
-
-                        {booking.status && typeof booking.status === 'string' && booking.status === 'PENDING' && (
-
-                          <Button 
-
-                            size="sm" 
-
-                            className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-
-                            onClick={() => acceptBooking(booking.id)}
-
-                            disabled={acceptingBooking === booking.id}
-
-                          >
-
-                            {acceptingBooking === booking.id ? (
-
-                              <div className="flex items-center">
-
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-
-                                Accepting...
-
-                              </div>
-
-                            ) : (
-
-                              'Accept Job'
-
-                            )}
-
-                          </Button>
-
-                        )}
-
-                        {booking.status && typeof booking.status === 'string' && booking.status === 'CONFIRMED' && (
-                          <>
-                            {/* For CASH payments: Show Start Job immediately */}
-                            {normalizePaymentMethod(booking.paymentMethod) === 'CASH' && (
-                              <Button 
-                                size="sm" 
-                                className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => handleStartJob(booking.id)}
-                                disabled={processingAction}
-                              >
-                                {processingAction ? (
-                                  <div className="flex items-center">
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    Starting...
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center">
-                                    <Play className="h-4 w-4 mr-2" />
-                                    Start Job
-                                  </div>
-                                )}
-                              </Button>
-                            )}
-                            
-                            {/* For ONLINE payments: Show accepted status (waiting for client to pay) */}
-                            {normalizePaymentMethod(booking.paymentMethod) === 'ONLINE' && (
-                          <Button 
-                            size="sm" 
-                            className="bg-blue-400 hover:bg-blue-500 text-white"
-                            disabled
-                          >
-                            <div className="flex items-center">
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Accepted
-                            </div>
-                          </Button>
-                        )}
-                          </>
-                        )}
-
-                        {booking.status && typeof booking.status === 'string' && booking.status === 'PENDING_EXECUTION' && (
-
-                          <Button 
-
-                            size="sm" 
-
-                            className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-
-                            onClick={() => handleStartJob(booking.id)}
-
-                            disabled={processingAction}
-
-                          >
-
-                            {processingAction ? (
-
-                              <div className="flex items-center">
-
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-
-                                Starting...
-
-                              </div>
-
-                            ) : (
-
-                              <div className="flex items-center">
-
-                                <Play className="h-4 w-4 mr-2" />
-
-                                Start Job
-
-                              </div>
-
-                            )}
-
-                          </Button>
-
-                        )}
-
-                        {booking.status && typeof booking.status === 'string' && booking.status === 'IN_PROGRESS' && (
-
-                          <Button 
-
-                            size="sm" 
-
-                            className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-
-                            onClick={() => handleCompleteJob(booking.id)}
-
-                            disabled={processingAction}
-
-                          >
-
-                            {processingAction ? (
-
-                              <div className="flex items-center">
-
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-
-                                Completing...
-
-                              </div>
-
-                            ) : (
-
-                              <div className="flex items-center">
-
-                                <CheckCircle className="h-4 w-4 mr-2" />
-
-                                Complete Job
-
-                              </div>
-
-                            )}
-
-                          </Button>
-
-                        )}
-
-                        {/* Show button when client claimed they paid (CASH_PAID, AWAITING_CONFIRMATION) */}
-                        {/* This is the only cash payment confirmation button - appears after client pays */}
-                        {normalizePaymentMethod(booking.paymentMethod) === 'CASH' && 
-                         booking.payment?.status === 'CASH_PAID' && 
-                         booking.status === 'AWAITING_CONFIRMATION' && (
-
-                          <Button 
-
-                            size="sm" 
-
-                            className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-
-                            onClick={() => {
-                              setCashPaymentConfirmation({
-                                isOpen: true,
-                                bookingId: booking.id,
-                                amount: booking.totalAmount,
-                                clientName: booking.client?.name || 'Client',
-                                serviceName: booking.service?.name || 'Service'
-                              });
-                            }}
-
-                            disabled={processingAction}
-
-                          >
-
-                            {processingAction ? (
-
-                              <div className="flex items-center">
-
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-
-                                Confirming...
-
-                              </div>
-
-                            ) : (
-
-                              <div className="flex items-center">
-
-                                <Banknote className="h-4 w-4 mr-2" />
-
-                                Confirm Cash Received
-
-                              </div>
-
-                            )}
-
-                          </Button>
-
-                        )}
-
-                        {/* Generic "Awaiting Confirmation" - only show if cash payment button is not showing */}
-                        {booking.status && typeof booking.status === 'string' && booking.status === 'AWAITING_CONFIRMATION' && 
-                         !(normalizePaymentMethod(booking.paymentMethod) === 'CASH' && booking.payment?.status === 'CASH_PAID') && (
-
-                          <Button 
-
-                            size="sm" 
-
-                            className="bg-yellow-400 hover:bg-yellow-500 text-white"
-
-                            disabled
-
-                          >
-
-                            <div className="flex items-center">
-
-                              <Clock className="h-4 w-4 mr-2" />
-
-                              {booking.paymentMethod === 'CASH' && booking.payment?.status !== 'CASH_PAID' 
-                                ? 'Awaiting Cash Payment' 
-                                : 'Awaiting Confirmation'}
-
-                            </div>
-
-                          </Button>
-
-                        )}
-
-                        {booking.status && typeof booking.status === 'string' && booking.status === 'COMPLETED' && (
-
-                          <Button 
-
-                            size="sm" 
-
-                            className="bg-gray-400 hover:bg-gray-500 text-white"
-
-                            disabled
-
-                          >
-
-                            <div className="flex items-center">
-
-                              <CheckCircle className="h-4 w-4 mr-2" />
-
-                              Completed
-
-                            </div>
-
-                          </Button>
-
-                        )}
-
-                        {/* Fallback for invalid or undefined status */}
-
-                        {(!booking.status || typeof booking.status !== 'string' || 
-
-                          !['PENDING', 'CONFIRMED', 'PENDING_EXECUTION', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(booking.status)) && (
-
-                          <Button 
-
-                            size="sm" 
-
-                            className="bg-gray-400 hover:bg-gray-500 text-white"
-
-                            disabled
-
-                          >
-
-                            <div className="flex items-center">
-
-                              <AlertTriangle className="h-4 w-4 mr-2" />
-
-                              Invalid Status
-
-                            </div>
-
-                          </Button>
-
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  </CardContent>
-
-                </Card>
-
-                    </ComponentErrorBoundary>
-
-                  );
-
-                })
-
-                .filter(Boolean) // Remove any null values from invalid bookings
-
-              }
+                        </CardContent>
+                      )}
+                    </Card>
+                  )
+                })}
+                {Object.keys(groupedBookings).length === 0 && (
+                  <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
+                    <CardContent className="p-8 text-center">
+                      <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-white mb-2">No Jobs Found</h3>
+                      <p className="text-gray-400 mb-4">
+                        {searchTerm ? 'No jobs match your search criteria.' : 'You haven\'t received any job requests yet.'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              // Regular list view when a specific filter is selected
+              <div className="space-y-4">
+                {filteredBookings
+                  .filter(booking => booking && booking.id && typeof booking.id === 'string')
+                  .map((booking) => {
+                    // Additional validation to prevent React errors
+                    if (!booking || !booking.id || typeof booking.id !== 'string') {
+                      console.warn('Invalid booking object:', booking);
+                      return null;
+                    }
+                    return renderBookingCard(booking)
+                  })
+                  .filter(Boolean) // Remove any null values from invalid bookings
+                }
 
               
               
@@ -2286,6 +2349,7 @@ function ProviderMainContent({
               )}
 
               
+
               
               {filteredBookings.length === 0 && (
 
@@ -2333,7 +2397,8 @@ function ProviderMainContent({
 
               )}
 
-            </div>
+              </div>
+            )}
 
           </div>
 
@@ -2415,17 +2480,15 @@ function ProviderMainContent({
 
                     <div>
 
-                      <p className="text-sm text-gray-400">Average Rating</p>
+                      <p className="text-sm text-gray-400">Completed Jobs</p>
 
-                      <p className="text-3xl font-bold text-white">{stats.averageRating?.toFixed(1) || '0.0'}</p>
-
-                      <p className="text-sm text-gray-400">{stats.totalReviews || 0} reviews</p>
+                      <p className="text-3xl font-bold text-white">{stats.completedJobs || 0}</p>
 
                     </div>
 
-                    <div className="p-3 bg-yellow-400/20 rounded-full">
+                    <div className="p-3 bg-purple-400/20 rounded-full">
 
-                      <Star className="w-8 h-8 text-yellow-400" />
+                      <CheckCircle className="w-8 h-8 text-purple-400" />
 
                     </div>
 
@@ -2437,9 +2500,17 @@ function ProviderMainContent({
 
             </div>
 
+          </div>
+
+        )
 
 
-            {/* Earnings Chart Placeholder */}
+
+      case "bank":
+
+        return (
+
+          <div className="space-y-6">
 
             <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
 
@@ -2447,27 +2518,75 @@ function ProviderMainContent({
 
                 <CardTitle className="text-white flex items-center gap-2">
 
-                  <BarChart3 className="w-5 h-5 text-blue-400" />
+                  <CreditCard className="w-5 h-5 text-blue-400" />
 
-                  Earnings Trend
+                  Bank Details Setup
 
                 </CardTitle>
+
+                <CardDescription className="text-gray-400">
+
+                  {hasBankDetails 
+
+                    ? 'Your bank details are configured. You can update them below.' 
+
+                    : 'Setup your bank details to receive payments from completed jobs.'
+
+                  }
+
+                </CardDescription>
 
               </CardHeader>
 
               <CardContent>
 
-                <div className="h-64 flex items-center justify-center bg-gray-800/50 rounded-lg border border-gray-300/10">
+                <ComponentErrorBoundary 
 
-                  <div className="text-center">
+                  componentName="BankDetailsForm"
 
-                    <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  fallback={
 
-                    <p className="text-gray-400">Earnings chart will be displayed here</p>
+                    <div className="text-center py-8">
 
-                  </div>
+                      <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
 
-                </div>
+                      <h3 className="text-lg font-semibold text-white mb-2">Bank Form Error</h3>
+
+                      <p className="text-gray-400 mb-4">
+
+                        There was an error loading the bank details form.
+
+                      </p>
+
+                      <Button
+
+                        onClick={() => setActiveSection('overview')}
+
+                        variant="outline"
+
+                        className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+
+                      >
+
+                        Go to Overview
+
+                      </Button>
+
+                    </div>
+
+                  }
+
+                >
+
+                  <BankDetailsForm 
+
+                    initialBankDetails={(memoizedBankDetails as InitialBankDetails | null) || undefined}
+
+                    onBankDetailsChange={handleBankDetailsChange}
+
+                  />
+
+                </ComponentErrorBoundary>
 
               </CardContent>
 
@@ -2479,191 +2598,13 @@ function ProviderMainContent({
 
 
 
-      case "bank":
-
-        try {
-
-          // Defensive programming for bank section
-
-          const safeDashboardState = dashboardState || {}
-
-          const safeData = safeDashboardState.data || {}
-
-          const hasBankDetails = safeData.hasBankDetails || false
-
-          
-          
-          return (
-
-            <div className="space-y-6">
-
-              <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
-
-                <CardHeader>
-
-                  <CardTitle className="text-white flex items-center gap-2">
-
-                    <CreditCard className="w-5 h-5 text-blue-400" />
-
-                    Bank Details Setup
-
-                  </CardTitle>
-
-                  <CardDescription className="text-gray-400">
-
-                    {hasBankDetails 
-
-                      ? 'Your bank details are configured. You can update them below.' 
-
-                      : 'Setup your bank details to receive payments from completed jobs.'
-
-                    }
-
-                  </CardDescription>
-
-                </CardHeader>
-
-                <CardContent>
-
-                  <ComponentErrorBoundary 
-
-                    componentName="BankDetailsForm"
-
-                    fallback={
-
-                      <div className="text-center py-8">
-
-                        <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-
-                        <h3 className="text-lg font-semibold text-white mb-2">Bank Form Error</h3>
-
-                        <p className="text-gray-400 mb-4">
-
-                          There was an error loading the bank details form.
-
-                        </p>
-
-                        <Button
-
-                          onClick={() => setActiveSection('overview')}
-
-                          className="bg-blue-400 hover:bg-blue-500 text-white mr-2"
-
-                        >
-
-                          Go to Overview
-
-                        </Button>
-
-                        <Button
-
-                          onClick={() => window.location.reload()}
-
-                          variant="outline"
-
-                          className="border-gray-300/30 text-gray-300 hover:bg-gray-700"
-
-                        >
-
-                          <RefreshCw className="w-4 h-4 mr-2" />
-
-                          Reload Page
-
-                        </Button>
-
-                      </div>
-
-                    }
-
-                  >
-
-                    <BankDetailsForm 
-
-                      initialBankDetails={(memoizedBankDetails as InitialBankDetails | null) || undefined}
-
-                      // DISABLED: No callback to prevent infinite loops
-
-                      // onBankDetailsChange={handleBankDetailsChange}
-
-                    />
-
-                  </ComponentErrorBoundary>
-
-                </CardContent>
-
-              </Card>
-
-            </div>
-
-          )
-
-        } catch (bankError) {
-
-          console.error('Bank section specific error:', bankError)
-
-          return (
-
-            <div className="text-center py-12">
-
-              <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-
-              <h3 className="text-lg font-semibold text-white mb-2">Bank Setup Error</h3>
-
-              <p className="text-gray-400 mb-4">
-
-                There was an error loading the bank setup section.
-
-              </p>
-
-              <div className="text-xs text-gray-500 mb-4">
-
-                Error: {bankError instanceof Error ? bankError.message : String(bankError)}
-
-              </div>
-
-              <Button 
-
-                onClick={() => setActiveSection('overview')}
-
-                className="bg-blue-400 hover:bg-blue-500 text-white mr-2"
-
-              >
-
-                Go to Overview
-
-              </Button>
-
-              <Button 
-
-                onClick={() => window.location.reload()}
-
-                variant="outline"
-
-                className="border-gray-300/30 text-gray-300 hover:bg-gray-700"
-
-              >
-
-                <RefreshCw className="w-4 h-4 mr-2" />
-
-                Reload Page
-
-              </Button>
-
-            </div>
-
-          )
-
-        }
-
-
-
       case "catalogue":
 
         return (
 
           <div className="space-y-6">
 
-            <ProviderCatalogueDashboard providerId={user?.id || ''} />
+            <ProviderCatalogueDashboard providerId={user?.id || dashboardState.data.currentProviderId || ''} />
 
           </div>
 
@@ -2675,19 +2616,41 @@ function ProviderMainContent({
 
         return (
 
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
+          <div className="space-y-6">
 
-            <CardContent className="p-8 text-center">
+            <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
 
-              <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <CardContent className="p-8 text-center">
 
-              <h3 className="text-lg font-semibold text-white mb-2">Section Not Found</h3>
+                <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
 
-              <p className="text-gray-400">The requested section could not be found.</p>
+                <h3 className="text-lg font-semibold text-white mb-2">Section Not Found</h3>
 
-            </CardContent>
+                <p className="text-gray-400 mb-4">
 
-          </Card>
+                  The requested section &ldquo;{activeSection}&rdquo; is not available.
+
+                </p>
+
+                <Button 
+
+                  variant="outline" 
+
+                  onClick={() => setActiveSection('overview')}
+
+                  className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+
+                >
+
+                  Go to Overview
+
+                </Button>
+
+              </CardContent>
+
+            </Card>
+
+          </div>
 
         )
 
@@ -2695,67 +2658,47 @@ function ProviderMainContent({
 
     } catch (error) {
 
-      console.error('Error rendering section content:', error)
+      console.error('Error rendering section content:', error);
 
-      console.error('Active section:', activeSection)
-
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-
-      console.error('Dashboard state:', {
-
-        hasBankDetails: dashboardState?.data?.hasBankDetails,
-
-        bankDetails: dashboardState?.data?.bankDetails,
-
-        user: dashboardState?.auth?.user,
-
-        activeSection: activeSection,
-
-        bookingsLength: bookings?.length,
-
-        stats: stats
-
-      })
-
-      
-      
       return (
 
-        <div className="text-center py-12">
+        <div className="space-y-6">
 
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <Card className="bg-red-900/20 backdrop-blur-sm border-red-500/30">
 
-          <h3 className="text-lg font-semibold text-white mb-2">Error Loading Content</h3>
+            <CardContent className="p-8 text-center">
 
-          <p className="text-gray-400 mb-4">
+              <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
 
-            There was an error loading this section. Please try refreshing the page.
+              <h3 className="text-lg font-semibold text-white mb-2">Error Loading Section</h3>
 
-          </p>
+              <p className="text-red-300 mb-4">
 
-          <div className="text-xs text-gray-500 mb-4">
+                {error instanceof Error ? error.message : 'An unexpected error occurred'}
 
-            Error: {error instanceof Error ? error.message : (typeof error === 'object' && error !== null && 'message' in error ? String((error as { message?: string }).message || error) : String(error)) || 'Unknown error'}
+              </p>
 
-          </div>
+              <Button 
 
-          <Button 
+                variant="outline" 
 
-            onClick={() => window.location.reload()}
+                onClick={() => setActiveSection('overview')}
 
-            className="bg-blue-400 hover:bg-blue-500 text-white"
+                className="border-red-300/20 text-red-300 hover:bg-red-700/50"
 
-          >
+              >
 
-            <RefreshCw className="w-4 h-4 mr-2" />
+                Go to Overview
 
-            Reload Page
+              </Button>
 
-          </Button>
+            </CardContent>
+
+          </Card>
 
         </div>
 
-        )
+      )
 
     }
 
