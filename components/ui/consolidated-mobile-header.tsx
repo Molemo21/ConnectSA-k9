@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -35,7 +35,7 @@ import { useNotifications } from "@/hooks/use-notifications"
 import { NotificationPopup } from "./notification-popup"
 
 interface ConsolidatedMobileHeaderProps {
-  user: {
+  user?: {
     id: string
     name?: string | null
     email?: string | null
@@ -48,16 +48,18 @@ interface ConsolidatedMobileHeaderProps {
   pendingBookings?: number
   hasNotifications?: boolean
   className?: string
+  rightElement?: ReactNode
 }
 
 export function ConsolidatedMobileHeader({ 
-  user, 
+  user = null, 
   activeSection = "overview",
   setActiveSection,
   totalBookings = 0,
   pendingBookings = 0,
   hasNotifications = false,
-  className = "" 
+  className = "",
+  rightElement
 }: ConsolidatedMobileHeaderProps) {
   const router = useRouter()
   const { logout, isLoggingOut } = useLogout()
@@ -435,8 +437,15 @@ export function ConsolidatedMobileHeader({
               </div>
             </Link>
 
-            {/* Right side - Notifications and Menu */}
+            {/* Right side - Custom elements, Notifications and Menu */}
             <div className="flex items-center space-x-2">
+              {/* Custom right element (connection status, refresh, etc.) */}
+              {rightElement && (
+                <div className="flex items-center gap-2">
+                  {rightElement}
+                </div>
+              )}
+
               {/* Notifications */}
               <Button
                 variant="ghost"

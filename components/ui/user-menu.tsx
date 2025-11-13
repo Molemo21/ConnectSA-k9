@@ -20,9 +20,7 @@ import {
   Calendar,
   ChevronDown,
   Activity,
-  Star,
-  Home,
-  Clock
+  Home
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
 
@@ -103,32 +101,6 @@ export function UserMenu({ user, showNotifications = true, userStats }: UserMenu
 
   return (
     <div className="flex items-center space-x-3">
-      {/* Quick Stats Display - Desktop Only */}
-      {userStats && (
-        <div className="hidden lg:flex items-center space-x-4 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-          {userStats.totalBookings !== undefined && (
-            <div className="flex items-center space-x-1 text-sm text-white/90">
-              <Activity className="w-4 h-4" />
-              <span className="font-medium">{userStats.totalBookings}</span>
-              <span className="text-white/60">bookings</span>
-            </div>
-          )}
-          {userStats.pendingBookings !== undefined && userStats.pendingBookings > 0 && (
-            <div className="flex items-center space-x-1 text-sm text-amber-300">
-              <Clock className="w-4 h-4" />
-              <span className="font-medium">{userStats.pendingBookings}</span>
-              <span className="text-amber-300/60">pending</span>
-            </div>
-          )}
-          {userStats.rating !== undefined && (
-            <div className="flex items-center space-x-1 text-sm text-yellow-300">
-              <Star className="w-4 h-4 fill-current" />
-              <span className="font-medium">{userStats.rating.toFixed(1)}</span>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Notifications */}
       {showNotifications && (
         <Button variant="ghost" size="sm" className="relative text-white/80 hover:text-white hover:bg-white/10">

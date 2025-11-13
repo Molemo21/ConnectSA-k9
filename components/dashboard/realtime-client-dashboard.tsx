@@ -317,18 +317,18 @@ export function RealtimeClientDashboard() {
     <div className="flex items-center gap-2 text-xs">
       {connected ? (
         <>
-          <Wifi className="h-3 w-3 text-green-500" />
-          <span className="text-green-600">Live</span>
+          <Wifi className="h-3 w-3 text-green-400" />
+          <span className="text-green-400">Live</span>
         </>
       ) : isPolling ? (
         <>
-          <Activity className="h-3 w-3 text-yellow-500 animate-pulse" />
-          <span className="text-yellow-600">Polling</span>
+          <Activity className="h-3 w-3 text-yellow-400 animate-pulse" />
+          <span className="text-yellow-400">Polling</span>
         </>
       ) : (
         <>
-          <WifiOff className="h-3 w-3 text-red-500" />
-          <span className="text-red-600">Offline</span>
+          <WifiOff className="h-3 w-3 text-red-400" />
+          <span className="text-red-400">Offline</span>
         </>
       )}
     </div>

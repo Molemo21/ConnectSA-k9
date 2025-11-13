@@ -13,7 +13,6 @@ import {
   Bell, 
   Calendar,
   Star,
-  Clock,
   DollarSign,
   Loader2
 } from "lucide-react"
@@ -355,18 +354,6 @@ export function ConsolidatedMobileHeaderProvider({
             {/* User Menu */}
             {user ? (
               <div className="flex items-center space-x-3">
-                {/* User Stats */}
-                <div className="hidden sm:flex items-center space-x-2 text-xs text-gray-300">
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>{totalBookings}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{pendingBookings}</span>
-                  </div>
-                </div>
-
                 {/* User Avatar */}
                 <Button
                   variant="ghost"

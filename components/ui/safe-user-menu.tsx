@@ -20,9 +20,7 @@ import {
   Calendar,
   ChevronDown,
   Activity,
-  Star,
-  Home,
-  Clock
+  Home
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
 import { useRouter } from "next/navigation"
@@ -356,30 +354,6 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
 
   return (
     <div className="flex items-center space-x-3">
-      {/* Quick Stats Display - Desktop Only */}
-      {safeStats.totalBookings > 0 && (
-        <div className="hidden lg:flex items-center space-x-4 px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
-          <div className="flex items-center space-x-1 text-sm text-white/90">
-            <Activity className="w-4 h-4" />
-            <span className="font-medium">{safeStats.totalBookings}</span>
-            <span className="text-white/60">bookings</span>
-          </div>
-          {safeStats.pendingBookings > 0 && (
-            <div className="flex items-center space-x-1 text-sm text-amber-300">
-              <Clock className="w-4 h-4" />
-              <span className="font-medium">{safeStats.pendingBookings}</span>
-              <span className="text-amber-300/60">pending</span>
-            </div>
-          )}
-          {safeStats.rating > 0 && (
-            <div className="flex items-center space-x-1 text-sm text-yellow-300">
-              <Star className="w-4 h-4 fill-current" />
-              <span className="font-medium">{safeStats.rating.toFixed(1)}</span>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Notifications */}
       {showNotifications && (
         <motion.div
