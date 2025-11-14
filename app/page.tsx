@@ -31,8 +31,10 @@ import { ScrollParallaxSection } from "@/components/ui/scroll-parallax-section"
 import { ScrollProgressIndicator } from "@/components/ui/scroll-progress-indicator"
 import { FloatingParticles } from "@/components/ui/floating-elements"
 import { Footer } from "@/components/ui/footer"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useScrollAnimation, useScrollProgress, useScrollToTop } from "@/hooks/use-scroll-animation"
+import { useNavigationState } from "@/hooks/use-navigation-state"
+import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
 import { useLanguage } from "@/contexts/LanguageContext"
 
@@ -119,6 +121,9 @@ export default function HomePage() {
     headerSignIn: false
   })
   const [showGlobalLoader] = useState(false)
+  const pathname = usePathname()
+  const { isNavigating, navigate } = useNavigationState({ timeout: 5000 })
+  const previousPathnameRef = useRef<string>(pathname)
 
   // Scroll animations
   const servicesAnimation = useScrollAnimation({ threshold: 0.2 })
@@ -126,15 +131,59 @@ export default function HomePage() {
   const testimonialsAnimation = useScrollAnimation({ threshold: 0.3 })
   const scrollProgress = useScrollProgress()
   const { showButton, scrollToTop } = useScrollToTop()
+  const [isScrollingToTop, setIsScrollingToTop] = useState(false)
 
-  const handleButtonClick = (buttonKey: keyof typeof loadingStates, action: () => void) => {
+  // Clear loading states when navigation completes
+  useEffect(() => {
+    if (pathname !== previousPathnameRef.current) {
+      // Navigation completed - clear all loading states
+      setLoadingStates(prev => {
+        const cleared = { ...prev }
+        Object.keys(cleared).forEach(key => {
+          cleared[key as keyof typeof cleared] = false
+        })
+        return cleared
+      })
+      previousPathnameRef.current = pathname
+    }
+  }, [pathname])
+
+  // Enhanced handleButtonClick with real navigation tracking
+  const handleButtonClick = async (buttonKey: keyof typeof loadingStates, href: string) => {
+    // Prevent action if already navigating
+    if (isNavigating) {
+      return
+    }
+
+    // Immediately set loading state
     setLoadingStates(prev => ({ ...prev, [buttonKey]: true }))
     
-    // Simulate loading time and then execute action
-    setTimeout(() => {
-      action()
+    try {
+      // Use Next.js router for navigation
+      await navigate(href)
+      
+      // Loading state will be cleared when pathname changes (via useEffect above)
+      // Set a fallback timeout to clear loading state in case navigation doesn't complete
+      setTimeout(() => {
+        setLoadingStates(prev => ({ ...prev, [buttonKey]: false }))
+      }, 6000)
+    } catch (error) {
+      console.error('Navigation error:', error)
       setLoadingStates(prev => ({ ...prev, [buttonKey]: false }))
-    }, 1000) // 1 second loading simulation
+    }
+  }
+
+  // Enhanced scroll to top with loading state
+  const handleScrollToTop = () => {
+    if (isScrollingToTop) return
+    
+    setIsScrollingToTop(true)
+    scrollToTop()
+    
+    // Reset after scroll animation completes
+    setTimeout(() => {
+      setIsScrollingToTop(false)
+    }, 1000)
   }
 
 
@@ -237,8 +286,8 @@ export default function HomePage() {
             className="bg-transparent border-none"
             servicesLoading={loadingStates.headerServices}
             signInLoading={loadingStates.headerSignIn}
-            onServicesClick={() => handleButtonClick('headerServices', () => {})}
-            onSignInClick={() => handleButtonClick('headerSignIn', () => {})}
+            onServicesClick={() => handleButtonClick('headerServices', '/services')}
+            onSignInClick={() => handleButtonClick('headerSignIn', '/login')}
           />
         </div>
 
@@ -249,10 +298,10 @@ export default function HomePage() {
               becomeProviderLoading={loadingStates.becomeProvider}
               getStartedLoading={loadingStates.getStarted}
               dashboardLoading={loadingStates.dashboard}
-              onBookServiceClick={() => handleButtonClick('bookService', () => window.location.href = '/book-service')}
-              onBecomeProviderClick={() => handleButtonClick('becomeProvider', () => window.location.href = '/become-provider')}
-              onGetStartedClick={() => handleButtonClick('getStarted', () => window.location.href = '/signup')}
-              onDashboardClick={() => handleButtonClick('dashboard', () => window.location.href = '/dashboard')}
+              onBookServiceClick={() => handleButtonClick('bookService', '/book-service')}
+              onBecomeProviderClick={() => handleButtonClick('becomeProvider', '/become-provider')}
+              onGetStartedClick={() => handleButtonClick('getStarted', '/signup')}
+              onDashboardClick={() => handleButtonClick('dashboard', '/dashboard')}
               showGetStarted={!user}
               isUnderConstruction={isUnderConstruction}
               user={user}
@@ -374,7 +423,7 @@ export default function HomePage() {
                                   ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
                                   : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white hover:scale-105'
                               }`}
-                              onClick={() => handleButtonClick('browseServices', () => window.location.href = `/book-service?service=${service.slug}`)}
+                              onClick={() => handleButtonClick('browseServices', `/book-service?service=${service.slug}`)}
                               loading={loadingStates.browseServices}
                               loadingText="Booking..."
                             >
@@ -394,15 +443,15 @@ export default function HomePage() {
 
             {/* View All Services Link */}
             <div className="text-center mt-6">
-              <LoadingLink 
-                href="/services" 
-                className="text-blue-400 hover:text-blue-300 hover:underline text-lg font-medium transition-colors duration-300"
-                loading={loadingStates.viewAllServices}
-                loadingText="Loading Services..."
-                onClick={() => handleButtonClick('viewAllServices', () => {})}
-              >
-                {t('services.viewAllServices')}
-              </LoadingLink>
+                <LoadingLink 
+                  href="/services" 
+                  className="text-blue-400 hover:text-blue-300 hover:underline text-lg font-medium transition-colors duration-300"
+                  loading={loadingStates.viewAllServices}
+                  loadingText="Loading Services..."
+                  onClick={() => handleButtonClick('viewAllServices', '/services')}
+                >
+                  {t('services.viewAllServices')}
+                </LoadingLink>
             </div>
           </div>
 
@@ -566,19 +615,20 @@ export default function HomePage() {
       {/* Footer */}
       <Footer />
 
-      {/* Scroll Progress Indicator */}
-      <div 
-        className="scroll-progress" 
-        style={{ width: `${scrollProgress}%` }}
-      />
-
       {/* Scroll to Top Button */}
       <button
-        onClick={scrollToTop}
-        className={`scroll-to-top ${showButton ? 'visible' : ''}`}
+        onClick={handleScrollToTop}
+        disabled={isScrollingToTop}
+        className={`scroll-to-top ${showButton ? 'visible' : ''} ${isScrollingToTop ? 'opacity-75 cursor-not-allowed' : ''}`}
         aria-label="Scroll to top"
+        aria-busy={isScrollingToTop}
+        aria-disabled={isScrollingToTop}
       >
-        <ChevronLeft className="h-6 w-6 rotate-90 text-white" />
+        {isScrollingToTop ? (
+          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <ChevronLeft className="h-6 w-6 rotate-90 text-white" />
+        )}
       </button>
 
       {/* Global Loading Overlay */}

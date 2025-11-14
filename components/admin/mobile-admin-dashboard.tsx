@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useButtonNavigation } from "@/hooks/use-button-navigation"
 import { Badge } from "@/components/ui/badge"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
@@ -59,6 +60,7 @@ interface AdminStats {
 }
 
 export function MobileAdminDashboard() {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
     totalProviders: 0,
@@ -219,7 +221,8 @@ export function MobileAdminDashboard() {
               badge={stats.totalUsers.toString()}
               primaryAction={{
                 label: "Manage Users",
-                onClick: () => window.location.href = '/admin/users'
+                onClick: () => handleNavigation('/admin/users', 'adminUsers'),
+                loading: buttonLoading === 'adminUsers'
               }}
             />
             <MobileActionCard
@@ -230,7 +233,8 @@ export function MobileAdminDashboard() {
               badge={stats.pendingProviders.toString()}
               primaryAction={{
                 label: "Review Now",
-                onClick: () => window.location.href = '/admin/providers'
+                onClick: () => handleNavigation('/admin/providers', 'adminProviders'),
+                loading: buttonLoading === 'adminProviders'
               }}
             />
             <MobileActionCard
@@ -241,7 +245,8 @@ export function MobileAdminDashboard() {
               badge={stats.pendingPayments.toString()}
               primaryAction={{
                 label: "Manage Payments",
-                onClick: () => window.location.href = '/admin/payments'
+                onClick: () => handleNavigation('/admin/payments', 'adminPayments'),
+                loading: buttonLoading === 'adminPayments'
               }}
             />
           </div>
@@ -379,7 +384,8 @@ export function MobileAdminDashboard() {
               iconColor="blue"
               primaryAction={{
                 label: "Maintenance",
-                onClick: () => window.location.href = '/admin/system'
+                onClick: () => handleNavigation('/admin/system', 'adminSystem'),
+                loading: buttonLoading === 'adminSystem'
               }}
             />
             <MobileActionCard
@@ -389,7 +395,8 @@ export function MobileAdminDashboard() {
               iconColor="orange"
               primaryAction={{
                 label: "Manage",
-                onClick: () => window.location.href = '/admin/notifications'
+                onClick: () => handleNavigation('/admin/notifications', 'adminNotifications'),
+                loading: buttonLoading === 'adminNotifications'
               }}
             />
           </div>
@@ -426,8 +433,9 @@ export function MobileAdminDashboard() {
                 Manage all platform users including clients, providers, and administrators.
               </p>
               <Button 
-                onClick={() => window.location.href = '/admin/users'}
+                onClick={() => handleNavigation('/admin/users', 'adminUsersButton')}
                 className="w-full"
+                disabled={buttonLoading === 'adminUsersButton'}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Manage Users
@@ -444,7 +452,8 @@ export function MobileAdminDashboard() {
               iconColor="blue"
               primaryAction={{
                 label: "View Users",
-                onClick: () => window.location.href = '/admin/users'
+                onClick: () => handleNavigation('/admin/users', 'adminViewUsers'),
+                loading: buttonLoading === 'adminViewUsers'
               }}
             />
             <MobileActionCard
@@ -454,7 +463,8 @@ export function MobileAdminDashboard() {
               iconColor="purple"
               primaryAction={{
                 label: "View Analytics",
-                onClick: () => window.location.href = '/admin/analytics'
+                onClick: () => handleNavigation('/admin/analytics', 'adminAnalytics'),
+                loading: buttonLoading === 'adminAnalytics'
               }}
             />
           </div>
@@ -512,7 +522,8 @@ export function MobileAdminDashboard() {
               badge={stats.pendingProviders.toString()}
               primaryAction={{
                 label: "Review Now",
-                onClick: () => window.location.href = '/admin/providers'
+                onClick: () => handleNavigation('/admin/providers', 'adminProvidersReview'),
+                loading: buttonLoading === 'adminProvidersReview'
               }}
             />
             <MobileActionCard
@@ -522,7 +533,8 @@ export function MobileAdminDashboard() {
               iconColor="blue"
               primaryAction={{
                 label: "View Analytics",
-                onClick: () => window.location.href = '/admin/analytics'
+                onClick: () => handleNavigation('/admin/analytics', 'adminAnalytics'),
+                loading: buttonLoading === 'adminAnalytics'
               }}
             />
           </div>

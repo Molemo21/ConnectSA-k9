@@ -13,6 +13,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 import { Button } from "@/components/ui/button"
+import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
+import { useButtonNavigation } from "@/hooks/use-button-navigation"
 
 import { Badge } from "@/components/ui/badge"
 
@@ -274,6 +276,7 @@ function ProviderDesktopSidebar({
   setIsCollapsed: (collapsed: boolean) => void
 
 }) {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
 
   const sidebarItems = [
 
@@ -513,13 +516,15 @@ function ProviderDesktopSidebar({
 
           <div className="space-y-2">
 
-            <Button 
+            <EnhancedButton 
 
               size="sm" 
 
               className="w-full justify-start bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 transition-all duration-200 hover:scale-[1.02] min-h-[44px] text-white"
 
-              onClick={() => window.location.href = '/provider/profile'}
+              onClick={() => handleNavigation('/provider/profile', 'providerProfile')}
+              loading={buttonLoading === 'providerProfile'}
+              loadingText="Loading..."
 
             >
 
@@ -527,9 +532,9 @@ function ProviderDesktopSidebar({
 
               Update Profile
 
-            </Button>
+            </EnhancedButton>
 
-            <Button 
+            <EnhancedButton 
 
               size="sm" 
 
@@ -537,7 +542,9 @@ function ProviderDesktopSidebar({
 
               className="w-full justify-start border-blue-400/30 text-gray-300 hover:bg-blue-400/10 hover:text-white hover:border-blue-400/50 transition-all duration-200 hover:scale-[1.02] min-h-[44px]"
 
-              onClick={() => window.location.href = '/provider/bank-details'}
+              onClick={() => handleNavigation('/provider/bank-details', 'providerBankDetails')}
+              loading={buttonLoading === 'providerBankDetails'}
+              loadingText="Loading..."
 
             >
 
@@ -545,7 +552,7 @@ function ProviderDesktopSidebar({
 
               Bank Details
 
-            </Button>
+            </EnhancedButton>
 
           </div>
 

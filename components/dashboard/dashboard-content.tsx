@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { usePaymentCallback } from "@/hooks/use-payment-callback"
 import { useSearchParams } from "next/navigation"
+import { useButtonNavigation } from "@/hooks/use-button-navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -39,6 +40,7 @@ function getServiceIcon(serviceName: string) {
 }
 
 export function DashboardContent() {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
   const [user, setUser] = useState<any>(null)
   const [services, setServices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -348,7 +350,8 @@ export function DashboardContent() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
-      window.location.href = '/login'
+      // Use navigation hook for consistent behavior
+      await handleNavigation('/login', 'logout')
     } catch (error) {
       console.error('Logout failed:', error)
       showToast.error('Failed to logout. Please try again.')

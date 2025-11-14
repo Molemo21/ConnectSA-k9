@@ -1,6 +1,7 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
+import { useButtonNavigation } from "@/hooks/use-button-navigation"
 import { 
   Plus, CreditCard, HelpCircle, Calendar, MessageSquare, DollarSign
 } from "lucide-react"
@@ -20,31 +21,32 @@ export function DashboardHeader({
   onContactSupport,
   className = ""
 }: DashboardHeaderProps) {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
   
-  const handleAddBooking = () => {
+  const handleAddBooking = async () => {
     if (onAddBooking) {
       onAddBooking()
     } else {
       // Default action - navigate to booking page
-      window.location.href = '/book-service'
+      await handleNavigation('/book-service', 'headerAddBooking')
     }
   }
 
-  const handleMakePayment = () => {
+  const handleMakePayment = async () => {
     if (onMakePayment) {
       onMakePayment()
     } else {
       // Default action - navigate to payments page
-      window.location.href = '/payments'
+      await handleNavigation('/payments', 'headerMakePayment')
     }
   }
 
-  const handleContactSupport = () => {
+  const handleContactSupport = async () => {
     if (onContactSupport) {
       onContactSupport()
     } else {
       // Default action - navigate to support page
-      window.location.href = '/support'
+      await handleNavigation('/support', 'headerContactSupport')
     }
   }
 
@@ -64,34 +66,40 @@ export function DashboardHeader({
           <div className="flex items-center space-x-3">
             
             {/* Add Booking Button */}
-            <Button
+            <EnhancedButton
               onClick={handleAddBooking}
+              loading={buttonLoading === 'headerAddBooking'}
+              loadingText="Loading..."
               className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <Plus className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Add Booking</span>
               <span className="sm:hidden">Book</span>
-            </Button>
+            </EnhancedButton>
 
             {/* Make Payment Button */}
-            <Button
+            <EnhancedButton
               onClick={handleMakePayment}
+              loading={buttonLoading === 'headerMakePayment'}
+              loadingText="Loading..."
               className="rounded-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <CreditCard className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Make Payment</span>
               <span className="sm:hidden">Pay</span>
-            </Button>
+            </EnhancedButton>
 
             {/* Contact Support Button */}
-            <Button
+            <EnhancedButton
               onClick={handleContactSupport}
+              loading={buttonLoading === 'headerContactSupport'}
+              loadingText="Loading..."
               className="rounded-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <HelpCircle className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Contact Support</span>
               <span className="sm:hidden">Help</span>
-            </Button>
+            </EnhancedButton>
           </div>
         </div>
       </div>
@@ -107,28 +115,29 @@ export function DashboardHeaderAlt({
   onContactSupport,
   className = ""
 }: DashboardHeaderProps) {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
   
-  const handleAddBooking = () => {
+  const handleAddBooking = async () => {
     if (onAddBooking) {
       onAddBooking()
     } else {
-      window.location.href = '/book-service'
+      await handleNavigation('/book-service', 'headerAltAddBooking')
     }
   }
 
-  const handleMakePayment = () => {
+  const handleMakePayment = async () => {
     if (onMakePayment) {
       onMakePayment()
     } else {
-      window.location.href = '/payments'
+      await handleNavigation('/payments', 'headerAltMakePayment')
     }
   }
 
-  const handleContactSupport = () => {
+  const handleContactSupport = async () => {
     if (onContactSupport) {
       onContactSupport()
     } else {
-      window.location.href = '/support'
+      await handleNavigation('/support', 'headerAltContactSupport')
     }
   }
 
@@ -148,34 +157,40 @@ export function DashboardHeaderAlt({
           <div className="flex items-center space-x-3">
             
             {/* Add Booking Button */}
-            <Button
+            <EnhancedButton
               onClick={handleAddBooking}
+              loading={buttonLoading === 'headerAltAddBooking'}
+              loadingText="Loading..."
               className="rounded-full bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <Calendar className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Add Booking</span>
               <span className="sm:hidden">Book</span>
-            </Button>
+            </EnhancedButton>
 
             {/* Make Payment Button */}
-            <Button
+            <EnhancedButton
               onClick={handleMakePayment}
+              loading={buttonLoading === 'headerAltMakePayment'}
+              loadingText="Loading..."
               className="rounded-full bg-white text-green-600 hover:bg-gray-100 px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <DollarSign className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Make Payment</span>
               <span className="sm:hidden">Pay</span>
-            </Button>
+            </EnhancedButton>
 
             {/* Contact Support Button */}
-            <Button
+            <EnhancedButton
               onClick={handleContactSupport}
+              loading={buttonLoading === 'headerAltContactSupport'}
+              loadingText="Loading..."
               className="rounded-full bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <MessageSquare className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Contact Support</span>
               <span className="sm:hidden">Help</span>
-            </Button>
+            </EnhancedButton>
           </div>
         </div>
       </div>
@@ -191,28 +206,29 @@ export function DashboardHeaderCompact({
   onContactSupport,
   className = ""
 }: DashboardHeaderProps) {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
   
-  const handleAddBooking = () => {
+  const handleAddBooking = async () => {
     if (onAddBooking) {
       onAddBooking()
     } else {
-      window.location.href = '/book-service'
+      await handleNavigation('/book-service', 'headerCompactAddBooking')
     }
   }
 
-  const handleMakePayment = () => {
+  const handleMakePayment = async () => {
     if (onMakePayment) {
       onMakePayment()
     } else {
-      window.location.href = '/payments'
+      await handleNavigation('/payments', 'headerCompactMakePayment')
     }
   }
 
-  const handleContactSupport = () => {
+  const handleContactSupport = async () => {
     if (onContactSupport) {
       onContactSupport()
     } else {
-      window.location.href = '/support'
+      await handleNavigation('/support', 'headerCompactContactSupport')
     }
   }
 
@@ -232,37 +248,43 @@ export function DashboardHeaderCompact({
           <div className="flex items-center space-x-2 sm:space-x-3">
             
             {/* Add Booking Button */}
-            <Button
+            <EnhancedButton
               onClick={handleAddBooking}
               size="sm"
+              loading={buttonLoading === 'headerCompactAddBooking'}
+              loadingText="Loading..."
               className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Book</span>
               <span className="xs:hidden">+</span>
-            </Button>
+            </EnhancedButton>
 
             {/* Make Payment Button */}
-            <Button
+            <EnhancedButton
               onClick={handleMakePayment}
               size="sm"
+              loading={buttonLoading === 'headerCompactMakePayment'}
+              loadingText="Loading..."
               className="rounded-full bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Pay</span>
               <span className="xs:hidden">$</span>
-            </Button>
+            </EnhancedButton>
 
             {/* Contact Support Button */}
-            <Button
+            <EnhancedButton
               onClick={handleContactSupport}
               size="sm"
+              loading={buttonLoading === 'headerCompactContactSupport'}
+              loadingText="Loading..."
               className="rounded-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md hover:shadow-lg"
             >
               <HelpCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Help</span>
               <span className="xs:hidden">?</span>
-            </Button>
+            </EnhancedButton>
           </div>
         </div>
       </div>

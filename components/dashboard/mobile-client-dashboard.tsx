@@ -6,7 +6,9 @@ import { useAuth } from "@/hooks/use-auth"
 import { safeRedirect } from "@/lib/redirect-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
 import { Badge } from "@/components/ui/badge"
+import { useButtonNavigation } from "@/hooks/use-button-navigation"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { ConsolidatedMobileHeader } from "@/components/ui/consolidated-mobile-header"
 import { MobileBottomNav } from "@/components/ui/mobile-bottom-nav"
@@ -300,23 +302,27 @@ function DesktopSidebar({
             <span className="text-sm font-medium text-white">Quick Actions</span>
           </div>
           <div className="space-y-2">
-            <Button 
+            <EnhancedButton 
               size="sm" 
               className="w-full justify-start bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 transition-all duration-200 hover:scale-[1.02] min-h-[44px] text-white"
-              onClick={() => window.location.href = '/book-service'}
+              onClick={() => handleNavigation('/book-service', 'quickBookService')}
+              loading={buttonLoading === 'quickBookService'}
+              loadingText="Loading..."
             >
               <Plus className="w-4 h-4 mr-2" />
               Book Service
-            </Button>
-            <Button 
+            </EnhancedButton>
+            <EnhancedButton 
               size="sm" 
               variant="outline" 
               className="w-full justify-start border-blue-400/30 text-gray-300 hover:bg-blue-400/10 hover:text-white hover:border-blue-400/50 transition-all duration-200 hover:scale-[1.02] min-h-[44px]"
-              onClick={() => window.location.href = '/search'}
+              onClick={() => handleNavigation('/search', 'quickSearch')}
+              loading={buttonLoading === 'quickSearch'}
+              loadingText="Loading..."
             >
               <Search className="w-4 h-4 mr-2" />
               Find Providers
-            </Button>
+            </EnhancedButton>
           </div>
         </div>
       </div>
@@ -545,26 +551,30 @@ function MainContent({
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-                    <Button 
+                    <EnhancedButton 
                       className="h-24 sm:h-28 flex flex-col items-center justify-center space-y-3 bg-gradient-to-br from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 transition-all duration-500 ease-out hover:scale-105 hover:shadow-2xl hover:shadow-blue-400/25 min-h-[96px] group rounded-2xl text-white"
-                      onClick={() => window.location.href = '/book-service'}
+                      onClick={() => handleNavigation('/book-service', 'actionBookService')}
+                      loading={buttonLoading === 'actionBookService'}
+                      loadingText="Loading..."
                       aria-label="Book a new service"
                       style={{ animationDelay: '200ms' }}
                     >
                       <Plus className="w-7 h-7 group-hover:rotate-90 transition-transform duration-500 ease-out" />
                       <span className="font-semibold text-base sm:text-lg">Book Service</span>
-                    </Button>
+                    </EnhancedButton>
                     
-                    <Button 
+                    <EnhancedButton 
                       variant="outline" 
                       className="h-24 sm:h-28 flex flex-col items-center justify-center space-y-3 border-2 border-blue-400/30 text-gray-300 hover:bg-blue-400/10 hover:border-blue-400/50 hover:text-white transition-all duration-500 ease-out hover:scale-105 hover:shadow-xl hover:shadow-blue-400/10 min-h-[96px] group rounded-2xl"
-                      onClick={() => window.location.href = '/search'}
+                      onClick={() => handleNavigation('/search', 'actionSearch')}
+                      loading={buttonLoading === 'actionSearch'}
+                      loadingText="Loading..."
                       aria-label="Find service providers"
                       style={{ animationDelay: '250ms' }}
                     >
                       <Search className="w-7 h-7 group-hover:scale-110 transition-transform duration-500 ease-out" />
                       <span className="font-semibold text-base sm:text-lg">Find Providers</span>
-                    </Button>
+                    </EnhancedButton>
                     
                     <Button 
                       variant="outline" 
@@ -635,21 +645,25 @@ function MainContent({
                         You don't have any bookings yet. Tap below to book your first service and get started!
                       </p>
                       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center max-w-lg mx-auto">
-                        <Button 
+                        <EnhancedButton 
                           className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-500 hover:via-purple-500 hover:to-pink-500 transition-all duration-500 ease-out hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/25 text-base sm:text-lg px-8 py-4 rounded-2xl font-semibold"
-                          onClick={() => window.location.href = '/book-service'}
+                          onClick={() => handleNavigation('/book-service', 'emptyBookService')}
+                          loading={buttonLoading === 'emptyBookService'}
+                          loadingText="Loading..."
                         >
                           <Plus className="w-4 h-4 mr-2" />
                           Book Your First Service
-                        </Button>
-                        <Button 
+                        </EnhancedButton>
+                        <EnhancedButton 
                           variant="outline"
                           className="border-2 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-500 ease-out hover:scale-105 hover:shadow-xl hover:shadow-white/10 text-base sm:text-lg px-8 py-4 rounded-2xl font-semibold"
-                          onClick={() => window.location.href = '/search'}
+                          onClick={() => handleNavigation('/search', 'emptySearch')}
+                          loading={buttonLoading === 'emptySearch'}
+                          loadingText="Loading..."
                         >
                           <Search className="w-5 h-5 mr-2" />
                           Browse Services
-                        </Button>
+                        </EnhancedButton>
                       </div>
                     </div>
                   ) : (
@@ -860,21 +874,25 @@ function MainContent({
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                       {selectedFilter === "all" ? (
                         <>
-                          <Button 
+                          <EnhancedButton 
                             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 hover:scale-105"
-                            onClick={() => window.location.href = '/book-service'}
+                            onClick={() => handleNavigation('/book-service', 'errorBookService')}
+                            loading={buttonLoading === 'errorBookService'}
+                            loadingText="Loading..."
                           >
                             <Plus className="w-4 h-4 mr-2" />
                             Book Your First Service
-                          </Button>
-                          <Button 
+                          </EnhancedButton>
+                          <EnhancedButton 
                             variant="outline"
                             className="border-gray-600 text-gray-300 hover:bg-white/10 transition-all duration-200 hover:scale-105"
-                            onClick={() => window.location.href = '/search'}
+                            onClick={() => handleNavigation('/search', 'errorSearch')}
+                            loading={buttonLoading === 'errorSearch'}
+                            loadingText="Loading..."
                           >
                             <Search className="w-4 h-4 mr-2" />
                             Browse Services
-                          </Button>
+                          </EnhancedButton>
                         </>
                       ) : (
                         <Button 
@@ -935,7 +953,7 @@ function MainContent({
                       <Card 
                         key={service.id} 
                         className="bg-black/70 backdrop-blur-sm shadow-xl rounded-2xl border border-white/10 hover:shadow-2xl transition-all duration-300 ease-out cursor-pointer group hover:scale-[1.02]"
-                        onClick={() => window.location.href = `/book-service?service=${service.id}`}
+                        onClick={() => handleNavigation(`/book-service?service=${service.id}`, `service-${service.id}`)}
                         style={{ animationDelay: `${index * 100}ms` }}
                       >
                         <CardContent className="p-4 sm:p-6">
@@ -953,16 +971,18 @@ function MainContent({
                                 </div>
                                 <span className="text-xs sm:text-sm text-white/60">{service.providerCount} providers</span>
                               </div>
-                              <Button 
+                              <EnhancedButton 
                                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-300 ease-out hover:scale-105 text-sm sm:text-base"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  window.location.href = `/book-service?service=${service.id}`
+                                  handleNavigation(`/book-service?service=${service.id}`, `serviceBtn-${service.id}`)
                                 }}
+                                loading={buttonLoading === `serviceBtn-${service.id}`}
+                                loadingText="Loading..."
                               >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Book Now
-                              </Button>
+                              </EnhancedButton>
                             </div>
                           </div>
                         </CardContent>
@@ -974,14 +994,16 @@ function MainContent({
                 {/* Show more services button if there are more than 6 */}
                 {popularServices.length > 6 && (
                   <div className="text-center">
-                    <Button 
+                    <EnhancedButton 
                       variant="outline" 
                       className="border-gray-600 text-gray-300 hover:bg-white/10 transition-all duration-200 hover:scale-105"
-                      onClick={() => window.location.href = '/search'}
+                      onClick={() => handleNavigation('/search', 'viewAllServices')}
+                      loading={buttonLoading === 'viewAllServices'}
+                      loadingText="Loading..."
                     >
                       View All {popularServices.length} Services
                       <ChevronRight className="w-4 h-4 ml-2" />
-                    </Button>
+                    </EnhancedButton>
                   </div>
                 )}
               </div>
@@ -997,21 +1019,25 @@ function MainContent({
                       There are currently no active service providers in your area. Check back later or try expanding your search radius.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      <Button 
+                      <EnhancedButton 
                         variant="outline"
                         className="border-gray-600 text-gray-300 hover:bg-white/10 transition-all duration-200 hover:scale-105"
-                        onClick={() => window.location.href = '/search'}
+                        onClick={() => handleNavigation('/search', 'searchAllAreas')}
+                        loading={buttonLoading === 'searchAllAreas'}
+                        loadingText="Loading..."
                       >
                         <Search className="w-4 h-4 mr-2" />
                         Search All Areas
-                      </Button>
-                      <Button 
+                      </EnhancedButton>
+                      <EnhancedButton 
                         className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 hover:scale-105"
-                        onClick={() => window.location.href = '/book-service'}
+                        onClick={() => handleNavigation('/book-service', 'requestService')}
+                        loading={buttonLoading === 'requestService'}
+                        loadingText="Loading..."
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Request Service
-                      </Button>
+                      </EnhancedButton>
                     </div>
                   </div>
                 </CardContent>
@@ -1108,6 +1134,7 @@ function MainContent({
 
 export function MobileClientDashboard() {
   const { user, loading: authLoading, error: authError } = useAuth()
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
   const [services, setServices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

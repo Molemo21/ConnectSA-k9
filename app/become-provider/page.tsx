@@ -34,13 +34,15 @@ import {
   Gem
 } from "lucide-react"
 import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { LoadingButton as EnhancedButton } from "@/components/ui/enhanced-loading-button"
 import { LoadingLink } from "@/components/ui/loading-link"
 import { ScrollProgressIndicator } from "@/components/ui/scroll-progress-indicator"
 import { FloatingParticles } from "@/components/ui/floating-elements"
 import { useScrollAnimation, useScrollProgress, useScrollToTop } from "@/hooks/use-scroll-animation"
+import { useNavigationState } from "@/hooks/use-navigation-state"
+import { usePathname } from "next/navigation"
 import { useLanguage } from "@/contexts/LanguageContext"
 
 export default function BecomeProvider() {
@@ -88,14 +90,46 @@ export default function BecomeProvider() {
   const requirementsAnimation = useScrollAnimation({ threshold: 0.3 })
   const scrollProgress = useScrollProgress()
   const { showButton, scrollToTop } = useScrollToTop()
+  const pathname = usePathname()
+  const { navigate, isNavigating } = useNavigationState({ timeout: 5000 })
+  const previousPathnameRef = useRef<string>(pathname)
 
-  const handleButtonClick = (buttonKey: keyof typeof loadingStates, action: () => void) => {
+  // Clear loading states when navigation completes
+  useEffect(() => {
+    if (pathname !== previousPathnameRef.current) {
+      setLoadingStates(prev => {
+        const cleared = { ...prev }
+        Object.keys(cleared).forEach(key => {
+          cleared[key as keyof typeof cleared] = false
+        })
+        return cleared
+      })
+      previousPathnameRef.current = pathname
+    }
+  }, [pathname])
+
+  const handleButtonClick = async (buttonKey: keyof typeof loadingStates, href: string) => {
+    // Prevent action if already navigating
+    if (isNavigating) {
+      return
+    }
+
+    // Immediately set loading state
     setLoadingStates(prev => ({ ...prev, [buttonKey]: true }))
     
-    setTimeout(() => {
-      action()
+    try {
+      // Use Next.js router for navigation
+      await navigate(href)
+      
+      // Loading state will be cleared when pathname changes (via useEffect above)
+      // Set a fallback timeout to clear loading state in case navigation doesn't complete
+      setTimeout(() => {
+        setLoadingStates(prev => ({ ...prev, [buttonKey]: false }))
+      }, 6000)
+    } catch (error) {
+      console.error('Navigation error:', error)
       setLoadingStates(prev => ({ ...prev, [buttonKey]: false }))
-    }, 1000)
+    }
   }
 
   useEffect(() => {
@@ -246,8 +280,8 @@ export default function BecomeProvider() {
             className="bg-transparent border-none"
             servicesLoading={loadingStates.headerServices}
             signInLoading={loadingStates.headerSignIn}
-            onServicesClick={() => handleButtonClick('headerServices', () => {})}
-            onSignInClick={() => handleButtonClick('headerSignIn', () => {})}
+            onServicesClick={() => handleButtonClick('headerServices', '/services')}
+            onSignInClick={() => handleButtonClick('headerSignIn', '/login')}
           />
         </div>
 
@@ -317,7 +351,7 @@ export default function BecomeProvider() {
                     href="/signup?role=provider"
                     loading={loadingStates.getStarted}
                     loadingText="Getting Started..."
-                    onClick={() => handleButtonClick('getStarted', () => {})}
+                    onClick={() => handleButtonClick('getStarted', '/signup?role=provider')}
                   >
                     <Rocket className="w-5 h-5 mr-2" />
                     Start Earning Today
@@ -331,7 +365,14 @@ export default function BecomeProvider() {
                     href="#benefits"
                     loading={loadingStates.learnMore}
                     loadingText="Loading..."
-                    onClick={() => handleButtonClick('learnMore', () => {})}
+                    onClick={() => {
+                      // Scroll to benefits section (hash navigation)
+                      const element = document.getElementById('benefits')
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' })
+                      }
+                      setLoadingStates(prev => ({ ...prev, learnMore: false }))
+                    }}
                   >
                     <Sparkles className="w-5 h-5 mr-2" />
                     Learn More
@@ -553,7 +594,7 @@ export default function BecomeProvider() {
                   href="/signup?role=provider"
                   loading={loadingStates.joinNow}
                   loadingText="Joining..."
-                  onClick={() => handleButtonClick('joinNow', () => {})}
+                  onClick={() => handleButtonClick('joinNow', '/signup?role=provider')}
                 >
                   <Gem className="w-5 h-5 mr-2" />
                   Join Our Elite Network

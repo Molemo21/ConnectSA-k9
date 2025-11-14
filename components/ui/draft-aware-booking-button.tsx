@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { Button } from './button'
+import { LoadingButton as EnhancedButton } from './enhanced-loading-button'
+import { useButtonNavigation } from '@/hooks/use-button-navigation'
 import { Plus, RotateCcw, Loader2 } from 'lucide-react'
 import { checkDraftStatus, getDraftDisplayInfo, DraftStatus } from '@/lib/dashboard-draft-utils'
 
@@ -22,6 +23,7 @@ export function DraftAwareBookingButton({
   showIcon = true,
   onNavigate
 }: DraftAwareBookingButtonProps) {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
   const [draftStatus, setDraftStatus] = useState<DraftStatus>({ hasDraft: false })
   const [isLoading, setIsLoading] = useState(true)
 
@@ -49,41 +51,47 @@ export function DraftAwareBookingButton({
       if (onNavigate) {
         onNavigate(bookingInfo.url, bookingInfo.isResume)
       } else {
-        window.location.href = bookingInfo.url
+        // Use navigation hook for consistent behavior
+        await handleNavigation(bookingInfo.url, 'draftAwareBooking')
       }
     } catch (error) {
       console.error('Error navigating to booking:', error)
       // Fallback to regular booking page
-      window.location.href = '/book-service'
+      await handleNavigation('/book-service', 'draftAwareBooking')
     }
   }
 
   if (isLoading) {
     return (
-      <Button 
+      <EnhancedButton 
         variant={variant} 
         size={size} 
         className={className}
         disabled
+        loading={true}
+        loadingText="Loading..."
       >
         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         Loading...
-      </Button>
+      </EnhancedButton>
     )
   }
 
   const displayInfo = getDraftDisplayInfo(draftStatus)
   const Icon = displayInfo.showResumeButton ? RotateCcw : Plus
+  const isLoadingButton = buttonLoading === 'draftAwareBooking'
 
   return (
-    <Button 
+    <EnhancedButton 
       variant={variant} 
       size={size} 
       className={className}
       onClick={handleClick}
+      loading={isLoadingButton}
+      loadingText="Loading..."
     >
       {showIcon && <Icon className="w-4 h-4 mr-2" />}
       {children || displayInfo.showResumeButton ? displayInfo.resumeLabel : displayInfo.newBookingLabel}
-    </Button>
+    </EnhancedButton>
   )
 }

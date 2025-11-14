@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigationState } from "@/hooks/use-navigation-state"
 import { Button } from "@/components/ui/button"
 import { 
   Bell, X, CheckCircle, AlertCircle, Info, Clock,
@@ -85,7 +85,7 @@ export function NotificationPopup({
 }: NotificationPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null)
   const timeoutRefs = useRef<Array<NodeJS.Timeout>>([])
-  const router = useRouter()
+  const { navigate } = useNavigationState()
 
   // Close popup when clicking outside
   useEffect(() => {
@@ -339,10 +339,22 @@ export function NotificationPopup({
                                   onClose()
                                   
                                   // Small delay to ensure popup closes smoothly before navigation
-                                  const timeoutId = setTimeout(() => {
+                                  const timeoutId = setTimeout(async () => {
                                     if (notification.actionUrl) {
-                                      console.log(`📍 Executing router.push to: ${notification.actionUrl}`)
-                                      router.push(notification.actionUrl)
+                                      console.log(`📍 Executing navigation to: ${notification.actionUrl}`)
+                                      try {
+                                        // Check if it's an external URL
+                                        if (notification.actionUrl.startsWith('http://') || notification.actionUrl.startsWith('https://')) {
+                                          window.location.href = notification.actionUrl
+                                        } else {
+                                          // Use navigation hook for internal URLs
+                                          await navigate(notification.actionUrl)
+                                        }
+                                      } catch (error) {
+                                        console.error('Navigation error:', error)
+                                        // Fallback to window.location if navigation fails
+                                        window.location.href = notification.actionUrl
+                                      }
                                     }
                                   }, 100)
                                   
@@ -350,7 +362,7 @@ export function NotificationPopup({
                                   timeoutRefs.current.push(timeoutId)
                                 } catch (error) {
                                   console.error('Navigation error:', error)
-                                  // Fallback to window.location if router.push fails
+                                  // Fallback to window.location if navigation fails
                                   if (notification.actionUrl) {
                                     window.location.href = notification.actionUrl
                                   }
@@ -492,15 +504,21 @@ export function NotificationPopup({
                                     onClose()
                                     
                                     // Small delay to ensure popup closes smoothly before navigation
-                                    const timeoutId = setTimeout(() => {
+                                    const timeoutId = setTimeout(async () => {
                                       if (notification.actionUrl) {
-                                        console.log(`📍 Executing router.push to: ${notification.actionUrl}`)
+                                        console.log(`📍 Executing navigation to: ${notification.actionUrl}`)
                                         try {
-                                          router.push(notification.actionUrl)
-                                          console.log('✅ router.push successful')
+                                          // Check if it's an external URL
+                                          if (notification.actionUrl.startsWith('http://') || notification.actionUrl.startsWith('https://')) {
+                                            window.location.href = notification.actionUrl
+                                          } else {
+                                            // Use navigation hook for internal URLs
+                                            await navigate(notification.actionUrl)
+                                            console.log('✅ Navigation successful')
+                                          }
                                         } catch (error) {
-                                          console.error('❌ router.push failed:', error)
-                                          // Fallback to window.location if router.push fails
+                                          console.error('❌ Navigation failed:', error)
+                                          // Fallback to window.location if navigation fails
                                           console.log('🔄 Falling back to window.location.href')
                                           window.location.href = notification.actionUrl
                                         }
