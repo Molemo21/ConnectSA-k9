@@ -115,8 +115,8 @@ export function ProviderCatalogueDashboard({ providerId }: ProviderCatalogueDash
 
   if (!cataloguePricingEnabled) {
     return (
-      <Alert className="bg-yellow-500/10 border-yellow-500/20 text-yellow-200">
-        <AlertDescription>
+      <Alert className="bg-yellow-500/10 border-yellow-500/20 text-yellow-200 mx-2 sm:mx-0">
+        <AlertDescription className="text-xs sm:text-sm">
           Catalogue pricing is not currently enabled. Please contact support to activate this feature.
         </AlertDescription>
       </Alert>
@@ -125,43 +125,31 @@ export function ProviderCatalogueDashboard({ providerId }: ProviderCatalogueDash
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
         {/* Header Skeleton */}
-        <div className="flex justify-between items-center">
-          <div className="space-y-2">
-            <div className="h-8 w-64 bg-gray-700/50 rounded animate-pulse"></div>
-            <div className="h-4 w-48 bg-gray-700/30 rounded animate-pulse"></div>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+          <div className="space-y-1 sm:space-y-2">
+            <div className="h-6 sm:h-8 w-48 sm:w-64 bg-gray-700/50 rounded animate-pulse"></div>
+            <div className="h-3 sm:h-4 w-36 sm:w-48 bg-gray-700/30 rounded animate-pulse"></div>
           </div>
-          <div className="h-10 w-32 bg-gray-700/50 rounded animate-pulse"></div>
-        </div>
-
-        {/* Stats Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-black/40 backdrop-blur-sm border border-gray-300/20 rounded-lg p-6">
-              <div className="space-y-3">
-                <div className="h-4 w-20 bg-gray-700/50 rounded animate-pulse"></div>
-                <div className="h-8 w-16 bg-gray-700/50 rounded animate-pulse"></div>
-              </div>
-            </div>
-          ))}
+          <div className="h-9 sm:h-10 w-24 sm:w-32 bg-gray-700/50 rounded animate-pulse"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       {/* Modern Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-400/20 rounded-lg">
-              <Package className="w-6 h-6 text-blue-400" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="space-y-1 sm:space-y-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-400/20 rounded-lg">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">Catalogue Dashboard</h2>
-              <p className="text-gray-400">Overview of your service packages and performance</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Catalogue Dashboard</h2>
+              <p className="text-xs sm:text-sm text-gray-400">Overview of your service packages</p>
             </div>
           </div>
         </div>
@@ -170,106 +158,14 @@ export function ProviderCatalogueDashboard({ providerId }: ProviderCatalogueDash
             variant="outline"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+            className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50 text-xs sm:text-sm px-3 sm:px-4 py-2 h-auto"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh Stats'}
+            <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh Stats'}</span>
+            <span className="sm:hidden">{isRefreshing ? 'Refreshing' : 'Refresh'}</span>
           </Button>
         </div>
       </div>
-
-      {/* Modern Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-400">Total Packages</p>
-                <p className="text-2xl font-bold text-white">{stats.totalCatalogueItems}</p>
-              </div>
-              <div className="p-3 bg-blue-400/20 rounded-full">
-                <Package className="w-6 h-6 text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-400">Active Packages</p>
-                <p className="text-2xl font-bold text-green-400">{stats.activeCatalogueItems}</p>
-              </div>
-              <div className="p-3 bg-green-400/20 rounded-full">
-                <Eye className="w-6 h-6 text-green-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-400">Total Bookings</p>
-                <p className="text-2xl font-bold text-purple-400">{stats.totalBookings}</p>
-              </div>
-              <div className="p-3 bg-purple-400/20 rounded-full">
-                <Users className="w-6 h-6 text-purple-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-400">Revenue</p>
-                <p className="text-2xl font-bold text-yellow-400">R{stats.totalRevenue.toFixed(2)}</p>
-              </div>
-              <div className="p-3 bg-yellow-400/20 rounded-full">
-                <span className="text-lg font-bold text-yellow-400">R</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Performance Insights */}
-      {stats.totalCatalogueItems > 0 && (
-        <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-400" />
-              Performance Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-blue-500/10 rounded-lg">
-                <div className="text-2xl font-bold text-blue-400">
-                  {stats.totalCatalogueItems > 0 ? Math.round((stats.activeCatalogueItems / stats.totalCatalogueItems) * 100) : 0}%
-                </div>
-                <div className="text-sm text-gray-400">Active Rate</div>
-              </div>
-              <div className="text-center p-4 bg-green-500/10 rounded-lg">
-                <div className="text-2xl font-bold text-green-400">
-                  {stats.totalCatalogueItems > 0 ? Math.round(stats.totalBookings / stats.totalCatalogueItems) : 0}
-                </div>
-                <div className="text-sm text-gray-400">Avg Bookings per Package</div>
-              </div>
-              <div className="text-center p-4 bg-yellow-500/10 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-400">
-                  R{stats.totalBookings > 0 ? (stats.totalRevenue / stats.totalBookings).toFixed(2) : '0.00'}
-                </div>
-                <div className="text-sm text-gray-400">Avg Revenue per Booking</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Catalogue Manager */}
       <CatalogueManager providerId={providerId} />

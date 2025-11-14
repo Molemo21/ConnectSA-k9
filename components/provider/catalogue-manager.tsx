@@ -438,17 +438,17 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Modern Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-400/20 rounded-lg">
-              <Package className="w-6 h-6 text-blue-400" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <div className="space-y-1 sm:space-y-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-blue-400/20 rounded-lg">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">Service Packages</h2>
-              <p className="text-gray-400">Manage your service offerings and pricing</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Service Packages</h2>
+              <p className="text-xs sm:text-sm text-gray-400">Manage your service offerings and pricing</p>
             </div>
           </div>
         </div>
@@ -457,74 +457,76 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
             variant="outline"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+            className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50 text-xs sm:text-sm px-3 sm:px-4 py-2 h-auto"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+            <span className="sm:hidden">{isRefreshing ? '...' : '↻'}</span>
           </Button>
           <Button 
             onClick={() => setShowForm(true)}
-            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-500/25 transition-all duration-200 text-xs sm:text-sm px-3 sm:px-4 py-2 h-auto"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Package
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+            <span className="hidden sm:inline">Create Package</span>
+            <span className="sm:hidden">Create</span>
           </Button>
         </div>
       </div>
 
       {/* Modern Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-400">Total Packages</p>
-                <p className="text-2xl font-bold text-white">{stats.total}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-400">Total Packages</p>
+                <p className="text-lg sm:text-2xl font-bold text-white">{stats.total}</p>
               </div>
-              <div className="p-3 bg-blue-400/20 rounded-full">
-                <Package className="w-6 h-6 text-blue-400" />
+              <div className="p-2 sm:p-3 bg-blue-400/20 rounded-full">
+                <Package className="w-4 h-4 sm:w-6 sm:h-6 text-blue-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-400">Active Packages</p>
-                <p className="text-2xl font-bold text-green-400">{stats.active}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-400">Active Packages</p>
+                <p className="text-lg sm:text-2xl font-bold text-green-400">{stats.active}</p>
               </div>
-              <div className="p-3 bg-green-400/20 rounded-full">
-                <Eye className="w-6 h-6 text-green-400" />
+              <div className="p-2 sm:p-3 bg-green-400/20 rounded-full">
+                <Eye className="w-4 h-4 sm:w-6 sm:h-6 text-green-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-400">Total Bookings</p>
-                <p className="text-2xl font-bold text-purple-400">{stats.totalBookings}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-400">Total Bookings</p>
+                <p className="text-lg sm:text-2xl font-bold text-purple-400">{stats.totalBookings}</p>
               </div>
-              <div className="p-3 bg-purple-400/20 rounded-full">
-                <Users className="w-6 h-6 text-purple-400" />
+              <div className="p-2 sm:p-3 bg-purple-400/20 rounded-full">
+                <Users className="w-4 h-4 sm:w-6 sm:h-6 text-purple-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20 hover:bg-black/60 transition-all duration-200">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-400">Revenue</p>
-                <p className="text-2xl font-bold text-yellow-400">R{stats.totalRevenue.toFixed(2)}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-400">Revenue</p>
+                <p className="text-lg sm:text-2xl font-bold text-yellow-400">R{stats.totalRevenue.toFixed(2)}</p>
               </div>
-              <div className="p-3 bg-yellow-400/20 rounded-full">
-                <span className="text-lg font-bold text-yellow-400">R</span>
+              <div className="p-2 sm:p-3 bg-yellow-400/20 rounded-full">
+                <span className="text-sm sm:text-lg font-bold text-yellow-400">R</span>
               </div>
             </div>
           </CardContent>
@@ -533,27 +535,27 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
 
       {/* Enhanced Controls */}
       <Card className="bg-black/40 backdrop-blur-sm border-gray-300/20">
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <CardContent className="p-3 sm:p-6">
+          <div className="flex flex-col gap-3 sm:gap-4">
             {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            <div className="flex flex-col gap-3 flex-1">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 sm:w-4 sm:h-4" />
                 <input
                   type="text"
                   placeholder="Search packages..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-black/60 border border-gray-300/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
+                  className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 text-xs sm:text-sm bg-black/60 border border-gray-300/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50 transition-all duration-200"
                 />
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {/* Service Filter */}
                 <select
                   value={filterService}
                   onChange={(e) => setFilterService(e.target.value)}
-                  className="px-3 py-2 bg-black/60 border border-gray-300/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50"
+                  className="flex-1 sm:flex-none min-w-[120px] px-2 sm:px-3 py-2 text-xs sm:text-sm bg-black/60 border border-gray-300/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400/50"
                 >
                   <option value="all">All Services</option>
                   {uniqueServices.map(service => (
@@ -568,10 +570,11 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                     variant={filterTier === tier ? "default" : "outline"}
                     size="sm"
                     onClick={() => setFilterTier(tier)}
-                    className={filterTier === tier ? 
-                      "bg-blue-400 hover:bg-blue-500 text-white" : 
-                      "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
-                    }
+                    className={`text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto ${
+                      filterTier === tier ? 
+                        "bg-blue-400 hover:bg-blue-500 text-white" : 
+                        "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                    }`}
                   >
                     {tier === 'all' ? 'All' : tier.charAt(0).toUpperCase() + tier.slice(1)}
                   </Button>
@@ -580,39 +583,45 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-end sm:justify-start">
               <Button
                 variant={viewMode === 'grouped' ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode('grouped')}
-                className={viewMode === 'grouped' ? 
-                  "bg-blue-400 hover:bg-blue-500 text-white" : 
-                  "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
-                }
+                className={`p-2 sm:px-3 sm:py-2 h-auto ${
+                  viewMode === 'grouped' ? 
+                    "bg-blue-400 hover:bg-blue-500 text-white" : 
+                    "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                }`}
+                title="Grouped View"
               >
-                <Layers className="w-4 h-4" />
+                <Layers className="w-3 h-3 sm:w-4 sm:h-4" />
               </Button>
               <Button
                 variant={viewMode === 'grid' ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode('grid')}
-                className={viewMode === 'grid' ? 
-                  "bg-blue-400 hover:bg-blue-500 text-white" : 
-                  "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
-                }
+                className={`p-2 sm:px-3 sm:py-2 h-auto ${
+                  viewMode === 'grid' ? 
+                    "bg-blue-400 hover:bg-blue-500 text-white" : 
+                    "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                }`}
+                title="Grid View"
               >
-                <Grid3X3 className="w-4 h-4" />
+                <Grid3X3 className="w-3 h-3 sm:w-4 sm:h-4" />
               </Button>
               <Button
                 variant={viewMode === 'list' ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode('list')}
-                className={viewMode === 'list' ? 
-                  "bg-blue-400 hover:bg-blue-500 text-white" : 
-                  "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
-                }
+                className={`p-2 sm:px-3 sm:py-2 h-auto ${
+                  viewMode === 'list' ? 
+                    "bg-blue-400 hover:bg-blue-500 text-white" : 
+                    "border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                }`}
+                title="List View"
               >
-                <List className="w-4 h-4" />
+                <List className="w-3 h-3 sm:w-4 sm:h-4" />
               </Button>
             </div>
           </div>
@@ -622,38 +631,40 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
       {/* Bulk Actions */}
       {selectedItems.size > 0 && (
         <Card className="bg-blue-500/10 border-blue-400/20">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CheckSquare className="w-5 h-5 text-blue-400" />
-                <span className="text-blue-300 font-medium">
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                <span className="text-blue-300 font-medium text-sm sm:text-base">
                   {selectedItems.size} package{selectedItems.size !== 1 ? 's' : ''} selected
                 </span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   size="sm"
                   onClick={() => bulkToggleActive(Array.from(selectedItems), true)}
-                  className="bg-green-500/20 text-green-300 hover:bg-green-500/30 border-green-400/30"
+                  className="bg-green-500/20 text-green-300 hover:bg-green-500/30 border-green-400/30 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto"
                 >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Activate All
+                  <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Activate All</span>
+                  <span className="sm:hidden">Activate</span>
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => bulkToggleActive(Array.from(selectedItems), false)}
-                  className="bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border-orange-400/30"
+                  className="bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border-orange-400/30 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto"
                 >
-                  <EyeOff className="w-4 h-4 mr-2" />
-                  Deactivate All
+                  <EyeOff className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Deactivate All</span>
+                  <span className="sm:hidden">Deactivate</span>
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setSelectedItems(new Set())}
-                  className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                  className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto"
                 >
-                  Clear Selection
+                  Clear
                 </Button>
               </div>
             </div>
@@ -687,21 +698,23 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                 variant="outline"
                 size="sm"
                 onClick={toggleAllServices}
-                className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto"
               >
                 {expandedServices.size === serviceGroups.length ? (
                   <>
-                    <Minimize2 className="w-4 h-4 mr-2" />
-                    Collapse All
+                    <Minimize2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Collapse All</span>
+                    <span className="sm:hidden">Collapse</span>
                   </>
                 ) : (
                   <>
-                    <Maximize2 className="w-4 h-4 mr-2" />
-                    Expand All
+                    <Maximize2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Expand All</span>
+                    <span className="sm:hidden">Expand</span>
                   </>
                 )}
               </Button>
-              <span className="text-sm text-gray-400">
+              <span className="text-xs sm:text-sm text-gray-400">
                 {serviceGroups.length} service{serviceGroups.length !== 1 ? 's' : ''} • {filteredItems.length} packages
               </span>
             </div>
@@ -714,30 +727,31 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
             return (
               <Card key={group.serviceName} className="bg-black/40 backdrop-blur-sm border-gray-300/20">
                 <CardHeader 
-                  className="cursor-pointer hover:bg-black/60 transition-colors duration-200"
+                  className="cursor-pointer hover:bg-black/60 transition-colors duration-200 p-3 sm:p-6"
                   onClick={() => toggleServiceExpansion(group.serviceName)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                       {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-blue-400" />
+                        <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 flex-shrink-0" />
                       ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 flex-shrink-0" />
                       )}
-                      <div className="p-2 bg-blue-400/20 rounded-lg">
-                        <Target className="w-5 h-5 text-blue-400" />
+                      <div className="p-1.5 sm:p-2 bg-blue-400/20 rounded-lg flex-shrink-0">
+                        <Target className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                       </div>
-                      <div>
-                        <CardTitle className="text-lg text-white">{group.serviceName}</CardTitle>
-                        <div className="flex items-center gap-4 text-sm text-gray-400 mt-1">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-base sm:text-lg text-white truncate">{group.serviceName}</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-400 mt-1">
                           <span>{group.stats.total} packages</span>
                           <span>{group.stats.active} active</span>
                           <span>{group.stats.totalBookings} bookings</span>
-                          <span>R{group.stats.totalRevenue.toFixed(2)} revenue</span>
+                          <span className="hidden sm:inline">R{group.stats.totalRevenue.toFixed(2)} revenue</span>
+                          <span className="sm:hidden">R{group.stats.totalRevenue.toFixed(0)}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Button
                         size="sm"
                         variant="outline"
@@ -745,10 +759,11 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                           e.stopPropagation();
                           selectAllInService(group.serviceName);
                         }}
-                        className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50"
+                        className="border-gray-300/20 text-gray-300 hover:bg-gray-700/50 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto"
                       >
-                        <CheckSquare className="w-4 h-4 mr-2" />
-                        Select All
+                        <CheckSquare className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Select All</span>
+                        <span className="sm:hidden">Select</span>
                       </Button>
                     </div>
                   </div>
@@ -756,7 +771,7 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
 
                 {isExpanded && (
                   <CardContent className="pt-0">
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                       {group.items.map((item) => {
                         const tier = getPackageTier(item.title);
                         const tierConfig = getTierConfig(tier);
@@ -789,13 +804,13 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                               <TierIcon className={`w-4 h-4 ${tierConfig.color}`} />
                             </div>
 
-                            <CardHeader className="pb-4">
+                            <CardHeader className="pb-3 sm:pb-4 p-3 sm:p-6">
                               <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <CardTitle className="text-lg text-white group-hover:text-blue-400 transition-colors duration-200">
+                                <div className="flex-1 min-w-0">
+                                  <CardTitle className="text-base sm:text-lg text-white group-hover:text-blue-400 transition-colors duration-200 truncate">
                                     {item.title}
                                   </CardTitle>
-                                  <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                                     <Badge 
                                       variant="outline" 
                                       className={`text-xs ${tierConfig.color} ${tierConfig.borderColor}`}
@@ -813,44 +828,44 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                               </div>
                             </CardHeader>
 
-                            <CardContent className="space-y-4">
-                              <p className="text-sm text-gray-300 line-clamp-2">{item.shortDesc}</p>
+                            <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6 pt-0">
+                              <p className="text-xs sm:text-sm text-gray-300 line-clamp-2">{item.shortDesc}</p>
                               
                               {/* Package Details */}
-                              <div className="space-y-3">
+                              <div className="space-y-2 sm:space-y-3">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                                    <span className="text-sm font-bold text-green-400">R</span>
+                                  <span className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                                    <span className="text-xs sm:text-sm font-bold text-green-400">R</span>
                                     Price
                                   </span>
-                                  <span className="font-bold text-green-400 text-lg">
+                                  <span className="font-bold text-green-400 text-base sm:text-lg">
                                     {item.currency} {item.price}
                                   </span>
                                 </div>
                                 
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                                    <Clock className="w-4 h-4" />
+                                  <span className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                                    <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                                     Duration
                                   </span>
-                                  <span className="text-white font-medium">
+                                  <span className="text-white font-medium text-xs sm:text-sm">
                                     {formatDuration(item.durationMins)}
                                   </span>
                                 </div>
                                 
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                                    <Users className="w-4 h-4" />
+                                  <span className="text-xs sm:text-sm font-medium text-gray-400 flex items-center gap-1.5 sm:gap-2">
+                                    <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                                     Bookings
                                   </span>
-                                  <span className="text-white font-medium">
+                                  <span className="text-white font-medium text-xs sm:text-sm">
                                     {item._count.bookings}
                                   </span>
                                 </div>
                               </div>
 
                               {/* Action Buttons */}
-                              <div className="flex gap-2 pt-2">
+                              <div className="flex gap-2 pt-2 flex-wrap">
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -858,16 +873,16 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                                     setEditingItem(item);
                                     setShowForm(true);
                                   }}
-                                  className="flex-1 border-gray-300/20 text-gray-300 hover:bg-gray-700/50 hover:text-white transition-all duration-200"
+                                  className="flex-1 border-gray-300/20 text-gray-300 hover:bg-gray-700/50 hover:text-white transition-all duration-200 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto"
                                 >
-                                  <Edit className="w-4 h-4 mr-2" />
+                                  <Edit className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                                   Edit
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleToggleActive(item)}
-                                  className={`flex-1 transition-all duration-200 ${
+                                  className={`flex-1 transition-all duration-200 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto ${
                                     item.isActive 
                                       ? 'border-orange-300/20 text-orange-300 hover:bg-orange-700/50' 
                                       : 'border-green-300/20 text-green-300 hover:bg-green-700/50'
@@ -875,12 +890,12 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                                 >
                                   {item.isActive ? (
                                     <>
-                                      <EyeOff className="w-4 h-4 mr-2" />
+                                      <EyeOff className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                                       Hide
                                     </>
                                   ) : (
                                     <>
-                                      <Eye className="w-4 h-4 mr-2" />
+                                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                                       Show
                                     </>
                                   )}
@@ -889,9 +904,9 @@ export function CatalogueManager({ providerId }: CatalogueManagerProps) {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleDelete(item)}
-                                  className="border-red-300/20 text-red-300 hover:bg-red-700/50 hover:text-white transition-all duration-200"
+                                  className="border-red-300/20 text-red-300 hover:bg-red-700/50 hover:text-white transition-all duration-200 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 h-auto"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                                 </Button>
                               </div>
                             </CardContent>

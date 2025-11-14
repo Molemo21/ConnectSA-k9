@@ -90,6 +90,10 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   const [isSaved, setIsSaved] = useState(false)
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number | null>(null)
   const NOTES_MAX = 500
+  
+  // Refs for date and time inputs
+  const dateInputRef = React.useRef<HTMLInputElement>(null)
+  const timeInputRef = React.useRef<HTMLInputElement>(null)
 
   // Service-specific information state
   const [serviceInfo, setServiceInfo] = useState({
@@ -541,16 +545,67 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
       return
     }
 
+    // Check if we're on HTTPS or localhost (required for geolocation)
+    // Note: Modern browsers allow geolocation on localhost even without HTTPS
+    const hostname = window.location.hostname.toLowerCase()
+    const isLocalhost = hostname === 'localhost' || 
+                       hostname === '127.0.0.1' || 
+                       hostname.startsWith('192.168.') ||
+                       hostname.startsWith('10.') ||
+                       hostname.startsWith('172.16.') ||
+                       hostname.endsWith('.local')
+    const isSecure = window.location.protocol === 'https:' || isLocalhost
+    
+    // Only warn about HTTPS if not localhost (browsers handle this differently)
+    if (!isSecure && !isLocalhost) {
+      console.warn('Geolocation may require HTTPS. Current protocol:', window.location.protocol)
+      // Don't block - let the browser handle it and show its own error
+    }
+
+    // Check permission status if Permissions API is available
+    if ('permissions' in navigator) {
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+        console.log('Geolocation permission status:', permissionStatus.state)
+        
+        if (permissionStatus.state === 'denied') {
+          setErrors(prev => ({ ...prev, address: 'Location access is blocked. Please enable it in your browser settings.' }))
+          return
+        }
+      } catch (permError) {
+        // Permissions API might not be fully supported, continue anyway
+        console.log('Permissions API not fully supported, continuing...')
+      }
+    }
+
     setIsGeocoding(true)
     setErrors(prev => ({ ...prev, address: undefined }))
 
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        })
+        // Use watchPosition with a timeout to get better error handling
+        const options = {
+          enableHighAccuracy: false, // Changed to false for better compatibility
+          timeout: 15000, // Increased timeout to 15 seconds
+          maximumAge: 60000 // 1 minute - use cached position if available
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            resolve(pos)
+          },
+          (err) => {
+            console.error('Geolocation error details:', {
+              code: err.code,
+              message: err.message,
+              PERMISSION_DENIED: err.PERMISSION_DENIED,
+              POSITION_UNAVAILABLE: err.POSITION_UNAVAILABLE,
+              TIMEOUT: err.TIMEOUT
+            })
+            reject(err)
+          },
+          options
+        )
       })
 
       const { latitude, longitude } = position.coords
@@ -567,24 +622,35 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
         setErrors(prev => ({ ...prev, address: 'Could not get readable address, using coordinates' }))
       } else {
         handleFieldChange('address', result.address)
+        setErrors(prev => ({ ...prev, address: undefined }))
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Geolocation error:', error)
       let errorMessage = 'Failed to get your location'
       
-      if (error instanceof GeolocationPositionError) {
+      // Check if it's a GeolocationPositionError
+      if (error && typeof error.code === 'number') {
+        const PERMISSION_DENIED = 1
+        const POSITION_UNAVAILABLE = 2
+        const TIMEOUT = 3
+        
         switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. Please enable location permissions.'
+          case PERMISSION_DENIED:
+            errorMessage = 'Location access denied. Please check your browser settings and allow location access for this site.'
             break
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information unavailable.'
+          case POSITION_UNAVAILABLE:
+            errorMessage = 'Location information is currently unavailable. Please try again or enter your address manually.'
             break
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out.'
+          case TIMEOUT:
+            errorMessage = 'Location request timed out. Please try again or enter your address manually.'
             break
+          default:
+            errorMessage = `Unable to get location (Error code: ${error.code}). Please enter your address manually.`
         }
+      } else if (error?.message) {
+        // If there's a message, use it
+        errorMessage = error.message
       }
       
       setErrors(prev => ({ ...prev, address: errorMessage }))
@@ -734,17 +800,26 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
                 <Label className="text-sm sm:text-base font-medium text-white">Date</Label>
                 <div className="relative">
-                  <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                  <button
+                    type="button"
+                    onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+                    className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10 p-2 hover:bg-gray-700/50 rounded transition-colors cursor-pointer"
+                    aria-label="Open date picker"
+                  >
+                    <CalendarDays className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400 hover:text-blue-300" />
+                  </button>
                   <Input
+                    ref={dateInputRef}
                     type="date"
                     value={value.date}
                     onChange={(e) => handleFieldChange('date', e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
-                    className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-14 sm:pl-16 pr-4 py-4 sm:py-5 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:h-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                    style={{ colorScheme: 'dark' }}
                   />
                 </div>
                 <div className="text-xs text-white/60 bg-white/5 p-2 rounded-lg">
-                  💡 <strong>Tip:</strong> You can click the calendar icon or type the date directly (e.g., "2024-01-15")
+                  💡 <strong>Tip:</strong> Click the calendar icon or type the date directly (e.g., "2024-01-15")
                 </div>
                 {errors.date ? (
                   <p className="text-xs sm:text-sm text-red-400">{errors.date}</p>
@@ -761,32 +836,43 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
                 <Label className="text-sm sm:text-base font-medium text-white">Time</Label>
                 <div className="relative">
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2" />
+                  <button
+                    type="button"
+                    onClick={() => timeInputRef.current?.showPicker?.() || timeInputRef.current?.click()}
+                    className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10 p-2 hover:bg-gray-700/50 rounded transition-colors cursor-pointer"
+                    aria-label="Open time picker"
+                  >
+                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400 hover:text-blue-300" />
+                  </button>
                   <Input
+                    ref={timeInputRef}
                     type="time"
                     value={value.time}
                     onChange={(e) => handleFieldChange('time', e.target.value)}
-                    className="pl-10 sm:pl-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-14 sm:pl-16 pr-4 py-4 sm:py-5 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:h-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+                    style={{ colorScheme: 'dark' }}
                   />
                 </div>
                 <div className="text-xs text-white/60 bg-white/5 p-2 rounded-lg">
-                  💡 <strong>Tip:</strong> You can click the time picker or type the time directly (e.g., "14:30" for 2:30 PM)
+                  💡 <strong>Tip:</strong> Click the clock icon or type the time directly (e.g., "14:30" for 2:30 PM)
                 </div>
                 {value.date && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-                    {timeSlots.slice(0, 6).map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => handleFieldChange('time', t)}
-                        className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
-                          value.time === t
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-700 text-white hover:bg-gray-600'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
+                  <div className="mt-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ scrollbarWidth: 'thin' }}>
+                      {timeSlots.map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => handleFieldChange('time', t)}
+                          className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-all duration-200 whitespace-nowrap ${
+                            value.time === t
+                              ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50'
+                              : 'bg-gray-700 text-white hover:bg-gray-600'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {errors.time ? (
@@ -815,45 +901,70 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
             <div className="space-y-4">
               <div className="space-y-2 sm:space-y-3 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
                 <Label className="text-sm sm:text-base font-medium text-white">Service Address</Label>
-                <div className="relative">
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10" />
-                  <Input
-                    value={value.address}
-                    onChange={(e) => handleAddressChange(e.target.value)}
-                    onKeyDown={onAddressKeyDown}
-                    onFocus={() => value.address.length >= 2 && setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    placeholder={addressPlaceholder || "Start typing your address..."}
-                    className="pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    autoComplete="street-address"
-                    aria-autocomplete="list"
-                    aria-expanded={showSuggestions}
-                  />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10" />
+                    <Input
+                      value={value.address}
+                      onChange={(e) => handleAddressChange(e.target.value)}
+                      onKeyDown={onAddressKeyDown}
+                      onFocus={() => value.address.length >= 2 && setShowSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      placeholder={addressPlaceholder || "Start typing your address..."}
+                      className="pl-10 sm:pl-12 pr-4 sm:pr-12 py-3 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white placeholder-gray-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoComplete="street-address"
+                      aria-autocomplete="list"
+                      aria-expanded={showSuggestions}
+                    />
+                    
+                    {/* Location icon inside input for desktop */}
+                    {!isSearchingAddress && !isGeocoding && (
+                      <button
+                        type="button"
+                        onClick={handleCurrentLocation}
+                        disabled={isGeocoding}
+                        className="hidden sm:block absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-10 p-1 hover:bg-gray-700/50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        aria-label="Use current location"
+                        title="Click to use your current location"
+                      >
+                        <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 hover:text-blue-300 cursor-pointer" />
+                      </button>
+                    )}
+                    
+                    {/* Loading indicator inside input for desktop */}
+                    {(isSearchingAddress || isGeocoding) && (
+                      <div className="hidden sm:block absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-10">
+                        <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-blue-400" />
+                      </div>
+                    )}
+                  </div>
                   
-                  {/* Location icon on the right - clickable to get current location */}
+                  {/* Location button - outside input on mobile */}
                   {!isSearchingAddress && !isGeocoding && (
                     <button
                       type="button"
                       onClick={handleCurrentLocation}
                       disabled={isGeocoding}
-                      className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-10 p-1 hover:bg-gray-700/50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      className="flex-shrink-0 sm:hidden p-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-2 border-gray-600"
                       aria-label="Use current location"
                       title="Click to use your current location"
                     >
-                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 hover:text-blue-300 cursor-pointer" />
+                      <MapPin className="w-5 h-5 text-blue-400" />
                     </button>
                   )}
                   
-                  {/* Loading indicator - shows when searching address or getting location */}
+                  {/* Loading indicator for mobile - outside input */}
                   {(isSearchingAddress || isGeocoding) && (
-                    <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-10">
-                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-blue-400" />
+                    <div className="flex-shrink-0 sm:hidden p-3 bg-gray-700 rounded-xl border-2 border-gray-600">
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
                     </div>
                   )}
-                  
-                  {/* Address suggestions dropdown */}
-                  {showSuggestions && addressSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto" role="listbox">
+                </div>
+                
+                {/* Address suggestions dropdown */}
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <div className="relative -mt-2">
+                    <div className="absolute top-0 left-0 right-0 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto" role="listbox">
                       {addressSuggestions.map((suggestion, index) => (
                         <button
                           key={index}
@@ -874,8 +985,8 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 
                 {/* Address format guidance */}
                 <div className="text-xs sm:text-sm text-white/70 bg-gray-800/50 p-3 rounded-lg animate-fade-in" style={{ animationDelay: '0.2s' }}>
@@ -1273,15 +1384,31 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               const Icon = step.icon
               const isActive = index === currentStep
               const isCompleted = index < currentStep
+              const isClickable = index <= currentStep || isCompleted
+              
+              const handleStepClick = () => {
+                if (isClickable && index !== currentStep) {
+                  setCurrentStep(index)
+                  setErrors({}) // Clear errors when navigating
+                }
+              }
               
               return (
-                <div key={step.id} className="flex flex-col items-center space-y-2 min-w-[60px]">
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={handleStepClick}
+                  disabled={!isClickable}
+                  className="flex flex-col items-center space-y-2 min-w-[60px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-black rounded-lg p-1 transition-all"
+                >
                   <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all duration-500 ${
                     isCompleted 
                       ? 'bg-green-500 border-green-500 text-white scale-110' 
                       : isActive 
                       ? 'bg-blue-500 border-blue-500 text-white scale-110 animate-pulse' 
-                      : 'bg-white border-gray-300 text-gray-400 scale-100'
+                      : isClickable
+                      ? 'bg-white border-gray-300 text-gray-400 scale-100 active:scale-95'
+                      : 'bg-gray-100 border-gray-200 text-gray-300 scale-100 opacity-50'
                   }`}>
                     {isCompleted ? (
                       <CheckCircle className="w-4 h-4" />
@@ -1290,11 +1417,11 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     )}
                   </div>
                   <span className={`text-xs font-medium text-center ${
-                    isActive ? 'text-white' : isCompleted ? 'text-green-300' : 'text-white/70'
+                    isActive ? 'text-white' : isCompleted ? 'text-green-300' : isClickable ? 'text-white/70' : 'text-white/40'
                   }`}>
                     {step.title}
                   </span>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -1307,24 +1434,40 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               const Icon = step.icon
               const isActive = index === currentStep
               const isCompleted = index < currentStep
+              const isClickable = index <= currentStep || isCompleted
+              
+              const handleStepClick = () => {
+                if (isClickable && index !== currentStep) {
+                  setCurrentStep(index)
+                  setErrors({}) // Clear errors when navigating
+                }
+              }
               
               return (
-                <div key={step.id} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-500 ${
-                    isCompleted 
-                      ? 'bg-green-500 border-green-500 text-white scale-110' 
-                      : isActive 
-                      ? 'bg-blue-500 border-blue-500 text-white scale-110 animate-pulse' 
-                      : 'bg-white border-gray-300 text-gray-400 scale-100'
-                  }`}>
+                <div key={step.id} className="flex items-center flex-1">
+                  <button
+                    type="button"
+                    onClick={handleStepClick}
+                    disabled={!isClickable}
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-500 ${
+                      isCompleted 
+                        ? 'bg-green-500 border-green-500 text-white scale-110 hover:scale-125 hover:shadow-lg cursor-pointer' 
+                        : isActive 
+                        ? 'bg-blue-500 border-blue-500 text-white scale-110 animate-pulse cursor-default' 
+                        : isClickable
+                        ? 'bg-white border-gray-300 text-gray-400 scale-100 hover:scale-110 hover:border-gray-400 cursor-pointer'
+                        : 'bg-gray-100 border-gray-200 text-gray-300 scale-100 cursor-not-allowed opacity-50'
+                    }`}
+                    title={isClickable ? `Go to: ${step.title}` : 'Complete previous steps first'}
+                  >
                     {isCompleted ? (
                       <CheckCircle className="w-5 h-5" />
                     ) : (
                       <Icon className="w-5 h-5" />
                     )}
-                  </div>
+                  </button>
                   {index < steps.length - 1 && (
-                    <div className={`w-12 h-0.5 mx-2 transition-all duration-300 ${
+                    <div className={`flex-1 h-0.5 mx-2 transition-all duration-300 ${
                       isCompleted ? 'bg-green-500' : 'bg-gray-300'
                     }`} />
                   )}

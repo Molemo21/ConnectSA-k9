@@ -1,9 +1,12 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useLogout } from "@/hooks/use-logout"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ProviderCatalogueDashboard } from "@/components/provider/provider-catalogue-dashboard"
 import { 
   Home, 
   Calendar, 
@@ -20,7 +23,8 @@ import {
   DollarSign,
   Wrench,
   Activity,
-  LogOut
+  LogOut,
+  Package
 } from "lucide-react"
 
 interface MobileBottomNavProps {
@@ -31,6 +35,34 @@ interface MobileBottomNavProps {
 export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
   const pathname = usePathname()
   const { logout, isLoggingOut } = useLogout()
+  const [showCatalogueModal, setShowCatalogueModal] = useState(false)
+  const [providerId, setProviderId] = useState<string | null>(null)
+  
+  // Fetch provider ID when modal opens
+  useEffect(() => {
+    if (showCatalogueModal && userRole === "PROVIDER" && !providerId) {
+      const fetchProviderId = async () => {
+        try {
+          const response = await fetch('/api/auth/me')
+          if (response.ok) {
+            const data = await response.json()
+            const userId = data.user?.id || data.id
+            const providerIdFromUser = data.user?.provider?.id || data.provider?.id
+            
+            // If we have a provider ID, use it; otherwise use user ID
+            if (providerIdFromUser) {
+              setProviderId(providerIdFromUser)
+            } else if (userId) {
+              setProviderId(userId)
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching provider ID:', error)
+        }
+      }
+      fetchProviderId()
+    }
+  }, [showCatalogueModal, userRole, providerId])
 
   const handleLogout = async () => {
     try {
@@ -123,7 +155,8 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             label: "Home",
             active: pathname === "/provider/dashboard",
             isPrimary: false,
-            isLogout: false
+            isLogout: false,
+            isModal: false
           },
           {
             href: "/provider/bookings",
@@ -131,15 +164,18 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             label: "Jobs",
             active: pathname.startsWith("/provider") && pathname.includes("booking"),
             isPrimary: true, // Primary action - Manage Bookings
-            isLogout: false
+            isLogout: false,
+            isModal: false
           },
           {
-            href: "/provider/earnings",
-            icon: DollarSign,
-            label: "Earnings",
-            active: pathname === "/provider/earnings",
+            href: null,
+            icon: Package,
+            label: "Catalogue",
+            active: false,
             isPrimary: false,
-            isLogout: false
+            isLogout: false,
+            isModal: true,
+            modalType: "catalogue"
           },
           {
             href: "/provider/profile",
@@ -147,7 +183,8 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             label: "Profile",
             active: pathname === "/provider/profile",
             isPrimary: false,
-            isLogout: false
+            isLogout: false,
+            isModal: false
           },
           {
             href: null,
@@ -155,7 +192,8 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             label: "Logout",
             active: false,
             isPrimary: false,
-            isLogout: true
+            isLogout: true,
+            isModal: false
           }
         ]
       
@@ -265,6 +303,26 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
             )
           }
           
+          // Handle modal buttons
+          if (item.isModal && item.modalType === "catalogue") {
+            return (
+              <button
+                key="catalogue-modal"
+                onClick={() => setShowCatalogueModal(true)}
+                className={cn(
+                  "flex flex-col items-center space-y-1 py-2 px-3 rounded-xl text-xs font-medium transition-all duration-200",
+                  "min-h-[48px] min-w-[48px] justify-center", // Larger touch target for better UX
+                  "text-white/60 hover:text-white hover:bg-white/10"
+                )}
+              >
+                <Icon className="w-5 h-5 transition-transform duration-200" />
+                <span className="text-xs leading-tight font-medium">
+                  {item.label}
+                </span>
+              </button>
+            )
+          }
+          
           return (
             <Link
               key={item.href}
@@ -296,6 +354,24 @@ export function MobileBottomNav({ userRole, className }: MobileBottomNavProps) {
           )
         })}
       </div>
+      
+      {/* Catalogue Modal */}
+      <Dialog open={showCatalogueModal} onOpenChange={setShowCatalogueModal}>
+        <DialogContent className="max-w-[100vw] sm:max-w-[95vw] max-h-[100vh] sm:max-h-[90vh] overflow-y-auto bg-black/95 border-gray-800 p-2 sm:p-6 m-0 sm:m-4 rounded-none sm:rounded-lg h-full sm:h-auto">
+          <DialogHeader className="px-2 sm:px-0">
+            <DialogTitle className="text-white text-lg sm:text-xl font-bold">Catalogue</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 sm:mt-4 -mx-2 sm:mx-0">
+            {providerId ? (
+              <ProviderCatalogueDashboard providerId={providerId} />
+            ) : (
+              <div className="text-white/70 text-center py-8 text-sm sm:text-base">
+                Loading catalogue...
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </nav>
   )
 }
