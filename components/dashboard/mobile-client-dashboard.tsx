@@ -194,6 +194,8 @@ function DesktopSidebar({
   isCollapsed: boolean
   setIsCollapsed: (collapsed: boolean) => void
 }) {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
+  
   const sidebarItems = [
     {
       id: "overview",
@@ -358,6 +360,8 @@ function MainContent({
   selectedFilter: string
   setSelectedFilter: (filter: string) => void
 }) {
+  const { handleNavigation, buttonLoading } = useButtonNavigation()
+  
   // Personalization hook for dashboard widgets
   const { widgetOrder, hiddenWidgets, toggleWidgetVisibility } = useDashboardPersonalization()
   
