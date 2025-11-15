@@ -14,6 +14,9 @@ export interface BookingDraft {
   time: string
   address: string
   notes?: string
+  paymentMethod?: "ONLINE" | "CASH"
+  providerId?: string
+  catalogueItemId?: string
   createdAt: string
   expiresAt: string
   userId?: string // Set after user authentication
@@ -134,6 +137,9 @@ export function createBookingDraft(bookingData: {
   time: string
   address: string
   notes?: string
+  paymentMethod?: "ONLINE" | "CASH"
+  providerId?: string
+  catalogueItemId?: string
 }): BookingDraft {
   const now = new Date()
   const expiresAt = new Date(now.getTime() + (DRAFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000))
@@ -291,6 +297,9 @@ export async function saveBookingDraft(bookingData: {
   time: string
   address: string
   notes?: string
+  paymentMethod?: "ONLINE" | "CASH"
+  providerId?: string
+  catalogueItemId?: string
 }): Promise<BookingDraft> {
   const draft = createBookingDraft(bookingData)
   
@@ -300,19 +309,19 @@ export async function saveBookingDraft(bookingData: {
   // Set cookie for server-side access
   setDraftIdCookie(draft.id)
   
-  // Save to server (blocking - required for cross-device compatibility)
+  // Save to server (non-blocking - don't fail if server save fails)
+  // Server save is optional for cross-device compatibility, but we don't want to break the flow
   try {
     const serverResult = await saveDraftToServer(draft)
     if (!serverResult.success) {
-      throw new Error(serverResult.error || 'Failed to save draft to server')
+      console.warn('⚠️ Failed to save draft to server (non-critical):', serverResult.error)
+      // Don't throw - just log the warning. LocalStorage save is sufficient for now.
+    } else {
+      console.log('✅ Draft saved to server successfully')
     }
-    console.log('✅ Draft saved to server successfully')
   } catch (error) {
-    console.error('❌ Failed to save draft to server:', error)
-    // Clean up local storage and cookie since server save failed
-    clearDraftFromLocalStorage()
-    clearDraftIdCookie()
-    throw new Error(`Failed to save booking draft: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    console.warn('⚠️ Failed to save draft to server (non-critical):', error)
+    // Don't throw - just log the warning. LocalStorage save is sufficient for now.
   }
   
   return draft

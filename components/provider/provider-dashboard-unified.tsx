@@ -84,7 +84,9 @@ import {
 
   Search,
 
-  ArrowUpDown
+  ArrowUpDown,
+
+  FileText
 
 } from "lucide-react"
 
@@ -985,6 +987,21 @@ function ProviderMainContent({
                     </div>
                   </div>
                 </div>
+
+                {/* Service Details - Always Visible */}
+                {booking.description && (
+                  <div className="mt-4 pt-4 border-t border-gray-700/50">
+                    <div className="flex items-start space-x-2">
+                      <FileText className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h5 className="font-semibold text-white mb-2">Service Details</h5>
+                        <p className="text-sm text-gray-300 bg-gray-900/50 p-3 rounded-lg whitespace-pre-wrap">
+                          {booking.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {booking.status === 'COMPLETED' && booking.review && (
                   <div className="mt-3 text-sm text-gray-300">

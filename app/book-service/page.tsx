@@ -21,6 +21,7 @@ import { ModernBookingForm as BookingFormPanel } from "@/components/book-service
 import { BookingSummary as SummaryPanel } from "@/components/book-service/BookingSummary"
 import { ProviderDiscoveryPanel } from "@/components/book-service/ProviderDiscoveryPanel"
 import { ConfirmPanel } from "@/components/book-service/ConfirmPanel"
+import { saveBookingDraft } from "@/lib/booking-draft"
 
 // Error Boundary Component
 interface ErrorBoundaryState {
@@ -147,6 +148,10 @@ function BookServiceContent() {
     address: "",
     notes: "",
     paymentMethod: "ONLINE" as "ONLINE" | "CASH",
+    selectedProviderId: null as string | null,
+    selectedCatalogueItemId: null as string | null,
+    selectedProviderData: null as any,
+    selectedPackageData: null as any,
   } as {
     serviceId: string;
     date: string;
@@ -154,6 +159,10 @@ function BookServiceContent() {
     address: string;
     notes?: string;
     paymentMethod: "ONLINE" | "CASH";
+    selectedProviderId: string | null;
+    selectedCatalogueItemId: string | null;
+    selectedProviderData: any;
+    selectedPackageData: any;
   });
   const [errors, setErrors] = useState<Partial<Record<keyof typeof form, string>>>({})
   const [submitting, setSubmitting] = useState(false);
@@ -222,20 +231,16 @@ function BookServiceContent() {
               date: draft.date,
               time: draft.time,
               address: draft.address,
-              notes: draft.notes || ""
+              notes: draft.notes || "",
+              paymentMethod: draft.paymentMethod || "ONLINE",
+              selectedProviderId: draft.providerId || null,
+              selectedCatalogueItemId: draft.catalogueItemId || null,
+              selectedProviderData: null,
+              selectedPackageData: null
             });
-            // Determine the correct step based on draft data
-            // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
-            const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
-            if (isFormComplete) {
-              // Skip the form entirely and go directly to provider discovery
-              setShowProviderDiscovery(true);
-              setActiveStep('DISCOVERY');
-              addDebugInfo('Form complete - skipping to provider discovery');
-            } else {
-              setActiveStep('FORM');
-              addDebugInfo('Form incomplete - showing form to complete missing fields');
-            }
+            // Always show the form - ModernBookingForm will handle navigation internally
+            setActiveStep('FORM');
+            addDebugInfo('Draft restored from sessionStorage - showing booking form');
             sessionStorage.removeItem("resumeBookingData");
             return;
           } else {
@@ -258,20 +263,16 @@ function BookServiceContent() {
                   date: draft.date,
                   time: draft.time,
                   address: draft.address,
-                  notes: draft.notes || ""
+                  notes: draft.notes || "",
+                  paymentMethod: (draft as any).paymentMethod || "ONLINE",
+                  selectedProviderId: (draft as any).providerId || null,
+                  selectedCatalogueItemId: (draft as any).catalogueItemId || null,
+                  selectedProviderData: null,
+                  selectedPackageData: null
                 });
-                // Determine the correct step based on draft data
-                // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
-                const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
-                if (isFormComplete) {
-                  // Skip the form entirely and go directly to provider discovery
-                  setShowProviderDiscovery(true);
-                  setActiveStep('DISCOVERY');
-                  addDebugInfo('Form complete - skipping to provider discovery');
-                } else {
-                  setActiveStep('FORM');
-                  addDebugInfo('Form incomplete - showing form to complete missing fields');
-                }
+                // Always show the form - ModernBookingForm will handle navigation internally
+                setActiveStep('FORM');
+                addDebugInfo('Draft restored from URL - showing booking form');
                 return;
               } else {
                 addDebugInfo('No draft found with provided draftId');
@@ -295,20 +296,16 @@ function BookServiceContent() {
               date: draft.date,
               time: draft.time,
               address: draft.address,
-              notes: draft.notes || ""
+              notes: draft.notes || "",
+              paymentMethod: (draft as any).paymentMethod || "ONLINE",
+              selectedProviderId: (draft as any).providerId || null,
+              selectedCatalogueItemId: (draft as any).catalogueItemId || null,
+              selectedProviderData: null,
+              selectedPackageData: null
             });
-            // Determine the correct step based on draft data
-            // If all form fields are filled, user was likely at DISCOVERY step (Choose Provider)
-            const isFormComplete = draft.serviceId && draft.date && draft.time && draft.address;
-            if (isFormComplete) {
-              // Skip the form entirely and go directly to provider discovery
-              setShowProviderDiscovery(true);
-              setActiveStep('DISCOVERY');
-              addDebugInfo('Form complete - skipping to provider discovery');
-            } else {
-              setActiveStep('FORM');
-              addDebugInfo('Form incomplete - showing form to complete missing fields');
-            }
+            // Always show the form - ModernBookingForm will handle navigation internally
+            setActiveStep('FORM');
+            addDebugInfo('Draft restored - showing booking form');
             
             // Clear the draft after restoring
             const { clearBookingDraft } = await import('@/lib/booking-draft')
@@ -465,7 +462,7 @@ function BookServiceContent() {
     setSubmitting(false);
   };
 
-  // Handle provider selection
+  // Handle provider selection (old flow - creates booking immediately)
   const handleProviderSelected = async (providerId: string, providerData?: any) => {
     addDebugInfo(`Provider selected: ${providerId}`);
     setSelectedProviderId(providerId);
@@ -503,16 +500,44 @@ function BookServiceContent() {
     }
   };
 
+  // Handle package selection (new flow - stores selection and navigates to payment)
+  const handlePackageSelected = (providerId: string, catalogueItemId: string, providerData?: any, packageData?: any) => {
+    addDebugInfo(`Package selected: ${providerId} - ${catalogueItemId}`);
+    
+    // Update form state with selected provider and package
+    setForm(prev => ({
+      ...prev,
+      selectedProviderId: providerId,
+      selectedCatalogueItemId: catalogueItemId,
+      selectedProviderData: providerData,
+      selectedPackageData: packageData
+    }));
+    
+    // Save to draft
+    if (typeof window !== 'undefined') {
+      saveBookingDraft({
+        serviceId: form.serviceId,
+        date: form.date,
+        time: form.time,
+        address: form.address,
+        notes: form.notes,
+        paymentMethod: form.paymentMethod,
+        providerId: providerId,
+        catalogueItemId: catalogueItemId
+      });
+    }
+  };
+
   // Handle login success from modal
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
     setShowLoginModal(false);
     addDebugInfo("User successfully logged in, continuing with booking");
     
-    // Automatically proceed to provider discovery after successful login
-      setShowProviderDiscovery(true);
-      setActiveStep('DISCOVERY');
-      addDebugInfo("Proceeding to provider discovery after login");
+    // Stay in the form - ModernBookingForm will handle navigation internally
+    // User can continue from where they left off
+    setActiveStep('FORM');
+    addDebugInfo("User logged in - continuing in booking form");
   };
 
   const selectedService = services.find(s => s.id === form.serviceId);
@@ -735,6 +760,10 @@ function BookServiceContent() {
                   address: next.address,
                   notes: next.notes || "",
                   paymentMethod: next.paymentMethod || "ONLINE",
+                  selectedProviderId: next.selectedProviderId || null,
+                  selectedCatalogueItemId: next.selectedCatalogueItemId || null,
+                  selectedProviderData: next.selectedProviderData || null,
+                  selectedPackageData: next.selectedPackageData || null,
                 });
               }}
               onNext={() => {
@@ -744,6 +773,7 @@ function BookServiceContent() {
               }}
               submitting={submitting}
               onProviderSelected={handleProviderSelected}
+              onPackageSelected={handlePackageSelected}
               onLoginSuccess={() => {
                 setIsAuthenticated(true);
                 setShowLoginModal(false);

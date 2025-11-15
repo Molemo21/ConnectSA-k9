@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { z } from "zod"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,15 +23,10 @@ import {
   ChevronRight,
   ChevronLeft,
   Plus,
-  Minus,
   Home,
-  Bath,
-  ChefHat,
-  Sofa,
-  Bed,
-  Car,
   CreditCard,
-  Banknote
+  Banknote,
+  Package
 } from "lucide-react"
 import { reverseGeocode, searchAddresses, searchAddressesGoogle, type AddressSuggestion } from "@/lib/geocoding"
 import { saveBookingDraft } from "@/lib/booking-draft"
@@ -52,12 +48,24 @@ const fetcher = (url: string, signal?: AbortSignal) => fetch(url, { signal }).th
 })
 
 interface ModernBookingFormProps {
-  value: { serviceId: string; date: string; time: string; address: string; notes?: string; paymentMethod: 'ONLINE' | 'CASH' }
+  value: { 
+    serviceId: string
+    date: string
+    time: string
+    address: string
+    notes?: string
+    paymentMethod: 'ONLINE' | 'CASH'
+    selectedProviderId?: string | null
+    selectedCatalogueItemId?: string | null
+    selectedProviderData?: any
+    selectedPackageData?: any
+  }
   onChange: (next: ModernBookingFormProps["value"]) => void
   onNext: () => void
   onBack?: () => void
   submitting?: boolean
   onProviderSelected?: (providerId: string) => void
+  onPackageSelected?: (providerId: string, catalogueItemId: string, providerData?: any, packageData?: any) => void
   onLoginSuccess?: () => void
   isAuthenticated?: boolean
   onShowLoginModal?: () => void
@@ -68,15 +76,26 @@ const steps = [
   { id: 'datetime', title: 'Date & Time', icon: CalendarDays },
   { id: 'address', title: 'Address', icon: MapPin },
   { id: 'details', title: 'Service Details', icon: Home },
+  { id: 'provider', title: 'Choose Provider', icon: Package },
   { id: 'payment', title: 'Payment Method', icon: CreditCard },
-  { id: 'review', title: 'Review', icon: CheckCircle },
-  { id: 'provider', title: 'Choose Provider', icon: CheckCircle },
+  { id: 'review', title: 'Review & Confirm', icon: CheckCircle },
 ]
 
-export function ModernBookingForm({ value, onChange, onNext, onBack, submitting, onProviderSelected, onLoginSuccess, isAuthenticated, onShowLoginModal }: ModernBookingFormProps) {
+// Standardized error messages for each step (defined outside component for better performance)
+const stepErrorMessages: Record<number, string> = {
+  0: 'Please select a service',
+  1: 'Please select both date and time',
+  2: 'Please enter your address',
+  4: 'Please select a provider and package',
+  5: 'Please select a payment method'
+}
+
+export function ModernBookingForm({ value, onChange, onNext, onBack, submitting, onProviderSelected, onPackageSelected, onLoginSuccess, isAuthenticated, onShowLoginModal }: ModernBookingFormProps) {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<keyof typeof value, string>>>({})
+  const [bookingError, setBookingError] = useState<string | null>(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [serviceQuery, setServiceQuery] = useState("")
   const [recentServiceIds, setRecentServiceIds] = useState<string[]>([])
@@ -86,9 +105,13 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE')
+  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>(value.paymentMethod || 'ONLINE')
   const [isSaved, setIsSaved] = useState(false)
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number | null>(null)
+  const [stepInitialized, setStepInitialized] = useState(false)
+  const [isConfirmingBooking, setIsConfirmingBooking] = useState(false)
+  const [bookingSuccess, setBookingSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const NOTES_MAX = 500
   
   // Refs for date and time inputs
@@ -97,8 +120,6 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
 
   // Service-specific information state
   const [serviceInfo, setServiceInfo] = useState({
-    selectedRooms: [] as string[],
-    roomQuantities: {} as Record<string, number>,
     additionalServices: [] as string[]
   })
 
@@ -254,75 +275,6 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     }
   }
 
-  // Service-specific room options
-  const getServiceRooms = (service: any) => {
-    if (!service) return []
-    
-    const serviceName = service.name?.toLowerCase() || ''
-    const category = service.categoryName?.toLowerCase() || service.category?.toLowerCase() || ''
-    
-    if (serviceName.includes('clean') || category.includes('clean')) {
-      return [
-        { id: 'kitchen', name: 'Kitchen', icon: ChefHat, defaultQuantity: 1 },
-        { id: 'bathroom', name: 'Bathroom', icon: Bath, defaultQuantity: 1 },
-        { id: 'living_room', name: 'Living Room', icon: Sofa, defaultQuantity: 1 },
-        { id: 'bedroom', name: 'Bedroom', icon: Bed, defaultQuantity: 1 },
-        { id: 'dining_room', name: 'Dining Room', icon: Home, defaultQuantity: 1 },
-        { id: 'garage', name: 'Garage', icon: Car, defaultQuantity: 1 }
-      ]
-    } else if (serviceName.includes('paint') || category.includes('paint')) {
-      return [
-        { id: 'living_room', name: 'Living Room', icon: Sofa, defaultQuantity: 1 },
-        { id: 'bedroom', name: 'Bedroom', icon: Bed, defaultQuantity: 1 },
-        { id: 'kitchen', name: 'Kitchen', icon: ChefHat, defaultQuantity: 1 },
-        { id: 'bathroom', name: 'Bathroom', icon: Bath, defaultQuantity: 1 },
-        { id: 'dining_room', name: 'Dining Room', icon: Home, defaultQuantity: 1 }
-      ]
-    }
-    
-    return []
-  }
-
-  // Handle room selection
-  const handleRoomToggle = (roomId: string) => {
-    setServiceInfo(prev => {
-      const isSelected = prev.selectedRooms.includes(roomId)
-      const newSelectedRooms = isSelected 
-        ? prev.selectedRooms.filter(id => id !== roomId)
-        : [...prev.selectedRooms, roomId]
-      
-      const newQuantities = { ...prev.roomQuantities }
-      if (!isSelected) {
-        const room = getServiceRooms(selectedService).find(r => r.id === roomId)
-        newQuantities[roomId] = room?.defaultQuantity || 1
-      } else {
-        delete newQuantities[roomId]
-      }
-      
-      return {
-        ...prev,
-        selectedRooms: newSelectedRooms,
-        roomQuantities: newQuantities
-      }
-    })
-  }
-
-  // Handle quantity change
-  const handleQuantityChange = (roomId: string, change: number) => {
-    setServiceInfo(prev => {
-      const currentQuantity = prev.roomQuantities[roomId] || 1
-      const newQuantity = Math.max(1, currentQuantity + change)
-      
-      return {
-        ...prev,
-        roomQuantities: {
-          ...prev.roomQuantities,
-          [roomId]: newQuantity
-        }
-      }
-    })
-  }
-
   // Service-specific suggestions
   const getServiceSuggestions = (service: any) => {
     if (!service) return ['Parking info', 'Gate/Access code', 'Pet on premises', 'Preferred time window']
@@ -439,6 +391,40 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     const recents = localStorage.getItem('recentServices') || '[]'
     try { setRecentServiceIds(JSON.parse(recents)) } catch { setRecentServiceIds([]) }
   }, [])
+
+  // Restore to appropriate step based on available form data (only once on mount)
+  useEffect(() => {
+    if (stepInitialized) return // Only run once
+    
+    // Determine which step to start at based on available data
+    let targetStep = 0
+    
+    if (value.serviceId) {
+      targetStep = 1 // Service selected, go to date/time
+    }
+    if (value.serviceId && value.date && value.time) {
+      targetStep = 2 // Date/time selected, go to address
+    }
+    if (value.serviceId && value.date && value.time && value.address) {
+      targetStep = 3 // Address selected, go to details
+    }
+    if (value.serviceId && value.date && value.time && value.address && value.selectedProviderId && value.selectedCatalogueItemId) {
+      targetStep = 4 // Provider/package selected, go to provider step (or payment if already selected)
+    }
+    if (value.serviceId && value.date && value.time && value.address && value.selectedProviderId && value.selectedCatalogueItemId && value.paymentMethod) {
+      targetStep = 5 // Payment method selected, go to payment step
+    }
+    // If all data is complete, go to review step
+    if (value.serviceId && value.date && value.time && value.address && value.selectedProviderId && value.selectedCatalogueItemId && value.paymentMethod) {
+      // Could go to review, but let user navigate there manually
+      // targetStep = 6
+    }
+    
+    if (targetStep > 0) {
+      setCurrentStep(targetStep)
+    }
+    setStepInitialized(true)
+  }, [value, stepInitialized])
 
   // Cycle through address placeholders when on address step
   useEffect(() => {
@@ -666,22 +652,39 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
       1: () => value.date && value.time,
       2: () => value.address,
       3: () => true, // Notes are optional
-      4: () => paymentMethod, // Payment method step
-      5: () => true, // Review step
-      6: () => true, // Provider selection step
+      4: () => value.selectedProviderId && value.selectedCatalogueItemId, // Provider & package selection step
+      5: () => paymentMethod === 'ONLINE' || paymentMethod === 'CASH', // Payment method step - ensure it's explicitly set
+      6: () => true, // Review & confirm step (no validation needed, buttons are hidden)
     }
 
     if (!stepValidations[currentStep]()) {
-      setErrors({ [currentStep === 0 ? 'serviceId' : currentStep === 1 ? 'date' : 'address']: 'This field is required' })
+      // Get error message for current step (if available)
+      const errorMessage = stepErrorMessages[currentStep]
+      if (errorMessage) {
+        // Map step to appropriate error field
+        const errorField = currentStep === 0 ? 'serviceId' 
+          : currentStep === 1 ? 'date' 
+          : currentStep === 2 ? 'address'
+          : currentStep === 4 ? 'selectedProviderId'
+          : currentStep === 5 ? 'paymentMethod'
+          : 'serviceId'
+        setErrors({ [errorField]: errorMessage })
+      } else {
+        // Fallback error message if step doesn't have a specific message
+        console.warn(`No error message defined for step ${currentStep}`)
+        setErrors({ serviceId: 'Please complete this step before continuing' })
+      }
       return
     }
 
-    // Check if user is trying to go to provider selection step (step 6) without being authenticated
-    if (currentStep === 5 && !isAuthenticated && onShowLoginModal) {
+    // Check if user is trying to go to provider selection step (step 4) without being authenticated
+    if (currentStep === 3 && !isAuthenticated && onShowLoginModal) {
       onShowLoginModal()
       return
     }
 
+    // Only proceed if not on the last step (step 6 - Review)
+    // Step 6 has its own "Confirm Booking" button, so navigation buttons are hidden
     if (currentStep < steps.length - 1) {
       setIsTransitioning(true)
       // Enhanced transition timing for smoother effect
@@ -692,9 +695,8 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
           setIsTransitioning(false)
         }, 50)
       }, 300)
-    } else {
-      onNext()
     }
+    // Note: Step 6 (Review) navigation buttons are hidden, so this code path should never execute
   }
 
   const handleLoginSuccess = () => {
@@ -702,10 +704,10 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
       onLoginSuccess()
     }
     // After successful login, automatically proceed to provider selection step
-    if (currentStep === 4) {
+    if (currentStep === 3) {
       setIsTransitioning(true)
       setTimeout(() => {
-        setCurrentStep(5) // Move to provider selection step
+        setCurrentStep(4) // Move to provider selection step
         setTimeout(() => {
           setIsTransitioning(false)
         }, 50)
@@ -1003,110 +1005,16 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
         )
 
       case 3: // Service Details
-        const serviceRooms = getServiceRooms(selectedService)
-        
         return (
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className="text-center animate-slide-in-up">
               <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Service Details</h3>
               <p className="text-sm sm:text-base text-white/80">
-                {selectedService ? `Customize your ${selectedService.name} service` : 'Select a service to see customization options'}
+                {selectedService ? `Add any specific requirements for your ${selectedService.name} service` : 'Select a service to add specific requirements'}
               </p>
             </div>
             
             <div className="space-y-6">
-              {/* Service-specific room selection */}
-              {serviceRooms.length > 0 && (
-                <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
-                  <h4 className="text-sm sm:text-base font-semibold text-white mb-4 flex items-center">
-                    <Home className="w-4 h-4 mr-2" />
-                    Select Areas to {selectedService?.name || 'Service'}
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {serviceRooms.map((room) => {
-                      const Icon = room.icon
-                      const isSelected = serviceInfo.selectedRooms.includes(room.id)
-                      const quantity = serviceInfo.roomQuantities[room.id] || room.defaultQuantity
-                      
-                      return (
-                        <div
-                          key={room.id}
-                          className={`p-3 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
-                            isSelected 
-                              ? 'border-blue-500 bg-blue-500/10' 
-                              : 'border-gray-600 bg-gray-700/30 hover:border-gray-500'
-                          }`}
-                          onClick={() => handleRoomToggle(room.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                isSelected ? 'bg-blue-500 text-white' : 'bg-gray-600 text-gray-300'
-                              }`}>
-                                <Icon className="w-4 h-4" />
-                              </div>
-                              <span className={`text-sm sm:text-base font-medium ${
-                                isSelected ? 'text-white' : 'text-gray-300'
-                              }`}>
-                                {room.name}
-                              </span>
-                            </div>
-                            
-                            {isSelected && (
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleQuantityChange(room.id, -1)
-                                  }}
-                                  className="w-6 h-6 p-0 border-gray-500 text-gray-300 hover:bg-gray-600"
-                                >
-                                  <Minus className="w-3 h-3" />
-                                </Button>
-                                <span className="text-sm font-semibold text-white min-w-[20px] text-center">
-                                  {quantity}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleQuantityChange(room.id, 1)
-                                  }}
-                                  className="w-6 h-6 p-0 border-gray-500 text-gray-300 hover:bg-gray-600"
-                                >
-                                  <Plus className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  
-                  {serviceInfo.selectedRooms.length > 0 && (
-                    <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                      <p className="text-xs text-blue-200 mb-2">Selected areas:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {serviceInfo.selectedRooms.map(roomId => {
-                          const room = serviceRooms.find(r => r.id === roomId)
-                          const quantity = serviceInfo.roomQuantities[roomId]
-                          return (
-                            <span key={roomId} className="px-2 py-1 bg-blue-500/20 text-blue-200 rounded text-xs">
-                              {room?.name} ({quantity})
-                            </span>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Service-specific suggestions */}
               <div className="bg-blue-900/30 p-3 rounded-lg animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
                 <p className="text-xs sm:text-sm text-blue-200 font-medium mb-2">
@@ -1146,13 +1054,97 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
           </div>
         )
 
-      case 4: // Payment Method
+      case 4: // Choose Provider & Package
+        return (
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            <div className="text-center animate-slide-in-up">
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Choose Your Provider</h3>
+              <p className="text-sm sm:text-base text-white/80">Select from available providers in your area</p>
+            </div>
+            
+            {/* Provider Discovery Panel */}
+            <div className="animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+              <ProviderDiscoveryPanel
+                form={value}
+                onProviderSelected={onProviderSelected}
+                onPackageSelected={(providerId, catalogueItemId, providerData, packageData) => {
+                  // Update form state with selected provider and package
+                  onChange({
+                    ...value,
+                    selectedProviderId: providerId,
+                    selectedCatalogueItemId: catalogueItemId,
+                    selectedProviderData: providerData,
+                    selectedPackageData: packageData
+                  });
+                  
+                  // Call parent handler if provided
+                  if (onPackageSelected) {
+                    onPackageSelected(providerId, catalogueItemId, providerData, packageData);
+                  }
+                  
+                  // Navigate to payment step
+                  setIsTransitioning(true);
+                  setTimeout(() => {
+                    setCurrentStep(5); // Move to payment step
+                    setTimeout(() => {
+                      setIsTransitioning(false);
+                    }, 50);
+                  }, 300);
+                }}
+                onBack={() => {
+                  // Go back to step 3 (Service Details)
+                  setCurrentStep(3);
+                }}
+                onLoginSuccess={handleLoginSuccess}
+                onCancelBooking={() => {
+                  // Reset form and go to first step
+                  onChange({
+                    ...value,
+                    serviceId: "",
+                    date: "",
+                    time: "",
+                    address: "",
+                    notes: "",
+                    selectedProviderId: null,
+                    selectedCatalogueItemId: null,
+                    selectedProviderData: null,
+                    selectedPackageData: null
+                  });
+                  setCurrentStep(0);
+                }}
+              />
+            </div>
+          </div>
+        )
+
+      case 5: // Payment Method
         return (
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className="text-center animate-slide-in-up">
               <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Choose Payment Method</h3>
               <p className="text-sm sm:text-base text-white/80">Select how you'd like to pay for this service</p>
             </div>
+            
+            {/* Show selected package price if available */}
+            {value.selectedPackageData && (
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4 animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white/80">Selected Package</p>
+                    <p className="text-lg font-semibold text-white">
+                      {value.selectedPackageData.title || value.selectedPackageData.name || 'Package'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-white/80">Total Price</p>
+                    <p className="text-2xl font-bold text-blue-400">
+                      {value.selectedPackageData.currency || 'R'}
+                      {value.selectedPackageData.price?.toLocaleString() || '0.00'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="space-y-4">
               {/* Online Payment Option */}
@@ -1162,7 +1154,17 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     ? 'border-blue-500 bg-blue-500/10' 
                     : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
                 }`}
-                onClick={() => setPaymentMethod('ONLINE')}
+                onClick={() => {
+                  setPaymentMethod('ONLINE')
+                  // Clear any payment method errors when user selects
+                  if (errors.paymentMethod) {
+                    setErrors(prev => {
+                      const newErrors = { ...prev }
+                      delete newErrors.paymentMethod
+                      return newErrors
+                    })
+                  }
+                }}
               >
                 <div className="flex items-start space-x-3">
                   <div className={`p-2 rounded-lg ${
@@ -1201,7 +1203,17 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     ? 'border-green-500 bg-green-500/10' 
                     : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
                 }`}
-                onClick={() => setPaymentMethod('CASH')}
+                onClick={() => {
+                  setPaymentMethod('CASH')
+                  // Clear any payment method errors when user selects
+                  if (errors.paymentMethod) {
+                    setErrors(prev => {
+                      const newErrors = { ...prev }
+                      delete newErrors.paymentMethod
+                      return newErrors
+                    })
+                  }
+                }}
               >
                 <div className="flex items-start space-x-3">
                   <div className={`p-2 rounded-lg ${
@@ -1233,15 +1245,22 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                 </div>
               </div>
             </div>
+            
+            {/* Error message display */}
+            {errors.paymentMethod && (
+              <div className="mt-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                <p className="text-red-300 text-sm">{errors.paymentMethod}</p>
+              </div>
+            )}
           </div>
         )
 
-      case 5: // Review
+      case 6: // Review & Confirm
         return (
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <div className="text-center animate-slide-in-up">
-              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Review Your Booking</h3>
-              <p className="text-sm sm:text-base text-white/80">Please review your service details before proceeding</p>
+              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Review & Confirm Booking</h3>
+              <p className="text-sm sm:text-base text-white/80">Please review your booking details before confirming</p>
             </div>
             
             <div className="space-y-4">
@@ -1274,6 +1293,55 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     <button onClick={() => setCurrentStep(2)} className="text-blue-400 text-xs underline">Edit</button>
                   </span>
                 </div>
+                {/* Provider - Always show if we have providerId */}
+                {value.selectedProviderId ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                    <span className="font-medium text-white text-sm sm:text-base">Provider</span>
+                    <span className="text-white/80 text-sm sm:text-base flex items-center gap-2">
+                      {value.selectedProviderData?.businessName || 
+                       value.selectedProviderData?.user?.name || 
+                       value.selectedProviderData?.name || 
+                       'Provider selected'}
+                      <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline">Edit</button>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                    <span className="font-medium text-white text-sm sm:text-base">Provider</span>
+                    <span className="text-red-400 text-sm sm:text-base flex items-center gap-2">
+                      Not selected
+                      <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline">Select</button>
+                    </span>
+                  </div>
+                )}
+                {/* Package - Always show if we have catalogueItemId */}
+                {value.selectedCatalogueItemId ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                    <span className="font-medium text-white text-sm sm:text-base">Package</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/80 text-sm sm:text-base">
+                        {value.selectedPackageData?.title || 
+                         value.selectedPackageData?.name || 
+                         'Package selected'}
+                      </span>
+                      {value.selectedPackageData?.price && (
+                        <span className="text-blue-400 font-semibold text-sm sm:text-base">
+                          {value.selectedPackageData?.currency || 'R'}
+                          {value.selectedPackageData.price.toLocaleString()}
+                        </span>
+                      )}
+                      <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline">Edit</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
+                    <span className="font-medium text-white text-sm sm:text-base">Package</span>
+                    <span className="text-red-400 text-sm sm:text-base flex items-center gap-2">
+                      Not selected
+                      <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline">Select</button>
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-1 sm:space-y-0">
                   <span className="font-medium text-white text-sm sm:text-base">Payment Method</span>
                   <div className="flex items-center space-x-2">
@@ -1281,13 +1349,13 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                       <>
                         <CreditCard className="w-4 h-4 text-blue-400" />
                         <span className="text-blue-400 text-sm sm:text-base">Pay Online</span>
-                        <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline ml-2">Edit</button>
+                        <button onClick={() => setCurrentStep(5)} className="text-blue-400 text-xs underline ml-2">Edit</button>
                       </>
                     ) : (
                       <>
                         <Banknote className="w-4 h-4 text-green-400" />
                         <span className="text-green-400 text-sm sm:text-base">Pay with Cash</span>
-                        <button onClick={() => setCurrentStep(4)} className="text-blue-400 text-xs underline ml-2">Edit</button>
+                        <button onClick={() => setCurrentStep(5)} className="text-blue-400 text-xs underline ml-2">Edit</button>
                       </>
                     )}
                   </div>
@@ -1302,43 +1370,112 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                   </div>
                 )}
               </div>
+              
+              {/* Confirm Booking Button */}
+              <div className="pt-4 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
+                {isConfirmingBooking && !bookingSuccess && (
+                  <div className="mb-4 p-4 bg-blue-500/20 border border-blue-500/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-blue-300">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-sm">Creating your booking...</span>
             </div>
           </div>
-        )
-
-      case 6: // Choose Provider
-        return (
-          <div className="space-y-4 sm:space-y-6 animate-fade-in">
-            <div className="text-center animate-slide-in-up">
-              <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Choose Your Provider</h3>
-              <p className="text-sm sm:text-base text-white/80">Select from available providers in your area</p>
+                )}
+                {bookingSuccess && successMessage && (
+                  <div className="mb-4 p-4 bg-green-500/20 border border-green-500/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-green-300">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="text-sm font-medium">{successMessage}</span>
             </div>
-            
-            {/* Provider Discovery Panel */}
-            {onProviderSelected && (
-              <div className="animate-slide-in-up" style={{ animationDelay: '0.1s' }}>
-                <ProviderDiscoveryPanel
-                  form={value}
-                  onProviderSelected={onProviderSelected}
-                  onBack={() => {
-                    // Go back to step 4 (Review)
-                    setCurrentStep(4);
+                    <p className="text-green-200/80 text-xs mt-2">Redirecting to dashboard...</p>
+                  </div>
+                )}
+                <Button
+                  onClick={async () => {
+                    if (!value.selectedProviderId || !value.selectedCatalogueItemId) {
+                      setBookingError('Please select a provider and package');
+                      return;
+                    }
+                    
+                    if (isConfirmingBooking || submitting) return;
+                    
+                    setIsConfirmingBooking(true);
+                    setBookingError(null);
+                    setErrors({});
+                    
+                    try {
+                      // Call the booking API
+                      const response = await fetch('/api/book-service/send-offer-enhanced', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          providerId: value.selectedProviderId,
+                          serviceId: value.serviceId,
+                          date: value.date,
+                          time: value.time,
+                          address: value.address,
+                          notes: value.notes,
+                          catalogueItemId: value.selectedCatalogueItemId,
+                          paymentMethod: paymentMethod,
+                          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                          timezoneOffsetMinutes: new Date().getTimezoneOffset()
+                        })
+                      });
+                      
+                      if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to create booking');
+                      }
+                      
+                      const bookingData = await response.json();
+                      
+                      // Show success message
+                      console.log('✅ Booking created successfully:', bookingData);
+                      
+                      // Show success state
+                      setIsConfirmingBooking(false);
+                      setBookingSuccess(true);
+                      setSuccessMessage(bookingData.message || 'Booking created successfully!');
+                      
+                      // Redirect to dashboard after showing success message
+                      setTimeout(() => {
+                        router.push('/dashboard?booking=success');
+                      }, 2000);
+                      
+                      // Call onNext to trigger parent component's confirmation handling
+                      if (onNext) {
+                        onNext();
+                      }
+                    } catch (error) {
+                      console.error('Booking creation failed:', error);
+                      setIsConfirmingBooking(false);
+                      setBookingSuccess(false);
+                      setSuccessMessage(null);
+                      setBookingError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.');
+                    }
                   }}
-                  onLoginSuccess={handleLoginSuccess}
-                  onCancelBooking={() => {
-                    // Reset form and go to first step
-                    onChange({
-                      serviceId: "",
-                      date: "",
-                      time: "",
-                      address: "",
-                      notes: ""
-                    });
-                    setCurrentStep(0);
-                  }}
-                />
+                  disabled={isConfirmingBooking || submitting || !value.selectedProviderId || !value.selectedCatalogueItemId}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-6 text-lg shadow-lg transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isConfirmingBooking || submitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Creating Booking...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Confirm Booking
+                    </>
+                  )}
+                </Button>
+                {bookingError && (
+                  <div className="mt-2 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                    <p className="text-red-300 text-sm">{bookingError}</p>
               </div>
             )}
+              </div>
+            </div>
           </div>
         )
 
@@ -1512,12 +1649,12 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
         </CardContent>
       </Card>
 
-      {/* Navigation - Mobile Optimized - Hidden on Provider Selection Step */}
+      {/* Navigation - Mobile Optimized - Hidden on Review Step (step 6) */}
       {currentStep !== 6 && (
       <div className={`flex flex-col sm:flex-row items-center justify-between mt-6 sm:mt-8 space-y-3 sm:space-y-0 transition-all duration-300 ${
         isTransitioning ? 'opacity-50 translate-y-2' : 'opacity-100 translate-y-0'
       }`}>
-          {/* Back Button - Hidden on first step */}
+          {/* Back Button - Hidden on first step only */}
           {currentStep > 0 && (
         <Button
           variant="outline"
@@ -1541,10 +1678,10 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
               Processing...
             </>
-          ) : currentStep === steps.length - 1 ? (
-            'Complete Booking'
-          ) : currentStep === steps.length - 2 ? (
+          ) : currentStep === 3 ? (
             'Choose Provider'
+          ) : currentStep === steps.length - 2 ? (
+            'Review Booking'
           ) : (
             <>
               Continue
@@ -1557,3 +1694,4 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     </div>
   )
 }
+

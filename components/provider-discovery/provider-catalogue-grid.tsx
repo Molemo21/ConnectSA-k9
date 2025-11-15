@@ -91,6 +91,7 @@ interface ProviderCatalogueGridProps {
   providers: Provider[]
   serviceId: string
   onProviderSelected?: (providerId: string, catalogueItemId: string) => void
+  onPackageSelected?: (providerId: string, catalogueItemId: string, providerData?: any, packageData?: any) => void
   onBack?: () => void
   isProcessing?: boolean
   providerCount?: number
@@ -100,7 +101,8 @@ export function ProviderCatalogueGrid({
   providers,
   serviceId, 
   onProviderSelected, 
-  onBack, 
+  onPackageSelected,
+  onBack,
   isProcessing = false,
   providerCount
 }: ProviderCatalogueGridProps) {
@@ -194,7 +196,17 @@ export function ProviderCatalogueGrid({
       showToast.error("Please select a service first")
       return
     }
-    onProviderSelected?.(providerId, selectedItemId)
+    
+    // Find provider and package data
+    const provider = providers.find(p => p.id === providerId)
+    const packageData = provider?.catalogueItems.find(item => item.id === selectedItemId)
+    
+    // Use onPackageSelected if available (new flow), otherwise fall back to onProviderSelected (old flow)
+    if (onPackageSelected) {
+      onPackageSelected(providerId, selectedItemId, provider, packageData)
+    } else {
+      onProviderSelected?.(providerId, selectedItemId)
+    }
   }
 
   const getSelectedItem = (provider: Provider): CatalogueItem | null => {

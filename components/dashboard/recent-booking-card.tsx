@@ -21,6 +21,7 @@ import {
   RefreshCw,
   X,
   RotateCcw,
+  FileText,
 } from "lucide-react"
 import { showToast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
@@ -532,6 +533,19 @@ export function RecentBookingCard({
                     <Phone className="w-4 h-4" />
                   </Button>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Service Details - Always Visible */}
+          {booking.description && (
+            <div className="pt-3 border-t border-white/20">
+              <div className="flex items-start space-x-2">
+                <FileText className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <span className="text-sm font-semibold text-white/80">Service Details:</span>
+                  <p className="text-sm text-white/70 mt-1 whitespace-pre-wrap">{booking.description}</p>
+                </div>
               </div>
             </div>
           )}

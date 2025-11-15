@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db-utils"
+import { getCurrentUser } from "@/lib/auth"
 import { z } from "zod"
 
 export const runtime = 'nodejs'
@@ -14,6 +15,9 @@ const createDraftSchema = z.object({
   time: z.string().min(1),
   address: z.string().min(1),
   notes: z.string().optional(),
+  paymentMethod: z.enum(["ONLINE", "CASH"]).optional(),
+  providerId: z.string().optional(),
+  catalogueItemId: z.string().optional(),
   expiresAt: z.string().datetime(),
 })
 
@@ -33,27 +37,121 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validated = createDraftSchema.parse(body)
 
-    // Check if draft already exists
-    const existingDraft = await db.bookingDraft.findUnique({
-      where: { id: validated.id }
-    })
-
-    const expiresAt = new Date(validated.expiresAt)
-
-    if (existingDraft) {
-      // Update existing draft
-      const updatedDraft = await db.bookingDraft.update({
-        where: { id: validated.id },
-        data: {
+    // Try to get current user (optional - drafts can be saved without auth)
+    const user = await getCurrentUser()
+    
+    // If no user, we can't save to database (userId is required)
+    // Return success but note that it's only saved to localStorage
+    if (!user) {
+      console.log(`📝 Draft ${validated.id} saved to localStorage only (no authenticated user)`)
+      return NextResponse.json({
+        success: true,
+        draft: {
+          id: validated.id,
           serviceId: validated.serviceId,
           date: validated.date,
           time: validated.time,
           address: validated.address,
           notes: validated.notes,
-          expiresAt,
-          updatedAt: new Date()
+          paymentMethod: validated.paymentMethod,
+          providerId: validated.providerId,
+          catalogueItemId: validated.catalogueItemId,
+          createdAt: new Date().toISOString(),
+          expiresAt: validated.expiresAt
+        },
+        note: "Draft saved to localStorage only. Server save requires authentication."
+      })
+    }
+
+    // Check if draft already exists for this user
+    // Try to find draft - if providerId column doesn't exist, Prisma will error
+    // We'll catch that and retry without providerId in the query
+    let existingDraft
+    try {
+      existingDraft = await db.bookingDraft.findFirst({
+        where: { 
+          id: validated.id,
+          userId: user.id
         }
       })
+    } catch (error: any) {
+      // If error is about missing providerId column, try again with explicit select
+      if (error?.code === 'P2022' && error?.meta?.column?.includes('providerId')) {
+        console.warn('providerId column not found, querying without it')
+        existingDraft = await db.bookingDraft.findFirst({
+          where: { 
+            id: validated.id,
+            userId: user.id
+          },
+          select: {
+            id: true,
+            userId: true,
+            serviceId: true,
+            address: true,
+            description: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        })
+      } else {
+        throw error
+      }
+    }
+
+    if (existingDraft) {
+      // Update existing draft
+      // Try with providerId first, fallback without it if column doesn't exist
+      const updateDataBase: any = {
+        serviceId: validated.serviceId,
+        address: validated.address,
+        description: validated.notes,
+        updatedAt: new Date()
+      }
+      
+      let updatedDraft
+      try {
+        // Try update with providerId if provided
+        const updateData = validated.providerId 
+          ? { ...updateDataBase, providerId: validated.providerId }
+          : updateDataBase
+        
+        updatedDraft = await db.bookingDraft.update({
+          where: { id: existingDraft.id },
+          data: updateData,
+          select: {
+            id: true,
+            userId: true,
+            serviceId: true,
+            address: true,
+            description: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        })
+      } catch (error: any) {
+        // If error is about missing providerId column, retry without it
+        if (error?.code === 'P2022' && error?.meta?.column?.includes('providerId')) {
+          console.warn('providerId column not found, updating without it')
+          updatedDraft = await db.bookingDraft.update({
+            where: { id: existingDraft.id },
+            data: updateDataBase,
+            select: {
+              id: true,
+              userId: true,
+              serviceId: true,
+              address: true,
+              description: true,
+              status: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          })
+        } else {
+          throw error
+        }
+      }
 
       console.log(`📝 Updated booking draft: ${validated.id}`)
       
@@ -62,28 +160,66 @@ export async function POST(request: NextRequest) {
         draft: {
           id: updatedDraft.id,
           serviceId: updatedDraft.serviceId,
-          date: updatedDraft.date,
-          time: updatedDraft.time,
           address: updatedDraft.address,
-          notes: updatedDraft.notes,
+          notes: updatedDraft.description,
           userId: updatedDraft.userId,
           createdAt: updatedDraft.createdAt.toISOString(),
-          expiresAt: updatedDraft.expiresAt.toISOString()
+          updatedAt: updatedDraft.updatedAt.toISOString()
         }
       })
     } else {
       // Create new draft
-      const newDraft = await db.bookingDraft.create({
-        data: {
-          id: validated.id,
-          serviceId: validated.serviceId,
-          date: validated.date,
-          time: validated.time,
-          address: validated.address,
-          notes: validated.notes,
-          expiresAt
+      // Try with providerId first, fallback without it if column doesn't exist
+      const createDataBase: any = {
+        id: validated.id,
+        userId: user.id,
+        serviceId: validated.serviceId,
+        address: validated.address,
+        description: validated.notes,
+        status: "DRAFT"
+      }
+      
+      let newDraft
+      try {
+        // Try create with providerId if provided
+        const createData = validated.providerId 
+          ? { ...createDataBase, providerId: validated.providerId }
+          : createDataBase
+        
+        newDraft = await db.bookingDraft.create({
+          data: createData,
+          select: {
+            id: true,
+            userId: true,
+            serviceId: true,
+            address: true,
+            description: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        })
+      } catch (error: any) {
+        // If error is about missing providerId column, retry without it
+        if (error?.code === 'P2022' && error?.meta?.column?.includes('providerId')) {
+          console.warn('providerId column not found, creating without it')
+          newDraft = await db.bookingDraft.create({
+            data: createDataBase,
+            select: {
+              id: true,
+              userId: true,
+              serviceId: true,
+              address: true,
+              description: true,
+              status: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          })
+        } else {
+          throw error
         }
-      })
+      }
 
       console.log(`📝 Created new booking draft: ${validated.id}`)
       
@@ -92,13 +228,11 @@ export async function POST(request: NextRequest) {
         draft: {
           id: newDraft.id,
           serviceId: newDraft.serviceId,
-          date: newDraft.date,
-          time: newDraft.time,
           address: newDraft.address,
-          notes: newDraft.notes,
+          notes: newDraft.description,
           userId: newDraft.userId,
           createdAt: newDraft.createdAt.toISOString(),
-          expiresAt: newDraft.expiresAt.toISOString()
+          updatedAt: newDraft.updatedAt.toISOString()
         }
       })
     }

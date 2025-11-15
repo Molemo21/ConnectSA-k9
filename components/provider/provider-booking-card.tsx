@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -136,7 +135,6 @@ export function ProviderBookingCard({
   showCompleteButton = false,
   showReview = false
 }: ProviderBookingCardProps) {
-  const [showDetails, setShowDetails] = useState(false)
   const hasPaymentInEscrowOrBeyond = !!booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(booking.payment.status)
   const statusInfo = getStatusInfo(booking.status, hasPaymentInEscrowOrBeyond)
   const StatusIcon = statusInfo.icon
@@ -258,17 +256,6 @@ export function ProviderBookingCard({
               <Eye className="w-4 h-4 mr-1" />
               Details
             </Button>
-            {booking.description && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowDetails(!showDetails)}
-                className="text-gray-600 border-gray-200 hover:bg-gray-50"
-              >
-                <FileText className="w-4 h-4 mr-1" />
-                Notes
-              </Button>
-            )}
           </div>
           
           <div className="flex items-center space-x-2">
@@ -299,13 +286,18 @@ export function ProviderBookingCard({
           </div>
         </div>
 
-        {/* Expandable Details */}
-        {showDetails && booking.description && (
+        {/* Service Details - Always Visible */}
+        {booking.description && (
           <div className="mt-4 pt-4 border-t border-gray-100">
-            <h5 className="font-semibold text-gray-900 mb-2">Client Notes</h5>
-            <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-              {booking.description}
-            </p>
+            <div className="flex items-start space-x-2">
+              <FileText className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h5 className="font-semibold text-gray-900 mb-2">Service Details</h5>
+                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                  {booking.description}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

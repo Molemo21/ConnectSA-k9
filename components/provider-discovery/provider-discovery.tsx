@@ -54,7 +54,8 @@ interface ProviderDiscoveryProps {
   address: string
   notes?: string
   paymentMethod: "ONLINE" | "CASH"
-  onProviderSelected: (providerId: string, providerData?: any) => void
+  onProviderSelected?: (providerId: string, providerData?: any) => void
+  onPackageSelected?: (providerId: string, catalogueItemId: string, providerData?: any, packageData?: any) => void
   onBack: () => void
   onLoginSuccess?: () => void
   onCancelBooking?: () => void
@@ -68,6 +69,7 @@ export function ProviderDiscovery({
   notes,
   paymentMethod,
   onProviderSelected, 
+  onPackageSelected,
   onBack, 
   onLoginSuccess, 
   onCancelBooking 
@@ -525,11 +527,13 @@ export function ProviderDiscovery({
       <ProviderCatalogueGrid
         providers={providers}
         serviceId={serviceId}
-        onProviderSelected={(providerId, catalogueItemId) => {
+        onProviderSelected={onPackageSelected ? undefined : (onProviderSelected ? (providerId: string, catalogueItemId: string) => {
+          // Only use old flow if onPackageSelected is not provided
           handleAcceptProvider(providerId, catalogueItemId)
-        }}
+        } : undefined)}
+        onPackageSelected={onPackageSelected}
         onBack={onBack}
-        isProcessing={isProcessing}
+        isProcessing={onPackageSelected ? false : isProcessing}
         providerCount={providers.length}
       />
 
@@ -590,12 +594,13 @@ export function ProviderDiscovery({
           provider={selectedProvider}
           isOpen={showDetailsModal}
           onClose={handleCloseDetailsModal}
-          onAccept={handleAcceptProvider}
+          onAccept={onPackageSelected ? undefined : handleAcceptProvider}
           onDecline={handleDeclineProvider}
         />
       )}
       </div>
-      {showSummary && selectedProvider && selectedPackage && (
+      {/* Only show BookingSummaryDrawer for old flow (when onPackageSelected is not provided) */}
+      {showSummary && selectedProvider && selectedPackage && !onPackageSelected && (
         <BookingSummaryDrawer
           onClose={() => setShowSummary(false)}
           data={{
@@ -627,7 +632,7 @@ export function ProviderDiscovery({
             }
             await res.json()
             setShowSummary(false)
-            onProviderSelected(selectedProvider.id, selectedProvider)
+            onProviderSelected?.(selectedProvider.id, selectedProvider)
           }}
         />
       )}

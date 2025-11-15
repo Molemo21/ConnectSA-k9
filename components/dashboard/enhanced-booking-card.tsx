@@ -5,7 +5,7 @@ import { useSafeTime } from "@/hooks/use-safe-time"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertTriangle } from "lucide-react"
+import { Calendar, Clock, MapPin, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertTriangle, FileText } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
@@ -749,16 +749,22 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             </div>
           </div>
 
+          {/* Service Details - Always Visible */}
+          {booking.description && (
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <div className="flex items-start space-x-2">
+                <FileText className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <span className="text-sm font-semibold text-white/80">Service Details:</span>
+                  <p className="text-sm text-white/70 mt-1 whitespace-pre-wrap">{booking.description}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Expandable Details */}
           {showDetails && (
             <div className="mt-4 pt-4 border-t border-white/20 space-y-3">
-              {booking.description && (
-                <div>
-                  <span className="text-sm font-medium text-white/60">Notes:</span>
-                  <p className="text-sm text-white/60 mt-1">{booking.description}</p>
-                </div>
-              )}
-              
               {booking.provider && (
                 <div>
                   <span className="text-sm font-medium text-white/60">Provider Details:</span>
