@@ -716,14 +716,50 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             }
           });
           
-          // Update booking status to COMPLETED
-          await prisma.booking.update({
+          // Update booking status to COMPLETED using unified service
+          const { updateBookingStatusWithNotification, getTargetUsersForBookingStatusChange } = await import('@/lib/booking-status-service');
+          
+          // Get full booking data for the service
+          const fullBooking = await prisma.booking.findUnique({
             where: { id: bookingId },
-            data: { 
-              status: 'COMPLETED',
-              updatedAt: new Date()
+            include: {
+              client: { select: { id: true, name: true, email: true } },
+              provider: { 
+                include: { 
+                  user: { select: { id: true, name: true, email: true } }
+                }
+              },
+              service: { select: { name: true } },
+              payment: true
             }
           });
+
+          if (fullBooking) {
+            // Update status and send notifications/broadcast
+            await prisma.booking.update({
+              where: { id: bookingId },
+              data: { 
+                status: 'COMPLETED',
+                updatedAt: new Date()
+              }
+            });
+
+            // Send notifications and broadcast via unified service
+            try {
+              await updateBookingStatusWithNotification({
+                bookingId,
+                newStatus: 'COMPLETED',
+                notificationType: 'PAYMENT_RELEASED',
+                targetUserIds: getTargetUsersForBookingStatusChange(fullBooking, 'COMPLETED'),
+                skipStatusUpdate: true, // Status already updated above
+                skipNotification: false,
+                skipBroadcast: false,
+              });
+            } catch (serviceError) {
+              console.error('Failed to send notifications/broadcast via unified service:', serviceError);
+              // Don't fail - payment was released successfully
+            }
+          }
           
           console.log(`🎉 Payment release completed successfully!`);
           
@@ -796,52 +832,54 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         throw new Error(`Transfer failed with status: ${transferResponse.data.status}`);
       }
 
-      // 16. Send notifications
-      try {
-        // Notify client that payment is being released (in-app + email)
-        await sendMultiChannelNotification({
-          userId: user.id,
-          type: 'PAYMENT_RELEASED',
-          title: 'Payment Released',
-          content: `Payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. The funds are being transferred to the provider.`,
-          metadata: { booking }
-        }, {
-          channels: ['in-app', 'email', 'push'],
-          email: {
-            to: booking.client?.email || '',
-            subject: 'Payment Released'
-          },
-          push: {
-            userId: user.id,
-            title: 'Payment Released',
-            body: `Payment of R${booking.payment.amount.toFixed(2)} has been released.`,
-            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
-          }
-        })
+      // 16. Send notifications and broadcast (if transfer is pending, notifications will be sent when webhook completes)
+      // For immediate success, notifications were already sent above
+      // For pending transfers, we'll send notifications when webhook confirms completion
+      if (transferResponse.data.status === 'pending') {
+        try {
+          // Notify that payment release is pending
+          const { updateBookingStatusWithNotification, getTargetUsersForBookingStatusChange } = await import('@/lib/booking-status-service');
+          
+          const fullBooking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            include: {
+              client: { select: { id: true, name: true, email: true } },
+              provider: { 
+                include: { 
+                  user: { select: { id: true, name: true, email: true } }
+                }
+              },
+              service: { select: { name: true } },
+              payment: true
+            }
+          });
 
-        // Notify provider that payment is being released (in-app + email + push)
-        await sendMultiChannelNotification({
-          userId: booking.provider.userId,
-          type: 'ESCROW_RELEASED',
-          title: 'Payment Released',
-          content: `Escrow payment of R${booking.payment.amount.toFixed(2)} has been released for ${booking.service?.name || 'Service'}. Funds should appear in your account within 1-3 business days.`,
-          metadata: { booking }
-        }, {
-          channels: ['in-app', 'email', 'push'],
-          email: {
-            to: booking.provider?.user?.email || '',
-            subject: 'Payment Released'
-          },
-          push: {
-            userId: booking.provider.userId,
-            title: 'Payment Released',
-            body: `Escrow payment of R${booking.payment.amount.toFixed(2)} has been released. Funds should appear within 1-3 business days.`,
-            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/provider/bookings/${bookingId}`
+          if (fullBooking) {
+            // Note: Status remains AWAITING_CONFIRMATION until webhook confirms
+            // Just send notification that release is in progress
+            await sendMultiChannelNotification({
+              userId: user.id,
+              type: 'PAYMENT_RELEASED',
+              title: 'Payment Release Initiated',
+              content: `Payment release has been initiated for ${booking.service?.name || 'Service'}. The transfer is being processed.`,
+              metadata: { booking }
+            }, {
+              channels: ['in-app', 'email', 'push'],
+              email: {
+                to: booking.client?.email || '',
+                subject: 'Payment Release Initiated'
+              },
+              push: {
+                userId: user.id,
+                title: 'Payment Release Initiated',
+                body: `Payment release is being processed.`,
+                url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
+              }
+            });
           }
-        })
-      } catch (notificationError) {
-        console.warn('Failed to send notifications:', notificationError);
-        // Don't fail the entire operation for notification errors
+        } catch (notificationError) {
+          console.warn('Failed to send pending notification:', notificationError);
+        }
       }
 
       logPayment.success('escrow_release', 'Payment release initiated successfully', {

@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proliink Connect - Architecture Presentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2563eb;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #1e40af;
+            font-size: 2em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2563eb;
+            padding-left: 15px;
+        }
+
+        h3 {
+            color: #3b82f6;
+            font-size: 1.5em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        h4 {
+            color: #60a5fa;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 5px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .diagram-container {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #e2e8f0;
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        .ascii-art {
+            font-family: 'Courier New', monospace;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            white-space: pre;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .toc {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .toc ul {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .toc a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e11d48;
+        }
+
+        .section {
+            margin: 40px 0;
+            padding: 20px;
+            background: #fafafa;
+            border-radius: 8px;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            h2 {
+                font-size: 1.5em;
+            }
+            .ascii-art {
+                font-size: 0.7em;
+            }
+        }
+
+        /* Scroll to Top Button */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .scroll-to-top.visible {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .scroll-to-top:hover {
+            background: #1e40af;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.6);
+            transform: translateY(-3px);
+        }
+
+        .scroll-to-top:active {
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .scroll-to-top {
+                bottom: 20px;
+                right: 20px;
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ Proliink Connect - Visual Architecture Guide</h1>
+        
+        <div class="meta">
+            <strong>Platform:</strong> Proliink Connect - South African Service Marketplace<br>
+            <strong>Audience:</strong> Technical & Non-Technical Stakeholders<br>
+            <strong>Version:</strong> 1.0<br>
+            <strong>Last Updated:</strong> January 2025
+        </div>
+
+        <div class="toc">
+            <h3>📋 Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">Platform Overview</a></li>
+                <li><a href="#system-architecture">System Architecture Diagram</a></li>
+                <li><a href="#user-journeys">User Journey Flows</a></li>
+                <li><a href="#components">Component Structure</a></li>
+                <li><a href="#data-flow">Data Flow Diagrams</a></li>
+                <li><a href="#payment-flow">Payment Flow Visualization</a></li>
+                <li><a href="#tech-stack">Technology Stack Overview</a></li>
+                <li><a href="#deployment">Deployment Architecture</a></li>
+                <li><a href="#security">Security Architecture</a></li>
+                <li><a href="#summary">Summary</a></li>
+            </ul>
+        </div>
+
+        <section id="overview" class="section">
+            <h2>🎯 Platform Overview</h2>
+            
+            <h3>What is Proliink Connect?</h3>
+            
+            <div class="diagram-container">
+                <div class="mermaid">
+graph TB
+    subgraph "User Roles"
+        direction LR
+        C[Clients<br/>Find & Book Services<br/>Make Payments]
+        P[Providers<br/>Offer Services<br/>Get Paid]
+    end
+    
+    subgraph "Platform Management"
+        A[Platform Admin<br/>Manage & Monitor<br/>Approve Providers]
+    end
+    
+    C <-->|Book Services| P
+    A --> C
+    A --> P
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>Simple Explanation:</strong><br>
+                • <strong>Clients</strong> = People who need services (like plumbing, cleaning, etc.)<br>
+                • <strong>Providers</strong> = People who offer services<br>
+                • <strong>Platform</strong> = The marketplace that connects them safely<br>
+                • <strong>Admin</strong> = Platform managers who ensure everything works smoothly
+            </div>
+        </section>
+
+        <section id="system-architecture" class="section">
+            <h2>🏛️ System Architecture Diagram</h2>
+            
+            <h3>High-Level Architecture</h3>
+            <div class="diagram-container">
+                <div class="mermaid">
+graph TB
+    subgraph "User Layer"
+        C[Client Browser]
+        P[Provider Browser]
+        A[Admin Browser]
+    end
+    
+    subgraph "Application Layer - Next.js"
+        FE[Frontend Pages]
+        API[API Routes]
+        MW[Middleware]
+    end
+    
+    subgraph "Business Logic Layer"
+        AUTH[Authentication Service]
+        BOOK[Booking Service]
+        PAY[Payment Service]
+        NOTIF[Notification Service]
+    end
+    
+    subgraph "Data Layer"
+        DB[(PostgreSQL Database)]
+        STORAGE[(Supabase Storage)]
+    end
+    
+    subgraph "External Services"
+        PAYSTACK[Paystack Payment Gateway]
+        RESEND[Resend Email Service]
+        SOCKET[Socket.IO Server]
+    end
+    
+    C --> FE
+    P --> FE
+    A --> FE
+    FE --> API
+    API --> MW
+    MW --> AUTH
+    MW --> BOOK
+    MW --> PAY
+    MW --> NOTIF
+    AUTH --> DB
+    BOOK --> DB
+    PAY --> DB
+    NOTIF --> DB
+    BOOK --> STORAGE
+    PAY --> PAYSTACK
+    NOTIF --> RESEND
+    NOTIF --> SOCKET
+    PAYSTACK -.Webhook.-> API
+                </div>
+            </div>
+
+            <h3>Visual Component Breakdown</h3>
+            <div class="ascii-art">
+┌─────────────────────────────────────────────────────────────┐
+│                    USER INTERFACE LAYER                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │   CLIENT     │  │   PROVIDER   │  │    ADMIN     │      │
+│  │  Dashboard   │  │  Dashboard   │  │  Dashboard   │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│         │                 │                 │               │
+│         └─────────────────┼─────────────────┘               │
+│                           │                                 │
+└───────────────────────────┼─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    APPLICATION LAYER                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              NEXT.JS APPLICATION                     │   │
+│  │                                                       │   │
+│  │  ┌──────────────┐      ┌──────────────┐           │   │
+│  │  │   Pages      │      │  Components   │           │   │
+│  │  │  (Routes)    │◄────►│  (UI/Logic)  │           │   │
+│  │  └──────────────┘      └──────────────┘           │   │
+│  │         │                      │                    │   │
+│  │         ▼                      ▼                    │   │
+│  │  ┌──────────────┐      ┌──────────────┐           │   │
+│  │  │  API Routes  │      │   Services   │           │   │
+│  │  │  (Backend)   │◄────►│  (Business)   │           │   │
+│  │  └──────────────┘      └──────────────┘           │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                               │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      DATA LAYER                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌──────────────┐              ┌──────────────┐            │
+│  │  PostgreSQL  │              │   Supabase   │            │
+│  │  Database    │              │   Storage    │            │
+│  │              │              │              │            │
+│  │ • Users      │              │ • Documents  │            │
+│  │ • Bookings   │              │ • Images     │            │
+│  │ • Payments   │              │ • Files      │            │
+│  └──────────────┘              └──────────────┘            │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+            </div>
+        </section>
+
+        <section id="user-journeys" class="section">
+            <h2>👥 User Journey Flows</h2>
+            
+            <h3>Client Journey: Booking a Service</h3>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant UI as Frontend
+    participant API as Backend API
+    participant DB as Database
+    participant P as Provider
+    participant PS as Paystack
+    
+    C->>UI: Browse Services
+    UI->>API: GET /api/services
+    API->>DB: Query Services
+    DB-->>API: Services List
+    API-->>UI: Return Services
+    UI-->>C: Display Services
+    
+    C->>UI: Select Service & Provider
+    UI->>API: POST /api/book-service
+    API->>DB: Create Booking
+    DB-->>API: Booking Created
+    API->>P: Send Notification
+    API-->>UI: Booking Created
+    UI-->>C: Show Booking Details
+    
+    P->>API: Accept Booking
+    API->>DB: Update Status
+    API->>C: Notify Client
+    
+    C->>UI: Initiate Payment
+    UI->>API: POST /api/book-service/[id]/pay
+    API->>PS: Create Payment Session
+    PS-->>API: Payment URL
+    API-->>UI: Return Payment URL
+    UI->>C: Redirect to Paystack
+    
+    C->>PS: Complete Payment
+    PS->>API: Webhook Notification
+    API->>DB: Update Payment Status
+    API->>P: Notify Provider
+    API->>C: Confirm Payment
+                </div>
+            </div>
+
+            <h3>Provider Journey: Onboarding & Service Delivery</h3>
+            <div class="diagram-container">
+                <div class="mermaid">
+graph LR
+    A[Sign Up] --> B[Email Verification]
+    B --> C[Complete Profile]
+    C --> D[Upload Documents]
+    D --> E[Admin Review]
+    E --> F{Approved?}
+    F -->|Yes| G[Setup Catalogue]
+    F -->|No| H[Rejected - Fix Issues]
+    H --> D
+    G --> I[Provider Active]
+    I --> J[Receive Booking Requests]
+    J --> K{Accept?}
+    K -->|Yes| L[Service Execution]
+    K -->|No| M[Decline]
+    L --> N[Complete Service]
+    N --> O[Get Paid]
+                </div>
+            </div>
+        </section>
+
+        <section id="components" class="section">
+            <h2>🧩 Component Structure</h2>
+            
+            <h3>Frontend Component Hierarchy</h3>
+            <div class="ascii-art">
+┌─────────────────────────────────────────────────────────┐
+│                    APPLICATION ROOT                       │
+│                  (app/layout.tsx)                         │
+└───────────────────────────┬───────────────────────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│ Theme        │    │ Auth         │    │ Language     │
+│ Provider     │    │ Context      │    │ Context      │
+└──────────────┘    └──────────────┘    └──────────────┘
+        │                   │                   │
+        └───────────────────┼───────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                    PAGE LAYOUTS                          │
+├─────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │   Header     │  │   Sidebar    │  │   Content    │ │
+│  │  Component   │  │  Component   │  │   Area       │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│                                                           │
+└───────────────────────────┬───────────────────────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│ Client       │    │ Provider     │    │ Admin        │
+│ Components   │    │ Components   │    │ Components   │
+│              │    │              │    │              │
+│ • Dashboard  │    │ • Dashboard  │    │ • Dashboard  │
+│ • Booking    │    │ • Catalogue  │    │ • Analytics  │
+│ • Payments   │    │ • Earnings   │    │ • Management │
+└──────────────┘    └──────────────┘    └──────────────┘
+            </div>
+        </section>
+
+        <section id="data-flow" class="section">
+            <h2>🔄 Data Flow Diagrams</h2>
+            
+            <h3>Booking Creation Data Flow</h3>
+            <div class="ascii-art">
+┌─────────────────────────────────────────────────────────────┐
+│              BOOKING CREATION DATA FLOW                      │
+└─────────────────────────────────────────────────────────────┘
+
+USER INPUT
+    │
+    ▼
+┌──────────────┐
+│ Booking Form │ (React Component)
+│  Component   │
+└──────┬───────┘
+       │
+       │ 1. User fills form
+       ▼
+┌──────────────┐
+│ Form State   │ (React Hook Form)
+│ Management   │
+└──────┬───────┘
+       │
+       │ 2. Auto-save draft
+       ▼
+┌──────────────┐
+│ POST /api/   │
+│bookings/     │
+│drafts        │
+└──────┬───────┘
+       │
+       │ 3. Save to database
+       ▼
+┌──────────────┐
+│ BookingDraft │
+│   Table      │
+└──────┬───────┘
+       │
+       │ 4. User submits
+       ▼
+┌──────────────┐
+│ POST /api/   │
+│book-service  │
+└──────┬───────┘
+       │
+       │ 5. Create booking
+       ▼
+┌──────────────┐
+│  Booking     │
+│   Table      │
+└──────┬───────┘
+       │
+       │ 6. Trigger notifications
+       ▼
+┌──────────────┐      ┌──────────────┐
+│   Email      │      │   Push       │
+│ Notification │      │ Notification │
+└──────────────┘      └──────────────┘
+            </div>
+        </section>
+
+        <section id="payment-flow" class="section">
+            <h2>💳 Payment Flow Visualization</h2>
+            
+            <h3>Complete Payment Lifecycle</h3>
+            <div class="diagram-container">
+                <div class="mermaid">
+stateDiagram-v2
+    [*] --> PENDING: Client Initiates Payment
+    PENDING --> PROCESSING: Payment Submitted
+    PROCESSING --> HELD_IN_ESCROW: Payment Successful
+    PROCESSING --> FAILED: Payment Failed
+    HELD_IN_ESCROW --> PROCESSING_RELEASE: Service Completed
+    HELD_IN_ESCROW --> REFUNDED: Dispute/Cancellation
+    PROCESSING_RELEASE --> RELEASED: Transfer Successful
+    PROCESSING_RELEASE --> HELD_IN_ESCROW: Transfer Failed
+    RELEASED --> [*]
+    REFUNDED --> [*]
+    FAILED --> [*]
+                </div>
+            </div>
+
+            <h3>Payment Processing Flow</h3>
+            <div class="diagram-container">
+                <div class="mermaid">
+graph TD
+    A[Client Clicks Pay] --> B[POST /api/book-service/id/pay]
+    B --> C[Create Paystack Session]
+    C --> D[Return Payment URL]
+    D --> E[Redirect to Paystack]
+    E --> F[Client Completes Payment]
+    F --> G[Paystack Processes]
+    G --> H[Webhook to Platform]
+    H --> I{Verify Signature}
+    I -->|Valid| J[Update Payment Status]
+    I -->|Invalid| K[Reject]
+    J --> L[Update Booking Status]
+    L --> M[Notify Provider]
+    M --> N[Funds in Escrow]
+    N --> O[Service Execution]
+    O --> P[Client Confirms]
+    P --> Q[Release Escrow]
+    Q --> R[Transfer to Provider]
+    R --> S[Payment Complete]
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h4>Payment States Explained</h4>
+                <ul>
+                    <li><strong>PENDING:</strong> Payment initiated but not processed</li>
+                    <li><strong>HELD_IN_ESCROW:</strong> Funds safely held by platform</li>
+                    <li><strong>PROCESSING_RELEASE:</strong> Transferring to provider</li>
+                    <li><strong>RELEASED:</strong> Payment complete, provider paid</li>
+                    <li><strong>REFUNDED:</strong> Money returned to client</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="tech-stack" class="section">
+            <h2>🛠️ Technology Stack Overview</h2>
+            
+            <h3>Technology Stack Visualization</h3>
+            <div class="ascii-art">
+┌─────────────────────────────────────────────────────────────┐
+│                    TECHNOLOGY STACK                          │
+└─────────────────────────────────────────────────────────────┘
+
+FRONTEND LAYER
+┌─────────────────────────────────────────────────────────┐
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │   Next.js    │  │   React     │  │ TypeScript  │   │
+│  │  (Framework) │  │  (Library)  │  │  (Language)  │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐                      │
+│  │  Tailwind    │  │   Radix UI   │                      │
+│  │     CSS      │  │ (Components) │                      │
+│  └──────────────┘  └──────────────┘                      │
+│                                                           │
+└─────────────────────────────────────────────────────────┘
+
+BACKEND LAYER
+┌─────────────────────────────────────────────────────────┐
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ Next.js API  │  │   Prisma    │  │  PostgreSQL   │   │
+│  │   Routes     │  │    (ORM)    │  │  (Database)   │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                           │
+└─────────────────────────────────────────────────────────┘
+
+EXTERNAL SERVICES
+┌─────────────────────────────────────────────────────────┐
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │   Paystack   │  │    Resend    │  │   Supabase   │   │
+│  │  (Payments)  │  │   (Emails)   │  │  (Database)  │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                           │
+└─────────────────────────────────────────────────────────┘
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Technology</th>
+                        <th>What It Does</th>
+                        <th>Why We Use It</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Next.js</strong></td>
+                        <td>Web application framework</td>
+                        <td>Fast, modern, handles both frontend and backend</td>
+                    </tr>
+                    <tr>
+                        <td><strong>React</strong></td>
+                        <td>UI component library</td>
+                        <td>Build interactive user interfaces</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TypeScript</strong></td>
+                        <td>Programming language</td>
+                        <td>Catches errors before they happen</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PostgreSQL</strong></td>
+                        <td>Database</td>
+                        <td>Stores all user, booking, and payment data</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Paystack</strong></td>
+                        <td>Payment processor</td>
+                        <td>Handles secure payment transactions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Resend</strong></td>
+                        <td>Email service</td>
+                        <td>Sends emails (verification, notifications)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Vercel</strong></td>
+                        <td>Hosting platform</td>
+                        <td>Makes the website accessible online</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="deployment" class="section">
+            <h2>🚀 Deployment Architecture</h2>
+            
+            <h3>Deployment Flow</h3>
+            <div class="diagram-container">
+                <div class="mermaid">
+graph LR
+    A[Developer] -->|Push Code| B[GitHub]
+    B -->|Trigger| C[GitHub Actions]
+    C -->|Run Tests| D[Test Suite]
+    D -->|Build| E[Next.js Build]
+    E -->|Deploy| F[Vercel]
+    F -->|Serve| G[Users]
+    F -->|Connect| H[Supabase]
+    F -->|Connect| I[Paystack]
+    F -->|Connect| J[Resend]
+                </div>
+            </div>
+
+            <div class="ascii-art">
+┌─────────────────────────────────────────────────────────────┐
+│                    DEPLOYMENT ARCHITECTURE                    │
+└─────────────────────────────────────────────────────────────┘
+
+DEVELOPMENT
+┌──────────┐
+│ Developer│───► Write Code
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│  GitHub  │───► Code Repository
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│ GitHub   │───► Automated Testing
+│ Actions  │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐
+│  Build   │───► Compile Application
+│ Process  │
+└────┬─────┘
+     │
+     ▼
+┌─────────────────────────────────────────────────────────┐
+│                    VERCEL PLATFORM                       │
+├─────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌──────────────┐      ┌──────────────┐                 │
+│  │   Edge       │      │   Serverless │                 │
+│  │   Network   │─────▶│   Functions  │                 │
+│  │  (CDN)      │      │  (API Routes)│                 │
+│  └──────────────┘      └──────────────┘                 │
+│                                                           │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        ▼                   ▼                   ▼
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│  Supabase    │    │   Paystack   │    │    Resend    │
+│  Database    │    │   Payments   │    │    Emails    │
+└──────────────┘    └──────────────┘    └──────────────┘
+            </div>
+        </section>
+
+        <section id="security" class="section">
+            <h2>🔐 Security Architecture</h2>
+            
+            <h3>Security Layers</h3>
+            <div class="ascii-art">
+┌─────────────────────────────────────────────────────────────┐
+│                    SECURITY LAYERS                            │
+└─────────────────────────────────────────────────────────────┘
+
+LAYER 1: USER AUTHENTICATION
+┌──────────────┐
+│   Login      │───► Verify Identity
+│  Process     │     • Email & Password
+└──────┬───────┘     • JWT Tokens
+       │
+       ▼
+┌──────────────┐
+│  Email       │───► Verify Email Address
+│ Verification │     • Prevents fake accounts
+└──────┬───────┘
+
+LAYER 2: AUTHORIZATION
+       │
+       ▼
+┌──────────────┐
+│  Role-Based  │───► Control Access
+│  Access      │     • Client can only see their data
+│  Control     │     • Provider can only see their bookings
+└──────┬───────┘     • Admin has full access
+
+LAYER 3: DATA PROTECTION
+       │
+       ▼
+┌──────────────┐
+│  Encryption  │───► Protect Data
+│              │     • Passwords encrypted
+│              │     • Database connections secure
+└──────┬───────┘     • Payment data protected
+
+LAYER 4: PAYMENT SECURITY
+       │
+       ▼
+┌──────────────┐
+│  Escrow      │───► Safe Transactions
+│  System      │     • Funds held securely
+│              │     • Released only after service
+└──────────────┘
+            </div>
+
+            <div class="success-box">
+                <h4>Security Features</h4>
+                <ul>
+                    <li>✅ All passwords are encrypted</li>
+                    <li>✅ Email verification required</li>
+                    <li>✅ Secure payment processing (PCI DSS compliant)</li>
+                    <li>✅ Role-based access control</li>
+                    <li>✅ HTTPS encryption for all connections</li>
+                    <li>✅ Regular security audits</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="summary" class="section">
+            <h2>🎓 Summary for Stakeholders</h2>
+            
+            <h3>What Makes This Platform Work?</h3>
+            <div class="success-box">
+                <h4>Platform Success Factors</h4>
+                <ul>
+                    <li><strong>🔒 Security:</strong> All payments protected in escrow, user data encrypted</li>
+                    <li><strong>⚡ Reliability:</strong> 99.9% uptime, automatic backups, fast response</li>
+                    <li><strong>😊 User Experience:</strong> Easy to use, works on all devices, real-time updates</li>
+                    <li><strong>💎 Trust:</strong> Verified providers, secure payments, review system</li>
+                    <li><strong>📈 Scalability:</strong> Handles thousands of users, grows with business</li>
+                </ul>
+            </div>
+
+            <h3>Business Value</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Stakeholder</th>
+                        <th>Benefits</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Clients</strong></td>
+                        <td>Find trusted providers easily, safe payments, quality service guaranteed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Providers</strong></td>
+                        <td>Reach more customers, get paid securely, manage business efficiently</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Platform</strong></td>
+                        <td>Commission on transactions, growing user base, scalable business model</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="info-box">
+                <h4>Key Metrics</h4>
+                <ul>
+                    <li>Real-time booking processing</li>
+                    <li>Secure escrow payment system</li>
+                    <li>Multi-channel notifications (Email, Push, In-app)</li>
+                    <li>Scalable architecture supporting thousands of concurrent users</li>
+                    <li>99.9% uptime guarantee</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="meta" style="margin-top: 60px; text-align: center;">
+            <p><strong>Document Version:</strong> 1.0</p>
+            <p><strong>Last Updated:</strong> January 2025</p>
+            <p><strong>Maintained By:</strong> Development Team</p>
+            <p style="margin-top: 20px; color: #666;">
+                <em>This visual architecture guide provides a comprehensive understanding of the Proliink Connect platform for both technical and non-technical stakeholders.</em>
+            </p>
+        </div>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-to-top" id="scrollToTop" aria-label="Scroll to top" title="Scroll to top">
+        ↑
+    </button>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                diagramMarginX: 50,
+                diagramMarginY: 10,
+                actorMargin: 50,
+                width: 150,
+                height: 65,
+                boxMargin: 10,
+                boxTextMargin: 5,
+                noteMargin: 10,
+                messageMargin: 35,
+                mirrorActors: true,
+                bottomMarginAdj: 1,
+                useMaxWidth: true,
+                rightAngles: false,
+                showSequenceNumbers: false
+            },
+            state: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Print optimization
+        window.addEventListener('beforeprint', function() {
+            document.body.style.background = 'white';
+        });
+
+        // Scroll to Top Button Functionality
+        const scrollToTopButton = document.getElementById('scrollToTop');
+        
+        // Show/hide button based on scroll position
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                scrollToTopButton.classList.add('visible');
+            } else {
+                scrollToTopButton.classList.remove('visible');
+            }
+        });
+
+        // Scroll to top when button is clicked
+        scrollToTopButton.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    </script>
+</body>
+</html>
+
