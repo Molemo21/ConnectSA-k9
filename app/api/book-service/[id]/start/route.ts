@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createNotification, NotificationTemplates } from "@/lib/notification-service";
-import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 export const dynamic = 'force-dynamic'
 
@@ -76,37 +74,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const updated = await prisma.booking.update({
+    // Get full booking data with relations for unified service
+    const fullBooking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      data: { status: "IN_PROGRESS" },
+      include: {
+        client: { select: { id: true, name: true, email: true } },
+        provider: { 
+          include: { 
+            user: { select: { id: true, name: true, email: true } }
+          }
+        },
+        service: { select: { name: true } },
+        payment: true
+      }
     });
 
-    // Create in-app + email notification for client that job has started
-    try {
-      const notificationData = NotificationTemplates.JOB_STARTED(booking);
-      await sendMultiChannelNotification({
-        userId: booking.clientId,
-        type: notificationData.type,
-        title: notificationData.title,
-        content: notificationData.content,
-        metadata: { booking }
-      }, {
-        channels: ['in-app', 'email', 'push'],
-        email: {
-          to: booking.client?.email || '',
-          subject: notificationData.title
-        },
-        push: {
-          userId: booking.clientId,
-          title: notificationData.title,
-          body: notificationData.content,
-          url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
-        }
-      })
-      console.log(`🔔 Job started notification sent (in-app + email) to client: ${booking.client?.email || 'unknown'}`);
-    } catch (notificationError) {
-      console.error('❌ Failed to send job started notification:', notificationError);
+    if (!fullBooking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
+
+    // Use unified service to update status, send notifications, and broadcast
+    const { updateBookingStatusWithNotification, getTargetUsersForBookingStatusChange } = await import('@/lib/booking-status-service');
+    
+    const result = await updateBookingStatusWithNotification({
+      bookingId,
+      newStatus: "IN_PROGRESS",
+      notificationType: 'JOB_STARTED',
+      targetUserIds: getTargetUsersForBookingStatusChange(fullBooking, "IN_PROGRESS"),
+    });
+
+    const updated = result.booking;
 
     return NextResponse.json({ 
       success: true, 

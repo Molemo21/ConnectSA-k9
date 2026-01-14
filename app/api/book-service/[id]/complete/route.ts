@@ -3,8 +3,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db-utils";
 import { z } from "zod";
 import { PAYMENT_CONSTANTS } from "@/lib/paystack";
-import { createNotification, NotificationTemplates } from "@/lib/notification-service";
-import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
 
 export const dynamic = 'force-dynamic'
 
@@ -124,31 +122,26 @@ export async function POST(request: NextRequest) {
 
     // result is now defined in both branches above
 
-    // Create in-app + email notification for client about job completion
+    // Use unified service to send notifications and broadcast WebSocket event
     try {
-      const notificationData = NotificationTemplates.JOB_COMPLETED(result.booking);
-      await sendMultiChannelNotification({
-        userId: result.booking.client.id,
-        type: notificationData.type,
-        title: notificationData.title,
-        content: notificationData.content,
-        metadata: { booking: result.booking }
-      }, {
-        channels: ['in-app', 'email', 'push'],
-        email: {
-          to: result.booking.client?.email || '',
-          subject: notificationData.title
-        },
-        push: {
-          userId: result.booking.client.id,
-          title: notificationData.title,
-          body: notificationData.content,
-          url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
-        }
-      })
-      console.log(`🔔 Job completion notification sent (in-app + email) to client: ${result.booking.client.email}`);
+      const { updateBookingStatusWithNotification, getTargetUsersForBookingStatusChange } = await import('@/lib/booking-status-service');
+      
+      // Note: Status was already updated above, so we'll just send notifications and broadcast
+      // We'll use the service but skip the status update since it's already done
+      await updateBookingStatusWithNotification({
+        bookingId,
+        newStatus: "AWAITING_CONFIRMATION",
+        notificationType: 'JOB_COMPLETED',
+        targetUserIds: getTargetUsersForBookingStatusChange(result.booking, "AWAITING_CONFIRMATION"),
+        skipStatusUpdate: true, // Status already updated in transaction above
+        skipNotification: false, // Send notifications
+        skipBroadcast: false, // Send broadcast
+      });
+      
+      console.log(`🔔 Job completion notification and broadcast sent for booking ${bookingId}`);
     } catch (notificationError) {
-      console.error('❌ Failed to send job completion notification:', notificationError);
+      console.error('❌ Failed to send job completion notification/broadcast:', notificationError);
+      // Don't fail the request - status update succeeded
     }
 
     console.log(`Job completion proof submitted for booking ${bookingId}`);

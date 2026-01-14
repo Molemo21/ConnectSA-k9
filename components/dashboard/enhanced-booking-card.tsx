@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSafeTime } from "@/hooks/use-safe-time"
+import { useBookingWebSocket } from "@/hooks/use-booking-websocket"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -172,19 +173,64 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const [isConfirmingCompletion, setIsConfirmingCompletion] = useState(false)
   const [isFlipping, setIsFlipping] = useState(false)
   const [previousStatus, setPreviousStatus] = useState(booking.status)
+  const [currentBooking, setCurrentBooking] = useState(booking)
+
+  // Use WebSocket hook for real-time updates
+  const { isConnected, lastUpdate } = useBookingWebSocket({
+    bookingId: booking.id,
+    enabled: true,
+    onStatusChange: (bookingId, newStatus, updatedBooking) => {
+      // Update local booking state when status changes
+      setCurrentBooking((prev) => ({
+        ...prev,
+        ...updatedBooking,
+        status: newStatus,
+      }))
+      
+      // Call parent handler if provided
+      if (onStatusChange) {
+        onStatusChange(bookingId, newStatus)
+      }
+      
+      // Refresh booking data
+      if (onRefresh) {
+        onRefresh(bookingId).catch(console.error)
+      }
+    },
+    onBookingUpdate: (updatedBooking) => {
+      // Update local booking state with full booking data
+      setCurrentBooking((prev) => ({
+        ...prev,
+        ...updatedBooking,
+      }))
+      
+      // Refresh booking data
+      if (onRefresh) {
+        onRefresh(booking.id).catch(console.error)
+      }
+    },
+  })
+
+  // Use currentBooking instead of booking prop for display
+  const displayBooking = currentBooking
 
   // Detect status changes and trigger flip animation
   useEffect(() => {
-    if (previousStatus !== booking.status) {
+    if (previousStatus !== displayBooking.status) {
       setIsFlipping(true)
-      setPreviousStatus(booking.status)
+      setPreviousStatus(displayBooking.status)
       
       // Reset flip animation after completion
       setTimeout(() => {
         setIsFlipping(false)
       }, 800) // Slightly longer than the CSS animation duration
     }
-  }, [booking.status, previousStatus])
+  }, [displayBooking.status, previousStatus])
+
+  // Sync currentBooking with booking prop when it changes externally
+  useEffect(() => {
+    setCurrentBooking(booking)
+  }, [booking.id, booking.status, booking.payment?.status])
 
   // Check if booking is recent (created within last 24 hours)
   const isRecent = () => {
@@ -195,20 +241,20 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return hoursDiff < 24
   }
 
-  const timelineSteps = getTimelineSteps(booking.status, booking.payment, booking.paymentMethod)
+  const timelineSteps = getTimelineSteps(displayBooking.status, displayBooking.payment, displayBooking.paymentMethod)
   
   // Enhanced payment status checking with better logic (includes cash payment statuses)
-  const hasPayment = booking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'CASH_RECEIVED', 'CASH_VERIFIED'].includes(booking.payment.status)
-  const isPaymentProcessing = booking.payment && ['PENDING'].includes(booking.payment.status)
-  const isPaymentInEscrow = booking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)
+  const hasPayment = displayBooking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'CASH_RECEIVED', 'CASH_VERIFIED'].includes(displayBooking.payment.status)
+  const isPaymentProcessing = displayBooking.payment && ['PENDING'].includes(displayBooking.payment.status)
+  const isPaymentInEscrow = displayBooking.payment && ['ESCROW', 'HELD_IN_ESCROW'].includes(displayBooking.payment.status)
 
   // Check if payment is stuck in processing state (more than 8 minutes)
   const isPaymentStuck = () => {
-    if (!booking.payment || !isPaymentProcessing) return false
-    if (!booking.payment.createdAt) return false
+    if (!displayBooking.payment || !isPaymentProcessing) return false
+    if (!displayBooking.payment.createdAt) return false
     
     const now = new Date()
-    const created = new Date(booking.payment.createdAt)
+    const created = new Date(displayBooking.payment.createdAt)
     const minutesDiff = (now.getTime() - created.getTime()) / (1000 * 60)
     
     // More user-friendly: only show warning after 8 minutes (instead of 5)
@@ -331,16 +377,16 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const canMessage = booking.provider && ["CONFIRMED", "IN_PROGRESS"].includes(booking.status)
   // Enhanced canConfirmCompletion logic
   const canConfirmCompletion = () => {
-    if (booking.status === 'AWAITING_CONFIRMATION') {
-      if (booking.paymentMethod === 'ONLINE') {
-        return booking.payment && 
-               ['ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status);
+    if (displayBooking.status === 'AWAITING_CONFIRMATION') {
+      if (displayBooking.paymentMethod === 'ONLINE') {
+        return displayBooking.payment && 
+               ['ESCROW', 'HELD_IN_ESCROW'].includes(displayBooking.payment.status);
       }
       
       // For CASH: Only show button when payment is CASH_PENDING (client needs to pay)
       // After payment, it becomes CASH_PAID - button should be hidden at that point
-      if (booking.paymentMethod === 'CASH') {
-        return booking.payment && booking.payment.status === 'CASH_PENDING';
+      if (displayBooking.paymentMethod === 'CASH') {
+        return displayBooking.payment && displayBooking.payment.status === 'CASH_PENDING';
       }
     }
     
@@ -350,10 +396,10 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const shouldShowConfirmButton = canConfirmCompletion()
   
   // Hide button if payment is already released (for online) or received (for cash)
-  const isPaymentReleased = booking.payment && 
-    (["RELEASED", "COMPLETED"].includes(booking.payment.status) || 
-     (booking.paymentMethod === "CASH" && ["CASH_RECEIVED", "CASH_VERIFIED", "CASH_PAID"].includes(booking.payment.status)))
-  const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(booking.status)
+  const isPaymentReleased = displayBooking.payment && 
+    (["RELEASED", "COMPLETED"].includes(displayBooking.payment.status) || 
+     (displayBooking.paymentMethod === "CASH" && ["CASH_RECEIVED", "CASH_VERIFIED", "CASH_PAID"].includes(displayBooking.payment.status)))
+  const canDispute = ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(displayBooking.status)
   
   // Prevent payment if already processing or stuck
   const isPaymentInProgress = isProcessingPayment || isPaymentStuck()
@@ -412,28 +458,28 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
   // Normalize booking for BookingActionsModal expected shape
   const modalBooking: ModalBooking = {
-    id: booking.id,
+    id: displayBooking.id,
     service: {
-      name: booking.service.name,
-      category: booking.service.category?.name || 'No Category'
+      name: displayBooking.service.name,
+      category: displayBooking.service.category?.name || 'No Category'
     },
-    provider: booking.provider
+    provider: displayBooking.provider
       ? {
-          businessName: booking.provider.businessName,
+          businessName: displayBooking.provider.businessName,
           user: {
-            name: booking.provider.user?.name || 'N/A',
-            phone: booking.provider.user.phone ?? "",
+            name: displayBooking.provider.user?.name || 'N/A',
+            phone: displayBooking.provider.user.phone ?? "",
           },
         }
       : undefined,
-    scheduledDate: new Date(booking.scheduledDate).toISOString(),
-    duration: booking.duration,
-    totalAmount: booking.totalAmount,
-    status: booking.status,
-    address: booking.address,
-    description: booking.description ?? "",
-    payment: booking.payment
-      ? { status: booking.payment.status, amount: booking.payment.amount }
+    scheduledDate: new Date(displayBooking.scheduledDate).toISOString(),
+    duration: displayBooking.duration,
+    totalAmount: displayBooking.totalAmount,
+    status: displayBooking.status,
+    address: displayBooking.address,
+    description: displayBooking.description ?? "",
+    payment: displayBooking.payment
+      ? { status: displayBooking.payment.status, amount: displayBooking.payment.amount }
       : undefined,
   }
 
@@ -474,7 +520,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
               
               <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-xl sm:text-2xl font-bold text-transparent bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text truncate tracking-tight">{booking.service.name}</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-transparent bg-gradient-to-r from-white via-blue-100 to-white bg-clip-text truncate tracking-tight">{displayBooking.service.name}</h3>
                   {isRecent() && (
                     <div className="relative">
                       <Badge className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-300 border border-emerald-400/40 text-sm px-3 py-1 rounded-full font-semibold shadow-lg shadow-emerald-500/20 animate-pulse">
@@ -485,14 +531,14 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   )}
                 </div>
                 <p className="text-base text-gray-300 truncate font-medium flex items-center space-x-2">
-                  <span>{booking.service.category?.name || 'No Category'}</span>
+                  <span>{displayBooking.service.category?.name || 'No Category'}</span>
                   <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
                 </p>
               </div>
             </div>
             <div className="flex-shrink-0">
               <StatusBadge 
-                status={booking.status} 
+                status={displayBooking.status} 
                 type="booking" 
                 size="md"
                 className="shadow-lg hover:scale-105 transition-transform duration-300"
@@ -593,7 +639,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-400/20 to-blue-500/20 rounded-lg flex items-center justify-center group-hover/detail:scale-110 transition-transform duration-300">
                     <MapPin className="w-4 h-4 text-blue-400" />
                   </div>
-                  <span className="text-white font-medium text-sm truncate">{booking.address}</span>
+                  <span className="text-white font-medium text-sm truncate">{displayBooking.address}</span>
                 </div>
               </div>
               

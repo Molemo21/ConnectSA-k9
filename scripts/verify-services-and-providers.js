@@ -6,10 +6,18 @@
 
 const { PrismaClient } = require('@prisma/client');
 
+// SECURITY: Require DATABASE_URL from environment - no hardcoded credentials
+if (!process.env.DATABASE_URL) {
+  console.error('❌ ERROR: DATABASE_URL environment variable is required');
+  console.error('   Please set DATABASE_URL in your .env file or environment');
+  console.error('   Example: DATABASE_URL="postgresql://user:pass@host:port/db"');
+  process.exit(1);
+}
+
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: "postgresql://postgres.qdrktzqfeewwcktgltzy:Motebangnakin@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connect_timeout=10&pool_timeout=60&connection_limit=5"
+      url: process.env.DATABASE_URL
     }
   }
 });
@@ -19,7 +27,7 @@ async function main() {
   
   try {
     await prisma.$connect();
-    console.log('✅ Connected to production database\n');
+    console.log('✅ Connected to database\n');
 
     // Get all active services
     const services = await prisma.service.findMany({

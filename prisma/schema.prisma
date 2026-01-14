@@ -58,6 +58,13 @@ enum PaymentStatus {
   CASH_VERIFIED
 }
 
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -122,6 +129,7 @@ model Provider {
   reviews        Review[]
   adminReviews   ProviderReview[]
   bookingDrafts  BookingDraft[]
+  payouts        Payout[]
 
   @@map("providers")
 }
@@ -217,6 +225,7 @@ model Payment {
 
   // Relations
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  payout  Payout?
 
   @@map("payments")
 }
@@ -364,4 +373,40 @@ model CatalogueItem {
   bookings Booking[]
 
   @@map("catalogue_items")
+}
+
+model Payout {
+  id           String       @id @default(cuid())
+  paymentId    String       @unique
+  providerId   String
+  amount       Float
+  paystackRef  String       @map("paystack_ref")
+  status       PayoutStatus @default(PENDING)
+  transferCode String?      @map("transfer_code")
+  recipientCode String?     @map("recipient_code")
+  error        String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  payment  Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Restrict)
+
+  @@map("payouts")
+}
+
+model WebhookEvent {
+  id         String    @id @default(cuid())
+  eventType  String    @map("event_type")
+  paystackRef String   @map("paystack_ref")
+  payload    String    // JSON string of full webhook payload
+  processed  Boolean   @default(false)
+  retryCount Int       @default(0) @map("retry_count")
+  error      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  processedAt DateTime? @map("processed_at")
+
+  @@index([eventType, paystackRef, processed])
+  @@index([processed, createdAt])
+  @@map("webhook_events")
 }

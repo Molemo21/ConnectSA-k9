@@ -169,37 +169,47 @@ export async function POST(request: NextRequest) {
         newBookingStatus: result.updatedBooking.status
       });
 
-      // Notify provider about payment received (in-app + email)
+      // Use unified service to send notifications and broadcast WebSocket event
       try {
-        const notificationData = NotificationTemplates.PAYMENT_RECEIVED(payment.booking);
-        await sendMultiChannelNotification({
-          userId: payment.booking.provider.user.id,
-          type: notificationData.type,
-          title: notificationData.title,
-          content: notificationData.content,
-          metadata: { booking: payment.booking }
-        }, {
-          channels: ['in-app', 'email', 'push'],
-          email: {
-            to: payment.booking.provider.user.email,
-            subject: notificationData.title
-          },
-          push: {
-            userId: payment.booking.provider.user.id,
-            title: notificationData.title,
-            body: notificationData.content,
-            url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/provider/bookings/${payment.bookingId}`
+        const { updateBookingStatusWithNotification, getTargetUsersForBookingStatusChange } = await import('@/lib/booking-status-service');
+        
+        // Get full booking data for the service
+        const fullBooking = await db.booking.findUnique({
+          where: { id: payment.bookingId },
+          include: {
+            client: { select: { id: true, name: true, email: true } },
+            provider: { 
+              include: { 
+                user: { select: { id: true, name: true, email: true } }
+              }
+            },
+            service: { select: { name: true } },
+            payment: true
           }
-        })
-        logger.info('Provider payment notification sent (in-app + email)', {
-          reference,
-          providerId: payment.booking.provider.user.id
         });
+
+        if (fullBooking) {
+          await updateBookingStatusWithNotification({
+            bookingId: payment.bookingId,
+            newStatus: 'PENDING_EXECUTION',
+            notificationType: 'PAYMENT_RECEIVED',
+            targetUserIds: getTargetUsersForBookingStatusChange(fullBooking, 'PENDING_EXECUTION'),
+            skipStatusUpdate: true, // Status already updated in transaction above
+            skipNotification: false,
+            skipBroadcast: false,
+          });
+          
+          logger.info('Payment notification and broadcast sent', {
+            reference,
+            bookingId: payment.bookingId
+          });
+        }
       } catch (notificationError) {
-        logger.warn('Could not send payment notification', {
+        logger.warn('Could not send payment notification/broadcast', {
           reference,
           error: notificationError instanceof Error ? notificationError.message : 'Unknown error'
         });
+        // Don't fail - payment was successful
       }
 
       return NextResponse.json({
