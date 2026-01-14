@@ -70,7 +70,7 @@
     "rollback:to": "node scripts/monitor-production.js rollback",
     "rollback:emergency": "node scripts/monitor-production.js emergency-rollback",
     "setup:deployment": "./scripts/setup-deployment.sh",
-    "postinstall": "node scripts/install-prisma-guard.js"
+    "postinstall": "if [ -f scripts/install-prisma-guard.js ]; then node scripts/install-prisma-guard.js; else echo '⚠️ install-prisma-guard.js not found, skipping postinstall'; fi"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
