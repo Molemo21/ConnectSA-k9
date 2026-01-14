@@ -1,0 +1,130 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'README.md'
+
+env:
+  NODE_ENV: production
+  CI: true
+
+jobs:
+  # Pre-deployment Verification
+  predeploy:
+    runs-on: ubuntu-latest
+    name: Pre-deployment Verification
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Pre-deployment verification
+      run: npm run predeploy
+      env:
+        NODE_ENV: production
+        CI: true
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+  # Create Backup
+  backup:
+    runs-on: ubuntu-latest
+    name: Create Production Backup
+    needs: predeploy
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+        
+    - name: Create production backup
+      run: npm run backup:production
+      env:
+        NODE_ENV: production
+        CI: true
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        
+    - name: Upload backup artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: production-backup
+        path: database-backups/
+        retention-days: 7
+
+  # Deploy Database Migrations
+  deploy-database:
+    runs-on: ubuntu-latest
+    name: Deploy Database Migrations
+    needs: [predeploy, backup]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Download backup artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: production-backup
+        
+    - name: Deploy database migrations
+      run: npm run deploy:db
+      env:
+        NODE_ENV: production
+        CI: true
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+  # Deploy Application (if using Vercel or other platform)
+  # This job would trigger your deployment platform
+  # Uncomment and configure based on your deployment setup
+  
+  # deploy-application:
+  #   runs-on: ubuntu-latest
+  #   name: Deploy Application
+  #   needs: [predeploy, backup, deploy-database]
+  #   
+  #   steps:
+  #   - name: Deploy to Vercel
+  #     uses: amondnet/vercel-action@v25
+  #     with:
+  #       vercel-token: ${{ secrets.VERCEL_TOKEN }}
+  #       vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+  #       vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
