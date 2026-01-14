@@ -27,12 +27,19 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Generate Prisma Client
+      run: npx prisma generate
+      env:
+        DATABASE_URL: postgresql://test:test@localhost:5432/connectsa_test
+      continue-on-error: true
+      
     - name: Run Jest unit tests
       run: |
-        if [ -d "__tests__" ]; then
-          jest __tests__ --passWithNoTests --ci --coverage=false || echo "Unit tests completed with warnings"
+        if [ -d "__tests__" ] && [ "$(find __tests__ -name '*.test.ts' -o -name '*.test.js' | wc -l)" -gt 0 ]; then
+          jest __tests__ --passWithNoTests --ci --coverage=false --maxWorkers=2
         else
-          echo "No __tests__ directory found, skipping unit tests"
+          echo "⚠️ No unit tests found in __tests__ directory, skipping"
+          exit 0
         fi
       env:
         NODE_ENV: test
@@ -77,12 +84,26 @@ jobs:
     - name: Install Playwright browsers
       run: npx playwright install --with-deps ${{ matrix.browser }}
       
-    - name: Run Playwright tests
+    - name: Check if E2E tests exist
+      id: check_tests
       run: |
-        npx playwright test --project=${{ matrix.browser }} || echo "E2E tests for ${{ matrix.browser }} completed with warnings"
+        if [ -d "tests/e2e" ] && [ "$(find tests/e2e -name '*.spec.ts' -o -name '*.test.ts' | wc -l)" -gt 0 ]; then
+          echo "tests_exist=true" >> $GITHUB_OUTPUT
+        else
+          echo "tests_exist=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Run Playwright tests
+      if: steps.check_tests.outputs.tests_exist == 'true'
+      run: |
+        npx playwright test --project=${{ matrix.browser }} --reporter=list
       env:
         BASE_URL: https://app.proliinkconnect.co.za
       continue-on-error: true
+      
+    - name: Skip E2E tests (none found)
+      if: steps.check_tests.outputs.tests_exist == 'false'
+      run: echo "⚠️ No E2E tests found, skipping for ${{ matrix.browser }}"
         
     - name: Upload Playwright report
       uses: actions/upload-artifact@v4
@@ -117,12 +138,26 @@ jobs:
     - name: Install Playwright browsers
       run: npx playwright install --with-deps
       
-    - name: Run mobile tests
+    - name: Check if mobile tests exist
+      id: check_mobile_tests
       run: |
-        npx playwright test --project="${{ matrix.device }}" || echo "Mobile tests for ${{ matrix.device }} completed with warnings"
+        if [ -d "tests/e2e" ] && [ "$(find tests/e2e -name '*.spec.ts' -o -name '*.test.ts' | wc -l)" -gt 0 ]; then
+          echo "tests_exist=true" >> $GITHUB_OUTPUT
+        else
+          echo "tests_exist=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Run mobile tests
+      if: steps.check_mobile_tests.outputs.tests_exist == 'true'
+      run: |
+        npx playwright test --project="${{ matrix.device }}" --reporter=list
       env:
         BASE_URL: https://app.proliinkconnect.co.za
       continue-on-error: true
+      
+    - name: Skip mobile tests (none found)
+      if: steps.check_mobile_tests.outputs.tests_exist == 'false'
+      run: echo "⚠️ No mobile tests found, skipping for ${{ matrix.device }}"
         
     - name: Upload mobile test report
       uses: actions/upload-artifact@v4
@@ -154,7 +189,13 @@ jobs:
       
     - name: Run performance tests
       run: |
-        npx playwright test --project=chromium --grep="performance" || echo "No performance tests found or tests failed"
+        TEST_COUNT=$(npx playwright test --project=chromium --grep="performance" --list 2>/dev/null | grep -c "test" || echo "0")
+        if [ "$TEST_COUNT" -gt 0 ]; then
+          npx playwright test --project=chromium --grep="performance" --reporter=list
+        else
+          echo "⚠️ No performance tests found with 'performance' tag, skipping"
+          exit 0
+        fi
       env:
         BASE_URL: https://app.proliinkconnect.co.za
       continue-on-error: true
@@ -189,7 +230,14 @@ jobs:
       continue-on-error: true
       
     - name: Run security tests
-      run: npx playwright test --project=chromium --grep="security" || echo "No security tests found, skipping"
+      run: |
+        TEST_COUNT=$(npx playwright test --project=chromium --grep="security" --list 2>/dev/null | grep -c "test" || echo "0")
+        if [ "$TEST_COUNT" -gt 0 ]; then
+          npx playwright test --project=chromium --grep="security" --reporter=list
+        else
+          echo "⚠️ No security tests found with 'security' tag, skipping"
+          exit 0
+        fi
       env:
         BASE_URL: https://app.proliinkconnect.co.za
       continue-on-error: true
@@ -216,7 +264,13 @@ jobs:
       
     - name: Run accessibility tests
       run: |
-        npx playwright test --project=chromium --grep="accessibility" || echo "No accessibility tests found or tests failed"
+        TEST_COUNT=$(npx playwright test --project=chromium --grep="accessibility" --list 2>/dev/null | grep -c "test" || echo "0")
+        if [ "$TEST_COUNT" -gt 0 ]; then
+          npx playwright test --project=chromium --grep="accessibility" --reporter=list
+        else
+          echo "⚠️ No accessibility tests found with 'accessibility' tag, skipping"
+          exit 0
+        fi
       env:
         BASE_URL: https://app.proliinkconnect.co.za
       continue-on-error: true
