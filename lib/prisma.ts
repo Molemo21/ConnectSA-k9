@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { getDatabaseConfig } from './db-safety';
 
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 200;
@@ -8,17 +9,47 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Enhanced database URL configuration
-function getDatabaseUrl() {
-  // Use environment variable for database URL
-  const databaseUrl = process.env.DATABASE_URL;
+// Early DATABASE_URL validation (before Prisma client initialization)
+function validateDatabaseUrlEarly() {
+  const dbUrl = process.env.DATABASE_URL || '';
+  const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
+  const ci = process.env.CI || '';
+  const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
   
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable is required');
+  // Classify database URL
+  const urlLower = dbUrl.toLowerCase();
+  const isProd = urlLower.includes('pooler.supabase.com') ||
+                urlLower.includes('supabase.com:5432') ||
+                urlLower.includes('aws-0-eu-west-1') ||
+                (urlLower.includes('supabase') && !urlLower.includes('localhost'));
+  
+  // CRITICAL: Development/test cannot use production database
+  if ((nodeEnv === 'development' || nodeEnv === 'test') && isProd && !isCI) {
+    throw new Error(
+      'SECURITY VIOLATION: Cannot initialize Prisma client with production DATABASE_URL ' +
+      'in development/test context. Process exits before Prisma initializes.'
+    );
   }
   
-  console.log('🔗 Database URL configured from environment variables');
-  return databaseUrl;
+  // CRITICAL: Production mutations require CI=true
+  if (nodeEnv === 'production' && isProd && !isCI) {
+    throw new Error(
+      'SECURITY VIOLATION: Production database access requires CI=true. ' +
+      'Local production access is PERMANENTLY BLOCKED.'
+    );
+  }
+}
+
+// Enhanced database URL configuration with safety checks
+function getDatabaseUrl() {
+  // Early validation (before any Prisma operations)
+  validateDatabaseUrlEarly();
+  
+  // Use safety-validated database configuration
+  const config = getDatabaseConfig();
+  
+  console.log(`🔗 Database URL configured for ${config.environment} environment`);
+  return config.databaseUrl;
 }
 
 class PrismaWithRetry extends PrismaClient {
