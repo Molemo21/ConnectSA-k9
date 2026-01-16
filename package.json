@@ -47,6 +47,8 @@
     "db:cleanup": "node scripts/migrate-db.js cleanup",
     "db:backfill-payments": "tsx scripts/backfill-payment-breakdown.ts",
     "verify:payment-fixes": "tsx scripts/verify-payment-fixes.ts",
+    "sync:dev-to-prod:dry-run": "tsx scripts/sync-dev-to-prod-services.ts --dry-run",
+    "sync:dev-to-prod": "tsx scripts/sync-dev-to-prod-services.ts",
     "env:validate": "node scripts/manage-env.js validate",
     "env:create": "node scripts/manage-env.js create",
     "env:compare": "node scripts/manage-env.js compare",
