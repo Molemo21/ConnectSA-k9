@@ -59,8 +59,8 @@ export async function GET() {
         
         const tableNames = tables.map(t => t.table_name);
         diagnostics.checks.tables = {
-          serviceExists: tableNames.includes('Service'),
-          serviceCategoryExists: tableNames.includes('ServiceCategory'),
+          serviceExists: tableNames.includes('services'),
+          serviceCategoryExists: tableNames.includes('service_categories'),
           allTables: tableNames
         };
       }
