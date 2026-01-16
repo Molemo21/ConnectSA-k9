@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+import * as jose from 'jose'
+
+/**
+ * Edge-compatible token verification
+ * This function only uses Web APIs compatible with Edge runtime
+ * DO NOT import from @/lib/auth as it contains Node.js-only dependencies
+ */
+async function verifyToken(token: string) {
+  try {
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'secret')
+    const { payload } = await jose.jwtVerify(token, secret)
+    return payload
+  } catch (error) {
+    console.error('Token verification failed:', error)
+    return null
+  }
+}
 
 /**
  * Security Headers Configuration
