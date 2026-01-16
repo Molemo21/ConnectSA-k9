@@ -104,7 +104,8 @@ const PUBLIC_API_ENDPOINTS = [
   '/api/payment/verify',
   '/api/webhooks/paystack',
   '/api/book-service/discover-providers',
-  '/api/book-service/refresh'
+  '/api/book-service/refresh',
+  '/api/services/debug' // Allow debug endpoint
 ];
 
 export async function middleware(request: NextRequest) {
