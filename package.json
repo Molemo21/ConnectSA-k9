@@ -60,6 +60,8 @@
     "deploy": "npm run predeploy && npm run backup:production && npm run deploy:db",
     "test:deployment-safety": "node scripts/test-deployment-safety.js",
     "test:production-safety-hardened": "node scripts/test-production-safety-hardened.js",
+    "test:production-safety": "jest __tests__/production-safety --verbose",
+    "db:init-fingerprint": "tsx scripts/init-database-fingerprint.ts",
     "deploy:production": "./scripts/deploy-production.sh",
     "deploy:production:skip-tests": "./scripts/deploy-production.sh --skip-tests",
     "verify:production": "node scripts/verify-production-deployment.js",

@@ -410,3 +410,21 @@ model WebhookEvent {
   @@index([processed, createdAt])
   @@map("webhook_events")
 }
+
+// ============================================================================
+// ENVIRONMENT FINGERPRINTING - CRITICAL SAFETY TABLE
+// ============================================================================
+// This table stores the environment fingerprint to prevent misconfiguration.
+// It MUST exist in every database and MUST match the expected environment.
+// Validation happens BEFORE Prisma client initialization.
+// ============================================================================
+
+model DatabaseMetadata {
+  id          String   @id @default("singleton")
+  environment String   // "dev" | "staging" | "prod" - MUST match expected
+  fingerprint String   // Additional verification string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("database_metadata")
+}

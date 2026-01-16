@@ -31,6 +31,8 @@ import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import * as readline from 'readline';
+import { validateMutationScript } from '../lib/ci-enforcement';
+import { validateEnvironmentFingerprint, getExpectedEnvironment } from '../lib/env-fingerprint';
 
 // Load environment variables
 const envPath = resolve(process.cwd(), '.env');
@@ -463,6 +465,46 @@ async function main() {
   console.log(`Production DB: ${maskUrl(prodUrl)}\n`);
 
   if (!dryRun) {
+    // CRITICAL: Enforce CI-only execution for production mutations
+    try {
+      validateMutationScript('sync-dev-to-prod', prodUrl);
+    } catch (error: any) {
+      console.error('\n' + '='.repeat(80));
+      console.error('🚨 BLOCKED: Production sync requires CI=true');
+      console.error('='.repeat(80));
+      console.error(error.message || error);
+      console.error('='.repeat(80) + '\n');
+      process.exit(1);
+    }
+
+    // CRITICAL: Validate environment fingerprints
+    console.log('\n🔍 Validating environment fingerprints...\n');
+    
+    try {
+      // Validate dev database fingerprint
+      const devFingerprint = await validateEnvironmentFingerprint(devUrl, 'dev');
+      if (!devFingerprint.isValid) {
+        console.error(`❌ Development database fingerprint validation failed:`);
+        console.error(`   ${devFingerprint.error}`);
+        process.exit(1);
+      }
+      console.log('✅ Development database fingerprint validated');
+
+      // Validate prod database fingerprint
+      const prodFingerprint = await validateEnvironmentFingerprint(prodUrl, 'prod');
+      if (!prodFingerprint.isValid) {
+        console.error(`❌ Production database fingerprint validation failed:`);
+        console.error(`   ${prodFingerprint.error}`);
+        process.exit(1);
+      }
+      console.log('✅ Production database fingerprint validated\n');
+    } catch (error: any) {
+      console.error(`\n❌ CRITICAL: Environment fingerprint validation failed:`);
+      console.error(`   ${error.message}`);
+      console.error(`\nThis prevents accidental cross-environment access.\n`);
+      process.exit(1);
+    }
+
     console.log(`${'⚠️  '.repeat(20)} WARNING ${'⚠️  '.repeat(20)}`);
     console.log('This will modify your PRODUCTION database!');
     console.log('Make sure you have:');

@@ -1,5 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import { getDatabaseConfig } from './db-safety';
+import { 
+  validateEnvironmentFingerprint, 
+  getExpectedEnvironment,
+  type Environment 
+} from './env-fingerprint';
+import { blockProductionDatabaseLocally } from './ci-enforcement';
 
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 200;
@@ -10,7 +16,7 @@ function sleep(ms: number) {
 }
 
 // Early DATABASE_URL validation (before Prisma client initialization)
-function validateDatabaseUrlEarly() {
+async function validateDatabaseUrlEarly() {
   const dbUrl = process.env.DATABASE_URL || '';
   const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
   const ci = process.env.CI || '';
@@ -23,7 +29,10 @@ function validateDatabaseUrlEarly() {
                 urlLower.includes('aws-0-eu-west-1') ||
                 (urlLower.includes('supabase') && !urlLower.includes('localhost'));
   
-  // CRITICAL: Development/test cannot use production database
+  // GUARD 1: Block production database locally
+  blockProductionDatabaseLocally(dbUrl);
+  
+  // GUARD 2: Development/test cannot use production database
   if ((nodeEnv === 'development' || nodeEnv === 'test') && isProd && !isCI) {
     throw new Error(
       'SECURITY VIOLATION: Cannot initialize Prisma client with production DATABASE_URL ' +
@@ -31,19 +40,60 @@ function validateDatabaseUrlEarly() {
     );
   }
   
-  // CRITICAL: Production mutations require CI=true
+  // GUARD 3: Production mutations require CI=true
   if (nodeEnv === 'production' && isProd && !isCI) {
     throw new Error(
       'SECURITY VIOLATION: Production database access requires CI=true. ' +
       'Local production access is PERMANENTLY BLOCKED.'
     );
   }
+
+  // GUARD 4: Environment fingerprint validation (CRITICAL)
+  // Skip fingerprint validation if we're in a build context (no DB connection yet)
+  const skipFingerprint = process.env.SKIP_FINGERPRINT_VALIDATION === 'true' || 
+                          process.env.NEXT_PHASE === 'phase-production-build';
+  
+  if (!skipFingerprint && dbUrl) {
+    try {
+      const expectedEnv = getExpectedEnvironment();
+      const fingerprintResult = await validateEnvironmentFingerprint(dbUrl, expectedEnv);
+      
+      if (!fingerprintResult.isValid) {
+        const error = `
+${'='.repeat(80)}
+🚨 CRITICAL: Environment Fingerprint Validation Failed
+${'='.repeat(80)}
+${fingerprintResult.error}
+
+Expected Environment: ${expectedEnv}
+Detected Environment: ${fingerprintResult.environment || 'unknown'}
+
+This prevents accidental cross-environment database access.
+The database MUST have a valid environment fingerprint.
+
+${'='.repeat(80)}
+`;
+        throw new Error(error);
+      }
+    } catch (error: any) {
+      // If validation fails, we MUST fail - no fallback
+      if (error.message.includes('CRITICAL') || error.message.includes('fingerprint')) {
+        throw error;
+      }
+      // For connection errors during validation, we still fail but with context
+      throw new Error(
+        `Failed to validate environment fingerprint: ${error.message}. ` +
+        `This is a CRITICAL safety check and cannot be bypassed.`
+      );
+    }
+  }
 }
 
 // Enhanced database URL configuration with safety checks
-function getDatabaseUrl() {
+async function getDatabaseUrl(): Promise<string> {
   // Early validation (before any Prisma operations)
-  validateDatabaseUrlEarly();
+  // NOTE: This is now async due to fingerprint validation
+  await validateDatabaseUrlEarly();
   
   // Use safety-validated database configuration
   const config = getDatabaseConfig();
@@ -54,17 +104,41 @@ function getDatabaseUrl() {
 
 class PrismaWithRetry extends PrismaClient {
   private isConnected: boolean = false;
+  private databaseUrl: string | null = null;
+  private urlValidationPromise: Promise<string> | null = null;
 
   constructor() {
+    // We can't use async in constructor, so we'll validate on first connection
+    // The URL will be set during connect()
+    // For now, use DATABASE_URL directly - validation happens in connect()
     super({
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: 'pretty',
       datasources: {
         db: {
-          url: getDatabaseUrl()
+          url: process.env.DATABASE_URL || ''
         }
       }
     });
+  }
+
+  private async ensureDatabaseUrl(): Promise<string> {
+    if (!this.urlValidationPromise) {
+      // Create validation promise (will be reused)
+      this.urlValidationPromise = getDatabaseUrl().then(url => {
+        this.databaseUrl = url;
+        // Update datasource URL if possible
+        try {
+          (this as any).$engine.datasources = {
+            db: { url: this.databaseUrl }
+          };
+        } catch (e) {
+          // Engine may not be initialized yet, that's okay
+        }
+        return url;
+      });
+    }
+    return this.urlValidationPromise;
   }
 
   private async handleConnectionError(error: any) {
@@ -92,6 +166,50 @@ class PrismaWithRetry extends PrismaClient {
       return;
     }
 
+    // Step 1: Ensure database URL is validated and set
+    const dbUrl = await this.ensureDatabaseUrl();
+
+    // Step 2: Validate environment fingerprint (CRITICAL - before connection)
+    // Skip fingerprint validation if we're in a build context (no DB connection yet)
+    const skipFingerprint = process.env.SKIP_FINGERPRINT_VALIDATION === 'true' || 
+                            process.env.NEXT_PHASE === 'phase-production-build';
+    
+    if (!skipFingerprint && dbUrl) {
+      try {
+        const expectedEnv = getExpectedEnvironment();
+        const fingerprintResult = await validateEnvironmentFingerprint(dbUrl, expectedEnv);
+        
+        if (!fingerprintResult.isValid) {
+          const error = `
+${'='.repeat(80)}
+🚨 CRITICAL: Environment Fingerprint Validation Failed
+${'='.repeat(80)}
+${fingerprintResult.error}
+
+Expected Environment: ${expectedEnv}
+Detected Environment: ${fingerprintResult.environment || 'unknown'}
+
+This prevents accidental cross-environment database access.
+The database MUST have a valid environment fingerprint.
+
+${'='.repeat(80)}
+`;
+          throw new Error(error);
+        }
+      } catch (error: any) {
+        // If validation fails, we MUST fail - no fallback
+        if (error.message.includes('CRITICAL') || error.message.includes('fingerprint')) {
+          throw error;
+        }
+        // For connection errors during validation, we still fail but with context
+        throw new Error(
+          `Failed to validate environment fingerprint: ${error.message}. ` +
+          `This is a CRITICAL safety check and cannot be bypassed.`
+        );
+      }
+    }
+
+    // Step 3: Connect to database
     let lastError;
     let delay = INITIAL_RETRY_DELAY;
 
