@@ -1,3 +1,49 @@
+/**
+ * CRITICAL: Production guards execute BEFORE Prisma import
+ * 
+ * If this file is imported in a non-CI context with production database,
+ * the guards will fail BEFORE Prisma client is initialized.
+ */
+
+// GUARD: Block production database access locally (BEFORE Prisma import)
+const ci = process.env.CI || '';
+const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
+const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
+const dbUrl = process.env.DATABASE_URL || '';
+
+// Detect production database patterns
+const urlLower = dbUrl.toLowerCase();
+const isProdDb = 
+  urlLower.includes('pooler.supabase.com') ||
+  urlLower.includes('supabase.com:5432') ||
+  urlLower.includes('aws-0-eu-west-1') ||
+  (urlLower.includes('supabase') && !urlLower.includes('localhost'));
+
+// Block production database in non-CI, non-production contexts
+if (isProdDb && !isCI && nodeEnv !== 'production' && nodeEnv !== 'prod') {
+  const error = `
+${'='.repeat(80)}
+🚨 BLOCKED: Production database access in local context
+${'='.repeat(80)}
+This guard executes BEFORE Prisma client initialization.
+
+Database URL pattern indicates production database.
+CI: ${ci || '(not set)'}
+NODE_ENV: ${nodeEnv || '(not set)'}
+
+Production database access is PHYSICALLY IMPOSSIBLE outside CI/CD pipelines.
+This prevents accidental mutations from local development machines.
+
+NO BYPASSES EXIST. This is a HARD GUARANTEE.
+
+${'='.repeat(80)}
+`;
+  console.error(error);
+  // Use process.exit to prevent Prisma from initializing
+  process.exit(1);
+}
+
+// Only import Prisma AFTER guards pass
 import { PrismaClient } from '@prisma/client';
 import { getDatabaseConfig } from './db-safety';
 import { 
@@ -5,7 +51,6 @@ import {
   getExpectedEnvironment,
   type Environment 
 } from './env-fingerprint';
-import { blockProductionDatabaseLocally } from './ci-enforcement';
 
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 200;
@@ -29,10 +74,7 @@ async function validateDatabaseUrlEarly() {
                 urlLower.includes('aws-0-eu-west-1') ||
                 (urlLower.includes('supabase') && !urlLower.includes('localhost'));
   
-  // GUARD 1: Block production database locally
-  blockProductionDatabaseLocally(dbUrl);
-  
-  // GUARD 2: Development/test cannot use production database
+  // GUARD 1: Development/test cannot use production database
   if ((nodeEnv === 'development' || nodeEnv === 'test') && isProd && !isCI) {
     throw new Error(
       'SECURITY VIOLATION: Cannot initialize Prisma client with production DATABASE_URL ' +

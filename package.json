@@ -61,6 +61,8 @@
     "test:deployment-safety": "node scripts/test-deployment-safety.js",
     "test:production-safety-hardened": "node scripts/test-production-safety-hardened.js",
     "test:production-safety": "jest __tests__/production-safety --verbose",
+    "test:production-safety:misuse": "jest __tests__/production-safety/misuse-tests.test.ts --verbose",
+    "test:production-safety:prove": "jest __tests__/production-safety/prove-impossibility.test.ts --verbose",
     "db:init-fingerprint": "tsx scripts/init-database-fingerprint.ts",
     "deploy:production": "./scripts/deploy-production.sh",
     "deploy:production:skip-tests": "./scripts/deploy-production.sh --skip-tests",

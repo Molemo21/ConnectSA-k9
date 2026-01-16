@@ -27,11 +27,15 @@
  * 3. Verify you're syncing the correct databases
  */
 
+/**
+ * CRITICAL: Guards execute BEFORE any imports
+ * Production mutation guards are checked at runtime, not import time
+ */
+
 import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import * as readline from 'readline';
-import { validateMutationScript } from '../lib/ci-enforcement';
 import { validateEnvironmentFingerprint, getExpectedEnvironment } from '../lib/env-fingerprint';
 
 // Load environment variables

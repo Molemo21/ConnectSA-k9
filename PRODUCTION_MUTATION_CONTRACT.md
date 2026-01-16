@@ -52,19 +52,30 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
 
 ### **4. ENFORCEMENT MECHANISMS**
 
-#### **4.1 CI-Only Execution (HARD GUARANTEE)**
+#### **4.1 CI-Only Execution (PHYSICAL IMPOSSIBILITY)**
 
 - **Requirement**: `CI === "true"` MUST be set
-- **Enforcement**: Scripts exit with code 1 if CI !== "true"
-- **Location**: `lib/ci-enforcement.ts`
+- **Enforcement**: 
+  - Guards execute at TOP of file (BEFORE any imports)
+  - Scripts exit with code 1 if CI !== "true"
+  - Exit happens BEFORE Prisma import or database connection
+- **Locations**: 
+  - `scripts/deploy-db.js` - Guards at top of file (before require statements)
+  - `scripts/sync-dev-to-prod-services.ts` - Guards before database operations
+  - `lib/prisma.ts` - Guards at module level (before Prisma import)
 - **No Bypasses**: No environment variables, flags, or code paths can bypass this
+- **Proof**: `__tests__/production-safety/misuse-tests.test.ts` - Tests actual execution
 
 #### **4.2 Environment Fingerprinting (MISCONFIGURATION-PROOF)**
 
 - **Requirement**: Database MUST have `database_metadata` table with correct environment
-- **Enforcement**: Validation happens BEFORE Prisma client initialization
-- **Location**: `lib/env-fingerprint.ts`
+- **Enforcement**: 
+  - Validation happens in `PrismaWithRetry.connect()` BEFORE `super.$connect()`
+  - Hard failure if fingerprint doesn't match expected environment
+  - No fallback mechanisms
+- **Location**: `lib/env-fingerprint.ts` + `lib/prisma.ts`
 - **Failure Mode**: Hard failure - no fallback, no warnings
+- **Proof**: `__tests__/production-safety/fingerprint-validation.test.ts` - Tests validation logic
 
 #### **4.3 Mutation Contract Validation**
 

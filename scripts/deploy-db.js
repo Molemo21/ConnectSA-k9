@@ -20,132 +20,115 @@
  *   1 = Deployment failed or guards blocked execution
  */
 
+// ============================================================================
+// CRITICAL: Guards execute BEFORE any imports or database connections
+// These guards are the FIRST lines of code that execute
+// ============================================================================
+
+// GUARD 1: CI-only execution (PHYSICAL IMPOSSIBILITY)
+const ci = process.env.CI || '';
+const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
+
+if (!isCI) {
+  console.error('\n' + '='.repeat(80));
+  console.error('🚨 BLOCKED: Production mutations require CI=true');
+  console.error('='.repeat(80));
+  console.error(`Current CI: ${ci || '(not set)'}`);
+  console.error('');
+  console.error('Production mutations are PHYSICALLY IMPOSSIBLE outside CI/CD pipelines.');
+  console.error('This guard executes BEFORE any imports or database connections.');
+  console.error('');
+  console.error('NO BYPASSES EXIST. This is a HARD GUARANTEE.');
+  console.error('='.repeat(80) + '\n');
+  process.exit(1);
+}
+
+// GUARD 2: Production environment required
+const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
+if (nodeEnv !== 'production' && nodeEnv !== 'prod') {
+  console.error('\n' + '='.repeat(80));
+  console.error('🚨 BLOCKED: Production mutations require NODE_ENV=production');
+  console.error('='.repeat(80));
+  console.error(`Current NODE_ENV: ${nodeEnv || '(not set)'}`);
+  console.error(`CI: ${isCI}`);
+  console.error('');
+  console.error('Production mutations require BOTH CI=true AND NODE_ENV=production.');
+  console.error('='.repeat(80) + '\n');
+  process.exit(1);
+}
+
+// GUARD 3: Block PROD_DATABASE_URL in wrong context
+const prodDbUrl = process.env.PROD_DATABASE_URL || '';
+if (prodDbUrl && nodeEnv !== 'production' && nodeEnv !== 'prod') {
+  console.error('\n' + '='.repeat(80));
+  console.error('🚨 BLOCKED: PROD_DATABASE_URL detected in non-production context');
+  console.error('='.repeat(80));
+  console.error(`PROD_DATABASE_URL is set but NODE_ENV=${nodeEnv}`);
+  console.error('='.repeat(80) + '\n');
+  process.exit(1);
+}
+
+// GUARD 4: Block production database patterns locally
+const dbUrl = process.env.DATABASE_URL || '';
+const urlLower = dbUrl.toLowerCase();
+const isProdDb = 
+  urlLower.includes('pooler.supabase.com') ||
+  urlLower.includes('supabase.com:5432') ||
+  urlLower.includes('aws-0-eu-west-1') ||
+  (urlLower.includes('supabase') && !urlLower.includes('localhost'));
+
+if (isProdDb && !isCI && nodeEnv !== 'production' && nodeEnv !== 'prod') {
+  console.error('\n' + '='.repeat(80));
+  console.error('🚨 BLOCKED: Production database URL detected in local context');
+  console.error('='.repeat(80));
+  console.error(`Database URL pattern indicates production database.`);
+  console.error(`CI: ${ci || '(not set)'}`);
+  console.error(`NODE_ENV: ${nodeEnv || '(not set)'}`);
+  console.error('');
+  console.error('Production database access is BLOCKED outside CI/CD pipelines.');
+  console.error('='.repeat(80) + '\n');
+  process.exit(1);
+}
+
+// ============================================================================
+// Only after ALL guards pass, proceed with imports
+// ============================================================================
+
 const { execSync } = require('child_process');
 const deploymentState = require('./deployment-state');
-
-// CI enforcement is implemented inline to avoid TypeScript compilation issues
-// This ensures the guard works even if TypeScript isn't compiled
-function enforceCIOnlyExecutionInline(scriptName) {
-  const ci = process.env.CI || '';
-  const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
-  const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
-  
-  // GUARD 1: Must be in CI environment
-  if (!isCI) {
-    const error = `
-${'='.repeat(80)}
-🚨 BLOCKED: ${scriptName} requires CI=true
-${'='.repeat(80)}
-Current CI: ${ci || '(not set)'}
-NODE_ENV: ${nodeEnv || '(not set)'}
-
-This script can mutate production data and MUST run in CI/CD only.
-Local execution is PERMANENTLY BLOCKED to prevent accidental mutations.
-
-${'='.repeat(80)}
-`;
-    console.error(error);
-    process.exit(1);
-  }
-
-  // GUARD 2: Block PROD_DATABASE_URL usage locally
-  const prodDbUrl = process.env.PROD_DATABASE_URL || '';
-  if (prodDbUrl && nodeEnv !== 'production' && nodeEnv !== 'prod') {
-    const error = `
-${'='.repeat(80)}
-🚨 BLOCKED: PROD_DATABASE_URL detected in non-production context
-${'='.repeat(80)}
-PROD_DATABASE_URL is set but NODE_ENV=${nodeEnv}
-
-This prevents accidental use of production database in wrong context.
-${'='.repeat(80)}
-`;
-    console.error(error);
-    process.exit(1);
-  }
-
-  // GUARD 3: Validate we're in production environment
-  if (nodeEnv !== 'production' && nodeEnv !== 'prod') {
-    const error = `
-${'='.repeat(80)}
-🚨 BLOCKED: ${scriptName} requires NODE_ENV=production
-${'='.repeat(80)}
-Current NODE_ENV: ${nodeEnv || '(not set)'}
-CI: ${isCI}
-
-Production mutation scripts require both CI=true AND NODE_ENV=production.
-${'='.repeat(80)}
-`;
-    console.error(error);
-    process.exit(1);
-  }
-}
 
 // ============================================================================
 // CRITICAL GUARDS - Must pass or script exits
 // ============================================================================
 
 function enforceDeploymentGuards() {
+  // NOTE: CI and environment guards already executed at top of file
+  // (before any imports or database connections)
+  
   const dbUrl = process.env.DATABASE_URL || '';
   
-  // GUARD 1: CI-only execution enforcement (HARD GUARANTEE)
-  // This is the PRIMARY safety mechanism - blocks ALL local execution
-  enforceCIOnlyExecutionInline('deploy-db');
-  
-  // GUARD 2: Block production database locally
-  const urlLower = (dbUrl || '').toLowerCase();
-  const isProdDb = 
-    urlLower.includes('pooler.supabase.com') ||
-    urlLower.includes('supabase.com:5432') ||
-    urlLower.includes('aws-0-eu-west-1') ||
-    (urlLower.includes('supabase') && !urlLower.includes('localhost'));
-  
-  const ci = process.env.CI || '';
-  const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
-  const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
-  
-  if (isProdDb && !isCI && nodeEnv !== 'production' && nodeEnv !== 'prod') {
-    const error = `
-${'='.repeat(80)}
-🚨 BLOCKED: Production database URL detected in local/development context
-${'='.repeat(80)}
-Database URL pattern indicates production database.
-CI: ${ci || '(not set)'}
-NODE_ENV: ${nodeEnv || '(not set)'}
-
-Production database access is BLOCKED outside CI/CD pipelines.
-${'='.repeat(80)}
-`;
-    console.error(error);
-    process.exit(1);
-  }
-  
-  // GUARD 2: Verify DATABASE_URL is set
+  // GUARD: Verify DATABASE_URL is set
   if (!dbUrl) {
     console.error('\n❌ ERROR: DATABASE_URL environment variable is not set');
     process.exit(1);
   }
   
-  // GUARD 3: Require verification passed (order-locked)
+  // GUARD: Require verification passed (order-locked)
   deploymentState.requireVerificationPassed();
   
-  // GUARD 5: Require backup completed (order-locked)
+  // GUARD: Require backup completed (order-locked)
   deploymentState.requireBackupCompleted();
   
-  // GUARD 6: Acquire deployment lock (prevent concurrent deployments)
+  // GUARD: Acquire deployment lock (prevent concurrent deployments)
   deploymentState.requireDeploymentLock();
   
-  // GUARD 7: Set approved flag for Prisma wrapper
+  // GUARD: Set approved flag for Prisma wrapper
   process.env.PRISMA_DEPLOYMENT_APPROVED = 'true';
-  
-  const nodeEnv = process.env.NODE_ENV || '';
-  const ci = process.env.CI || '';
-  const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
   
   console.log('✅ Deployment guards passed');
   console.log(`   NODE_ENV: ${nodeEnv}`);
   console.log(`   CI: ${isCI}`);
-  console.log('   CI Enforcement: ✅ Passed');
+  console.log('   CI Enforcement: ✅ Passed (executed before imports)');
   console.log('   Verification: ✅ Passed');
   console.log('   Backup: ✅ Completed');
   console.log('   Lock: ✅ Acquired');
@@ -201,6 +184,7 @@ function main() {
   console.log('   This script performs EXACTLY ONE action: prisma migrate deploy\n');
   
   // Step 1: Enforce guards (exits if failed)
+  // NOTE: CI guards already executed at top of file
   enforceDeploymentGuards();
   
   // Step 2: Deploy migrations (THE ONLY ACTION)
