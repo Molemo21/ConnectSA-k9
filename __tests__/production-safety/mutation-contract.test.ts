@@ -12,6 +12,10 @@ describe('Mutation Contract Enforcement', () => {
   const scriptsDir = path.join(process.cwd(), 'scripts');
   const allowedMutationScripts = [
     'deploy-db.js',
+    'sync-reference-data-dev-to-prod.ts',
+  ];
+  
+  const deprecatedScripts = [
     'sync-dev-to-prod-services.ts',
   ];
 
@@ -24,13 +28,13 @@ describe('Mutation Contract Enforcement', () => {
       
       expect(mutationScripts).toHaveLength(2);
       expect(mutationScripts).toContain('deploy-db.js');
-      expect(mutationScripts).toContain('sync-dev-to-prod-services.ts');
+      expect(mutationScripts).toContain('sync-reference-data-dev-to-prod.ts');
     });
 
     it('should enforce CI-only execution in all mutation scripts', () => {
-      // Check that all mutation scripts import CI enforcement
+      // Check that all mutation scripts enforce CI-only execution
       const deployDbPath = path.join(scriptsDir, 'deploy-db.js');
-      const syncScriptPath = path.join(scriptsDir, 'sync-dev-to-prod-services.ts');
+      const newSyncScriptPath = path.join(scriptsDir, 'sync-reference-data-dev-to-prod.ts');
 
       if (fs.existsSync(deployDbPath)) {
         const deployDbContent = fs.readFileSync(deployDbPath, 'utf-8');
@@ -42,10 +46,51 @@ describe('Mutation Contract Enforcement', () => {
         ).toBe(true);
       }
 
-      if (fs.existsSync(syncScriptPath)) {
-        const syncContent = fs.readFileSync(syncScriptPath, 'utf-8');
-        expect(syncContent.includes('validateMutationScript')).toBe(true);
+      if (fs.existsSync(newSyncScriptPath)) {
+        const syncContent = fs.readFileSync(newSyncScriptPath, 'utf-8');
+        // Should check CI before imports
+        const ciCheckIndex = syncContent.indexOf('const ci = process.env.CI');
+        const importIndex = syncContent.indexOf('import {');
+        expect(ciCheckIndex).toBeGreaterThan(-1);
+        expect(importIndex).toBeGreaterThan(ciCheckIndex);
+        expect(syncContent).toMatch(/process\.exit\(1\)/);
       }
+    });
+
+    it('should hard-deprecate old sync script', () => {
+      const oldSyncScriptPath = path.join(scriptsDir, 'sync-dev-to-prod-services.ts');
+      
+      if (!fs.existsSync(oldSyncScriptPath)) {
+        return; // Skip if file doesn't exist
+      }
+
+      const oldScriptContent = fs.readFileSync(oldSyncScriptPath, 'utf-8');
+      
+      // Should exit immediately before any imports
+      const exitIndex = oldScriptContent.indexOf('process.exit(1)');
+      const importIndex = oldScriptContent.indexOf('import {');
+      
+      expect(exitIndex).toBeGreaterThan(-1);
+      expect(importIndex).toBeGreaterThan(exitIndex);
+      expect(oldScriptContent).toMatch(/DEPRECATED/);
+      expect(oldScriptContent).toMatch(/sync-reference-data-dev-to-prod\.ts/);
+    });
+
+    it('should prevent old script from mutating production', () => {
+      const oldSyncScriptPath = path.join(scriptsDir, 'sync-dev-to-prod-services.ts');
+      
+      if (!fs.existsSync(oldSyncScriptPath)) {
+        return;
+      }
+
+      const oldScriptContent = fs.readFileSync(oldSyncScriptPath, 'utf-8');
+      
+      // Should exit before any database operations
+      const exitIndex = oldScriptContent.indexOf('process.exit(1)');
+      const prismaIndex = oldScriptContent.indexOf('PrismaClient');
+      
+      expect(exitIndex).toBeGreaterThan(-1);
+      expect(exitIndex).toBeLessThan(prismaIndex);
     });
   });
 
@@ -127,6 +172,53 @@ describe('Mutation Contract Enforcement', () => {
     });
   });
 
+  describe('Table Allowlist Enforcement', () => {
+    it('should enforce strict allowlist in reference data script', () => {
+      const newSyncScriptPath = path.join(scriptsDir, 'sync-reference-data-dev-to-prod.ts');
+      
+      if (!fs.existsSync(newSyncScriptPath)) {
+        return;
+      }
+
+      const scriptContent = fs.readFileSync(newSyncScriptPath, 'utf-8');
+      
+      // Should have allowlist definition
+      expect(scriptContent).toMatch(/ALLOWED_TABLES/);
+      expect(scriptContent).toMatch(/service_categories/);
+      expect(scriptContent).toMatch(/services/);
+      
+      // Should have validation function
+      expect(scriptContent).toMatch(/validateTableAccess/);
+    });
+
+    it('should fail if table allowlist is expanded without approval', () => {
+      const newSyncScriptPath = path.join(scriptsDir, 'sync-reference-data-dev-to-prod.ts');
+      
+      if (!fs.existsSync(newSyncScriptPath)) {
+        return;
+      }
+
+      const scriptContent = fs.readFileSync(newSyncScriptPath, 'utf-8');
+      
+      // Extract allowlist
+      const allowlistMatch = scriptContent.match(/ALLOWED_TABLES.*?=.*?new Set\(\[(.*?)\]/s);
+      if (allowlistMatch) {
+        const tables = allowlistMatch[1].split(',').map(t => t.trim().replace(/['"]/g, ''));
+        
+        // Only service_categories and services should be allowed
+        const allowedTables = ['service_categories', 'services'];
+        tables.forEach(table => {
+          if (!allowedTables.includes(table)) {
+            throw new Error(
+              `Contract violation: Table "${table}" added to allowlist without approval. ` +
+              `Only service_categories and services are allowed.`
+            );
+          }
+        });
+      }
+    });
+  });
+
   describe('Bypass Detection', () => {
     it('should detect bypass flags in mutation scripts', () => {
       const mutationScripts = allowedMutationScripts.map(name => 
@@ -175,6 +267,60 @@ describe('Mutation Contract Enforcement', () => {
             }
           }
         });
+      });
+    });
+  });
+
+  describe('Forbidden Operations Detection', () => {
+    it('should detect DELETE, TRUNCATE, or DROP in reference data script', () => {
+      const newSyncScriptPath = path.join(scriptsDir, 'sync-reference-data-dev-to-prod.ts');
+      
+      if (!fs.existsSync(newSyncScriptPath)) {
+        return;
+      }
+
+      const scriptContent = fs.readFileSync(newSyncScriptPath, 'utf-8');
+      
+      // Remove comments and strings
+      const lines = scriptContent.split('\n');
+      const codeLines = lines.filter(line => {
+        const trimmed = line.trim();
+        return trimmed && 
+               !trimmed.startsWith('//') && 
+               !trimmed.startsWith('*') &&
+               !trimmed.startsWith('/**');
+      });
+      
+      const codeContent = codeLines.join('\n');
+      
+      // Should NOT contain DELETE, TRUNCATE, or DROP in actual code
+      const forbiddenPatterns = [
+        /\.delete\(/,
+        /\.deleteMany\(/,
+        /TRUNCATE/i,
+        /DROP TABLE/i,
+        /DROP COLUMN/i,
+      ];
+      
+      forbiddenPatterns.forEach(pattern => {
+        if (pattern.test(codeContent)) {
+          // Check if it's in a string literal
+          const matches = codeContent.match(new RegExp(pattern.source, pattern.flags));
+          if (matches) {
+            const matchIndex = codeContent.indexOf(matches[0]);
+            const beforeMatch = codeContent.substring(Math.max(0, matchIndex - 100), matchIndex);
+            
+            const isInString = beforeMatch.match(/['"`]/g)?.length % 2 === 1;
+            const isInComment = beforeMatch.includes('//') || beforeMatch.includes('*');
+            
+            if (!isInString && !isInComment) {
+              throw new Error(
+                `Contract violation: sync-reference-data-dev-to-prod.ts contains forbidden operation: ${pattern.source}. ` +
+                `No DELETE, TRUNCATE, or DROP operations are allowed.`
+              );
+            }
+          }
+        }
       });
     });
   });

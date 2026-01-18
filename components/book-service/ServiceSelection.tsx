@@ -33,15 +33,16 @@ interface ServiceSelectionProps {
 
 // Define subcategories for Beauty & Personal Care
 const BEAUTY_SUBCATEGORIES = {
-  'Hair Services': ['Haircut', 'Barbering', 'Braiding', 'Weave Installation'],
-  'Makeup & Lashes': ['Eyelash Extensions', 'Bridal Makeup', 'Makeup Application'],
-  'Nails': ['Manicure', 'Pedicure', 'Nail Extensions']
+  'Hair Services': ['Haircut (Men & Women)', 'Braiding', 'Weave Installation'],
+  'Makeup & Lashes': ['Eyelash Extensions', 'Bridal Makeup', 'Makeup Application (Regular)'],
+  'Nails': ['Manicure', 'Pedicure', 'Nail Extensions'],
+  'Skincare & Hair Removal': ['Facial', 'Waxing']
 };
 
 // Define subcategories for Cleaning Services
 const CLEANING_SUBCATEGORIES = {
   'Home Cleaning': ['House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
-  'Specialized Cleaning': ['Carpet Cleaning', 'Cleaning Services']
+  'Specialized Cleaning': ['Carpet Cleaning', 'Cleaning Services', 'Mobile Car Wash']
 };
 
 export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionProps) {

@@ -10,14 +10,22 @@ const ci = process.env.CI || '';
 const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
 const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
 const dbUrl = process.env.DATABASE_URL || '';
+const databaseEnv = (process.env.DATABASE_ENV || '').toLowerCase();
 
-// Detect production database patterns
+// Production detection: Check for specific production project reference
+// NOTE: Generic Supabase patterns (pooler.supabase.com, aws-0-eu-west-1) are used by BOTH
+// production and development databases, so we must check for the specific production project ref
+const PRODUCTION_PROJECT_REF = 'qdrktzqfeewwcktgltzy'; // Production project reference
+
+// Detect production database patterns (specific, not generic)
 const urlLower = dbUrl.toLowerCase();
-const isProdDb = 
-  urlLower.includes('pooler.supabase.com') ||
-  urlLower.includes('supabase.com:5432') ||
-  urlLower.includes('aws-0-eu-west-1') ||
-  (urlLower.includes('supabase') && !urlLower.includes('localhost'));
+
+// Allow explicit override for development databases
+// This prevents false positives when dev databases use similar URL patterns
+const isExplicitlyDev = databaseEnv === 'development' || databaseEnv === 'dev';
+
+// Check if this is the specific production database (not just any Supabase DB)
+const isProdDb = !isExplicitlyDev && urlLower.includes(PRODUCTION_PROJECT_REF);
 
 // Block production database in non-CI, non-production contexts
 if (isProdDb && !isCI && nodeEnv !== 'production' && nodeEnv !== 'prod') {
@@ -66,13 +74,15 @@ async function validateDatabaseUrlEarly() {
   const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
   const ci = process.env.CI || '';
   const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
+  const databaseEnv = (process.env.DATABASE_ENV || '').toLowerCase();
   
-  // Classify database URL
+  // Production detection: Check for specific production project reference
+  const PRODUCTION_PROJECT_REF = 'qdrktzqfeewwcktgltzy'; // Production project reference
+  
+  // Classify database URL (specific, not generic)
   const urlLower = dbUrl.toLowerCase();
-  const isProd = urlLower.includes('pooler.supabase.com') ||
-                urlLower.includes('supabase.com:5432') ||
-                urlLower.includes('aws-0-eu-west-1') ||
-                (urlLower.includes('supabase') && !urlLower.includes('localhost'));
+  const isExplicitlyDev = databaseEnv === 'development' || databaseEnv === 'dev';
+  const isProd = !isExplicitlyDev && urlLower.includes(PRODUCTION_PROJECT_REF);
   
   // GUARD 1: Development/test cannot use production database
   if ((nodeEnv === 'development' || nodeEnv === 'test') && isProd && !isCI) {

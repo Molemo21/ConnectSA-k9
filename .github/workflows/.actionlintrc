@@ -1,0 +1,19 @@
+# Actionlint configuration for GitHub Actions workflows
+# This file suppresses false positive warnings about secret context access
+
+# These warnings are false positives - secrets.DATABASE_URL, secrets.DIRECT_URL, etc.
+# are valid GitHub Actions contexts, but the linter can't verify they exist in the repo
+
+# Ignore context access warnings for secrets (these are valid)
+ignore:
+  - 'Context access might be invalid.*secrets'
+  - 'Unrecognized named-value.*secrets'
+
+# Valid contexts that should not trigger warnings
+valid-contexts:
+  - secrets
+  - env
+  - github
+  - needs
+  - steps
+  - vars

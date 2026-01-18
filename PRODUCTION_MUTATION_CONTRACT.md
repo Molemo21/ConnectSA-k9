@@ -18,14 +18,33 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
    - **Forbidden**: Any data mutations, backups, verifications, or additional logic
    - **Enforcement**: CI-only execution, environment fingerprint validation
 
-2. **`scripts/sync-dev-to-prod-services.ts`** (when NOT in dry-run)
+2. **`scripts/sync-reference-data-dev-to-prod.ts`** (when using --apply flag)
    - **Allowed Operations**: 
-     - Create/update service categories
-     - Create/update services
-     - Deactivate services (only if no bookings/providers)
-   - **Scope**: Services and categories ONLY
-   - **Forbidden**: Any other table mutations
-   - **Enforcement**: CI-only execution, environment fingerprint validation
+     - Create/update service categories (service_categories table)
+     - Create/update services (services table)
+   - **Scope**: Reference data ONLY (service_categories and services tables)
+   - **Forbidden**: 
+     - Any other table mutations
+     - DELETE, TRUNCATE, or DROP operations
+     - Modifying services with active bookings/providers
+     - Any mutations outside the strict allowlist
+   - **Enforcement**: 
+     - CI-only execution (process.exit(1) if CI !== "true" BEFORE imports)
+     - Environment fingerprint validation (DEV must be dev, PROD must be prod)
+     - Strict table allowlist enforcement
+     - Relationship safety checks
+   - **Modes**:
+     - `--dry-run` (default): Preview changes, always allowed
+     - `--apply`: Apply changes, CI-only, requires typing YES
+   - **Idempotent**: Re-running causes no drift
+   - **No Deletions**: Services in prod not in dev are left unchanged
+
+**DEPRECATED (HARD-BLOCKED)**:
+- **`scripts/sync-dev-to-prod-services.ts`** - HARD-DEPRECATED, exits immediately with error
+  - This script CANNOT mutate production
+  - Exits with process.exit(1) before any imports
+  - Error message directs to sync-reference-data-dev-to-prod.ts
+  - This ensures there is only ONE mutation path
 
 ### **2. ALLOWED TABLES/COLUMNS**
 
@@ -61,7 +80,8 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
   - Exit happens BEFORE Prisma import or database connection
 - **Locations**: 
   - `scripts/deploy-db.js` - Guards at top of file (before require statements)
-  - `scripts/sync-dev-to-prod-services.ts` - Guards before database operations
+  - `scripts/sync-reference-data-dev-to-prod.ts` - Guards at top of file (before imports, process.exit(1) if CI !== "true" when --apply)
+  - `scripts/sync-dev-to-prod-services.ts` - HARD-DEPRECATED, exits immediately before any imports
   - `lib/prisma.ts` - Guards at module level (before Prisma import)
 - **No Bypasses**: No environment variables, flags, or code paths can bypass this
 - **Proof**: `__tests__/production-safety/misuse-tests.test.ts` - Tests actual execution
@@ -112,10 +132,21 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
 - Test suite scans for mutation scripts
 - Fails if new scripts are added without contract approval
 - Fails if `deploy-db.js` gains extra logic beyond `prisma migrate deploy`
+- Fails if old sync script can still mutate production
+- Fails if table allowlist is expanded without approval
 
 **Proof**: Tests in `__tests__/production-safety/mutation-contract.test.ts`
 
-### **4. Bypass Mechanisms**
+### **4. Multiple Mutation Paths**
+
+**IMPOSSIBLE**: Having two working mutation paths for reference data
+- Old script (`sync-dev-to-prod-services.ts`) exits immediately before any imports
+- Only new script (`sync-reference-data-dev-to-prod.ts`) can mutate production
+- Tests fail if old script can still mutate production
+
+**Proof**: Tests in `__tests__/production-safety/mutation-contract.test.ts`
+
+### **5. Bypass Mechanisms**
 
 **IMPOSSIBLE**: Adding bypass flags or escape hatches
 - Tests scan for bypass patterns (SKIP_, BYPASS_, ALLOW_, etc.)
@@ -123,6 +154,15 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
 - Code review must reject any bypass attempts
 
 **Proof**: Tests in `__tests__/production-safety/bypass-detection.test.ts`
+
+### **6. Table Allowlist Violations**
+
+**IMPOSSIBLE**: Mutating tables outside the strict allowlist
+- Reference data script enforces allowlist at runtime
+- Only `service_categories` and `services` tables are allowed
+- Any attempt to access other tables causes process.exit(1)
+
+**Proof**: Tests in `__tests__/production-safety/reference-data-promotion.test.ts`
 
 ---
 
@@ -147,7 +187,8 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
 
 4. **Mutation Scripts**:
    - `scripts/deploy-db.js` - Uses CI enforcement
-   - `scripts/sync-dev-to-prod-services.ts` - Uses CI enforcement + fingerprint validation
+   - `scripts/sync-reference-data-dev-to-prod.ts` - Uses CI enforcement (before imports) + fingerprint validation + strict allowlist
+   - `scripts/sync-dev-to-prod-services.ts` - HARD-DEPRECATED, exits immediately
 
 ### **Test Suite**
 
@@ -221,13 +262,39 @@ All failure modes are **HARD FAILURES**:
 **REQUIRED STEPS** (all must pass):
 
 1. Add script to `ALLOWED_MUTATION_SCRIPTS` in contract
-2. Add CI enforcement: `validateMutationScript('script-name')`
+2. Add CI enforcement: Guards at TOP of file (BEFORE imports), process.exit(1) if CI !== "true"
 3. Add fingerprint validation (if accessing production)
-4. Add tests proving safety guarantees
-5. Update this document
-6. Get explicit approval from platform team
+4. Add strict allowlist enforcement (if mutating reference data)
+5. Add tests proving safety guarantees
+6. Update this document
+7. Get explicit approval from platform team
 
 **IF ANY STEP FAILS**: Contract violation - CI will fail
+
+### **Reference Data Promotion Rules**
+
+**STRICT REQUIREMENTS** (all must hold):
+
+1. **CI-Only Execution**: Script exits with process.exit(1) if CI !== "true" when --apply is used (BEFORE imports)
+2. **Environment Fingerprint Validation**: 
+   - DEV database MUST fingerprint as "dev"
+   - PROD database MUST fingerprint as "prod"
+   - Missing/corrupted fingerprint → hard fail
+3. **Strict Allowlist**: 
+   - ONLY `service_categories` and `services` tables
+   - Runtime validation with process.exit(1) if other tables accessed
+4. **No Deletions**: 
+   - No DELETE, TRUNCATE, or DROP operations
+   - Services in prod not in dev are left unchanged
+5. **Relationship Safety**: 
+   - Services with bookings/providers are skipped
+   - No modifications to protected services
+6. **Idempotent**: Re-running causes no drift
+7. **Explicit Modes**: 
+   - `--dry-run` (default): Preview changes
+   - `--apply`: Apply changes, requires typing YES, CI-only
+
+**NO TEMPORARY EXCEPTIONS**: These rules are permanent and enforced by tests.
 
 ### **Modifying Existing Scripts**
 

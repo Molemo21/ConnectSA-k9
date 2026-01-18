@@ -15,6 +15,7 @@
 export type MutationScript = 
   | 'deploy-db'
   | 'sync-dev-to-prod'
+  | 'sync-reference-data'
   | 'backup-production'
   | 'migrate-production';
 

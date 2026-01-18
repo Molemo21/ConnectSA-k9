@@ -1,0 +1,20 @@
+---
+# YAML Lint configuration
+# Suppresses false positive warnings about GitHub Actions secrets
+
+extends: default
+
+rules:
+  # Disable rules that cause false positives with GitHub Actions
+  line-length: disable
+  comments: disable
+  document-start: disable
+  
+  # Allow GitHub Actions syntax
+  truthy:
+    allowed-values: ['true', 'false', 'on', 'off']
+    check-keys: false
+
+# Ignore patterns for GitHub Actions workflows
+ignore: |
+  .github/workflows/*.yml

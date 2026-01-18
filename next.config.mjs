@@ -5,7 +5,10 @@ const nextConfig = {
   // To exclude from OneDrive: Right-click folder > OneDrive > Always keep on this device
   distDir: '.next',
   // Externalize Node.js modules for server components
-  serverComponentsExternalPackages: ['web-push'],
+  // Note: serverComponentsExternalPackages moved to experimental in Next.js 14.2+
+  experimental: {
+    serverComponentsExternalPackages: ['web-push'],
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

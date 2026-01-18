@@ -123,9 +123,9 @@ async function syncServices() {
 
     const beautyCategory = await ensureCategory(
       'cat_beauty',
-      'Beauty Services',
+      'Beauty & Personal Care',
       'Professional beauty and personal care services',
-      '💅'
+      '💄'
     );
 
     // Step 2: Get all existing services
@@ -204,7 +204,7 @@ async function syncServices() {
     });
 
     const cleaningServices = finalServices.filter(s => s.category.name === 'Cleaning Services');
-    const beautyServices = finalServices.filter(s => s.category.name === 'Beauty Services');
+    const beautyServices = finalServices.filter(s => s.category.name === 'Beauty & Personal Care');
 
     console.log(`\n✅ SYNC COMPLETE!`);
     console.log(`   📊 Summary:`);

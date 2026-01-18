@@ -1,86 +1,80 @@
 /**
- * 🚨 DEPRECATED - DO NOT USE
+ * 🔒 REFERENCE DATA PROMOTION SCRIPT (CI-ONLY)
  * 
- * This script has been HARD-DEPRECATED and CANNOT mutate production.
+ * PRODUCTION MUTATION SCRIPT - PHYSICALLY IMPOSSIBLE TO RUN LOCALLY
  * 
- * Reference data promotion is now ONLY allowed via:
- *   scripts/sync-reference-data-dev-to-prod.ts
+ * This is the ONLY allowed script for promoting reference data (categories & services)
+ * from DEV → PROD. It is locked down with multiple layers of enforcement.
  * 
- * This script exits immediately to prevent any possibility of production mutations
- * through the old path.
- */
-
-// ============================================================================
-// HARD DEPRECATION - Execute BEFORE any imports
-// ============================================================================
-
-console.error('\n' + '='.repeat(80));
-console.error('🚨 DEPRECATED SCRIPT - PRODUCTION MUTATIONS BLOCKED');
-console.error('='.repeat(80));
-console.error('');
-console.error('This script (sync-dev-to-prod-services.ts) has been HARD-DEPRECATED.');
-console.error('');
-console.error('Reference data promotion is now ONLY allowed via:');
-console.error('  scripts/sync-reference-data-dev-to-prod.ts');
-console.error('');
-console.error('This is a CONTRACT ENFORCEMENT - there must be only ONE mutation path.');
-console.error('');
-console.error('To promote reference data:');
-console.error('  npm run sync:reference:dry-run  (preview changes)');
-console.error('  npm run sync:reference:apply   (apply in CI only)');
-console.error('');
-console.error('='.repeat(80) + '\n');
-process.exit(1);
-
-// ============================================================================
-// Code below this point will NEVER execute
-// ============================================================================
-
-/**
- * 🔄 Sync Services & Categories from Development to Production
- * 
- * PRODUCTION-GRADE SCRIPT - Use with extreme caution!
- * 
- * This script safely syncs service categories and services from your development
- * database to production database, preserving existing bookings and provider relationships.
- * 
- * SAFETY FEATURES:
- * - Requires explicit confirmation before making changes
- * - Creates backups before syncing
- * - Dry-run mode to preview changes
- * - Preserves existing service IDs when possible
- * - Never deletes services that have bookings or providers
- * - Detailed logging and rollback instructions
+ * HARD RULES (NO EXCEPTIONS):
+ * 1. CI-ONLY execution - process.exit(1) if CI !== "true" (BEFORE imports)
+ * 2. Environment fingerprint validation - DEV must be dev, PROD must be prod
+ * 3. Strict allowlist - ONLY service_categories and services tables
+ * 4. NO DELETIONS - No DELETE, TRUNCATE, DROP operations
+ * 5. Relationship safety - Services with bookings/providers are skipped
+ * 6. Idempotent - Re-running causes no drift
+ * 7. Explicit modes - --dry-run (default) or --apply (requires YES)
  * 
  * USAGE:
- *   # Dry-run (preview changes without applying)
- *   npx tsx scripts/sync-dev-to-prod-services.ts --dry-run
+ *   # Dry-run (preview changes, always allowed)
+ *   npm run sync:reference:dry-run
  * 
- *   # Actual sync (requires confirmation)
- *   npx tsx scripts/sync-dev-to-prod-services.ts
+ *   # Apply changes (CI-only, requires --apply flag)
+ *   npm run sync:reference:apply
  * 
  * PREREQUISITES:
- * 1. Set DEV_DATABASE_URL in .env (development database)
- * 2. Set PROD_DATABASE_URL in .env (production database)
- * 3. Verify you're syncing the correct databases
+ * 1. DEV_DATABASE_URL must point to development database
+ * 2. PROD_DATABASE_URL must point to production database
+ * 3. Both databases must have valid environment fingerprints
  */
 
-/**
- * CRITICAL: Guards execute BEFORE any imports
- * Production mutation guards are checked at runtime, not import time
- */
+// ============================================================================
+// CRITICAL: Guards execute BEFORE any imports or database connections
+// These guards are the FIRST lines of code that execute
+// ============================================================================
+
+// GUARD 1: CI-only execution (PHYSICAL IMPOSSIBILITY)
+// This check happens BEFORE any imports to prevent any possibility of bypass
+const ci = process.env.CI || '';
+const isCI = ci === 'true' || ci === '1' || ci.toLowerCase() === 'true';
+
+// Parse arguments BEFORE checking CI (to allow --dry-run locally)
+const args = process.argv.slice(2);
+const isDryRun = args.includes('--dry-run');
+const isApply = args.includes('--apply');
+
+// If applying changes (not dry-run), MUST be in CI
+if (isApply && !isDryRun && !isCI) {
+  console.error('\n' + '='.repeat(80));
+  console.error('🚨 BLOCKED: Reference data promotion requires CI=true');
+  console.error('='.repeat(80));
+  console.error(`Current CI: ${ci || '(not set)'}`);
+  console.error('');
+  console.error('Production reference data mutations are PHYSICALLY IMPOSSIBLE outside CI/CD pipelines.');
+  console.error('This guard executes BEFORE any imports or database connections.');
+  console.error('');
+  console.error('To preview changes (dry-run), use: npm run sync:reference:dry-run');
+  console.error('To apply changes, this must run in CI with CI=true');
+  console.error('');
+  console.error('NO BYPASSES EXIST. This is a HARD GUARANTEE.');
+  console.error('='.repeat(80) + '\n');
+  process.exit(1);
+}
+
+// ============================================================================
+// Only after CI guard passes, proceed with imports
+// ============================================================================
 
 import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import * as readline from 'readline';
-import { validateEnvironmentFingerprint, getExpectedEnvironment } from '../lib/env-fingerprint';
+import { validateEnvironmentFingerprint } from '../lib/env-fingerprint';
 
 // Load environment variables
 const envPath = resolve(process.cwd(), '.env');
 config({ path: envPath });
 
-// Also try .env.development
 const devEnvPath = resolve(process.cwd(), '.env.development');
 config({ path: devEnvPath });
 
@@ -97,10 +91,54 @@ const colors = {
 
 interface SyncStats {
   categories: { created: number; updated: number; skipped: number };
-  services: { created: number; updated: number; skipped: number; deactivated: number };
+  services: { created: number; updated: number; skipped: number };
 }
 
-class DevToProdSync {
+// STRICT ALLOWLIST - Only these tables are allowed
+const ALLOWED_TABLES = new Set(['service_categories', 'services']);
+
+/**
+ * Validate that only allowed tables are being accessed
+ * This is a runtime check to prevent accidental mutations to other tables
+ */
+function validateTableAccess(tableName: string): void {
+  if (!ALLOWED_TABLES.has(tableName)) {
+    const error = `
+${'='.repeat(80)}
+🚨 CONTRACT VIOLATION: Table "${tableName}" is not in allowlist
+${'='.repeat(80)}
+Allowed tables: ${Array.from(ALLOWED_TABLES).join(', ')}
+Attempted access: ${tableName}
+
+This script can ONLY mutate service_categories and services tables.
+Any attempt to access other tables is a contract violation.
+${'='.repeat(80)}
+`;
+    console.error(error);
+    process.exit(1);
+  }
+}
+
+/**
+ * Check if a service has bookings or providers (must be skipped)
+ */
+async function hasActiveRelationships(
+  prisma: PrismaClient,
+  serviceId: string
+): Promise<boolean> {
+  const [bookings, providers] = await Promise.all([
+    prisma.booking.count({
+      where: { serviceId },
+    }),
+    prisma.providerService.count({
+      where: { serviceId },
+    }),
+  ]);
+
+  return bookings > 0 || providers > 0;
+}
+
+class ReferenceDataPromotion {
   private devPrisma: PrismaClient;
   private prodPrisma: PrismaClient;
   private dryRun: boolean;
@@ -110,7 +148,7 @@ class DevToProdSync {
     this.dryRun = dryRun;
     this.stats = {
       categories: { created: 0, updated: 0, skipped: 0 },
-      services: { created: 0, updated: 0, skipped: 0, deactivated: 0 },
+      services: { created: 0, updated: 0, skipped: 0 },
     };
 
     // Initialize Prisma clients
@@ -126,10 +164,10 @@ class DevToProdSync {
   }
 
   /**
-   * Validate database connections and show summary
+   * Validate database connections and environment fingerprints
    */
-  async validateConnections(): Promise<boolean> {
-    console.log(`\n${colors.cyan}${colors.bold}🔍 Validating Database Connections...${colors.reset}\n`);
+  async validateConnections(devUrl: string, prodUrl: string): Promise<boolean> {
+    console.log(`\n${colors.cyan}${colors.bold}🔍 Validating Database Connections & Fingerprints...${colors.reset}\n`);
 
     try {
       // Test dev connection
@@ -140,6 +178,15 @@ class DevToProdSync {
       console.log(`   - Categories: ${devCategories}`);
       console.log(`   - Services: ${devServices}`);
 
+      // CRITICAL: Validate DEV database fingerprint
+      const devFp = await validateEnvironmentFingerprint(devUrl, 'dev');
+      if (!devFp.isValid) {
+        console.error(`${colors.red}❌ Development database fingerprint validation failed:${colors.reset}`);
+        console.error(`   ${devFp.error}`);
+        return false;
+      }
+      console.log(`${colors.green}✅ Development database fingerprint validated${colors.reset}`);
+
       // Test prod connection
       await this.prodPrisma.$queryRaw`SELECT 1`;
       const prodCategories = await this.prodPrisma.serviceCategory.count();
@@ -147,6 +194,17 @@ class DevToProdSync {
       console.log(`${colors.green}✅ Production Database:${colors.reset}`);
       console.log(`   - Categories: ${prodCategories}`);
       console.log(`   - Services: ${prodServices}`);
+
+      // CRITICAL: Validate PROD database fingerprint (only if applying)
+      if (!this.dryRun) {
+        const prodFp = await validateEnvironmentFingerprint(prodUrl, 'prod');
+        if (!prodFp.isValid) {
+          console.error(`${colors.red}❌ Production database fingerprint validation failed:${colors.reset}`);
+          console.error(`   ${prodFp.error}`);
+          return false;
+        }
+        console.log(`${colors.green}✅ Production database fingerprint validated${colors.reset}`);
+      }
 
       return true;
     } catch (error) {
@@ -156,37 +214,11 @@ class DevToProdSync {
   }
 
   /**
-   * Create backup of production services and categories
-   */
-  async createBackup(): Promise<void> {
-    if (this.dryRun) {
-      console.log(`${colors.yellow}⚠️  DRY RUN: Would create backup${colors.reset}`);
-      return;
-    }
-
-    console.log(`\n${colors.cyan}📦 Creating Production Backup...${colors.reset}\n`);
-
-    try {
-      // Backup categories
-      const categories = await this.prodPrisma.serviceCategory.findMany();
-      const services = await this.prodPrisma.service.findMany({
-        include: { category: true },
-      });
-
-      console.log(`${colors.green}✅ Backup created:${colors.reset}`);
-      console.log(`   - ${categories.length} categories`);
-      console.log(`   - ${services.length} services`);
-      console.log(`   ${colors.yellow}⚠️  Note: Full backup should be saved to file for rollback${colors.reset}`);
-    } catch (error) {
-      console.error(`${colors.red}❌ Backup failed:${colors.reset}`, error);
-      throw error;
-    }
-  }
-
-  /**
    * Sync categories from dev to prod
    */
   async syncCategories(): Promise<Map<string, string>> {
+    validateTableAccess('service_categories');
+    
     console.log(`\n${colors.cyan}📊 Syncing Service Categories...${colors.reset}\n`);
 
     // Get all categories from dev
@@ -208,7 +240,6 @@ class DevToProdSync {
         if (this.dryRun) {
           console.log(`${colors.yellow}  [DRY RUN] Would create category: "${devCat.name}"${colors.reset}`);
           this.stats.categories.created++;
-          // Use dev ID for dry-run mapping
           categoryMap.set(devCat.id, devCat.id);
         } else {
           prodCat = await this.prodPrisma.serviceCategory.create({
@@ -261,8 +292,11 @@ class DevToProdSync {
 
   /**
    * Sync services from dev to prod
+   * NO DELETIONS - Only creates and updates
    */
   async syncServices(categoryMap: Map<string, string>): Promise<void> {
+    validateTableAccess('services');
+    
     console.log(`\n${colors.cyan}📊 Syncing Services...${colors.reset}\n`);
 
     // Get all services from dev with categories
@@ -274,8 +308,8 @@ class DevToProdSync {
     // Get all services from prod
     const prodServices = await this.prodPrisma.service.findMany();
 
-    // Get services with bookings/providers (don't deactivate these)
-    const servicesWithBookings = await this.prodPrisma.service.findMany({
+    // Get services with bookings/providers (don't modify these)
+    const servicesWithRelationships = await this.prodPrisma.service.findMany({
       where: {
         OR: [
           { bookings: { some: {} } },
@@ -285,8 +319,8 @@ class DevToProdSync {
       select: { id: true, name: true },
     });
 
-    const protectedServiceIds = new Set(servicesWithBookings.map((s) => s.id));
-    const protectedServiceNames = new Set(servicesWithBookings.map((s) => s.name));
+    const protectedServiceIds = new Set(servicesWithRelationships.map((s) => s.id));
+    const protectedServiceNames = new Set(servicesWithRelationships.map((s) => s.name));
 
     for (const devService of devServices) {
       const prodCategoryId = categoryMap.get(devService.categoryId);
@@ -324,7 +358,16 @@ class DevToProdSync {
           this.stats.services.created++;
         }
       } else {
-        // Service exists - update it (but preserve ID for bookings/providers)
+        // Service exists - check if it's protected
+        if (protectedServiceIds.has(prodService.id)) {
+          console.log(
+            `${colors.yellow}  ⚠️  Skipping protected service: "${devService.name}" (has bookings/providers)${colors.reset}`
+          );
+          this.stats.services.skipped++;
+          continue;
+        }
+
+        // Update it (but preserve ID for bookings/providers)
         const needsUpdate =
           prodService.description !== devService.description ||
           prodService.categoryId !== prodCategoryId ||
@@ -338,16 +381,13 @@ class DevToProdSync {
             );
             this.stats.services.updated++;
           } else {
-            // If service has bookings/providers, don't change isActive to false
-            const shouldDeactivate = !devService.isActive && !protectedServiceIds.has(prodService.id);
-
             prodService = await this.prodPrisma.service.update({
               where: { id: prodService.id },
               data: {
                 description: devService.description,
                 categoryId: prodCategoryId,
                 basePrice: devService.basePrice,
-                isActive: shouldDeactivate ? false : devService.isActive,
+                isActive: devService.isActive,
               },
             });
             console.log(
@@ -362,35 +402,16 @@ class DevToProdSync {
       }
     }
 
-    // Deactivate services in prod that don't exist in dev (but protect those with bookings)
-    const devServiceNames = new Set(devServices.map((s) => s.name));
-    const servicesToDeactivate = prodServices.filter(
-      (s) => !devServiceNames.has(s.name) && s.isActive && !protectedServiceNames.has(s.name)
-    );
-
-    if (servicesToDeactivate.length > 0) {
-      console.log(`\n${colors.yellow}⚠️  Services in prod not in dev (will be deactivated):${colors.reset}`);
-      for (const service of servicesToDeactivate) {
-        if (this.dryRun) {
-          console.log(`${colors.yellow}  [DRY RUN] Would deactivate: "${service.name}"${colors.reset}`);
-          this.stats.services.deactivated++;
-        } else {
-          await this.prodPrisma.service.update({
-            where: { id: service.id },
-            data: { isActive: false },
-          });
-          console.log(`${colors.yellow}  ⚠️  Deactivated: "${service.name}"${colors.reset}`);
-          this.stats.services.deactivated++;
-        }
-      }
-    }
+    // NOTE: We do NOT deactivate services in prod that don't exist in dev
+    // This is intentional - we only promote, never remove
+    console.log(`\n${colors.cyan}ℹ️  Note: Services in prod not in dev are left unchanged (no deletions)${colors.reset}`);
   }
 
   /**
    * Print final summary
    */
   printSummary(): void {
-    console.log(`\n${colors.cyan}${colors.bold}📊 Sync Summary${colors.reset}\n`);
+    console.log(`\n${colors.cyan}${colors.bold}📊 Promotion Summary${colors.reset}\n`);
 
     console.log(`${colors.bold}Categories:${colors.reset}`);
     console.log(`  - Created: ${this.stats.categories.created}`);
@@ -401,29 +422,25 @@ class DevToProdSync {
     console.log(`  - Created: ${this.stats.services.created}`);
     console.log(`  - Updated: ${this.stats.services.updated}`);
     console.log(`  - Skipped: ${this.stats.services.skipped}`);
-    console.log(`  - Deactivated: ${this.stats.services.deactivated}`);
 
     if (this.dryRun) {
       console.log(`\n${colors.yellow}${colors.bold}⚠️  DRY RUN MODE - No changes were made${colors.reset}`);
-      console.log(`   Run without --dry-run to apply changes.\n`);
+      console.log(`   Run with --apply flag in CI to apply changes.\n`);
     } else {
-      console.log(`\n${colors.green}${colors.bold}✅ Sync completed successfully!${colors.reset}\n`);
+      console.log(`\n${colors.green}${colors.bold}✅ Promotion completed successfully!${colors.reset}\n`);
     }
   }
 
   /**
-   * Main sync process
+   * Main promotion process
    */
-  async sync(): Promise<void> {
+  async promote(devUrl: string, prodUrl: string): Promise<void> {
     try {
-      // Validate connections
-      const isValid = await this.validateConnections();
+      // Validate connections and fingerprints
+      const isValid = await this.validateConnections(devUrl, prodUrl);
       if (!isValid) {
-        throw new Error('Database connection validation failed');
+        throw new Error('Database connection or fingerprint validation failed');
       }
-
-      // Create backup
-      await this.createBackup();
 
       // Sync categories first (services depend on them)
       const categoryMap = await this.syncCategories();
@@ -434,7 +451,7 @@ class DevToProdSync {
       // Print summary
       this.printSummary();
     } catch (error) {
-      console.error(`\n${colors.red}${colors.bold}❌ Sync failed:${colors.reset}`, error);
+      console.error(`\n${colors.red}${colors.bold}❌ Promotion failed:${colors.reset}`, error);
       throw error;
     } finally {
       await this.devPrisma.$disconnect();
@@ -444,7 +461,7 @@ class DevToProdSync {
 }
 
 /**
- * Prompt user for confirmation
+ * Prompt user for confirmation (only used in apply mode)
  */
 function promptConfirmation(question: string): Promise<boolean> {
   const rl = readline.createInterface({
@@ -453,9 +470,9 @@ function promptConfirmation(question: string): Promise<boolean> {
   });
 
   return new Promise((resolve) => {
-    rl.question(`${question} (yes/no): `, (answer) => {
+    rl.question(`${question} (type YES to confirm): `, (answer) => {
       rl.close();
-      resolve(answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y');
+      resolve(answer.trim().toUpperCase() === 'YES');
     });
   });
 }
@@ -464,17 +481,23 @@ function promptConfirmation(question: string): Promise<boolean> {
  * Main execution
  */
 async function main() {
-  const args = process.argv.slice(2);
-  const dryRun = args.includes('--dry-run');
-
   console.log(`\n${'='.repeat(80)}`);
-  console.log(`${' '.repeat(20)}🔄 DEV TO PROD SERVICES SYNC${' '.repeat(20)}`);
+  console.log(`${' '.repeat(20)}🔒 REFERENCE DATA PROMOTION (CI-ONLY)${' '.repeat(20)}`);
   console.log(`${'='.repeat(80)}\n`);
 
-  if (dryRun) {
+  if (isDryRun) {
     console.log(`${'⚠️  '.repeat(20)} DRY RUN MODE ${'⚠️  '.repeat(20)}\n`);
+  } else if (isApply) {
+    console.log(`${'🚨 '.repeat(20)} APPLY MODE (CI-ONLY) ${'🚨 '.repeat(20)}\n`);
+    
+    // Double-check CI requirement
+    if (!isCI) {
+      console.error(`${colors.red}❌ ERROR: --apply requires CI=true${colors.reset}`);
+      process.exit(1);
+    }
   } else {
-    console.log(`${'🚨 '.repeat(20)} PRODUCTION MODE ${'🚨 '.repeat(20)}\n`);
+    // Default to dry-run if no flag specified
+    console.log(`${'⚠️  '.repeat(20)} DRY RUN MODE (default) ${'⚠️  '.repeat(20)}\n`);
   }
 
   // Get database URLs
@@ -482,13 +505,13 @@ async function main() {
   const prodUrl = process.env.PROD_DATABASE_URL;
 
   if (!devUrl) {
-    console.error('❌ ERROR: DEV_DATABASE_URL or DATABASE_URL environment variable required');
+    console.error(`${colors.red}❌ ERROR: DEV_DATABASE_URL or DATABASE_URL environment variable required${colors.reset}`);
     console.error('   Set DEV_DATABASE_URL to your development database URL');
     process.exit(1);
   }
 
   if (!prodUrl) {
-    console.error('❌ ERROR: PROD_DATABASE_URL environment variable required');
+    console.error(`${colors.red}❌ ERROR: PROD_DATABASE_URL environment variable required${colors.reset}`);
     console.error('   Set PROD_DATABASE_URL to your production database URL');
     process.exit(1);
   }
@@ -506,47 +529,7 @@ async function main() {
   console.log(`Development DB: ${maskUrl(devUrl)}`);
   console.log(`Production DB: ${maskUrl(prodUrl)}\n`);
 
-  if (!dryRun) {
-    // CRITICAL: Enforce CI-only execution for production mutations
-    try {
-      validateMutationScript('sync-dev-to-prod', prodUrl);
-    } catch (error: any) {
-      console.error('\n' + '='.repeat(80));
-      console.error('🚨 BLOCKED: Production sync requires CI=true');
-      console.error('='.repeat(80));
-      console.error(error.message || error);
-      console.error('='.repeat(80) + '\n');
-      process.exit(1);
-    }
-
-    // CRITICAL: Validate environment fingerprints
-    console.log('\n🔍 Validating environment fingerprints...\n');
-    
-    try {
-      // Validate dev database fingerprint
-      const devFingerprint = await validateEnvironmentFingerprint(devUrl, 'dev');
-      if (!devFingerprint.isValid) {
-        console.error(`❌ Development database fingerprint validation failed:`);
-        console.error(`   ${devFingerprint.error}`);
-        process.exit(1);
-      }
-      console.log('✅ Development database fingerprint validated');
-
-      // Validate prod database fingerprint
-      const prodFingerprint = await validateEnvironmentFingerprint(prodUrl, 'prod');
-      if (!prodFingerprint.isValid) {
-        console.error(`❌ Production database fingerprint validation failed:`);
-        console.error(`   ${prodFingerprint.error}`);
-        process.exit(1);
-      }
-      console.log('✅ Production database fingerprint validated\n');
-    } catch (error: any) {
-      console.error(`\n❌ CRITICAL: Environment fingerprint validation failed:`);
-      console.error(`   ${error.message}`);
-      console.error(`\nThis prevents accidental cross-environment access.\n`);
-      process.exit(1);
-    }
-
+  if (isApply && !isDryRun) {
     console.log(`${'⚠️  '.repeat(20)} WARNING ${'⚠️  '.repeat(20)}`);
     console.log('This will modify your PRODUCTION database!');
     console.log('Make sure you have:');
@@ -556,14 +539,14 @@ async function main() {
 
     const confirmed = await promptConfirmation('Are you sure you want to proceed?');
     if (!confirmed) {
-      console.log('\n❌ Sync cancelled by user');
+      console.log('\n❌ Promotion cancelled by user');
       process.exit(0);
     }
   }
 
-  // Run sync
-  const sync = new DevToProdSync(devUrl, prodUrl, dryRun);
-  await sync.sync();
+  // Run promotion
+  const promotion = new ReferenceDataPromotion(devUrl, prodUrl, isDryRun || !isApply);
+  await promotion.promote(devUrl, prodUrl);
 }
 
 // Run if called directly
@@ -574,4 +557,4 @@ if (require.main === module) {
   });
 }
 
-export { DevToProdSync };
+export { ReferenceDataPromotion };

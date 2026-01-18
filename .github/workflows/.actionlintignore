@@ -1,0 +1,5 @@
+# Ignore actionlint warnings for these patterns
+# These warnings are false positives - secrets are valid in GitHub Actions
+
+# Context access warnings for secrets (valid in GitHub Actions)
+**/deploy-production.yml

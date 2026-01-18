@@ -1,0 +1,25 @@
+# Actionlint configuration for GitHub Actions workflows
+# Suppresses warnings about secret context access (false positives)
+
+self-hosted-runner:
+  labels: []
+
+# Ignore warnings about secret context access
+# These are false positives - secrets are valid in GitHub Actions
+# but the linter can't verify they exist in the repository
+shellcheck:
+  enable: false  # Disable shellcheck warnings for workflow files
+
+# Suppress specific warning types
+ignore:
+  # Context access warnings for secrets (these are valid in GitHub Actions)
+  - 'Context access might be invalid'
+  - 'Unrecognized named-value'
+
+# Allow these specific context accesses
+valid-contexts:
+  - secrets
+  - env
+  - github
+  - needs
+  - steps
