@@ -66,6 +66,8 @@
     "sync:reference:dry-run": "tsx scripts/sync-reference-data-dev-to-prod.ts --dry-run",
     "sync:reference:apply": "tsx scripts/sync-reference-data-dev-to-prod.ts --apply",
     "db:init-fingerprint": "tsx scripts/init-database-fingerprint.ts",
+    "verify:production:state": "tsx scripts/check-production-state.ts",
+    "verify:production:frontend": "tsx scripts/verify-production-frontend.ts",
     "deploy:production": "./scripts/deploy-production.sh",
     "deploy:production:skip-tests": "./scripts/deploy-production.sh --skip-tests",
     "verify:production": "node scripts/verify-production-deployment.js",
