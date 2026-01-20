@@ -43,7 +43,7 @@ const BEAUTY_SUBCATEGORIES = {
 // IMPORTANT: Service names MUST match exactly with config/services.ts (source of truth)
 const CLEANING_SUBCATEGORIES = {
   'Home Cleaning': ['Standard House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
-  'Specialized Cleaning': ['Carpet Cleaning', 'Mobile Car Wash']
+  'Specialized Cleaning': ['Carpet Cleaning', 'Mobile Car Wash', 'Office Cleaning']
 };
 
 export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionProps) {
