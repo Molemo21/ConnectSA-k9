@@ -131,8 +131,123 @@ async function ensureProductionServices() {
       stats.skipped++;
     }
 
-    // Step 3: Ensure all services from config exist
-    console.log('\n📋 Step 3: Ensuring All Services from config/services.ts Exist\n');
+    // Step 3: Handle service name fixes (rename old names to new names)
+    console.log('\n📋 Step 3: Fixing Service Name Mismatches\n');
+    
+    const SERVICE_NAME_FIXES: Record<string, string> = {
+      'House Cleaning': 'Standard House Cleaning', // Fix mismatch
+    };
+    
+    for (const [oldName, newName] of Object.entries(SERVICE_NAME_FIXES)) {
+      const oldService = await prisma.service.findFirst({
+        where: {
+          name: oldName,
+          categoryId: cleaningCategory?.id
+        },
+        include: {
+          providers: true,
+          bookings: true
+        }
+      });
+      
+      if (oldService) {
+        // Check if new name already exists
+        const existingNewService = await prisma.service.findFirst({
+          where: {
+            name: newName,
+            categoryId: cleaningCategory?.id
+          }
+        });
+        
+        if (existingNewService) {
+          console.log(`  ⚠️  Service "${newName}" already exists, skipping rename of "${oldName}"`);
+          // If old service has no relationships, delete it
+          if (oldService.providers.length === 0 && oldService.bookings.length === 0) {
+            if (!dryRun) {
+              await prisma.service.delete({ where: { id: oldService.id } });
+              console.log(`  ✅ Deleted duplicate service: "${oldName}"`);
+            } else {
+              console.log(`  [DRY RUN] Would delete duplicate service: "${oldName}"`);
+            }
+          }
+        } else {
+          // Get config service to update other fields too
+          const configService = SERVICES.find(s => s.name === newName);
+          
+          if (configService) {
+            if (dryRun) {
+              console.log(`  [DRY RUN] Would rename "${oldName}" → "${newName}"`);
+              stats.updated++;
+            } else {
+              await prisma.service.update({
+                where: { id: oldService.id },
+                data: {
+                  name: newName,
+                  description: configService.description,
+                  basePrice: configService.basePrice,
+                  isActive: configService.isActive,
+                }
+              });
+              console.log(`  ✅ Renamed "${oldName}" → "${newName}"`);
+              stats.updated++;
+            }
+          }
+        }
+      }
+    }
+
+    // Step 4: Remove invalid services (category names that shouldn't be services)
+    console.log('\n📋 Step 4: Removing Invalid Services\n');
+    
+    const invalidServiceNames = ['Cleaning Services']; // Category names that shouldn't be services
+    
+    for (const invalidName of invalidServiceNames) {
+      const invalidService = await prisma.service.findFirst({
+        where: {
+          name: invalidName,
+          categoryId: cleaningCategory?.id
+        },
+        include: {
+          providers: true,
+          bookings: true
+        }
+      });
+
+      if (invalidService) {
+        const hasRelationships = invalidService.providers.length > 0 || invalidService.bookings.length > 0;
+        
+        if (hasRelationships) {
+          console.log(`  ⚠️  Invalid service "${invalidName}" has relationships - deactivating instead of deleting`);
+          if (!dryRun) {
+            await prisma.service.update({
+              where: { id: invalidService.id },
+              data: {
+                isActive: false,
+                name: `${invalidName} (INVALID - DEACTIVATED)`
+              }
+            });
+            console.log(`  ✅ Deactivated invalid service: "${invalidName}"`);
+          } else {
+            console.log(`  [DRY RUN] Would deactivate: "${invalidName}"`);
+          }
+        } else {
+          console.log(`  🗑️  Removing invalid service: "${invalidName}"`);
+          if (!dryRun) {
+            await prisma.service.delete({
+              where: { id: invalidService.id }
+            });
+            console.log(`  ✅ Deleted invalid service: "${invalidName}"`);
+          } else {
+            console.log(`  [DRY RUN] Would delete: "${invalidName}"`);
+          }
+        }
+      } else {
+        console.log(`  ✓ No invalid service: "${invalidName}"`);
+      }
+    }
+
+    // Step 5: Ensure all services from config exist
+    console.log('\n📋 Step 5: Ensuring All Services from config/services.ts Exist\n');
     console.log(`Total services in config: ${SERVICES.length}\n`);
 
     for (const serviceConfig of SERVICES) {
