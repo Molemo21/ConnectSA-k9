@@ -322,6 +322,15 @@ jobs:
         DIRECT_URL: ${{ secrets.DIRECT_URL }}
       continue-on-error: false
       
+    - name: Verify service names match config
+      run: npm run verify:service:names
+      env:
+        NODE_ENV: production
+        CI: true
+        DATABASE_URL: ${{ secrets.PROD_DATABASE_URL || secrets.DATABASE_URL }}
+        DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      continue-on-error: false
+      
     - name: Check deployment status
       run: |
         if [ "${{ needs.deploy-database.result }}" != "success" ]; then

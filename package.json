@@ -69,6 +69,8 @@
     "verify:production:state": "tsx scripts/check-production-state.ts",
     "verify:production:frontend": "tsx scripts/verify-production-frontend.ts",
     "fix:production:frontend": "tsx scripts/fix-production-frontend-sync.ts",
+    "verify:service:names": "tsx scripts/verify-service-name-sync.ts",
+    "fix:service:names": "tsx scripts/fix-service-name-mismatches.ts",
     "deploy:production": "./scripts/deploy-production.sh",
     "deploy:production:skip-tests": "./scripts/deploy-production.sh --skip-tests",
     "verify:production": "node scripts/verify-production-deployment.js",
