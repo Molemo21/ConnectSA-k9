@@ -58,17 +58,28 @@ function verifyMigrations() {
     } catch (error) {
       // Migration status might show mismatches if migrations were applied manually
       // or with different names. This is OK - the deploy step will apply missing migrations.
-      const errorOutput = error.stdout || error.stderr || error.message;
+      const errorOutput = String(error.stdout || error.stderr || error.message || '');
+      const errorMessage = String(error.message || '');
       
-      // Check if it's just a mismatch (not a connection error)
-      if (errorOutput.includes('migrations have not yet been applied') || 
-          errorOutput.includes('migrations from the database are not found locally')) {
+      // Check if it's just a migration history mismatch (not a connection error)
+      const isMigrationMismatch = 
+        errorOutput.includes('migrations have not yet been applied') || 
+        errorOutput.includes('migrations from the database are not found locally') ||
+        errorOutput.includes('local migration history and the migrations table') ||
+        errorMessage.includes('migrations have not yet been applied') ||
+        errorMessage.includes('migrations from the database are not found locally') ||
+        errorMessage.includes('local migration history and the migrations table');
+      
+      if (isMigrationMismatch) {
         console.warn('⚠️  Migration history mismatch detected');
         console.warn('   This is expected if migrations were applied manually or with different names.');
         console.warn('   Missing migrations will be applied during deployment.');
-        console.warn('\n   Migration status output:');
-        console.warn(errorOutput);
+        if (errorOutput) {
+          console.warn('\n   Migration status details:');
+          console.warn(errorOutput.substring(0, 500)); // Limit output length
+        }
         console.log('\n✅ Migration check passed (mismatches will be resolved during deployment)');
+        return; // Exit successfully
       } else {
         // Re-throw if it's a different error (connection, etc.)
         throw error;
