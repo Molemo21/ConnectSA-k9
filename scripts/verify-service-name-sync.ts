@@ -11,15 +11,17 @@ config({ path: envProdPath });
 const envLocalPath = resolve(process.cwd(), '.env.local');
 config({ path: envLocalPath });
 
-if (!process.env.DATABASE_URL) {
-  console.error('❌ ERROR: DATABASE_URL environment variable is required');
+const dbUrl = process.env.PROD_DATABASE_URL || process.env.DATABASE_URL;
+
+if (!dbUrl) {
+  console.error('❌ ERROR: DATABASE_URL or PROD_DATABASE_URL environment variable is required');
   process.exit(1);
 }
 
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL
+      url: dbUrl
     }
   }
 });

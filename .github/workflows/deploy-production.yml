@@ -271,7 +271,7 @@ jobs:
         CI: true
         PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         FORCE_RUN: true
-      continue-on-error: true
+      continue-on-error: false
 
   # Post-deployment Verification
   verify-deployment:
