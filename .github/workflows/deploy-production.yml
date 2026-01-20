@@ -263,13 +263,12 @@ jobs:
         PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
       continue-on-error: false
       
-    - name: Ensure production services exist (fallback)
-      if: steps.check-config.outputs.configured == 'true'
+    - name: Ensure production services exist
       run: npm run ensure:production:services
       env:
         NODE_ENV: production
         CI: true
-        PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL || secrets.DATABASE_URL }}
         FORCE_RUN: true
       continue-on-error: false
 
