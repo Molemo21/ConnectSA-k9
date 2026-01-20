@@ -73,6 +73,8 @@
     "fix:service:names": "tsx scripts/fix-service-name-mismatches.ts",
     "diagnose:missing:services": "tsx scripts/diagnose-missing-services.ts",
     "investigate:specialized:cleaning": "tsx scripts/investigate-production-specialized-cleaning.ts",
+    "ensure:production:services": "tsx scripts/ensure-production-services.ts",
+    "ensure:production:services:dry-run": "tsx scripts/ensure-production-services.ts --dry-run",
     "deploy:production": "./scripts/deploy-production.sh",
     "deploy:production:skip-tests": "./scripts/deploy-production.sh --skip-tests",
     "verify:production": "node scripts/verify-production-deployment.js",
