@@ -290,6 +290,13 @@ jobs:
     - name: Install TypeScript
       run: npm install -g tsx typescript
       
+    - name: Generate Prisma Client
+      run: npx prisma generate
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      continue-on-error: false
+      
     - name: Verify database connection
       run: |
         echo "🔍 Verifying database connection..."
