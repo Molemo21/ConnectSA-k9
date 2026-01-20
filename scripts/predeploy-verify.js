@@ -32,9 +32,15 @@ function runVerificationStep(step) {
   console.log(`\n[STEP] ${step.name}...`);
   
   try {
+    // Ensure DIRECT_URL is passed to child processes
+    const env = { ...process.env };
+    if (process.env.DIRECT_URL) {
+      env.DIRECT_URL = process.env.DIRECT_URL;
+    }
+    
     execSync(`node "${scriptPath}"`, {
       stdio: 'inherit',
-      env: { ...process.env }
+      env: env
     });
     console.log(`✅ ${step.name} passed`);
     return true;
