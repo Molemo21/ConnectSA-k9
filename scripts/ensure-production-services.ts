@@ -72,6 +72,16 @@ interface ServiceStats {
 async function ensureProductionServices() {
   console.log('🔧 Ensuring Production Services Exist\n');
   console.log('='.repeat(70) + '\n');
+  
+  // Debug: Show environment info
+  console.log('🔍 Environment Info:');
+  console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+  console.log(`   CI: ${process.env.CI || 'not set'}`);
+  console.log(`   FORCE_RUN: ${process.env.FORCE_RUN || 'not set'}`);
+  console.log(`   PROD_DATABASE_URL: ${process.env.PROD_DATABASE_URL ? '✅ set' : '❌ not set'}`);
+  console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ set' : '❌ not set'}`);
+  console.log(`   Using database URL: ${dbUrl.substring(0, 30)}...`);
+  console.log(`   Dry run mode: ${dryRun ? 'YES' : 'NO'}\n`);
 
   if (dryRun) {
     console.log('🔍 DRY RUN MODE - No changes will be made\n');
