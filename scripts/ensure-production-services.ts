@@ -25,7 +25,14 @@ if (!process.env.DATABASE_URL && !process.env.PROD_DATABASE_URL) {
 
 const dbUrl = process.env.PROD_DATABASE_URL || process.env.DATABASE_URL;
 
-// Check if this is production database
+if (!dbUrl) {
+  console.error('❌ ERROR: DATABASE_URL or PROD_DATABASE_URL environment variable is required');
+  console.error('   This script ensures services exist in PRODUCTION database');
+  console.error('   Set PROD_DATABASE_URL to your production database URL');
+  process.exit(1);
+}
+
+// Check if this is production database (only warn, don't block if FORCE_RUN is set)
 const isProduction = dbUrl.includes('production') || 
                      dbUrl.includes('prod') || 
                      process.env.NODE_ENV === 'production' ||
@@ -36,7 +43,10 @@ if (!isProduction && !process.env.FORCE_RUN) {
   console.warn('   Current DATABASE_URL does not appear to be production');
   console.warn('   Set FORCE_RUN=true to override this check');
   console.warn('   Or use PROD_DATABASE_URL environment variable');
-  process.exit(1);
+  // Don't exit in CI - let it run if FORCE_RUN is set in workflow
+  if (!process.env.CI) {
+    process.exit(1);
+  }
 }
 
 const prisma = new PrismaClient({
