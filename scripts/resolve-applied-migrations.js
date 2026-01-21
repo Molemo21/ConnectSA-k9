@@ -393,12 +393,12 @@ async function resolveFailedMigrations() {
     
     // Step 1: Find failed migrations
     console.log('\n📋 Step 1: Finding failed migrations...');
-    const failedMigrations = await prisma.$queryRaw`
-      SELECT migration_name, started_at
-      FROM _prisma_migrations
-      WHERE finished_at IS NULL
-      ORDER BY started_at DESC
-    `;
+    const failedMigrations = await prisma.$queryRawUnsafe(
+      `SELECT migration_name, started_at
+       FROM _prisma_migrations
+       WHERE finished_at IS NULL
+       ORDER BY started_at DESC`
+    );
     
     if (!failedMigrations || failedMigrations.length === 0) {
       console.log('✅ No failed migrations found');
