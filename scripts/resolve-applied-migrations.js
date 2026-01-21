@@ -108,10 +108,29 @@ function parseMigrationSQL(sqlContent) {
 }
 
 /**
+ * Get actual column names for a table from the database
+ */
+async function getTableColumns(prisma, tableName) {
+  try {
+    const result = await prisma.$queryRawUnsafe(
+      `SELECT column_name 
+       FROM information_schema.columns 
+       WHERE table_schema = 'public' AND table_name = $1
+       ORDER BY ordinal_position`,
+      tableName
+    );
+    return Array.isArray(result) ? result.map(r => r.column_name) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Extract CREATE INDEX SQL statement for a specific index name
  * Returns the full SQL statement including table and columns
+ * Also queries actual table structure to ensure column names match
  */
-function extractIndexSQL(sqlContent, indexName) {
+async function extractIndexSQL(prisma, sqlContent, indexName) {
   const lines = sqlContent.split('\n');
   
   for (let i = 0; i < lines.length; i++) {
@@ -134,7 +153,62 @@ function extractIndexSQL(sqlContent, indexName) {
         if (j - i > 20) break;
       }
       
-      return fullSQL.trim();
+      // Extract table name and columns from the SQL
+      const tableMatch = fullSQL.match(/ON\s+"?(\w+)"?\s*\(/i);
+      const columnsMatch = fullSQL.match(/\(([^)]+)\)/);
+      
+      if (tableMatch && columnsMatch) {
+        const tableName = tableMatch[1];
+        const columnsInSQL = columnsMatch[1].split(',').map(c => c.trim().replace(/"/g, ''));
+        
+        // Get actual column names from the table
+        const actualColumns = await getTableColumns(prisma, tableName);
+        
+        if (actualColumns.length > 0) {
+          // Map SQL column names to actual column names
+          // Try exact match first, then try case-insensitive, then try snake_case to camelCase
+          const mappedColumns = columnsInSQL.map(colName => {
+            // Exact match
+            if (actualColumns.includes(colName)) {
+              return colName;
+            }
+            // Case-insensitive match
+            const caseInsensitive = actualColumns.find(ac => ac.toLowerCase() === colName.toLowerCase());
+            if (caseInsensitive) {
+              return caseInsensitive;
+            }
+            // Try converting snake_case to camelCase
+            const camelCase = colName.split('_').map((part, idx) => 
+              idx === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)
+            ).join('');
+            if (actualColumns.includes(camelCase)) {
+              return camelCase;
+            }
+            // Try converting camelCase to snake_case
+            const snakeCase = colName.replace(/([A-Z])/g, '_$1').toLowerCase();
+            if (actualColumns.includes(snakeCase)) {
+              return snakeCase;
+            }
+            // If no match found, return original (will fail with clear error)
+            return colName;
+          });
+          
+          // Reconstruct SQL with actual column names
+          const isUnique = fullSQL.includes('UNIQUE');
+          const indexType = isUnique ? 'UNIQUE INDEX' : 'INDEX';
+          const columnsStr = mappedColumns.map(c => `"${c}"`).join(', ');
+          return `CREATE ${indexType} IF NOT EXISTS "${indexName}" ON "${tableName}"(${columnsStr})`;
+        }
+      }
+      
+      // Fallback: return original SQL with IF NOT EXISTS added
+      let idempotentSQL = fullSQL.trim();
+      if (idempotentSQL.includes('CREATE UNIQUE INDEX')) {
+        idempotentSQL = idempotentSQL.replace(/CREATE\s+UNIQUE\s+INDEX/, 'CREATE UNIQUE INDEX IF NOT EXISTS');
+      } else if (idempotentSQL.includes('CREATE INDEX')) {
+        idempotentSQL = idempotentSQL.replace(/CREATE\s+INDEX/, 'CREATE INDEX IF NOT EXISTS');
+      }
+      return idempotentSQL;
     }
   }
   
@@ -485,27 +559,17 @@ async function resolveFailedMigrations() {
         try {
           // Create each missing index
           for (const missingIndex of missingIndexes) {
-            const indexSQL = extractIndexSQL(sqlContent, missingIndex);
+            const indexSQL = await extractIndexSQL(prisma, sqlContent, missingIndex);
             
             if (!indexSQL) {
               console.warn(`   ⚠️  Could not find SQL for index "${missingIndex}" - skipping`);
               continue;
             }
             
-            // Make it idempotent with IF NOT EXISTS
-            let idempotentSQL = indexSQL;
-            
-            // Handle CREATE UNIQUE INDEX
-            if (indexSQL.includes('CREATE UNIQUE INDEX')) {
-              idempotentSQL = indexSQL.replace(/CREATE\s+UNIQUE\s+INDEX/, 'CREATE UNIQUE INDEX IF NOT EXISTS');
-            } else if (indexSQL.includes('CREATE INDEX')) {
-              idempotentSQL = indexSQL.replace(/CREATE\s+INDEX/, 'CREATE INDEX IF NOT EXISTS');
-            }
-            
             console.log(`   📝 Creating index: ${missingIndex}`);
-            console.log(`      SQL: ${idempotentSQL.substring(0, 100)}...`);
+            console.log(`      SQL: ${indexSQL.substring(0, 120)}...`);
             
-            await prisma.$executeRawUnsafe(idempotentSQL);
+            await prisma.$executeRawUnsafe(indexSQL);
             console.log(`   ✅ Index "${missingIndex}" created successfully`);
           }
           
@@ -631,4 +695,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main, parseMigrationSQL, checkMigrationObjects, extractIndexSQL };
+module.exports = { main, parseMigrationSQL, checkMigrationObjects, extractIndexSQL, getTableColumns };
