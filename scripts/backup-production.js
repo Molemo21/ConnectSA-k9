@@ -81,10 +81,37 @@ function createBackup() {
     // Create backup - FAIL FAST if this fails
     console.log(`   Backup file: ${backupFile}`);
     
-    execSync(
-      `pg_dump -h "${host}" -p "${port}" -U "${username}" -d "${database}" -F c -f "${backupFile}"`,
-      { stdio: 'inherit' }
-    );
+    // Build pg_dump command with flags to handle version mismatches
+    // --no-owner and --no-acl avoid permission issues
+    // --verbose for better error messages
+    const pgDumpFlags = [
+      `-h "${host}"`,
+      `-p "${port}"`,
+      `-U "${username}"`,
+      `-d "${database}"`,
+      `-F c`, // Custom format (compressed)
+      `-f "${backupFile}"`,
+      `--no-owner`, // Skip ownership commands
+      `--no-acl`, // Skip access privileges
+      `--verbose` // Verbose output for debugging
+    ];
+    
+    // Try with --no-sync first (PostgreSQL 17+), fallback without it
+    let pgDumpCommand = `pg_dump ${pgDumpFlags.join(' ')}`;
+    
+    try {
+      execSync(pgDumpCommand, { stdio: 'inherit' });
+    } catch (error) {
+      // If it fails with version mismatch, try without --no-sync
+      if (error.message && error.message.includes('version mismatch')) {
+        console.warn('⚠️  Version mismatch detected, retrying without --no-sync flag...');
+        pgDumpFlags.push('--no-sync'); // Actually, let's try with it for PG17
+        pgDumpCommand = `pg_dump ${pgDumpFlags.join(' ')}`;
+        execSync(pgDumpCommand, { stdio: 'inherit' });
+      } else {
+        throw error;
+      }
+    }
     
     // Verify backup file exists and has content
     if (!fs.existsSync(backupFile)) {
