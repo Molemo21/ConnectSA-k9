@@ -150,33 +150,48 @@ async function deployMigrations() {
     const path = require('path');
     const migrationsDir = path.join(__dirname, '..', 'prisma', 'migrations');
     
-    const migrationDirs = fs.readdirSync(migrationsDir, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory() && dirent.name !== 'production')
-      .map(dirent => dirent.name);
+    // Get all directories (Prisma counts ALL directories, not just ones with migration.sql)
+    const allDirs = fs.readdirSync(migrationsDir, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name)
+      .filter(name => name !== 'production'); // Exclude production folder
     
+    // Check which ones have migration.sql (Prisma requires this)
+    const validDirs = [];
     const emptyDirs = [];
-    for (const dir of migrationDirs) {
+    
+    for (const dir of allDirs) {
       const migrationPath = path.join(migrationsDir, dir, 'migration.sql');
-      if (!fs.existsSync(migrationPath)) {
+      if (fs.existsSync(migrationPath)) {
+        validDirs.push(dir);
+      } else {
         emptyDirs.push(dir);
       }
     }
     
     if (emptyDirs.length > 0) {
-      console.error('\n❌ CRITICAL: Found empty migration directories (missing migration.sql):');
+      console.error('\n❌ CRITICAL: Found migration directories without migration.sql:');
       for (const dir of emptyDirs) {
         console.error(`   - ${dir}`);
       }
       console.error('');
-      console.error('   Empty migration directories cause Prisma P3015 errors.');
+      console.error('   Prisma requires migration.sql in each migration directory.');
+      console.error('   Empty directories cause P3015 "Could not find migration file" errors.');
+      console.error('');
       console.error('   Resolution:');
-      console.error('   1. Delete empty migration directories, OR');
-      console.error('   2. Add missing migration.sql files to each directory');
+      console.error('   1. Delete empty migration directories:');
+      for (const dir of emptyDirs) {
+        console.error(`      rm -rf prisma/migrations/${dir}`);
+      }
+      console.error('   2. Or restore missing migration.sql files if they were deleted');
       console.error('');
       throw new Error(`Empty migration directories found: ${emptyDirs.join(', ')}`);
     }
     
-    console.log(`✅ All ${migrationDirs.length} migration directories are valid`);
+    console.log(`✅ All ${validDirs.length} migration directories are valid (have migration.sql)`);
+    
+    // Additional check: Verify Prisma can see the same count
+    console.log(`   Prisma should find ${validDirs.length} migrations in prisma/migrations`);
     
     // Step 1: Generate Prisma client (required before migrate deploy)
     console.log('\n📦 Generating Prisma client...');
