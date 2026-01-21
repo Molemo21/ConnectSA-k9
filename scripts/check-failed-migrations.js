@@ -43,7 +43,10 @@ function checkFailedMigrations() {
       // Check output for failed migrations
       const statusOutput = String(status);
       
-      if (statusOutput.includes('failed') || statusOutput.includes('P3009')) {
+      // Only fail on actual failed migrations, not history mismatches
+      if (statusOutput.includes('P3009') || 
+          statusOutput.includes('found failed migrations') ||
+          (statusOutput.includes('failed') && statusOutput.includes('migration') && !statusOutput.includes('have not yet been applied'))) {
         console.error('❌ FAILED MIGRATIONS DETECTED');
         console.error('   Deployment is BLOCKED until failed migrations are resolved.');
         console.error('   Run: npm run resolve:failed:migrations');
@@ -55,11 +58,16 @@ function checkFailedMigrations() {
       
     } catch (error) {
       const errorOutput = String(error.stdout || error.stderr || error.message || '');
+      const errorMessage = String(error.message || '');
       
-      // Check for P3009 error (failed migrations)
+      // Check for P3009 error (failed migrations) - this is the critical check
       if (errorOutput.includes('P3009') || 
+          errorMessage.includes('P3009') ||
           errorOutput.includes('found failed migrations') ||
-          errorOutput.includes('failed migration')) {
+          errorMessage.includes('found failed migrations') ||
+          (errorOutput.includes('failed') && errorOutput.includes('migration') && 
+           !errorOutput.includes('have not yet been applied') &&
+           !errorOutput.includes('not found locally'))) {
         console.error('\n❌ FAILED MIGRATIONS DETECTED');
         console.error('   Prisma error P3009: Failed migrations found in database');
         console.error('   Deployment is BLOCKED until failed migrations are resolved.');
@@ -74,14 +82,20 @@ function checkFailedMigrations() {
       }
       
       // Migration history mismatches are OK (will be resolved during deploy)
+      // These are NOT failed migrations - they're just mismatched history
       if (errorOutput.includes('migrations have not yet been applied') ||
-          errorOutput.includes('migrations from the database are not found locally')) {
+          errorOutput.includes('migrations from the database are not found locally') ||
+          errorOutput.includes('local migration history and the migrations table') ||
+          errorMessage.includes('migrations have not yet been applied') ||
+          errorMessage.includes('migrations from the database are not found locally') ||
+          errorMessage.includes('local migration history and the migrations table')) {
         console.log('⚠️  Migration history mismatch (expected - will be resolved during deploy)');
-        console.log('✅ No failed migrations - safe to proceed');
+        console.log('   This is NOT a failed migration - just a history mismatch.');
+        console.log('✅ No failed migrations detected - safe to proceed');
         return;
       }
       
-      // Re-throw other errors
+      // Re-throw other errors (connection issues, etc.)
       throw error;
     }
     
