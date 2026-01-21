@@ -144,8 +144,42 @@ async function deployMigrations() {
   console.log('   Command: npx prisma migrate deploy\n');
   
   try {
+    // Step 0: Validate migration directories (prevent P3015 errors)
+    console.log('🔍 Validating migration directories...');
+    const fs = require('fs');
+    const path = require('path');
+    const migrationsDir = path.join(__dirname, '..', 'prisma', 'migrations');
+    
+    const migrationDirs = fs.readdirSync(migrationsDir, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory() && dirent.name !== 'production')
+      .map(dirent => dirent.name);
+    
+    const emptyDirs = [];
+    for (const dir of migrationDirs) {
+      const migrationPath = path.join(migrationsDir, dir, 'migration.sql');
+      if (!fs.existsSync(migrationPath)) {
+        emptyDirs.push(dir);
+      }
+    }
+    
+    if (emptyDirs.length > 0) {
+      console.error('\n❌ CRITICAL: Found empty migration directories (missing migration.sql):');
+      for (const dir of emptyDirs) {
+        console.error(`   - ${dir}`);
+      }
+      console.error('');
+      console.error('   Empty migration directories cause Prisma P3015 errors.');
+      console.error('   Resolution:');
+      console.error('   1. Delete empty migration directories, OR');
+      console.error('   2. Add missing migration.sql files to each directory');
+      console.error('');
+      throw new Error(`Empty migration directories found: ${emptyDirs.join(', ')}`);
+    }
+    
+    console.log(`✅ All ${migrationDirs.length} migration directories are valid`);
+    
     // Step 1: Generate Prisma client (required before migrate deploy)
-    console.log('📦 Generating Prisma client...');
+    console.log('\n📦 Generating Prisma client...');
     execSync('npx prisma generate', {
       stdio: 'inherit',
       env: { ...process.env }
