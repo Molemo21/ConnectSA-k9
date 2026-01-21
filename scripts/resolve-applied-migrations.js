@@ -362,6 +362,31 @@ async function resolveFailedMigrations() {
   }
   
   try {
+    // Step 0: Check if _prisma_migrations table exists
+    console.log('\n📋 Step 0: Checking Prisma migrations table...');
+    const migrationsTableExists = await checkMigrationsTableExists(prisma);
+    
+    if (!migrationsTableExists) {
+      console.error('\n❌ CRITICAL: _prisma_migrations table does not exist');
+      console.error('   This indicates the database has not been initialized with Prisma migrations.');
+      console.error('');
+      console.error('   The database must be initialized before migration resolution can run.');
+      console.error('');
+      console.error('   Resolution steps:');
+      console.error('   1. Run: npx prisma migrate deploy');
+      console.error('      This will create the _prisma_migrations table and apply all migrations');
+      console.error('   2. Then re-run: npm run resolve:applied:migrations');
+      console.error('');
+      console.error('   If you are running this locally for testing:');
+      console.error('   - Ensure you are connected to the correct database');
+      console.error('   - Verify DATABASE_URL and DIRECT_URL are set correctly');
+      console.error('   - Check that the database has been initialized with Prisma');
+      console.error('');
+      throw new Error('_prisma_migrations table does not exist - database not initialized');
+    }
+    
+    console.log('✅ Prisma migrations table exists');
+    
     // Step 1: Find failed migrations
     console.log('\n📋 Step 1: Finding failed migrations...');
     const failedMigrations = await prisma.$queryRaw`
