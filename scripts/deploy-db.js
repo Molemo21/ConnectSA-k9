@@ -148,6 +148,7 @@ async function deployMigrations() {
     console.log('🔍 Validating migration directories...');
     const fs = require('fs');
     const path = require('path');
+    const { PrismaClient } = require('@prisma/client');
     const migrationsDir = path.join(__dirname, '..', 'prisma', 'migrations');
     
     // Get all directories (Prisma counts ALL directories, not just ones with migration.sql)
@@ -190,8 +191,58 @@ async function deployMigrations() {
     
     console.log(`✅ All ${validDirs.length} migration directories are valid (have migration.sql)`);
     
-    // Additional check: Verify Prisma can see the same count
-    console.log(`   Prisma should find ${validDirs.length} migrations in prisma/migrations`);
+    // Step 0.5: Check for migrations in database that don't have local files
+    console.log('\n🔍 Checking for database migrations without local files...');
+    try {
+      const prisma = new PrismaClient();
+      const dbMigrations = await prisma.$queryRawUnsafe(
+        `SELECT DISTINCT migration_name 
+         FROM _prisma_migrations 
+         WHERE migration_name IS NOT NULL
+         ORDER BY migration_name`
+      );
+      
+      if (Array.isArray(dbMigrations) && dbMigrations.length > 0) {
+        const dbMigrationNames = dbMigrations.map(m => m.migration_name || m.migrationName);
+        const localSet = new Set(validDirs);
+        const missingLocal = dbMigrationNames.filter(name => !localSet.has(name));
+        
+        if (missingLocal.length > 0) {
+          console.warn(`\n⚠️  Found ${missingLocal.length} migration(s) in database without local files:`);
+          for (const name of missingLocal) {
+            console.warn(`   - ${name}`);
+          }
+          console.warn('');
+          console.warn('   These migrations exist in the database but migration.sql files are missing locally.');
+          console.warn('   This can cause P3015 errors.');
+          console.warn('');
+          console.warn('   Options:');
+          console.warn('   1. If migration was applied manually, mark as applied:');
+          for (const name of missingLocal) {
+            console.warn(`      npx prisma migrate resolve --applied ${name}`);
+          }
+          console.warn('   2. If migration failed, mark as rolled-back:');
+          for (const name of missingLocal) {
+            console.warn(`      npx prisma migrate resolve --rolled-back ${name}`);
+          }
+          console.warn('   3. Or restore the missing migration.sql files');
+          console.warn('');
+          console.warn('   ⚠️  Proceeding with deployment - may fail with P3015 if files are missing');
+        } else {
+          console.log('✅ All database migrations have corresponding local files');
+        }
+      }
+      
+      await prisma.$disconnect();
+    } catch (error) {
+      // If _prisma_migrations doesn't exist, that's OK (fresh database)
+      if (error.message.includes('does not exist')) {
+        console.log('ℹ️  _prisma_migrations table does not exist (fresh database)');
+      } else {
+        console.warn(`⚠️  Could not check database migrations: ${error.message}`);
+        console.warn('   Proceeding with deployment...');
+      }
+    }
     
     // Step 1: Generate Prisma client (required before migrate deploy)
     console.log('\n📦 Generating Prisma client...');
