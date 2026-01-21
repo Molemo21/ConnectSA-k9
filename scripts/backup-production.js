@@ -81,9 +81,8 @@ function createBackup() {
     // Create backup - FAIL FAST if this fails
     console.log(`   Backup file: ${backupFile}`);
     
-    // Build pg_dump command with flags to handle version mismatches
+    // Build pg_dump command with flags
     // --no-owner and --no-acl avoid permission issues
-    // --verbose for better error messages
     const pgDumpFlags = [
       `-h "${host}"`,
       `-p "${port}"`,
@@ -92,26 +91,29 @@ function createBackup() {
       `-F c`, // Custom format (compressed)
       `-f "${backupFile}"`,
       `--no-owner`, // Skip ownership commands
-      `--no-acl`, // Skip access privileges
-      `--verbose` // Verbose output for debugging
+      `--no-acl` // Skip access privileges
     ];
     
-    // Try with --no-sync first (PostgreSQL 17+), fallback without it
+    // Check pg_dump version to determine if we can use --no-sync (PG17+ only)
     let pgDumpCommand = `pg_dump ${pgDumpFlags.join(' ')}`;
     
     try {
-      execSync(pgDumpCommand, { stdio: 'inherit' });
-    } catch (error) {
-      // If it fails with version mismatch, try without --no-sync
-      if (error.message && error.message.includes('version mismatch')) {
-        console.warn('⚠️  Version mismatch detected, retrying without --no-sync flag...');
-        pgDumpFlags.push('--no-sync'); // Actually, let's try with it for PG17
-        pgDumpCommand = `pg_dump ${pgDumpFlags.join(' ')}`;
-        execSync(pgDumpCommand, { stdio: 'inherit' });
-      } else {
-        throw error;
+      // Try to get pg_dump version
+      const versionOutput = execSync('pg_dump --version', { encoding: 'utf8', stdio: 'pipe' });
+      const versionMatch = versionOutput.match(/pg_dump.*?(\d+)\.(\d+)/);
+      if (versionMatch) {
+        const majorVersion = parseInt(versionMatch[1], 10);
+        if (majorVersion >= 17) {
+          pgDumpFlags.push('--no-sync'); // PG17+ flag to skip fsync
+          pgDumpCommand = `pg_dump ${pgDumpFlags.join(' ')}`;
+        }
       }
+    } catch (e) {
+      // Version check failed, proceed without --no-sync
+      console.warn('⚠️  Could not determine pg_dump version, proceeding without --no-sync');
     }
+    
+    execSync(pgDumpCommand, { stdio: 'inherit' });
     
     // Verify backup file exists and has content
     if (!fs.existsSync(backupFile)) {
