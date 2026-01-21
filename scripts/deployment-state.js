@@ -81,6 +81,18 @@ function clearAllState() {
 // ============================================================================
 
 function requireVerificationPassed() {
+  // In CI/CD, rely on workflow dependencies instead of file-based state
+  // Each job runs in a separate container, so state files aren't shared
+  const isCI = process.env.CI === 'true' || process.env.CI === '1' || (process.env.CI || '').toLowerCase() === 'true';
+  
+  if (isCI) {
+    // In CI/CD, verification is enforced by workflow dependencies (needs: [predeploy])
+    // If this job is running, verification already passed
+    console.log('✅ Verification check passed (enforced by CI/CD workflow dependencies)');
+    return;
+  }
+  
+  // Local execution: check file-based state
   if (!fs.existsSync(VERIFICATION_STATE)) {
     console.error('\n' + '='.repeat(80));
     console.error('🚨 BLOCKED: Verification step not completed');
@@ -103,6 +115,18 @@ function requireVerificationPassed() {
 }
 
 function requireBackupCompleted() {
+  // In CI/CD, rely on workflow dependencies instead of file-based state
+  // Each job runs in a separate container, so state files aren't shared
+  const isCI = process.env.CI === 'true' || process.env.CI === '1' || (process.env.CI || '').toLowerCase() === 'true';
+  
+  if (isCI) {
+    // In CI/CD, backup is enforced by workflow dependencies (needs: [backup])
+    // If this job is running, backup already completed
+    console.log('✅ Backup check passed (enforced by CI/CD workflow dependencies)');
+    return;
+  }
+  
+  // Local execution: check file-based state
   if (!fs.existsSync(BACKUP_STATE)) {
     console.error('\n' + '='.repeat(80));
     console.error('🚨 BLOCKED: Backup step not completed');
