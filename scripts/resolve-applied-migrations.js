@@ -53,8 +53,9 @@ if (nodeEnv !== 'production' && nodeEnv !== 'prod') {
 // ============================================================================
 // Only after ALL guards pass, proceed with imports
 // ============================================================================
+// NOTE: PrismaClient is NOT imported here - it will be lazy-imported
+//       AFTER prisma generate runs in main() to prevent initialization errors
 
-const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
 
@@ -203,7 +204,37 @@ async function resolveFailedMigrations() {
   console.log('   If all objects exist, marks migration as APPLIED.');
   console.log('   If partial, fails hard (manual intervention required).\n');
   
-  const prisma = new PrismaClient();
+  // ============================================================================
+  // LAZY IMPORT: PrismaClient imported AFTER prisma generate has run
+  // ============================================================================
+  let PrismaClient;
+  let prisma;
+  
+  try {
+    console.log('📦 Loading Prisma Client (after generation)...');
+    PrismaClient = require('@prisma/client').PrismaClient;
+    
+    if (!PrismaClient) {
+      throw new Error('PrismaClient not found in @prisma/client module');
+    }
+    
+    prisma = new PrismaClient();
+    console.log('✅ Prisma Client loaded and instantiated');
+  } catch (error) {
+    console.error('\n❌ CRITICAL: Failed to import or instantiate PrismaClient');
+    console.error('   This indicates Prisma client was not generated correctly.');
+    console.error('');
+    console.error('   Error details:');
+    console.error(`   ${error.message}`);
+    console.error('');
+    console.error('   Troubleshooting:');
+    console.error('   1. Ensure npx prisma generate ran successfully');
+    console.error('   2. Check that @prisma/client is installed');
+    console.error('   3. Verify DATABASE_URL and DIRECT_URL are set correctly');
+    console.error('   4. Check Prisma schema is valid');
+    console.error('');
+    process.exit(1);
+  }
   
   try {
     // Step 1: Find failed migrations
@@ -386,20 +417,48 @@ async function resolveFailedMigrations() {
 // ============================================================================
 // MAIN RESOLUTION FLOW
 // ============================================================================
+// Execution Order (CRITICAL):
+// 1. Guards execute (top of file - BEFORE any imports)
+// 2. main() called
+// 3. Generate Prisma client (npx prisma generate)
+// 4. Lazy import PrismaClient (inside resolveFailedMigrations)
+// 5. Resolve migrations (check database state, mark as APPLIED/ROLLED_BACK)
+// 6. Exit
 
 async function main() {
-  // Guards already executed at top of file
+  // Step 1: Guards already executed at top of file (BEFORE any imports)
+  //         - CI-only check
+  //         - NODE_ENV=production check
   
-  // Generate Prisma client first
+  // Step 2: Generate Prisma client FIRST (before any PrismaClient usage)
   const { execSync } = require('child_process');
-  console.log('📦 Generating Prisma client...');
-  execSync('npx prisma generate', {
-    stdio: 'inherit',
-    env: { ...process.env }
-  });
-  console.log('✅ Prisma client generated\n');
   
-  // Resolve failed migrations
+  console.log('📦 Generating Prisma client...');
+  console.log('   This must complete before PrismaClient can be imported.\n');
+  
+  try {
+    execSync('npx prisma generate', {
+      stdio: 'inherit',
+      env: { ...process.env }
+    });
+    console.log('\n✅ Prisma client generated successfully');
+  } catch (error) {
+    console.error('\n❌ CRITICAL: Failed to generate Prisma client');
+    console.error('   Prisma client generation is required before migration resolution.');
+    console.error('');
+    console.error('   Error details:');
+    console.error(`   ${error.message}`);
+    console.error('');
+    console.error('   Troubleshooting:');
+    console.error('   1. Check Prisma schema is valid (prisma/schema.prisma)');
+    console.error('   2. Verify DATABASE_URL and DIRECT_URL are set');
+    console.error('   3. Ensure @prisma/client is in package.json');
+    console.error('   4. Check for syntax errors in schema');
+    console.error('');
+    process.exit(1);
+  }
+  
+  // Step 3: Resolve failed migrations (lazy imports PrismaClient inside)
   await resolveFailedMigrations();
   
   console.log('\n' + '='.repeat(80));
