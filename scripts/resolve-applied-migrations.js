@@ -270,6 +270,21 @@ async function checkForeignKeyExists(prisma, constraintName) {
   }
 }
 
+async function checkMigrationsTableExists(prisma) {
+  try {
+    const result = await prisma.$queryRawUnsafe(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = '_prisma_migrations'
+      ) as exists`
+    );
+    return Array.isArray(result) && result.length > 0 && (result[0].exists === true || result[0].exists === 't');
+  } catch {
+    return false;
+  }
+}
+
 async function checkMigrationObjects(prisma, migrationName, objects) {
   const results = {
     enums: {},
