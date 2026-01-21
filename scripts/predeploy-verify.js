@@ -22,6 +22,7 @@ const VERIFICATION_STEPS = [
   { name: 'Safety Guards', script: 'verify-safety-guards.js' },
   { name: 'Environment', script: 'verify-env.js' },
   { name: 'Migrations', script: 'verify-migrations.js' },
+  { name: 'Failed Migrations Check', script: 'check-failed-migrations.js' },
   { name: 'Connection', script: 'verify-connection.js' },
   { name: 'Schema', script: 'verify-schema.js' },
 ];

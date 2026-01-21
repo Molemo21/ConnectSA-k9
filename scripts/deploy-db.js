@@ -96,7 +96,6 @@ if (isProdDb && !isCI && nodeEnv !== 'production' && nodeEnv !== 'prod') {
 
 const { execSync } = require('child_process');
 const deploymentState = require('./deployment-state');
-const { PrismaClient } = require('@prisma/client');
 
 // ============================================================================
 // CRITICAL GUARDS - Must pass or script exits
@@ -153,171 +152,17 @@ async function deployMigrations() {
     });
     console.log('✅ Prisma client generated');
     
-    // Step 2: Check database directly for failed migrations and resolve them
-    console.log('\n🔍 Checking database for failed migrations...');
-    
-    try {
-      const prisma = new PrismaClient();
-      
-      // Query Prisma's migration table directly for failed migrations
-      const failedMigrations = await prisma.$queryRaw`
-        SELECT migration_name, started_at, finished_at
-        FROM _prisma_migrations
-        WHERE finished_at IS NULL
-        ORDER BY started_at DESC
-      `.catch(async () => {
-        return [];
-      });
-      
-      if (failedMigrations && failedMigrations.length > 0) {
-        console.warn(`⚠️  Found ${failedMigrations.length} failed/incomplete migration(s):`);
-        
-        for (const migration of failedMigrations) {
-          const migrationName = migration.migration_name || migration.migrationName;
-          
-          if (!migrationName) continue;
-          
-          console.log(`\n   📋 Migration: ${migrationName}`);
-          console.log(`   Started: ${migration.started_at || migration.startedAt || 'unknown'}`);
-          console.log(`   Finished: ${migration.finished_at || migration.finishedAt || 'NOT FINISHED'}`);
-          
-          // Handle known failed migration: add_payout_and_webhook_models
-          if (migrationName.includes('add_payout_and_webhook_models')) {
-            console.log(`\n   🔍 Analyzing migration state...`);
-            
-            // Check if enum exists (we know it does - that was the original error)
-            const enumExists = await prisma.$queryRaw<Array<{ typname: string }>>`
-              SELECT typname FROM pg_type WHERE typname = 'PayoutStatus'
-            `.then(r => r.length > 0).catch(() => false);
-            
-            // Check if tables exist
-            const payoutsTableExists = await prisma.$queryRaw<Array<{ tablename: string }>>`
-              SELECT tablename FROM pg_tables 
-              WHERE schemaname = 'public' AND tablename = 'payouts'
-            `.then(r => r.length > 0).catch(() => false);
-            
-            const webhookTableExists = await prisma.$queryRaw<Array<{ tablename: string }>>`
-              SELECT tablename FROM pg_tables 
-              WHERE schemaname = 'public' AND tablename = 'webhook_events'
-            `.then(r => r.length > 0).catch(() => false);
-            
-            console.log(`   Enum exists: ${enumExists ? '✅' : '❌'}`);
-            console.log(`   payouts table exists: ${payoutsTableExists ? '✅' : '❌'}`);
-            console.log(`   webhook_events table exists: ${webhookTableExists ? '✅' : '❌'}`);
-            
-            // Decision logic
-            if (enumExists && payoutsTableExists && webhookTableExists) {
-              // All objects exist - mark as applied
-              console.log(`\n   ✅ VERDICT: All objects exist - marking as APPLIED`);
-              console.log('   ℹ️  Migration succeeded, Prisma just marked it as failed');
-              try {
-                execSync(`node scripts/prisma-wrapper-hardened.js migrate resolve --applied ${migrationName}`, {
-                  stdio: 'inherit',
-                  env: { ...process.env }
-                });
-                console.log(`   ✅ Migration ${migrationName} marked as applied`);
-              } catch (resolveError) {
-                console.error(`   ❌ Failed to resolve migration: ${resolveError.message}`);
-                throw resolveError;
-              }
-            } else {
-              // Partial application - enum exists but tables don't
-              // Mark as rolled-back so migration can re-run (now idempotent)
-              console.log(`\n   ⚠️  VERDICT: Partial application detected`);
-              console.log('   ℹ️  Enum exists but tables may be missing');
-              console.log('   ℹ️  Migration is now idempotent - safe to re-run');
-              console.log(`   🔧 Marking as ROLLED_BACK to allow re-run...`);
-              
-              try {
-                execSync(`node scripts/prisma-wrapper-hardened.js migrate resolve --rolled-back ${migrationName}`, {
-                  stdio: 'inherit',
-                  env: { ...process.env }
-                });
-                console.log(`   ✅ Migration ${migrationName} marked as rolled-back`);
-                console.log('   ℹ️  Migration will re-run automatically and succeed (idempotent)');
-              } catch (resolveError) {
-                console.error(`   ❌ Failed to resolve migration: ${resolveError.message}`);
-                throw resolveError;
-              }
-            }
-          } else {
-            // For other failed migrations, attempt to resolve as rolled-back
-            console.log(`   🔧 Attempting to resolve migration ${migrationName} as rolled-back...`);
-            try {
-              execSync(`node scripts/prisma-wrapper-hardened.js migrate resolve --rolled-back ${migrationName}`, {
-                stdio: 'inherit',
-                env: { ...process.env }
-              });
-              console.log(`   ✅ Migration ${migrationName} marked as rolled-back`);
-            } catch (resolveError) {
-              console.warn(`   ⚠️  Could not resolve migration ${migrationName}: ${resolveError.message}`);
-              console.warn('   ℹ️  Manual intervention may be required');
-              // Don't throw - try to continue
-            }
-          }
-        }
-      } else {
-        console.log('   ✅ No failed migrations found in database');
-      }
-      
-      await prisma.$disconnect();
-    } catch (dbError) {
-      console.warn('   ⚠️  Could not check database for failed migrations:', dbError.message);
-      console.warn('   Proceeding with deployment - will handle errors if they occur');
-    }
-    
-    // Step 3: Deploy migrations (THE ONLY MUTATION)
+    // Step 2: Deploy migrations (THE ONLY MUTATION)
     console.log('\n📊 Applying migrations to production database...');
     console.log('   ⚠️  This will modify the production database schema.\n');
     
-    try {
-      // Use hardened wrapper (which will allow this because PRISMA_DEPLOYMENT_APPROVED=true)
-      execSync('node scripts/prisma-wrapper-hardened.js migrate deploy', {
-        stdio: 'inherit',
-        env: { ...process.env }
-      });
-      
-      console.log('\n✅ Migrations deployed successfully');
-    } catch (error) {
-      // If deploy fails due to failed migrations, try to resolve them and retry
-      const errorOutput = String(error.stdout || error.stderr || error.message || '');
-      
-      if (errorOutput.includes('P3009') || errorOutput.includes('found failed migrations')) {
-        console.warn('\n⚠️  Deployment failed due to failed migrations. Attempting to resolve...');
-        
-        // Extract migration name from error
-        const migrationMatch = errorOutput.match(/`(\d+_\w+)`/i) || 
-                               errorOutput.match(/(\d{8,14}_\w+)/);
-        
-        if (migrationMatch) {
-          const failedMigration = migrationMatch[1];
-          console.log(`\n🔧 Resolving failed migration: ${failedMigration}`);
-          
-          try {
-            execSync(`node scripts/prisma-wrapper-hardened.js migrate resolve --applied ${failedMigration}`, {
-              stdio: 'inherit',
-              env: { ...process.env }
-            });
-            console.log(`✅ Migration ${failedMigration} resolved as applied`);
-            
-            // Retry deployment
-            console.log('\n🔄 Retrying migration deployment...');
-            execSync('node scripts/prisma-wrapper-hardened.js migrate deploy', {
-              stdio: 'inherit',
-              env: { ...process.env }
-            });
-            console.log('\n✅ Migrations deployed successfully');
-          } catch (retryError) {
-            console.error('\n❌ Failed to resolve and retry:', retryError.message);
-            throw error; // Re-throw original error
-          }
-        } else {
-          throw error; // Re-throw if we can't extract migration name
-        }
-      } else {
-        throw error; // Re-throw if it's a different error
-      }
-    }
+    // Use hardened wrapper (which will allow this because PRISMA_DEPLOYMENT_APPROVED=true)
+    execSync('node scripts/prisma-wrapper-hardened.js migrate deploy', {
+      stdio: 'inherit',
+      env: { ...process.env }
+    });
+    
+    console.log('\n✅ Migrations deployed successfully');
   } catch (error) {
     console.error('\n❌ Migration deployment failed:', error.message);
     console.error('   Database may be in inconsistent state.');

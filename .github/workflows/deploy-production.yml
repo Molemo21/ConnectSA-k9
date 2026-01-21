@@ -160,11 +160,41 @@ jobs:
         retention-days: 30 # Keep backups longer for production
         compression-level: 9
 
+  # Resolve Failed Migrations
+  resolve-failed-migrations:
+    runs-on: ubuntu-latest
+    name: Resolve Failed Migrations
+    needs: [predeploy, backup]
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci --legacy-peer-deps
+      
+    - name: Resolve failed migrations
+      id: resolve
+      run: npm run resolve:failed:migrations
+      env:
+        NODE_ENV: production
+        CI: true
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      continue-on-error: false
+
   # Deploy Database Migrations
   deploy-database:
     runs-on: ubuntu-latest
     name: Deploy Database Migrations
-    needs: [predeploy, backup]
+    needs: [predeploy, backup, resolve-failed-migrations]
     timeout-minutes: 20
     
     steps:
@@ -413,7 +443,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     name: Send Notification
-    needs: [predeploy, backup, deploy-database, fix-production-services, promote-reference-data, verify-deployment]
+    needs: [predeploy, backup, resolve-failed-migrations, deploy-database, fix-production-services, promote-reference-data, verify-deployment]
     if: always() # Always run, regardless of previous job status
     timeout-minutes: 5
     
@@ -439,6 +469,7 @@ jobs:
         echo "### Job Results:" >> $GITHUB_STEP_SUMMARY
         echo "- Pre-deployment: ${{ needs.predeploy.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Backup: ${{ needs.backup.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Resolve Failed Migrations: ${{ needs.resolve-failed-migrations.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Database Migration: ${{ needs.deploy-database.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Fix Production Services: ${{ needs.fix-production-services.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Reference Data: ${{ needs.promote-reference-data.result }}" >> $GITHUB_STEP_SUMMARY

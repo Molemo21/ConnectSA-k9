@@ -12,11 +12,20 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
 
 **ONLY** the following scripts are permitted to mutate production:
 
-1. **`scripts/deploy-db.js`**
+1. **`scripts/resolve-failed-migrations.js`**
+   - **Allowed Operation**: `prisma migrate resolve` ONLY
+   - **Scope**: Resolving failed migrations BEFORE deploy-db.js runs
+   - **Purpose**: Prevents P3009 errors by resolving failed migrations before migrate deploy
+   - **Forbidden**: Any database inspection logic, Prisma Client usage, or additional operations
+   - **Enforcement**: CI-only execution, must run before deploy-db.js
+   - **Execution Order**: Runs after backup, before deploy-db.js
+
+2. **`scripts/deploy-db.js`**
    - **Allowed Operation**: `prisma migrate deploy` ONLY
    - **Scope**: Schema migrations ONLY
-   - **Forbidden**: Any data mutations, backups, verifications, or additional logic
+   - **Forbidden**: Any data mutations, backups, verifications, failed migration resolution, or additional logic
    - **Enforcement**: CI-only execution, environment fingerprint validation
+   - **Prerequisite**: Failed migrations MUST be resolved before this script runs
 
 2. **`scripts/sync-reference-data-dev-to-prod.ts`** (when using --apply flag)
    - **Allowed Operations**: 
@@ -79,12 +88,28 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
   - Scripts exit with code 1 if CI !== "true"
   - Exit happens BEFORE Prisma import or database connection
 - **Locations**: 
+  - `scripts/resolve-failed-migrations.js` - Guards at top of file (before require statements)
   - `scripts/deploy-db.js` - Guards at top of file (before require statements)
   - `scripts/sync-reference-data-dev-to-prod.ts` - Guards at top of file (before imports, process.exit(1) if CI !== "true" when --apply)
   - `scripts/sync-dev-to-prod-services.ts` - HARD-DEPRECATED, exits immediately before any imports
   - `lib/prisma.ts` - Guards at module level (before Prisma import)
 - **No Bypasses**: No environment variables, flags, or code paths can bypass this
 - **Proof**: `__tests__/production-safety/misuse-tests.test.ts` - Tests actual execution
+
+#### **4.4 Failed Migration Resolution (P3009 Prevention)**
+
+- **Requirement**: Failed migrations MUST be resolved BEFORE `prisma migrate deploy`
+- **Enforcement**: 
+  - `scripts/resolve-failed-migrations.js` runs before `scripts/deploy-db.js` in CI/CD
+  - `scripts/check-failed-migrations.js` runs in predeploy verification to block deployment if failed migrations exist
+  - `scripts/deploy-db.js` is FORBIDDEN from resolving failed migrations (separation of concerns)
+- **Execution Order** (MANDATORY):
+  1. Pre-deployment verification (includes failed migration check)
+  2. Backup
+  3. Resolve failed migrations (`resolve-failed-migrations.js`)
+  4. Deploy migrations (`deploy-db.js`)
+- **Failure Mode**: Hard failure - deployment blocked if failed migrations exist
+- **Rationale**: Prisma P3009 error blocks all migrations if any failed migration exists. Resolution must happen in separate step before migrate deploy.
 
 #### **4.2 Environment Fingerprinting (MISCONFIGURATION-PROOF)**
 
@@ -312,8 +337,21 @@ All failure modes are **HARD FAILURES**:
 **STRICT RULES**:
 
 - **ONLY** allowed operation: `prisma migrate deploy`
-- **FORBIDDEN**: Any additional logic, backups, verifications, data mutations
+- **FORBIDDEN**: Any additional logic, backups, verifications, data mutations, failed migration resolution
 - **ENFORCEMENT**: Tests fail if script gains extra logic
+- **PREREQUISITE**: Failed migrations MUST be resolved by `resolve-failed-migrations.js` before this script runs
+
+**IF RULES VIOLATED**: Contract violation - CI will fail
+
+### **Prisma P3009 Error Handling**
+
+**MANDATORY RULES**:
+
+- **Prisma P3009** (failed migrations) is a deployment gate, not recoverable during deploy
+- **Resolution** MUST occur in separate step (`resolve-failed-migrations.js`) BEFORE `deploy-db.js`
+- **`deploy-db.js`** is FORBIDDEN from resolving failed migrations
+- **Regression Protection**: `check-failed-migrations.js` runs in predeploy to block deployment if failed migrations exist
+- **Execution Order**: Predeploy → Backup → Resolve Failed Migrations → Deploy Migrations
 
 **IF RULES VIOLATED**: Contract violation - CI will fail
 

@@ -56,6 +56,7 @@
     "env:security-check": "node scripts/manage-env.js security-check",
     "predeploy": "node scripts/predeploy-verify.js",
     "backup:production": "node scripts/backup-production.js",
+    "resolve:failed:migrations": "node scripts/resolve-failed-migrations.js",
     "deploy:db": "node scripts/deploy-db.js",
     "deploy": "npm run predeploy && npm run backup:production && npm run deploy:db",
     "test:deployment-safety": "node scripts/test-deployment-safety.js",
