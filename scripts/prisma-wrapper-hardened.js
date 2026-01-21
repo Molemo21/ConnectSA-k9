@@ -216,7 +216,11 @@ function main() {
   const prismaPath = getPrismaBinaryPath();
   const prismaArgs = process.argv.slice(2);
   
-  const prismaProcess = spawn(prismaPath, prismaArgs, {
+  // If using npx, prepend 'prisma' to args
+  const finalArgs = prismaPath === 'npx' ? ['prisma', ...prismaArgs] : prismaArgs;
+  const finalCommand = prismaPath === 'npx' ? 'npx' : prismaPath;
+  
+  const prismaProcess = spawn(finalCommand, finalArgs, {
     stdio: 'inherit',
     shell: true,
     env: process.env,
@@ -237,6 +241,7 @@ function getPrismaBinaryPath() {
     path.join(process.cwd(), 'node_modules', '.bin', 'prisma'),
     path.join(process.cwd(), 'node_modules', '@prisma', 'cli', 'build', 'index.js'),
     path.join(__dirname, '..', 'node_modules', '.bin', 'prisma'),
+    path.join(__dirname, '..', 'node_modules', '@prisma', 'cli', 'build', 'index.js'),
   ];
   
   for (const prismaPath of possiblePaths) {
@@ -249,7 +254,9 @@ function getPrismaBinaryPath() {
     }
   }
   
-  return 'prisma';
+  // Fallback: use npx to find prisma (works if prisma is in node_modules)
+  // This ensures we use the locally installed version
+  return 'npx';
 }
 
 if (require.main === module) {
