@@ -12,13 +12,25 @@ This document defines the **FROZEN CONTRACT** for production database mutations.
 
 **ONLY** the following scripts are permitted to mutate production:
 
-1. **`scripts/resolve-failed-migrations.js`**
+1. **`scripts/resolve-applied-migrations.js`**
    - **Allowed Operation**: `prisma migrate resolve` ONLY
-   - **Scope**: Resolving failed migrations BEFORE deploy-db.js runs
-   - **Purpose**: Prevents P3009 errors by resolving failed migrations before migrate deploy
-   - **Forbidden**: Any database inspection logic, Prisma Client usage, or additional operations
+   - **Scope**: Resolving partially-applied migrations BEFORE deploy-db.js runs
+   - **Purpose**: Prevents P3009/P3018 errors by checking if failed migrations are actually applied
+   - **Logic**: 
+     - Detects failed migrations (finished_at IS NULL in _prisma_migrations)
+     - Checks if migration objects (tables, enums, indexes, FKs) exist in database
+     - If all objects exist: marks migration as APPLIED
+     - If no objects exist: marks migration as ROLLED_BACK (allows re-run)
+     - If partial (some exist, some missing): FAILS HARD (requires manual intervention)
+   - **Forbidden**: Re-running migrations, creating objects, data mutations
    - **Enforcement**: CI-only execution, must run before deploy-db.js
    - **Execution Order**: Runs after backup, before deploy-db.js
+   - **Safety**: Fails hard on partial application to prevent data corruption
+
+2. **`scripts/resolve-failed-migrations.js`** (DEPRECATED - use resolve-applied-migrations.js)
+   - **Status**: Kept for backward compatibility, but resolve-applied-migrations.js is preferred
+   - **Purpose**: Simple resolution for known failed migrations
+   - **Note**: Does not check database state - use resolve-applied-migrations.js instead
 
 2. **`scripts/deploy-db.js`**
    - **Allowed Operation**: `prisma migrate deploy` ONLY
@@ -343,15 +355,28 @@ All failure modes are **HARD FAILURES**:
 
 **IF RULES VIOLATED**: Contract violation - CI will fail
 
-### **Prisma P3009 Error Handling**
+### **Prisma P3009/P3018 Error Handling**
 
 **MANDATORY RULES**:
 
-- **Prisma P3009** (failed migrations) is a deployment gate, not recoverable during deploy
-- **Resolution** MUST occur in separate step (`resolve-failed-migrations.js`) BEFORE `deploy-db.js`
+- **Prisma P3009/P3018** (failed/partially-applied migrations) is a deployment gate, not recoverable during deploy
+- **Resolution** MUST occur in separate step (`resolve-applied-migrations.js`) BEFORE `deploy-db.js`
 - **`deploy-db.js`** is FORBIDDEN from resolving failed migrations
 - **Regression Protection**: `check-failed-migrations.js` runs in predeploy to block deployment if failed migrations exist
-- **Execution Order**: Predeploy → Backup → Resolve Failed Migrations → Deploy Migrations
+- **Execution Order**: Predeploy → Backup → Resolve Applied Migrations → Deploy Migrations
+
+**Partially-Applied Migration Resolution**:
+
+- **`resolve-applied-migrations.js`** intelligently checks database state:
+  1. Detects failed migrations (finished_at IS NULL in _prisma_migrations)
+  2. Parses migration SQL to identify objects (tables, enums, indexes, FKs)
+  3. Checks if objects exist in production database
+  4. **If all objects exist**: Marks migration as APPLIED (migration succeeded, Prisma just marked it failed)
+  5. **If no objects exist**: Marks migration as ROLLED_BACK (allows safe re-run)
+  6. **If partial (some exist, some missing)**: FAILS HARD (requires manual intervention)
+
+- **Safety**: Partial application detection prevents data corruption by blocking deployment
+- **Idempotency**: Migrations must be idempotent (use IF NOT EXISTS, DO $$ BEGIN ... EXCEPTION blocks)
 
 **IF RULES VIOLATED**: Contract violation - CI will fail
 

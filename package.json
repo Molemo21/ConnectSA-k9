@@ -57,6 +57,7 @@
     "predeploy": "node scripts/predeploy-verify.js",
     "backup:production": "node scripts/backup-production.js",
     "resolve:failed:migrations": "node scripts/resolve-failed-migrations.js",
+    "resolve:applied:migrations": "node scripts/resolve-applied-migrations.js",
     "deploy:db": "node scripts/deploy-db.js",
     "deploy": "npm run predeploy && npm run backup:production && npm run deploy:db",
     "test:deployment-safety": "node scripts/test-deployment-safety.js",
