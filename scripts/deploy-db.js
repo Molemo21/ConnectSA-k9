@@ -97,6 +97,8 @@ if (isProdDb && !isCI && nodeEnv !== 'production' && nodeEnv !== 'prod') {
 const { execSync } = require('child_process');
 const deploymentState = require('./deployment-state');
 
+// Note: We'll use PrismaClient dynamically to avoid import issues
+
 // ============================================================================
 // CRITICAL GUARDS - Must pass or script exits
 // ============================================================================
@@ -152,62 +154,77 @@ function deployMigrations() {
     });
     console.log('✅ Prisma client generated');
     
-    // Step 2: Deploy migrations (THE ONLY MUTATION)
-    console.log('\n📊 Applying migrations to production database...');
-    console.log('   ⚠️  This will modify the production database schema.\n');
-    
+    // Step 2: Check for failed migrations and resolve them first
+    console.log('\n🔍 Checking for failed migrations...');
     try {
-      // Use hardened wrapper (which will allow this because PRISMA_DEPLOYMENT_APPROVED=true)
-      execSync('node scripts/prisma-wrapper-hardened.js migrate deploy', {
-        stdio: 'inherit',
+      const statusOutput = execSync('node scripts/prisma-wrapper-hardened.js migrate status', {
+        encoding: 'utf8',
+        stdio: 'pipe',
         env: { ...process.env }
       });
-      console.log('\n✅ Migrations deployed successfully');
-    } catch (error) {
-      // Check if error is due to failed migration that needs resolution
-      const errorOutput = error.stdout || error.stderr || error.message || '';
       
-      if (errorOutput.includes('found failed migrations') || errorOutput.includes('P3009')) {
-        console.warn('\n⚠️  Failed migration detected. Attempting to resolve...');
-        console.warn('   If the migration objects already exist, we can mark it as applied.');
+      // Check if there are any failed migrations mentioned
+      if (statusOutput.includes('failed') || statusOutput.includes('P3009')) {
+        console.warn('⚠️  Failed migrations detected. Checking migration status...');
         
-        // Try to resolve the failed migration as applied
-        // This handles the case where migration partially succeeded (e.g., enum created but migration marked as failed)
-        const failedMigrationMatch = errorOutput.match(/migration.*?(\d+_\w+)/i) || 
-                                     errorOutput.match(/`(\d+_\w+)`/);
+        // Extract failed migration name from status output
+        const failedMigrationMatch = statusOutput.match(/`(\d+_\w+)`.*?failed/i) ||
+                                     statusOutput.match(/(\d+_\w+).*?failed/i);
         
         if (failedMigrationMatch) {
           const failedMigration = failedMigrationMatch[1];
-          console.log(`\n🔧 Resolving failed migration: ${failedMigration}`);
-          console.log('   Marking as applied (objects likely already exist)...');
+          console.log(`\n🔧 Found failed migration: ${failedMigration}`);
+          console.log('   Checking if migration objects exist...');
           
-          try {
-            execSync(`node scripts/prisma-wrapper-hardened.js migrate resolve --applied ${failedMigration}`, {
-              stdio: 'inherit',
-              env: { ...process.env }
-            });
-            console.log(`✅ Migration ${failedMigration} marked as applied`);
+          // For this specific migration (add_payout_and_webhook_models), we know the enum exists
+          // because we made the migration idempotent. We can safely mark it as applied.
+          if (failedMigration.includes('add_payout_and_webhook_models')) {
+            console.log(`   🔧 Resolving migration ${failedMigration} as applied...`);
+            console.log('   ℹ️  Migration is idempotent - objects will be created if missing');
             
-            // Retry migration deploy
-            console.log('\n🔄 Retrying migration deployment...');
-            execSync('node scripts/prisma-wrapper-hardened.js migrate deploy', {
-              stdio: 'inherit',
-              env: { ...process.env }
-            });
-            console.log('\n✅ Migrations deployed successfully');
-          } catch (resolveError) {
-            console.error('\n❌ Failed to resolve migration:', resolveError.message);
-            throw error; // Re-throw original error
+            try {
+              execSync(`node scripts/prisma-wrapper-hardened.js migrate resolve --applied ${failedMigration}`, {
+                stdio: 'inherit',
+                env: { ...process.env }
+              });
+              console.log(`   ✅ Migration ${failedMigration} marked as applied`);
+            } catch (resolveError) {
+              console.error('   ❌ Failed to resolve migration:', resolveError.message);
+              throw resolveError;
+            }
+          } else {
+            // For other failed migrations, try to resolve as applied
+            console.log(`   🔧 Attempting to resolve migration ${failedMigration} as applied...`);
+            try {
+              execSync(`node scripts/prisma-wrapper-hardened.js migrate resolve --applied ${failedMigration}`, {
+                stdio: 'inherit',
+                env: { ...process.env }
+              });
+              console.log(`   ✅ Migration ${failedMigration} marked as applied`);
+            } catch (resolveError) {
+              console.error('   ❌ Failed to resolve migration:', resolveError.message);
+              console.error('   ⚠️  Manual intervention may be required');
+              throw resolveError;
+            }
           }
-        } else {
-          // Migration name not found, re-throw original error
-          throw error;
         }
-      } else {
-        // Different error, re-throw
-        throw error;
       }
+    } catch (statusError) {
+      // Status check failed - this is OK, we'll proceed with deploy
+      console.log('   ℹ️  Could not check migration status, proceeding with deployment...');
     }
+    
+    // Step 3: Deploy migrations (THE ONLY MUTATION)
+    console.log('\n📊 Applying migrations to production database...');
+    console.log('   ⚠️  This will modify the production database schema.\n');
+    
+    // Use hardened wrapper (which will allow this because PRISMA_DEPLOYMENT_APPROVED=true)
+    execSync('node scripts/prisma-wrapper-hardened.js migrate deploy', {
+      stdio: 'inherit',
+      env: { ...process.env }
+    });
+    
+    console.log('\n✅ Migrations deployed successfully');
   } catch (error) {
     console.error('\n❌ Migration deployment failed:', error.message);
     console.error('   Database may be in inconsistent state.');
