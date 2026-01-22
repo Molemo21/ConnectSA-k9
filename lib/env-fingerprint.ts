@@ -10,9 +10,10 @@
  * - Missing or corrupted fingerprints cause hard failures
  * 
  * NO BYPASSES - NO WARNINGS - HARD FAILURES ONLY
+ * 
+ * NOTE: PrismaClient is NOT imported at the top level - it will be lazy-imported
+ *       AFTER prisma generate runs to prevent initialization errors
  */
-
-import { PrismaClient } from '@prisma/client';
 
 export type Environment = 'dev' | 'staging' | 'prod';
 
@@ -36,8 +37,35 @@ export async function validateEnvironmentFingerprint(
   databaseUrl: string,
   expectedEnv: Environment
 ): Promise<FingerprintResult> {
+  // Lazy import PrismaClient (must be called after prisma generate)
+  let PrismaClient: any;
+  try {
+    // Clear module cache to ensure we get the freshly generated client
+    const modulePaths = Object.keys(require.cache || {});
+    modulePaths.forEach(path => {
+      if (path.includes('@prisma/client') || path.includes('.prisma')) {
+        delete require.cache[path];
+      }
+    });
+    
+    try {
+      const prismaClientPath = require.resolve('@prisma/client');
+      delete require.cache[prismaClientPath];
+    } catch {
+      // If resolve fails, that's OK
+    }
+    
+    const prismaModule = require('@prisma/client');
+    PrismaClient = prismaModule.PrismaClient;
+  } catch (error) {
+    return {
+      isValid: false,
+      environment: null,
+      error: `Failed to import PrismaClient for fingerprint validation. Ensure 'npx prisma generate' has run. Error: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+  
   // Create a temporary Prisma client ONLY for fingerprint validation
-  // This is the ONLY place we create Prisma client before validation
   const tempPrisma = new PrismaClient({
     datasources: { db: { url: databaseUrl } },
     log: ['error'],
@@ -137,6 +165,33 @@ export async function initializeEnvironmentFingerprint(
   environment: Environment,
   fingerprint?: string
 ): Promise<void> {
+  // Lazy import PrismaClient (must be called after prisma generate)
+  let PrismaClient: any;
+  try {
+    // Clear module cache to ensure we get the freshly generated client
+    const modulePaths = Object.keys(require.cache || {});
+    modulePaths.forEach(path => {
+      if (path.includes('@prisma/client') || path.includes('.prisma')) {
+        delete require.cache[path];
+      }
+    });
+    
+    try {
+      const prismaClientPath = require.resolve('@prisma/client');
+      delete require.cache[prismaClientPath];
+    } catch {
+      // If resolve fails, that's OK
+    }
+    
+    const prismaModule = require('@prisma/client');
+    PrismaClient = prismaModule.PrismaClient;
+  } catch (error) {
+    throw new Error(
+      `Failed to import PrismaClient for fingerprint initialization. ` +
+      `Ensure 'npx prisma generate' has run. Error: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+  
   const tempPrisma = new PrismaClient({
     datasources: { db: { url: databaseUrl } },
     log: ['error'],
