@@ -64,8 +64,9 @@ if (isApply && !isDryRun && !isCI) {
 // ============================================================================
 // Only after CI guard passes, proceed with imports
 // ============================================================================
+// NOTE: PrismaClient is NOT imported here - it will be lazy-imported
+//       AFTER prisma generate runs in main() to prevent initialization errors
 
-import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import * as readline from 'readline';
@@ -120,11 +121,15 @@ ${'='.repeat(80)}
   }
 }
 
+// Type alias for PrismaClient (will be imported dynamically)
+// Using any for now since we're using require() for dynamic import
+type PrismaClientType = any;
+
 /**
  * Check if a service has bookings or providers (must be skipped)
  */
 async function hasActiveRelationships(
-  prisma: PrismaClient,
+  prisma: PrismaClientType,
   serviceId: string
 ): Promise<boolean> {
   const [bookings, providers] = await Promise.all([
@@ -140,8 +145,8 @@ async function hasActiveRelationships(
 }
 
 class ReferenceDataPromotion {
-  private devPrisma: PrismaClient;
-  private prodPrisma: PrismaClient;
+  private devPrisma: PrismaClientType;
+  private prodPrisma: PrismaClientType;
   private dryRun: boolean;
   private stats: SyncStats;
 
@@ -152,16 +157,27 @@ class ReferenceDataPromotion {
       services: { created: 0, updated: 0, skipped: 0 },
     };
 
-    // Initialize Prisma clients
-    this.devPrisma = new PrismaClient({
-      datasources: { db: { url: devUrl } },
-      log: dryRun ? [] : ['error', 'warn'],
-    });
+    // Lazy import PrismaClient (must be called after prisma generate)
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      this.PrismaClient = PrismaClient;
+      
+      // Initialize Prisma clients
+      this.devPrisma = new PrismaClient({
+        datasources: { db: { url: devUrl } },
+        log: dryRun ? [] : ['error', 'warn'],
+      });
 
-    this.prodPrisma = new PrismaClient({
-      datasources: { db: { url: prodUrl } },
-      log: dryRun ? [] : ['error', 'warn'],
-    });
+      this.prodPrisma = new PrismaClient({
+        datasources: { db: { url: prodUrl } },
+        log: dryRun ? [] : ['error', 'warn'],
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to import PrismaClient. Ensure 'npx prisma generate' has run. ` +
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**
