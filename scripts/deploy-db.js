@@ -204,8 +204,26 @@ async function deployMigrations() {
     const prisma = new PrismaClient();
     
     try {
+      // Check if migrations table exists
+      const tableExists = await prisma.$queryRawUnsafe(
+        `SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = '_prisma_migrations'
+        ) as exists`
+      );
+      
+      if (!Array.isArray(tableExists) || tableExists.length === 0 || !(tableExists[0].exists === true || tableExists[0].exists === 't')) {
+        console.log('ℹ️  _prisma_migrations table does not exist (fresh database)');
+        await prisma.$disconnect();
+        return;
+      }
+      
+      // Get all migrations with their status
       const dbMigrations = await prisma.$queryRawUnsafe(
-        `SELECT DISTINCT migration_name 
+        `SELECT DISTINCT 
+           migration_name,
+           finished_at IS NOT NULL as is_applied,
+           rolled_back_at IS NOT NULL as is_rolled_back
          FROM _prisma_migrations 
          WHERE migration_name IS NOT NULL
          ORDER BY migration_name`
@@ -214,31 +232,67 @@ async function deployMigrations() {
       if (Array.isArray(dbMigrations) && dbMigrations.length > 0) {
         const dbMigrationNames = dbMigrations.map(m => m.migration_name || m.migrationName);
         const localSet = new Set(validDirs);
-        const missingLocal = dbMigrationNames.filter(name => !localSet.has(name));
+        const missingLocal = [];
+        
+        // Check each database migration
+        for (const migration of dbMigrations) {
+          const name = migration.migration_name || migration.migrationName;
+          if (!localSet.has(name)) {
+            missingLocal.push({
+              name,
+              isApplied: migration.is_applied === true || migration.is_applied === 't',
+              isRolledBack: migration.is_rolled_back === true || migration.is_rolled_back === 't'
+            });
+          }
+        }
         
         if (missingLocal.length > 0) {
           console.warn(`\n⚠️  Found ${missingLocal.length} migration(s) in database without local files:`);
-          for (const name of missingLocal) {
-            console.warn(`   - ${name}`);
+          for (const mig of missingLocal) {
+            const status = mig.isApplied ? '✅ applied' : mig.isRolledBack ? '↩️  rolled back' : '⏳ pending';
+            console.warn(`   - ${mig.name} (${status})`);
           }
           console.warn('');
           console.warn('   These migrations exist in the database but migration.sql files are missing locally.');
           console.warn('   This will cause P3015 "Could not find migration file" errors.');
           console.warn('');
-          console.warn('   🔧 Auto-resolving: Marking as rolled-back to allow re-run...');
           
-          // Auto-resolve by marking as rolled-back (safe - allows re-run if needed)
-          for (const name of missingLocal) {
-            try {
-              console.log(`   📝 Resolving: ${name} -> rolled-back`);
-              execSync(`npx prisma migrate resolve --rolled-back ${name}`, {
-                stdio: 'pipe',
-                env: { ...process.env }
-              });
-              console.log(`   ✅ ${name} marked as rolled-back`);
-            } catch (resolveError) {
-              console.warn(`   ⚠️  Could not resolve ${name}: ${resolveError.message}`);
-              // Continue - try to deploy anyway, might work if Prisma ignores it
+          // Handle based on status
+          const appliedButMissing = missingLocal.filter(m => m.isApplied && !m.isRolledBack);
+          const failedButMissing = missingLocal.filter(m => !m.isApplied && !m.isRolledBack);
+          
+          if (appliedButMissing.length > 0) {
+            console.warn('   🔧 Auto-resolving: Removing applied migrations without local files...');
+            console.warn('   (These are already applied, so removing the record is safe)');
+            
+            for (const mig of appliedButMissing) {
+              try {
+                console.log(`   📝 Removing migration record: ${mig.name}`);
+                await prisma.$executeRawUnsafe(
+                  `DELETE FROM _prisma_migrations WHERE migration_name = $1`,
+                  mig.name
+                );
+                console.log(`   ✅ Removed ${mig.name} from _prisma_migrations`);
+              } catch (deleteError) {
+                console.warn(`   ⚠️  Could not remove ${mig.name}: ${deleteError.message}`);
+              }
+            }
+          }
+          
+          if (failedButMissing.length > 0) {
+            console.warn('   🔧 Auto-resolving: Marking failed migrations as rolled-back...');
+            
+            for (const mig of failedButMissing) {
+              try {
+                console.log(`   📝 Resolving: ${mig.name} -> rolled-back`);
+                execSync(`npx prisma migrate resolve --rolled-back ${mig.name}`, {
+                  stdio: 'pipe',
+                  env: { ...process.env }
+                });
+                console.log(`   ✅ ${mig.name} marked as rolled-back`);
+              } catch (resolveError) {
+                console.warn(`   ⚠️  Could not resolve ${mig.name}: ${resolveError.message}`);
+              }
             }
           }
           
