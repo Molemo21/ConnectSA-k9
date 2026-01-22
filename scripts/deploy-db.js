@@ -148,7 +148,6 @@ async function deployMigrations() {
     console.log('🔍 Validating migration directories...');
     const fs = require('fs');
     const path = require('path');
-    const { PrismaClient } = require('@prisma/client');
     const migrationsDir = path.join(__dirname, '..', 'prisma', 'migrations');
     
     // Get all directories (Prisma counts ALL directories, not just ones with migration.sql)
@@ -191,10 +190,20 @@ async function deployMigrations() {
     
     console.log(`✅ All ${validDirs.length} migration directories are valid (have migration.sql)`);
     
-    // Step 0.5: Check for migrations in database that don't have local files
+    // Step 1: Generate Prisma client FIRST (required before database queries)
+    console.log('\n📦 Generating Prisma client...');
+    execSync('npx prisma generate', {
+      stdio: 'inherit',
+      env: { ...process.env }
+    });
+    console.log('✅ Prisma client generated');
+    
+    // Step 1.5: Check for migrations in database that don't have local files
     console.log('\n🔍 Checking for database migrations without local files...');
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    
     try {
-      const prisma = new PrismaClient();
       const dbMigrations = await prisma.$queryRawUnsafe(
         `SELECT DISTINCT migration_name 
          FROM _prisma_migrations 
@@ -242,21 +251,18 @@ async function deployMigrations() {
       await prisma.$disconnect();
     } catch (error) {
       // If _prisma_migrations doesn't exist, that's OK (fresh database)
-      if (error.message.includes('does not exist')) {
+      if (error.message.includes('does not exist') || error.message.includes('42P01')) {
         console.log('ℹ️  _prisma_migrations table does not exist (fresh database)');
       } else {
         console.warn(`⚠️  Could not check database migrations: ${error.message}`);
         console.warn('   Proceeding with deployment...');
       }
+      try {
+        await prisma.$disconnect();
+      } catch {
+        // Ignore disconnect errors
+      }
     }
-    
-    // Step 1: Generate Prisma client (required before migrate deploy)
-    console.log('\n📦 Generating Prisma client...');
-    execSync('npx prisma generate', {
-      stdio: 'inherit',
-      env: { ...process.env }
-    });
-    console.log('✅ Prisma client generated');
     
     // Step 2: Deploy migrations (THE ONLY MUTATION)
     console.log('\n📊 Applying migrations to production database...');
