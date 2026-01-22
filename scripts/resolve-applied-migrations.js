@@ -273,19 +273,40 @@ async function checkForeignKeyExists(prisma, constraintName) {
 async function checkMigrationsTableExists(prisma) {
   try {
     // Try to query the table directly - this is the most reliable check
+    // Use information_schema to check if table exists (more reliable than direct query)
     const result = await prisma.$queryRawUnsafe(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = '_prisma_migrations'
+      ) as exists`
+    );
+    
+    // Check if result indicates table exists
+    if (Array.isArray(result) && result.length > 0) {
+      const exists = result[0].exists;
+      return exists === true || exists === 't' || exists === 1;
+    }
+    
+    // Fallback: try direct query
+    await prisma.$queryRawUnsafe(
       `SELECT COUNT(*) as count FROM _prisma_migrations LIMIT 1`
     );
-    // If query succeeds, table exists
     return true;
   } catch (error) {
     // If query fails with "relation does not exist", table doesn't exist
     const errorMessage = String(error.message || '');
-    if (errorMessage.includes('does not exist') || errorMessage.includes('42P01')) {
+    const errorCode = String(error.code || '');
+    
+    if (errorMessage.includes('does not exist') || 
+        errorMessage.includes('42P01') ||
+        errorCode === '42P01') {
       return false;
     }
-    // For other errors, re-throw to see what's wrong
-    throw error;
+    
+    // Log unexpected errors for debugging
+    console.warn(`⚠️  Unexpected error checking migrations table: ${errorMessage}`);
+    // For other errors, assume table doesn't exist to be safe
+    return false;
   }
 }
 
