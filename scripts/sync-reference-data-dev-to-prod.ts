@@ -71,7 +71,7 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 import * as readline from 'readline';
 import { execSync } from 'child_process';
-import { validateEnvironmentFingerprint } from '../lib/env-fingerprint';
+import { validateEnvironmentFingerprint, initializeEnvironmentFingerprint } from '../lib/env-fingerprint';
 
 // Load environment variables
 const envPath = resolve(process.cwd(), '.env');
@@ -216,11 +216,26 @@ class ReferenceDataPromotion {
       // CRITICAL: Validate DEV database fingerprint
       const devFp = await validateEnvironmentFingerprint(devUrl, 'dev');
       if (!devFp.isValid) {
-        console.error(`${colors.red}❌ Development database fingerprint validation failed:${colors.reset}`);
-        console.error(`   ${devFp.error}`);
-        return false;
+        // In dry-run mode, auto-initialize dev database fingerprint if missing
+        if (this.dryRun && devFp.error?.includes('database_metadata table does not exist')) {
+          console.log(`${colors.yellow}⚠️  Development database fingerprint not initialized${colors.reset}`);
+          console.log(`   Auto-initializing fingerprint for dev database (dry-run mode)...`);
+          try {
+            await initializeEnvironmentFingerprint(devUrl, 'dev');
+            console.log(`${colors.green}✅ Development database fingerprint initialized${colors.reset}`);
+          } catch (initError) {
+            console.error(`${colors.red}❌ Failed to initialize fingerprint:${colors.reset}`);
+            console.error(`   ${initError instanceof Error ? initError.message : String(initError)}`);
+            return false;
+          }
+        } else {
+          console.error(`${colors.red}❌ Development database fingerprint validation failed:${colors.reset}`);
+          console.error(`   ${devFp.error}`);
+          return false;
+        }
+      } else {
+        console.log(`${colors.green}✅ Development database fingerprint validated${colors.reset}`);
       }
-      console.log(`${colors.green}✅ Development database fingerprint validated${colors.reset}`);
 
       // Test prod connection
       await this.prodPrisma.$queryRaw`SELECT 1`;
