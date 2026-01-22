@@ -389,6 +389,16 @@ async function resolveFailedMigrations() {
   try {
     // Step 0: Check if _prisma_migrations table exists
     console.log('\n📋 Step 0: Checking Prisma migrations table...');
+    
+    // First, test the connection
+    try {
+      await prisma.$queryRawUnsafe(`SELECT 1 as test`);
+      console.log('✅ Database connection successful');
+    } catch (connError) {
+      console.error('❌ Database connection failed:', connError.message);
+      throw new Error(`Cannot connect to database: ${connError.message}`);
+    }
+    
     const migrationsTableExists = await checkMigrationsTableExists(prisma);
     
     if (!migrationsTableExists) {
@@ -401,6 +411,7 @@ async function resolveFailedMigrations() {
       console.log('   - If migrations fail during deployment, re-run this script to resolve them');
       console.log('');
       console.log('✅ No failed migrations to resolve (database not yet initialized)');
+      await prisma.$disconnect();
       return; // Exit successfully - no failed migrations to resolve
     }
     
