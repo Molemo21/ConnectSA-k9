@@ -161,7 +161,7 @@ class ReferenceDataPromotion {
     try {
       // Clear module cache to ensure we get the freshly generated client
       // Clear all @prisma/client related modules from cache
-      const modulePaths = Object.keys(require.cache);
+      const modulePaths = Object.keys(require.cache || {});
       modulePaths.forEach(path => {
         if (path.includes('@prisma/client') || path.includes('.prisma')) {
           delete require.cache[path];
@@ -175,6 +175,9 @@ class ReferenceDataPromotion {
       } catch {
         // If resolve fails, that's OK - we'll try require anyway
       }
+      
+      // Small delay to ensure file system has synced
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       const { PrismaClient } = require('@prisma/client');
       
