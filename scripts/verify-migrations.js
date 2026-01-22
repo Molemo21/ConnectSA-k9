@@ -70,10 +70,22 @@ function verifyMigrations() {
         errorMessage.includes('migrations from the database are not found locally') ||
         errorMessage.includes('local migration history and the migrations table');
       
-      if (isMigrationMismatch) {
-        console.warn('⚠️  Migration history mismatch detected');
-        console.warn('   This is expected if migrations were applied manually or with different names.');
-        console.warn('   Missing migrations will be applied during deployment.');
+      // Check if the error is about the "production" folder being treated as a migration
+      const isProductionFolderError = 
+        errorOutput.includes('Following migration have not yet been applied:\nproduction') ||
+        errorOutput.includes('migration have not yet been applied:\nproduction') ||
+        (errorOutput.includes('production') && errorOutput.includes('migrations found'));
+      
+      if (isMigrationMismatch || isProductionFolderError) {
+        if (isProductionFolderError) {
+          console.warn('⚠️  Prisma is treating "production" folder as a migration');
+          console.warn('   The "production" folder contains SQL scripts, not migrations.');
+          console.warn('   This will be handled during deployment - the folder will be ignored.');
+        } else {
+          console.warn('⚠️  Migration history mismatch detected');
+          console.warn('   This is expected if migrations were applied manually or with different names.');
+          console.warn('   Missing migrations will be applied during deployment.');
+        }
         if (errorOutput) {
           console.warn('\n   Migration status details:');
           console.warn(errorOutput.substring(0, 500)); // Limit output length
