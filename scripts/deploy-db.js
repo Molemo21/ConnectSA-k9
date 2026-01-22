@@ -332,6 +332,26 @@ async function deployMigrations() {
             console.log(`   - ${m.migration_name} (${status})`);
           });
         }
+        
+        // Pre-mark "production" migration as applied if it exists locally (it's a no-op)
+        if (validDirs.includes('production')) {
+          const productionExists = await prisma.$queryRawUnsafe(
+            `SELECT migration_name FROM _prisma_migrations WHERE migration_name = 'production'`
+          );
+          if (!Array.isArray(productionExists) || productionExists.length === 0) {
+            console.log('\n📝 Pre-marking "production" migration as applied (no-op migration)...');
+            try {
+              execSync(`npx prisma migrate resolve --applied production`, {
+                stdio: 'pipe',
+                env: { ...process.env }
+              });
+              console.log('✅ "production" migration marked as applied');
+            } catch (resolveError) {
+              // If it fails, that's OK - Prisma will try to apply it (it's a no-op)
+              console.log('ℹ️  Could not pre-mark "production" migration (will be applied as no-op)');
+            }
+          }
+        }
       }
       
       await prisma.$disconnect();
