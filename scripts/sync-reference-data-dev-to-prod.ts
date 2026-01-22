@@ -549,9 +549,18 @@ async function main() {
     console.log(`${'⚠️  '.repeat(20)} DRY RUN MODE (default) ${'⚠️  '.repeat(20)}\n`);
   }
 
-  // Get database URLs
-  const devUrl = process.env.DEV_DATABASE_URL || process.env.DATABASE_URL;
-  const prodUrl = process.env.PROD_DATABASE_URL;
+  // Get database URLs and strip quotes if present
+  const devUrlRaw = process.env.DEV_DATABASE_URL || process.env.DATABASE_URL;
+  const prodUrlRaw = process.env.PROD_DATABASE_URL;
+  
+  // Strip quotes from URLs (sometimes env vars have quotes)
+  const stripQuotes = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+    return url.trim().replace(/^["']|["']$/g, '');
+  };
+  
+  const devUrl = stripQuotes(devUrlRaw);
+  const prodUrl = stripQuotes(prodUrlRaw);
 
   if (!devUrl) {
     console.error(`${colors.red}❌ ERROR: DEV_DATABASE_URL or DATABASE_URL environment variable required${colors.reset}`);
@@ -562,6 +571,21 @@ async function main() {
   if (!prodUrl) {
     console.error(`${colors.red}❌ ERROR: PROD_DATABASE_URL environment variable required${colors.reset}`);
     console.error('   Set PROD_DATABASE_URL to your production database URL');
+    process.exit(1);
+  }
+  
+  // Validate URL format
+  if (!devUrl.startsWith('postgresql://') && !devUrl.startsWith('postgres://')) {
+    console.error(`${colors.red}❌ ERROR: Invalid development database URL format${colors.reset}`);
+    console.error('   URL must start with postgresql:// or postgres://');
+    console.error(`   Got: ${devUrl.substring(0, 50)}...`);
+    process.exit(1);
+  }
+  
+  if (!prodUrl.startsWith('postgresql://') && !prodUrl.startsWith('postgres://')) {
+    console.error(`${colors.red}❌ ERROR: Invalid production database URL format${colors.reset}`);
+    console.error('   URL must start with postgresql:// or postgres://');
+    console.error(`   Got: ${prodUrl.substring(0, 50)}...`);
     process.exit(1);
   }
 
