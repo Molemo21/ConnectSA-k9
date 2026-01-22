@@ -385,12 +385,19 @@ async function resolveFailedMigrations() {
     
     console.log('✅ Prisma migrations table exists');
     
-    // Step 1: Find failed migrations
+    // Step 1: Find failed migrations and check for duplicates
     console.log('\n📋 Step 1: Finding failed migrations...');
     const failedMigrations = await prisma.$queryRawUnsafe(
-      `SELECT migration_name, started_at
+      `SELECT migration_name, started_at, finished_at
        FROM _prisma_migrations
        WHERE finished_at IS NULL
+       ORDER BY started_at DESC`
+    );
+    
+    // Also get all migrations to check for duplicates
+    const allMigrations = await prisma.$queryRawUnsafe(
+      `SELECT migration_name, started_at, finished_at
+       FROM _prisma_migrations
        ORDER BY started_at DESC`
     );
     
@@ -406,27 +413,96 @@ async function resolveFailedMigrations() {
       console.log(`   - ${name} (started: ${started})`);
     }
     
-    // DEDUPLICATE: Group by migration_name, keep only the most recent attempt
+    // DEDUPLICATE: Group by migration_name, check if any entry is already applied
     const migrationMap = new Map();
-    for (const migration of failedMigrations) {
+    const duplicateInfo = new Map(); // Track if migration has both failed and applied entries
+    
+    for (const migration of allMigrations) {
       const name = migration.migration_name || migration.migrationName;
-      if (!migrationMap.has(name)) {
-        migrationMap.set(name, migration);
+      const finished = migration.finished_at || migration.finishedAt;
+      const isApplied = finished !== null;
+      
+      if (!duplicateInfo.has(name)) {
+        duplicateInfo.set(name, { hasApplied: false, hasFailed: false });
+      }
+      
+      const info = duplicateInfo.get(name);
+      if (isApplied) {
+        info.hasApplied = true;
+      } else {
+        info.hasFailed = true;
+      }
+    }
+    
+    // Filter failed migrations - skip if already has an applied entry
+    const actualFailedMigrations = failedMigrations.filter(migration => {
+      const name = migration.migration_name || migration.migrationName;
+      const info = duplicateInfo.get(name);
+      return info && info.hasFailed && !info.hasApplied;
+    });
+    
+    // Also collect migrations that have both failed and applied entries (need cleanup)
+    const duplicateMigrations = [];
+    for (const [name, info] of duplicateInfo.entries()) {
+      if (info.hasApplied && info.hasFailed) {
+        duplicateMigrations.push(name);
+      }
+    }
+    
+    if (duplicateMigrations.length > 0) {
+      console.log(`\n⚠️  Found ${duplicateMigrations.length} migration(s) with duplicate entries (both applied and failed):`);
+      for (const name of duplicateMigrations) {
+        console.log(`   - ${name}`);
+      }
+      console.log('   🔧 Cleaning up duplicate failed entries...');
+      
+      // Delete failed entries for migrations that are already applied
+      for (const name of duplicateMigrations) {
+        try {
+          await prisma.$executeRawUnsafe(
+            `DELETE FROM _prisma_migrations 
+             WHERE migration_name = $1 AND finished_at IS NULL`,
+            name
+          );
+          console.log(`   ✅ Cleaned up duplicate failed entry for ${name}`);
+        } catch (error) {
+          console.warn(`   ⚠️  Could not clean up ${name}: ${error.message}`);
+        }
+      }
+      
+      console.log('   ✅ Duplicate cleanup completed');
+    }
+    
+    if (actualFailedMigrations.length === 0) {
+      if (failedMigrations.length > 0) {
+        console.log('\n✅ All failed migrations were duplicates of applied migrations (cleaned up)');
+      } else {
+        console.log('✅ No failed migrations found');
+      }
+      return;
+    }
+    
+    // DEDUPLICATE: Group by migration_name, keep only the most recent attempt
+    const migrationMap2 = new Map();
+    for (const migration of actualFailedMigrations) {
+      const name = migration.migration_name || migration.migrationName;
+      if (!migrationMap2.has(name)) {
+        migrationMap2.set(name, migration);
       } else {
         // Keep the most recent one (already sorted DESC by started_at)
-        const existing = migrationMap.get(name);
+        const existing = migrationMap2.get(name);
         const existingStarted = existing.started_at || existing.startedAt;
         const currentStarted = migration.started_at || migration.startedAt;
         if (currentStarted > existingStarted) {
-          migrationMap.set(name, migration);
+          migrationMap2.set(name, migration);
         }
       }
     }
     
-    const uniqueMigrations = Array.from(migrationMap.values());
+    const uniqueMigrations = Array.from(migrationMap2.values());
     
-    if (uniqueMigrations.length < failedMigrations.length) {
-      console.log(`\n   ℹ️  Deduplicated: Processing ${uniqueMigrations.length} unique migration(s) (ignored ${failedMigrations.length - uniqueMigrations.length} duplicate attempt(s))`);
+    if (uniqueMigrations.length < actualFailedMigrations.length) {
+      console.log(`\n   ℹ️  Deduplicated: Processing ${uniqueMigrations.length} unique migration(s) (ignored ${actualFailedMigrations.length - uniqueMigrations.length} duplicate attempt(s))`);
     }
     
     // Step 2: Check each failed migration
@@ -548,14 +624,35 @@ async function resolveFailedMigrations() {
           const command = `npx prisma migrate resolve --applied ${migrationName}`;
           console.log(`   📝 Executing: ${command}`);
           execSync(command, {
-            stdio: 'inherit',
+            stdio: 'pipe',
             env: { ...process.env }
           });
           console.log(`   ✅ Migration ${migrationName} marked as applied`);
           console.log(`   📊 Status: APPLIED (all objects exist)`);
         } catch (error) {
-          console.error(`   ❌ Failed to resolve migration: ${error.message}`);
-          throw error;
+          const errorOutput = String(error.stdout || error.stderr || error.message || '');
+          
+          // Check if migration is already applied (P3008 error)
+          if (errorOutput.includes('P3008') || errorOutput.includes('already recorded as applied')) {
+            console.log(`   ℹ️  Migration ${migrationName} is already marked as applied`);
+            console.log('   ℹ️  This is OK - migration was already resolved');
+            console.log(`   📊 Status: APPLIED (already resolved)`);
+            
+            // Clean up any remaining failed entries for this migration
+            try {
+              await prisma.$executeRawUnsafe(
+                `DELETE FROM _prisma_migrations 
+                 WHERE migration_name = $1 AND finished_at IS NULL`,
+                migrationName
+              );
+              console.log(`   ✅ Cleaned up duplicate failed entry`);
+            } catch (cleanupError) {
+              // Ignore cleanup errors
+            }
+          } else {
+            console.error(`   ❌ Failed to resolve migration: ${error.message}`);
+            throw error;
+          }
         }
       } else if (missingEnums.length > 0 || missingTables.length > 0 || missingForeignKeys.length > 0) {
         // Critical objects missing - FAIL HARD
