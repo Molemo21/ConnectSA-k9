@@ -219,15 +219,19 @@ export async function initializeEnvironmentFingerprint(
     const finalFingerprint = fingerprint || `${environment}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
     // Create or update the fingerprint
+    // Escape single quotes in values for SQL safety
+    const escapedEnv = environment.replace(/'/g, "''");
+    const escapedFingerprint = finalFingerprint.replace(/'/g, "''");
+    
     await tempPrisma.$executeRawUnsafe(`
       INSERT INTO database_metadata (id, environment, fingerprint, "createdAt", "updatedAt")
-      VALUES ('singleton', $1, $2, NOW(), NOW())
+      VALUES ('singleton', '${escapedEnv}', '${escapedFingerprint}', NOW(), NOW())
       ON CONFLICT (id) 
       DO UPDATE SET 
-        environment = $1,
-        fingerprint = $2,
+        environment = '${escapedEnv}',
+        fingerprint = '${escapedFingerprint}',
         "updatedAt" = NOW()
-    `, environment, finalFingerprint);
+    `);
 
     await tempPrisma.$disconnect();
   } catch (error: any) {
