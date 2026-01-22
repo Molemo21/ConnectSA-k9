@@ -268,10 +268,10 @@ async function deployMigrations() {
             for (const mig of appliedButMissing) {
               try {
                 console.log(`   📝 Removing migration record: ${mig.name}`);
-                await prisma.$executeRawUnsafe(
-                  `DELETE FROM _prisma_migrations WHERE migration_name = $1`,
-                  mig.name
-                );
+                // Use $executeRaw with template literal (safer, prevents SQL injection)
+                await prisma.$executeRaw`
+                  DELETE FROM _prisma_migrations WHERE migration_name = ${mig.name}
+                `;
                 console.log(`   ✅ Removed ${mig.name} from _prisma_migrations`);
               } catch (deleteError) {
                 console.warn(`   ⚠️  Could not remove ${mig.name}: ${deleteError.message}`);
