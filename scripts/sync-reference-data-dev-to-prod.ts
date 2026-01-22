@@ -69,6 +69,7 @@ import { PrismaClient } from '@prisma/client';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import * as readline from 'readline';
+import { execSync } from 'child_process';
 import { validateEnvironmentFingerprint } from '../lib/env-fingerprint';
 
 // Load environment variables
@@ -484,6 +485,20 @@ async function main() {
   console.log(`\n${'='.repeat(80)}`);
   console.log(`${' '.repeat(20)}🔒 REFERENCE DATA PROMOTION (CI-ONLY)${' '.repeat(20)}`);
   console.log(`${'='.repeat(80)}\n`);
+
+  // Generate Prisma client first (required before PrismaClient can be imported)
+  console.log('📦 Generating Prisma client...');
+  try {
+    execSync('npx prisma generate', {
+      stdio: 'inherit',
+      env: { ...process.env }
+    });
+    console.log('✅ Prisma client generated\n');
+  } catch (error) {
+    console.error(`${colors.red}❌ Failed to generate Prisma client:${colors.reset}`);
+    console.error(`   ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
 
   if (isDryRun) {
     console.log(`${'⚠️  '.repeat(20)} DRY RUN MODE ${'⚠️  '.repeat(20)}\n`);
