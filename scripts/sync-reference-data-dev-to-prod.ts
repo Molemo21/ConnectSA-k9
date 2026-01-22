@@ -176,9 +176,8 @@ class ReferenceDataPromotion {
         // If resolve fails, that's OK - we'll try require anyway
       }
       
-      // Small delay to ensure file system has synced
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      // Use synchronous require (constructor can't be async)
+      // The cache clearing should be sufficient, and prisma generate has already completed
       const { PrismaClient } = require('@prisma/client');
       
       // Initialize Prisma clients
