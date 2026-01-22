@@ -198,18 +198,36 @@ export async function initializeEnvironmentFingerprint(
   });
 
   try {
+    // First, ensure the table exists
+    await tempPrisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "database_metadata" (
+        "id" TEXT NOT NULL,
+        "environment" TEXT NOT NULL,
+        "fingerprint" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "database_metadata_pkey" PRIMARY KEY ("id")
+      )
+    `);
+    
+    // Create index if it doesn't exist
+    await tempPrisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "database_metadata_environment_idx" 
+      ON "database_metadata"("environment")
+    `);
+    
     const finalFingerprint = fingerprint || `${environment}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
     // Create or update the fingerprint
-    await tempPrisma.$executeRaw`
+    await tempPrisma.$executeRawUnsafe(`
       INSERT INTO database_metadata (id, environment, fingerprint, "createdAt", "updatedAt")
-      VALUES ('singleton', ${environment}, ${finalFingerprint}, NOW(), NOW())
+      VALUES ('singleton', $1, $2, NOW(), NOW())
       ON CONFLICT (id) 
       DO UPDATE SET 
-        environment = ${environment},
-        fingerprint = ${finalFingerprint},
+        environment = $1,
+        fingerprint = $2,
         "updatedAt" = NOW()
-    `;
+    `, environment, finalFingerprint);
 
     await tempPrisma.$disconnect();
   } catch (error: any) {
