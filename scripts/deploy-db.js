@@ -317,6 +317,21 @@ async function deployMigrations() {
         } else {
           console.log('✅ All database migrations have corresponding local files');
         }
+        
+        // After cleanup, list remaining database migrations for debugging
+        const remainingDbMigrations = await prisma.$queryRawUnsafe(
+          `SELECT migration_name, finished_at IS NOT NULL as is_applied
+           FROM _prisma_migrations 
+           WHERE migration_name IS NOT NULL
+           ORDER BY migration_name`
+        );
+        console.log(`\n📋 Remaining database migrations (${Array.isArray(remainingDbMigrations) ? remainingDbMigrations.length : 0}):`);
+        if (Array.isArray(remainingDbMigrations) && remainingDbMigrations.length > 0) {
+          remainingDbMigrations.forEach(m => {
+            const status = (m.is_applied === true || m.is_applied === 't') ? '✅ applied' : '⏳ pending';
+            console.log(`   - ${m.migration_name} (${status})`);
+          });
+        }
       }
       
       await prisma.$disconnect();
