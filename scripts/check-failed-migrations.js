@@ -83,14 +83,30 @@ function checkFailedMigrations() {
       
       // Migration history mismatches are OK (will be resolved during deploy)
       // These are NOT failed migrations - they're just mismatched history
-      if (errorOutput.includes('migrations have not yet been applied') ||
-          errorOutput.includes('migrations from the database are not found locally') ||
-          errorOutput.includes('local migration history and the migrations table') ||
-          errorMessage.includes('migrations have not yet been applied') ||
-          errorMessage.includes('migrations from the database are not found locally') ||
-          errorMessage.includes('local migration history and the migrations table')) {
-        console.log('⚠️  Migration history mismatch (expected - will be resolved during deploy)');
-        console.log('   This is NOT a failed migration - just a history mismatch.');
+      const isMigrationMismatch = 
+        errorOutput.includes('migrations have not yet been applied') ||
+        errorOutput.includes('migrations from the database are not found locally') ||
+        errorOutput.includes('local migration history and the migrations table') ||
+        errorMessage.includes('migrations have not yet been applied') ||
+        errorMessage.includes('migrations from the database are not found locally') ||
+        errorMessage.includes('local migration history and the migrations table');
+      
+      // Check if the error is about the "production" folder being treated as a migration
+      const isProductionFolderError = 
+        errorOutput.includes('Following migration have not yet been applied:\nproduction') ||
+        errorOutput.includes('migration have not yet been applied:\nproduction') ||
+        (errorOutput.includes('production') && errorOutput.includes('migrations found') && 
+         errorOutput.includes('have not yet been applied'));
+      
+      if (isMigrationMismatch || isProductionFolderError) {
+        if (isProductionFolderError) {
+          console.log('⚠️  Prisma is treating "production" folder as a migration');
+          console.log('   The "production" folder contains SQL scripts, not migrations.');
+          console.log('   This will be handled during deployment - the folder will be ignored.');
+        } else {
+          console.log('⚠️  Migration history mismatch (expected - will be resolved during deploy)');
+          console.log('   This is NOT a failed migration - just a history mismatch.');
+        }
         console.log('✅ No failed migrations detected - safe to proceed');
         return;
       }
