@@ -229,6 +229,17 @@ async function deployMigrations() {
          ORDER BY migration_name`
       );
       
+      // Also check for any local directories that Prisma might see but we're not counting
+      const allLocalDirs = fs.readdirSync(migrationsDir, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name)
+        .filter(name => name !== 'production');
+      
+      console.log(`\n📊 Migration count analysis:`);
+      console.log(`   - Local directories (excluding production): ${allLocalDirs.length}`);
+      console.log(`   - Valid directories (with migration.sql): ${validDirs.length}`);
+      console.log(`   - Database migrations: ${Array.isArray(dbMigrations) ? dbMigrations.length : 0}`);
+      
       if (Array.isArray(dbMigrations) && dbMigrations.length > 0) {
         const dbMigrationNames = dbMigrations.map(m => m.migration_name || m.migrationName);
         const localSet = new Set(validDirs);
@@ -244,6 +255,12 @@ async function deployMigrations() {
               isRolledBack: migration.is_rolled_back === true || migration.is_rolled_back === 't'
             });
           }
+        }
+        
+        // Also check for local directories that don't match database migrations
+        const localButNotInDb = validDirs.filter(dir => !dbMigrationNames.includes(dir));
+        if (localButNotInDb.length > 0) {
+          console.log(`\n⚠️  Local migrations not in database: ${localButNotInDb.join(', ')}`);
         }
         
         if (missingLocal.length > 0) {
