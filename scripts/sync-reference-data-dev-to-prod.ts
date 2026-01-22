@@ -159,8 +159,11 @@ class ReferenceDataPromotion {
 
     // Lazy import PrismaClient (must be called after prisma generate)
     try {
+      // Clear module cache to ensure we get the freshly generated client
+      const prismaClientPath = require.resolve('@prisma/client');
+      delete require.cache[prismaClientPath];
+      
       const { PrismaClient } = require('@prisma/client');
-      this.PrismaClient = PrismaClient;
       
       // Initialize Prisma clients
       this.devPrisma = new PrismaClient({
