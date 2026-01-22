@@ -334,7 +334,8 @@ async function deployMigrations() {
         }
         
         // Pre-mark "production" migration as applied if it exists locally (it's a no-op)
-        if (validDirs.includes('production')) {
+        const productionDirPath = path.join(migrationsDir, 'production', 'migration.sql');
+        if (fs.existsSync(productionDirPath)) {
           const productionExists = await prisma.$queryRawUnsafe(
             `SELECT migration_name FROM _prisma_migrations WHERE migration_name = 'production'`
           );
