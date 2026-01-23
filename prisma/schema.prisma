@@ -75,6 +75,7 @@ model User {
   role          UserRole @default(CLIENT)
   emailVerified Boolean  @default(false)
   isActive      Boolean  @default(true)
+  deletedAt     DateTime? // Tombstone flag for anonymized users
   googleId      String?  @unique
   appleId       String?  @unique
   createdAt     DateTime @default(now())
@@ -90,6 +91,7 @@ model User {
   notifications       Notification[]
   pushSubscriptions   PushSubscription[]
 
+  @@index([deletedAt]) // Index for efficient filtering
   @@map("users")
 }
 

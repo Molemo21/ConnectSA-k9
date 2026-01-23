@@ -208,129 +208,164 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Authentication
     const admin = await getCurrentUser()
     if (!admin || admin.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Input validation
     const { id } = params
     const body = await request.json()
     const { reason, permanent = false } = body
 
-    const targetUser = await db.user.findUnique({
-      where: { id },
-      include: {
-        provider: true,
-        _count: {
-          select: {
-            bookings: true,
-            notifications: true,
-          },
-        },
-      },
-    })
-
-    if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    // Prevent admin from deleting themselves
-    if (targetUser.id === admin.id) {
-      return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
-    }
-
-    // For hard delete, require no linked data. Soft delete allowed regardless.
-    if (permanent) {
-      if (targetUser._count.bookings > 0 || targetUser._count.notifications > 0) {
-        return NextResponse.json({ 
-          error: 'Cannot permanently delete user with linked bookings or notifications. Suspend instead.' 
-        }, { status: 400 })
-      }
-    }
-
+    // Extract request metadata
     const { ipAddress, userAgent } = extractRequestInfo(request)
 
-    // Perform user deletion with retry logic and proper error handling
-    let deletionResult;
-    try {
-      if (permanent) {
-        // Hard delete - only allow for super admins or users with no data
-        console.log(`🗑️ Performing hard delete for user: ${targetUser.email}`);
-        deletionResult = await retryDatabaseOperation(async () => {
-          return await db.user.delete({
-            where: { id },
-          });
-        });
-        console.log('✅ User hard deleted successfully');
-      } else {
-        // Soft delete - set isActive to false
-        console.log(`🔒 Performing soft delete for user: ${targetUser.email}`);
-        deletionResult = await retryDatabaseOperation(async () => {
-          return await db.user.update({
-            where: { id },
-            data: { 
-              isActive: false,
-              // Note: We could add a deletedAt field to the schema if needed
-            },
-          });
-        });
-        console.log('✅ User soft deleted successfully');
-      }
-    } catch (dbError) {
-      console.error('❌ Database deletion failed after retries:', dbError);
-      return NextResponse.json({ 
-        error: 'Failed to delete user. Database connection issue. Please try again.' 
-      }, { status: 500 });
-    }
-
-    // Log the admin action (non-blocking)
-    try {
-      await logAdminAction({
-        adminId: admin.id,
-        action: 'USER_DELETED' as any,
-        targetType: 'USER',
-        targetId: id,
-        details: {
-          permanent,
-          reason,
-          userEmail: targetUser.email,
-          userRole: targetUser.role,
-          bookingsCount: targetUser._count.bookings,
-        },
-        ipAddress,
-        userAgent,
-      })
-    } catch (auditError) {
-      console.error('⚠️ Failed to log admin action (non-critical):', auditError);
-      // Don't fail the request if audit logging fails
-    }
-
-    // Send email notification to user
-    try {
-      await sendEmail({
-        to: targetUser.email,
-        subject: 'Account Deleted - ConnectSA',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Account Deleted</h2>
-            <p>Hello ${targetUser.name},</p>
-            <p>Your account has been ${permanent ? 'permanently deleted' : 'deactivated'} from our platform.</p>
-            ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-            <p>If you believe this was done in error, please contact our support team.</p>
-            <p>Best regards,<br>The ConnectSA Team</p>
-          </div>
-        `,
-      })
-    } catch (emailError) {
-      console.error('Failed to send email notification:', emailError)
-      // Don't fail the request if email fails
-    }
-
-    return NextResponse.json({ 
-      message: `User ${permanent ? 'permanently deleted' : 'deactivated'} successfully` 
+    // Call domain service - all business logic is encapsulated
+    const { deleteUser } = await import('@/lib/services/user-deletion-service')
+    const result = await deleteUser({
+      userId: id,
+      adminId: admin.id,
+      permanent,
+      reason,
+      ipAddress,
+      userAgent,
     })
-  } catch (error) {
+
+    // Send email notification AFTER transaction commits (non-blocking, failure-tolerant)
+    // This must never cause rollback or 500 responses
+    if (result.user?.email && !result.user.email.includes('@deleted.local') && !result.user.email.includes('@example.invalid')) {
+      // Only send email if user email is still valid (not anonymized)
+      Promise.resolve().then(async () => {
+        try {
+          const emailSubject =
+            result.action === 'deleted'
+              ? 'Account Permanently Deleted - ConnectSA'
+              : result.action === 'anonymized'
+              ? 'Account Anonymized - ConnectSA'
+              : 'Account Deactivated - ConnectSA'
+
+          const emailContent =
+            result.action === 'deleted'
+              ? 'Your account has been permanently deleted from our platform.'
+              : result.action === 'anonymized'
+              ? `Your account has been anonymized. All personal information has been removed while preserving transactional records for audit and compliance.`
+              : 'Your account has been deactivated from our platform.'
+
+          await sendEmail({
+            to: result.user!.email,
+            subject: emailSubject,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>${emailSubject}</h2>
+                <p>Hello,</p>
+                <p>${emailContent}</p>
+                ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+                ${result.preservedData
+                  ? `<p><strong>Note:</strong> Your transactional data (${result.preservedData.clientBookings + result.preservedData.providerBookings} bookings, ${result.preservedData.reviews} reviews, ${result.preservedData.payouts} payouts) has been preserved for audit and compliance purposes.</p>`
+                  : ''}
+                <p>If you believe this was done in error, please contact our support team.</p>
+                <p>Best regards,<br>The ConnectSA Team</p>
+              </div>
+            `,
+          })
+        } catch (emailError) {
+          // Email failures are logged but never cause operation failure
+          console.error('⚠️ Failed to send email notification (non-critical):', emailError)
+        }
+      }).catch((err) => {
+        // Ensure unhandled promise rejections don't crash the process
+        console.error('⚠️ Email notification promise rejection (non-critical):', err)
+      })
+    }
+
+    // Build response based on action type
+    if (result.action === 'anonymized') {
+      return NextResponse.json({
+        message: result.message,
+        action: result.action,
+        reason: result.preservedData
+          ? `Cannot permanently delete user with transactional data. Found: ${result.preservedData.clientBookings} client booking(s), ${result.preservedData.providerBookings} provider booking(s), ${result.preservedData.reviews} review(s), ${result.preservedData.payouts} payout(s). All personal information has been removed while preserving transactional records for audit and compliance.`
+          : 'User has been anonymized.',
+        preservedData: result.preservedData,
+        user: result.user,
+      })
+    }
+
+    if (result.action === 'deleted') {
+      return NextResponse.json({
+        message: result.message,
+        action: result.action,
+        note: result.note,
+      })
+    }
+
+    // Soft delete response
+    return NextResponse.json({
+      message: result.message,
+      action: result.action,
+      user: result.user,
+    })
+  } catch (error: any) {
     console.error('Error deleting user:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+
+    // Handle specific error types with clear messages
+    if (error.message === 'Cannot delete your own account') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    if (error.message === 'User not found') {
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
+
+    if (error.message === 'User is already anonymized') {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    if (error.message?.includes('Database migrations not applied')) {
+      return NextResponse.json(
+        {
+          error: 'Database configuration error',
+          details: 'Database migrations are not applied. Please contact system administrator.',
+        },
+        { status: 503 }
+      )
+    }
+
+    // Handle Prisma constraint violations
+    if (error.code === 'P2003' || error.code === 'P2002') {
+      return NextResponse.json(
+        {
+          error: 'Database constraint violation. User may have linked data that prevents deletion.',
+          details: error.message,
+        },
+        { status: 409 }
+      )
+    }
+
+    // Handle transaction serialization failures (race conditions)
+    if (error.code === 'P2034' || error.message?.includes('serialization')) {
+      return NextResponse.json(
+        {
+          error: 'Transaction conflict. Please retry the operation.',
+          details: 'Another operation may be in progress. Please try again.',
+        },
+        { status: 409 }
+      )
+    }
+
+    // Generic error
+    return NextResponse.json(
+      {
+        error: 'Failed to delete user',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      },
+      { status: 500 }
+    )
   }
 }
