@@ -19,6 +19,46 @@ const validateEnvVars = () => {
       throw new Error(`Missing required environment variable: ${key}`);
     }
   });
+
+  // Validate Paystack key consistency
+  const secretKey = requiredEnvVars.PAYSTACK_SECRET_KEY;
+  const publicKey = requiredEnvVars.PAYSTACK_PUBLIC_KEY;
+  const testMode = process.env.PAYSTACK_TEST_MODE === 'true';
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (secretKey && publicKey) {
+    const secretIsTest = secretKey.startsWith('sk_test_');
+    const secretIsLive = secretKey.startsWith('sk_live_');
+    const publicIsTest = publicKey.startsWith('pk_test_');
+    const publicIsLive = publicKey.startsWith('pk_live_');
+
+    // Check key consistency
+    if ((secretIsTest && publicIsLive) || (secretIsLive && publicIsTest)) {
+      throw new Error(
+        `Paystack key mismatch: Secret and public keys must both be test or both be live. ` +
+        `Secret: ${secretIsTest ? 'TEST' : secretIsLive ? 'LIVE' : 'INVALID'}, ` +
+        `Public: ${publicIsTest ? 'TEST' : publicIsLive ? 'LIVE' : 'INVALID'}`
+      );
+    }
+
+    // Warn about production using test keys
+    if (isProduction && secretIsTest) {
+      console.warn('⚠️  WARNING: Production environment is using TEST Paystack keys!');
+    }
+
+    // Warn about development using live keys
+    if (!isProduction && secretIsLive) {
+      console.warn('⚠️  WARNING: Development environment is using LIVE Paystack keys!');
+    }
+
+    // Check test mode flag consistency
+    if (testMode && secretIsLive) {
+      throw new Error(
+        'Configuration error: PAYSTACK_TEST_MODE=true but using LIVE keys. ' +
+        'Set PAYSTACK_TEST_MODE=false for live keys.'
+      );
+    }
+  }
 };
 
 const PAYSTACK_BASE_URL = 'https://api.paystack.co';

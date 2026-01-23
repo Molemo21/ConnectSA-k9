@@ -174,23 +174,101 @@ export function validateEnvironmentVariables(): ValidationResult {
 }
 
 /**
+ * Validate Paystack key consistency and environment alignment
+ * Prevents mixing test/live keys and warns about misconfigurations
+ */
+export function validatePaystackKeyConsistency(): { valid: boolean; errors: string[]; warnings: string[] } {
+  const secretKey = process.env.PAYSTACK_SECRET_KEY;
+  const publicKey = process.env.PAYSTACK_PUBLIC_KEY;
+  const testMode = process.env.PAYSTACK_TEST_MODE === 'true';
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!secretKey || !publicKey) {
+    return { valid: true, errors: [], warnings: [] }; // Will be caught by required validation
+  }
+
+  const secretIsTest = secretKey.startsWith('sk_test_');
+  const secretIsLive = secretKey.startsWith('sk_live_');
+  const publicIsTest = publicKey.startsWith('pk_test_');
+  const publicIsLive = publicKey.startsWith('pk_live_');
+
+  // Check key consistency (both must be test or both must be live)
+  if ((secretIsTest && publicIsLive) || (secretIsLive && publicIsTest)) {
+    errors.push(
+      `Paystack key mismatch: Secret and public keys must both be test or both be live. ` +
+      `Secret: ${secretIsTest ? 'TEST' : secretIsLive ? 'LIVE' : 'INVALID'}, ` +
+      `Public: ${publicIsTest ? 'TEST' : publicIsLive ? 'LIVE' : 'INVALID'}`
+    );
+  }
+
+  // Warn if production environment uses test keys
+  if (isProduction && secretIsTest) {
+    warnings.push(
+      '⚠️  WARNING: Production environment is using TEST Paystack keys! ' +
+      'This should only be used for staging/testing, not real transactions.'
+    );
+  }
+
+  // Warn if development uses live keys
+  if (!isProduction && secretIsLive) {
+    warnings.push(
+      '⚠️  WARNING: Development environment is using LIVE Paystack keys! ' +
+      'This could result in real money transactions during development. ' +
+      'Use test keys (sk_test_..., pk_test_...) for development.'
+    );
+  }
+
+  // Check test mode flag consistency
+  if (testMode && secretIsLive) {
+    errors.push(
+      'Configuration error: PAYSTACK_TEST_MODE=true but using LIVE keys. ' +
+      'Set PAYSTACK_TEST_MODE=false for live keys.'
+    );
+  }
+
+  if (!testMode && secretIsTest && isProduction) {
+    warnings.push(
+      '⚠️  WARNING: PAYSTACK_TEST_MODE=false but using TEST keys in production. ' +
+      'For production, use live keys (sk_live_..., pk_live_...) and set PAYSTACK_TEST_MODE=false.'
+    );
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
+/**
  * Validate environment variables and throw if invalid
  * Use this at application startup to fail fast
  */
 export function requireValidEnvironment(): void {
   const result = validateEnvironmentVariables();
   
-  if (!result.valid) {
-    const errorMessage = `Environment validation failed:\n${result.errors.join('\n')}`;
+  // Also validate Paystack key consistency
+  const paystackValidation = validatePaystackKeyConsistency();
+  
+  if (!result.valid || !paystackValidation.valid) {
+    const allErrors = [...result.errors, ...paystackValidation.errors];
+    const errorMessage = `Environment validation failed:\n${allErrors.join('\n')}`;
     console.error(`\n${'='.repeat(80)}`);
     console.error('🚨 CRITICAL: Application cannot start');
     console.error(`${'='.repeat(80)}\n`);
     throw new Error(errorMessage);
   }
 
-  if (result.warnings.length > 0) {
+  // Show warnings
+  const allWarnings = [...result.warnings, ...paystackValidation.warnings];
+  if (allWarnings.length > 0) {
     console.warn(`\n${'='.repeat(80)}`);
-    console.warn('⚠️  WARNING: Some optional variables are not set');
+    console.warn('⚠️  WARNING: Configuration issues detected');
+    console.warn(`${'='.repeat(80)}`);
+    allWarnings.forEach(warning => console.warn(`  - ${warning}`));
     console.warn(`${'='.repeat(80)}\n`);
   }
 }
