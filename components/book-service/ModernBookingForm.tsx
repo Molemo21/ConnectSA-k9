@@ -26,7 +26,8 @@ import {
   Home,
   CreditCard,
   Banknote,
-  Package
+  Package,
+  AlertTriangle
 } from "lucide-react"
 import { reverseGeocode, searchAddresses, searchAddressesGoogle, type AddressSuggestion } from "@/lib/geocoding"
 import { saveBookingDraft } from "@/lib/booking-draft"
@@ -42,8 +43,23 @@ const bookingFormSchema = z.object({
   paymentMethod: z.enum(['ONLINE', 'CASH']).default('ONLINE'),
 })
 
-const fetcher = (url: string, signal?: AbortSignal) => fetch(url, { signal }).then(r => {
-  if (!r.ok) throw new Error(`${r.status}`)
+const fetcher = (url: string, signal?: AbortSignal) => fetch(url, { signal }).then(async r => {
+  if (!r.ok) {
+    // Try to get error message from response
+    let errorMessage = `HTTP ${r.status}`;
+    try {
+      const errorData = await r.json();
+      if (errorData.error) {
+        errorMessage = translateApiError(r, errorData);
+      } else {
+        errorMessage = translateApiError(r);
+      }
+    } catch {
+      // If response isn't JSON, use status code translation
+      errorMessage = translateApiError(r);
+    }
+    throw new Error(errorMessage);
+  }
   return r.json()
 })
 
@@ -88,6 +104,156 @@ const stepErrorMessages: Record<number, string> = {
   2: 'Please enter your address',
   4: 'Please select a provider and package',
   5: 'Please select a payment method'
+}
+
+// Helper function to translate technical errors into user-friendly messages
+function translateError(error: unknown): string {
+  // Handle string errors
+  if (typeof error === 'string') {
+    const errorLower = error.toLowerCase();
+    
+    if (errorLower.includes('network') || errorLower.includes('fetch') || errorLower.includes('internet')) {
+      return 'No internet connection. Please check your Wi-Fi or mobile data and try again.';
+    }
+    if (errorLower.includes('timeout')) {
+      return 'Request took too long. Please try again - your information has been saved.';
+    }
+    if (errorLower.includes('unauthorized') || errorLower.includes('401') || errorLower.includes('session')) {
+      return 'Your session expired. Please log in again and try booking.';
+    }
+    if (errorLower.includes('provider') && (errorLower.includes('unavailable') || errorLower.includes('not found'))) {
+      return 'This provider is no longer available. Please choose a different provider.';
+    }
+    if (errorLower.includes('date') || errorLower.includes('time') || errorLower.includes('slot')) {
+      return 'The selected date or time is no longer available. Please choose a different time.';
+    }
+    if (errorLower.includes('payment') || errorLower.includes('transaction')) {
+      return 'There was a problem with payment processing. Please try again or choose a different payment method.';
+    }
+    if (errorLower.includes('database') || errorLower.includes('prisma') || errorLower.includes('connection')) {
+      return 'Our system is temporarily busy. Please wait a moment and try again.';
+    }
+    if (errorLower.includes('validation') || errorLower.includes('required') || errorLower.includes('missing')) {
+      return 'Some information is missing. Please check all fields and try again.';
+    }
+    
+    return error; // Return original if we can't translate
+  }
+  
+  // Handle Error objects
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    
+    // Network errors
+    if (error instanceof TypeError && message.includes('fetch')) {
+      return 'No internet connection. Please check your Wi-Fi or mobile data and try again.';
+    }
+    if (message.includes('networkerror') || message.includes('network error')) {
+      return 'Connection problem. Please check your internet connection and try again.';
+    }
+    if (message.includes('timeout') || message.includes('timed out')) {
+      return 'Request timed out. Please try again - your information has been saved.';
+    }
+    
+    // Authentication errors
+    if (message.includes('unauthorized') || message.includes('401') || message.includes('session expired')) {
+      return 'Your session expired. Please log in again and try booking.';
+    }
+    if (message.includes('forbidden') || message.includes('403')) {
+      return 'You don\'t have permission to perform this action. Please contact support if this continues.';
+    }
+    
+    // Provider/booking errors
+    if (message.includes('provider') && (message.includes('unavailable') || message.includes('not found'))) {
+      return 'This provider is no longer available. Please choose a different provider.';
+    }
+    if (message.includes('booking') && message.includes('exists')) {
+      return 'A booking already exists for this time. Please choose a different date or time.';
+    }
+    if (message.includes('date') || message.includes('time') || message.includes('slot') || message.includes('unavailable')) {
+      return 'The selected date or time is no longer available. Please choose a different time.';
+    }
+    
+    // Payment errors
+    if (message.includes('payment') || message.includes('transaction') || message.includes('card')) {
+      return 'There was a problem with payment processing. Please try again or choose a different payment method.';
+    }
+    
+    // System errors
+    if (message.includes('database') || message.includes('prisma') || message.includes('connection')) {
+      return 'Our system is temporarily busy. Please wait a moment and try again.';
+    }
+    if (message.includes('server') || message.includes('500') || message.includes('503')) {
+      return 'Our servers are temporarily unavailable. Please try again in a few moments.';
+    }
+    
+    // Validation errors
+    if (message.includes('validation') || message.includes('required') || message.includes('missing')) {
+      return 'Some information is missing. Please check all fields and try again.';
+    }
+    
+    // Return the original message if it's already user-friendly
+    if (message.length < 100 && !message.includes('error') && !message.includes('failed')) {
+      return error.message;
+    }
+    
+    // Generic fallback for unknown errors
+    return 'Something went wrong. Please check your information and try again.';
+  }
+  
+  // Fallback for unknown error types
+  return 'An unexpected error occurred. Please try again.';
+}
+
+// Helper function to translate API error responses
+function translateApiError(response: Response, errorData?: any): string {
+  const status = response.status;
+  const errorMessage = errorData?.error?.toLowerCase() || '';
+  
+  // Handle specific HTTP status codes
+  if (status === 401) {
+    return 'Your session expired. Please log in again and try booking.';
+  }
+  if (status === 403) {
+    return 'You don\'t have permission to perform this action. Please contact support if this continues.';
+  }
+  if (status === 404) {
+    if (errorMessage.includes('provider')) {
+      return 'This provider is no longer available. Please choose a different provider.';
+    }
+    if (errorMessage.includes('service')) {
+      return 'This service is no longer available. Please choose a different service.';
+    }
+    return 'The requested resource was not found. Please try again.';
+  }
+  if (status === 409) {
+    if (errorMessage.includes('booking') || errorMessage.includes('time slot')) {
+      return 'A booking already exists for this time. Please choose a different date or time.';
+    }
+    return 'This action conflicts with existing data. Please check your information and try again.';
+  }
+  if (status === 422) {
+    return 'Some information is invalid. Please check all fields and try again.';
+  }
+  if (status === 429) {
+    return 'Too many requests. Please wait a moment and try again.';
+  }
+  if (status === 500 || status === 502 || status === 503) {
+    return 'Our servers are temporarily unavailable. Please try again in a few moments.';
+  }
+  if (status >= 400 && status < 500) {
+    return 'There was a problem with your request. Please check your information and try again.';
+  }
+  if (status >= 500) {
+    return 'Our system is experiencing issues. Please try again in a few moments.';
+  }
+  
+  // Try to translate the error message if available
+  if (errorData?.error) {
+    return translateError(errorData.error);
+  }
+  
+  return 'An unexpected error occurred. Please try again.';
 }
 
 export function ModernBookingForm({ value, onChange, onNext, onBack, submitting, onProviderSelected, onPackageSelected, onLoginSuccess, isAuthenticated, onShowLoginModal }: ModernBookingFormProps) {
@@ -754,6 +920,54 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
     return slots
   }, [])
 
+  // Check if selected date is today
+  const isToday = React.useMemo(() => {
+    if (!value.date) return false
+    const today = new Date()
+    const selectedDate = new Date(value.date)
+    return (
+      today.getFullYear() === selectedDate.getFullYear() &&
+      today.getMonth() === selectedDate.getMonth() &&
+      today.getDate() === selectedDate.getDate()
+    )
+  }, [value.date])
+
+  // Helper function to check if a time slot is in the past
+  const isTimeSlotPast = React.useCallback((timeSlot: string): boolean => {
+    if (!isToday || !value.date) return false
+    
+    const now = new Date()
+    const [hours, minutes] = timeSlot.split(':').map(Number)
+    const slotTime = new Date(now)
+    slotTime.setHours(hours, minutes, 0, 0)
+    
+    // Add a buffer of 30 minutes - can't book less than 30 minutes in advance
+    const bufferTime = new Date(now.getTime() + 30 * 60 * 1000)
+    
+    return slotTime < bufferTime
+  }, [isToday, value.date])
+
+  // Calculate minimum time for today (current time + 30 minutes buffer)
+  const minTimeForToday = React.useMemo(() => {
+    if (!isToday) return undefined
+    
+    const now = new Date()
+    now.setMinutes(now.getMinutes() + 30) // Add 30 minute buffer
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(Math.ceil(now.getMinutes() / 30) * 30).padStart(2, '0') // Round up to nearest 30 minutes
+    return `${hours}:${minutes}`
+  }, [isToday])
+
+  // Clear invalid time when date changes or becomes invalid
+  React.useEffect(() => {
+    if (value.date && value.time && isTimeSlotPast(value.time)) {
+      // Clear the selected time if it's now in the past
+      onChange({ ...value, time: '' })
+      setErrors(prev => ({ ...prev, time: 'The selected time has passed. Please choose a future time.' }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value.date, value.time, isTimeSlotPast])
+
   const isValid = bookingFormSchema.safeParse(value).success
 
   // Keyboard navigation for address suggestions
@@ -851,6 +1065,7 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                     type="time"
                     value={value.time}
                     onChange={(e) => handleFieldChange('time', e.target.value)}
+                    min={minTimeForToday}
                     className="pl-14 sm:pl-16 pr-4 py-4 sm:py-5 text-base sm:text-lg border-2 border-gray-600 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-0 [&::-webkit-calendar-picker-indicator]:h-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
                     style={{ colorScheme: 'dark' }}
                   />
@@ -861,20 +1076,39 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                 {value.date && (
                   <div className="mt-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ scrollbarWidth: 'thin' }}>
-                      {timeSlots.map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => handleFieldChange('time', t)}
-                          className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-all duration-200 whitespace-nowrap ${
-                            value.time === t
-                              ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50'
-                              : 'bg-gray-700 text-white hover:bg-gray-600'
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      ))}
+                      {timeSlots.map((t) => {
+                        const isPast = isTimeSlotPast(t)
+                        const isDisabled = isPast
+                        
+                        return (
+                          <button
+                            key={t}
+                            onClick={() => {
+                              if (!isDisabled) {
+                                handleFieldChange('time', t)
+                              }
+                            }}
+                            disabled={isDisabled}
+                            className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-all duration-200 whitespace-nowrap ${
+                              isDisabled
+                                ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
+                                : value.time === t
+                                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50'
+                                : 'bg-gray-700 text-white hover:bg-gray-600'
+                            }`}
+                            title={isDisabled ? 'This time has already passed' : `Select ${t}`}
+                            aria-disabled={isDisabled}
+                          >
+                            {t}
+                          </button>
+                        )
+                      })}
                     </div>
+                    {isToday && (
+                      <p className="text-xs text-white/60 mt-2">
+                        ⏰ Times in the past are disabled. You can book at least 30 minutes in advance.
+                      </p>
+                    )}
                   </div>
                 )}
                 {errors.time ? (
@@ -1393,7 +1627,18 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                 <Button
                   onClick={async () => {
                     if (!value.selectedProviderId || !value.selectedCatalogueItemId) {
-                      setBookingError('Please select a provider and package');
+                      const missingItems = [];
+                      if (!value.selectedProviderId) missingItems.push('provider');
+                      if (!value.selectedCatalogueItemId) missingItems.push('package');
+                      
+                      const missingText = missingItems.length === 1 
+                        ? `a ${missingItems[0]}` 
+                        : `a ${missingItems.join(' and a ')}`;
+                      
+                      setBookingError(
+                        `Please go back and select ${missingText}. ` +
+                        `Click "Edit" next to ${missingItems[0] === 'provider' ? 'Provider' : 'Package'} above to choose one.`
+                      );
                       return;
                     }
                     
@@ -1423,8 +1668,16 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                       });
                       
                       if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Failed to create booking');
+                        let errorData;
+                        try {
+                          errorData = await response.json();
+                        } catch {
+                          // If response isn't JSON, use status code
+                          errorData = { error: `HTTP ${response.status}` };
+                        }
+                        
+                        const userMessage = translateApiError(response, errorData);
+                        throw new Error(userMessage);
                       }
                       
                       const bookingData = await response.json();
@@ -1451,7 +1704,10 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                       setIsConfirmingBooking(false);
                       setBookingSuccess(false);
                       setSuccessMessage(null);
-                      setBookingError(error instanceof Error ? error.message : 'Failed to create booking. Please try again.');
+                      
+                      // Use the translation helper
+                      const userFriendlyMessage = translateError(error);
+                      setBookingError(userFriendlyMessage);
                     }
                   }}
                   disabled={isConfirmingBooking || submitting || !value.selectedProviderId || !value.selectedCatalogueItemId}
@@ -1498,11 +1754,21 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-3">
-          <p className="text-white/80">Failed to load services.</p>
-          <Button variant="outline" onClick={() => mutate()}>
-            Retry
-          </Button>
+        <div className="text-center space-y-4">
+          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto" />
+          <div>
+            <p className="text-white font-semibold text-lg mb-2">Unable to Load Services</p>
+            <p className="text-white/80 text-sm mb-4">
+              {translateError(error)}
+            </p>
+            <Button 
+              onClick={() => mutate()} 
+              variant="outline"
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+            >
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     )
