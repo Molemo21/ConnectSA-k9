@@ -272,26 +272,36 @@ async function checkForeignKeyExists(prisma, constraintName) {
 
 async function checkMigrationsTableExists(prisma) {
   try {
-    // Try to query the table directly - this is the most reliable check
-    // First try a simple query to see if the table actually exists and is accessible
-    await prisma.$queryRawUnsafe(
-      `SELECT COUNT(*) as count FROM _prisma_migrations LIMIT 1`
+    // Use information_schema to check if table exists (more reliable than querying the table)
+    const result = await prisma.$queryRawUnsafe(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = '_prisma_migrations'
+      ) as exists`
     );
-    // If query succeeds, table exists and is accessible
-    return true;
+    
+    // Check if result indicates table exists
+    if (Array.isArray(result) && result.length > 0) {
+      const exists = result[0].exists;
+      // Handle both boolean and string 't'/'f' responses
+      return exists === true || exists === 't' || exists === true;
+    }
+    
+    return false;
   } catch (error) {
-    // If query fails with "relation does not exist", table doesn't exist
+    // If query fails, table likely doesn't exist
     const errorMessage = String(error.message || '');
     const errorCode = String(error.code || '');
     
-    if (errorMessage.includes('does not exist') || 
-        errorMessage.includes('42P01') ||
-        errorCode === '42P01') {
-      return false;
+    // Log non-critical errors but don't fail
+    if (!errorMessage.includes('does not exist') && 
+        !errorMessage.includes('42P01') &&
+        errorCode !== '42P01') {
+      console.warn(`⚠️  Error checking migrations table: ${errorMessage}`);
     }
     
-    // For other errors (permissions, connection, etc.), log and return false
-    console.warn(`⚠️  Error checking migrations table: ${errorMessage}`);
+    // Assume table doesn't exist if we can't check
     return false;
   }
 }
@@ -405,19 +415,44 @@ async function resolveFailedMigrations() {
     
     // Step 1: Find failed migrations and check for duplicates
     console.log('\n📋 Step 1: Finding failed migrations...');
-    const failedMigrations = await prisma.$queryRawUnsafe(
-      `SELECT migration_name, started_at, finished_at
-       FROM _prisma_migrations
-       WHERE finished_at IS NULL
-       ORDER BY started_at DESC`
-    );
     
-    // Also get all migrations to check for duplicates
-    const allMigrations = await prisma.$queryRawUnsafe(
-      `SELECT migration_name, started_at, finished_at
-       FROM _prisma_migrations
-       ORDER BY started_at DESC`
-    );
+    let failedMigrations = [];
+    let allMigrations = [];
+    
+    try {
+      failedMigrations = await prisma.$queryRawUnsafe(
+        `SELECT migration_name, started_at, finished_at
+         FROM _prisma_migrations
+         WHERE finished_at IS NULL
+         ORDER BY started_at DESC`
+      );
+      
+      // Also get all migrations to check for duplicates
+      allMigrations = await prisma.$queryRawUnsafe(
+        `SELECT migration_name, started_at, finished_at
+         FROM _prisma_migrations
+         ORDER BY started_at DESC`
+      );
+    } catch (queryError) {
+      // Handle case where table was deleted between check and query
+      const errorMessage = String(queryError.message || '');
+      const errorCode = String(queryError.code || '');
+      
+      if (errorMessage.includes('does not exist') || 
+          errorMessage.includes('42P01') ||
+          errorCode === '42P01') {
+        console.log('ℹ️  _prisma_migrations table does not exist (detected during query)');
+        console.log('   This indicates no migrations have been applied yet.');
+        console.log('   This is a valid state - there are no failed migrations to resolve.');
+        console.log('');
+        console.log('✅ No failed migrations to resolve (database not yet initialized)');
+        await prisma.$disconnect();
+        return; // Exit successfully
+      }
+      
+      // Re-throw if it's a different error
+      throw queryError;
+    }
     
     if (!failedMigrations || failedMigrations.length === 0) {
       console.log('✅ No failed migrations found');
