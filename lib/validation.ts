@@ -3,11 +3,24 @@ import { z } from "zod"
 // Email validation schema
 const emailSchema = z.string().email("Invalid email address")
 
-// Password validation schema
-const passwordSchema = z.string().min(6, "Password must be at least 6 characters")
+// Password validation schema - Strong password requirements
+const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .refine((password) => {
+    // Strong password requirements
+    const hasUpperCase = /[A-Z]/.test(password)
+    const hasLowerCase = /[a-z]/.test(password)
+    const hasNumber = /[0-9]/.test(password)
+    const hasSpecialChar = /[^a-zA-Z0-9]/.test(password)
+    
+    return hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar
+  }, {
+    message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+  })
 
-// Phone validation schema
-const phoneSchema = z.string().regex(/^[\+]?[1-9][\d]{0,15}$/, "Invalid phone number")
+// Phone validation schema - South African format
+const phoneSchema = z.string()
+  .regex(/^(0[1-9]\d{8}|\+27[1-9]\d{8})$/, "Please enter a valid South African phone number (e.g., 0821234567 or +27821234567)")
 
 // Login schema
 export const loginSchema = z.object({

@@ -9,8 +9,29 @@ import { sendVerificationEmail } from '@/lib/email'
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  phone: z.string().optional(),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .refine((password) => {
+      // Strong password requirements
+      const hasUpperCase = /[A-Z]/.test(password)
+      const hasLowerCase = /[a-z]/.test(password)
+      const hasNumber = /[0-9]/.test(password)
+      const hasSpecialChar = /[^a-zA-Z0-9]/.test(password)
+      
+      return hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar
+    }, {
+      message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    }),
+  phone: z.string()
+    .transform((val) => val?.replace(/\s/g, '').replace(/-/g, '') || val) // Remove spaces and dashes
+    .refine((val) => {
+      if (!val) return true // Optional field
+      // South African formats: 0821234567 (local) or +27821234567 (international)
+      return /^(0[1-9]\d{8}|\+27[1-9]\d{8})$/.test(val)
+    }, {
+      message: "Please enter a valid South African phone number (e.g., 0821234567 or +27821234567)"
+    })
+    .optional(),
   role: z.enum(["CLIENT", "PROVIDER"]).default("CLIENT"),
 })
 
@@ -211,10 +232,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors[0]?.message || "Invalid input" }, { status: 400 })
+      // Return all validation errors, not just the first one
+      return NextResponse.json({ 
+        error: "Validation failed. Please check your input.",
+        errors: error.errors.map(err => ({
+          path: err.path,
+          message: err.message
+        }))
+      }, { status: 400 })
     }
 
     console.error("Signup error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Internal server error. Please try again later." }, { status: 500 })
   }
 }
