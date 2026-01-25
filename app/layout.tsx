@@ -14,7 +14,12 @@ export const metadata: Metadata = {
   title: "Proliink Connect - Your Trusted Services Marketplace",
   description:
     "Connect with verified service providers across South Africa. Book trusted professionals for cleaning, plumbing, electrical work, and more.",
-    generator: 'v0.dev'
+  generator: 'v0.dev',
+  icons: {
+    icon: '/placeholder-logo.png', // Use existing logo as favicon
+    shortcut: '/placeholder-logo.png',
+    apple: '/placeholder-logo.png',
+  }
 }
 
 export default function RootLayout({
