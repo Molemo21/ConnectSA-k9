@@ -251,6 +251,7 @@ export async function POST(request: NextRequest) {
               currency: item.currency || 'ZAR',
               durationMins: item.durationMins,
               images: item.images || [], // Images array from database
+              featuredImageIndex: item.featuredImageIndex ?? undefined, // Featured image index for hero image
               serviceId: item.serviceId,
               service: {
                 name: item.service?.name || '',

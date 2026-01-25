@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { X, Save, Package, Image, Clock, FileText, Sparkles } from 'lucide-react';
+import { X, Save, Package, Image, Clock, Sparkles } from 'lucide-react';
 import { ImageUpload } from '@/components/ui/image-upload';
 
 interface Service {
@@ -26,6 +26,7 @@ interface CatalogueItem {
   currency: string;
   durationMins: number;
   images: string[];
+  featuredImageIndex?: number;
   serviceId: string;
 }
 
@@ -44,7 +45,8 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
     price: 0,
     currency: 'ZAR',
     durationMins: 60,
-    images: [] as string[]
+    images: [] as string[],
+    featuredImageIndex: 0 // Default to first image
   });
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +64,8 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
         price: item.price,
         currency: item.currency,
         durationMins: item.durationMins,
-        images: item.images
+        images: item.images,
+        featuredImageIndex: item.featuredImageIndex ?? 0 // Default to 0 if not set
       });
     }
   }, [item]);
@@ -196,7 +199,10 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
         price: Number(formData.price),
         currency: formData.currency || 'ZAR',
         durationMins: Number(formData.durationMins),
-        images: formData.images && formData.images.length > 0 ? formData.images : undefined
+        images: formData.images && formData.images.length > 0 ? formData.images : undefined,
+        featuredImageIndex: formData.images && formData.images.length > 0 
+          ? (formData.featuredImageIndex ?? 0) 
+          : undefined
       };
 
       // Final validation check before sending
@@ -278,7 +284,7 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
         
         // Handle validation errors with details
         if (response.status === 400 && data.details && Array.isArray(data.details)) {
-          const validationErrors = data.details.map((err: any) => {
+          const validationErrors = data.details.map((err: { field: string; message: string }) => {
             const fieldName = err.field === 'serviceId' ? 'Service' :
                             err.field === 'shortDesc' ? 'Short Description' :
                             err.field === 'title' ? 'Title' :
@@ -316,12 +322,6 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
     }
   };
 
-  const handleImagesChange = (images: string[]) => {
-    setFormData(prev => ({
-      ...prev,
-      images
-    }));
-  };
 
   const generatePackageTitle = () => {
     const service = services.find(s => s.id === formData.serviceId);
@@ -564,13 +564,50 @@ export function CatalogueItemForm({ item, onSuccess, onCancel }: CatalogueItemFo
               <Image className="w-4 h-4" />
               Images (Optional)
             </Label>
+            
+            {/* Enhanced Tips Section */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-2">
+              <p className="text-blue-300 text-xs font-medium mb-2 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                Tips for Better Presentation
+              </p>
+              <ul className="text-blue-200/80 text-xs leading-relaxed space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-400 mt-0.5">⭐</span>
+                  <span>
+                    <strong>Set a Featured Image</strong> - Click the star (⭐) on any image to make it your package&apos;s main image. 
+                    This is the first image clients see when browsing providers, so choose your best work!
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-300 mt-0.5">📸</span>
+                  <span>
+                    For <strong>before/after comparisons</strong>, name images with <code className="bg-black/30 px-1 rounded text-blue-100">_before_</code> and <code className="bg-black/30 px-1 rounded text-blue-100">_after_</code> 
+                    (e.g., <code className="bg-black/30 px-1 rounded text-blue-100">cleaning_before_1.jpg</code> and <code className="bg-black/30 px-1 rounded text-blue-100">cleaning_after_1.jpg</code>)
+                  </span>
+                </li>
+              </ul>
+            </div>
+            
             <ImageUpload
               value={formData.images}
-              onChange={handleImagesChange}
+              onChange={(urls) => {
+                setFormData(prev => {
+                  // If featured image was removed, reset to first image or 0
+                  const newFeaturedIndex = prev.featuredImageIndex >= urls.length 
+                    ? Math.max(0, urls.length - 1)
+                    : prev.featuredImageIndex;
+                  return { ...prev, images: urls, featuredImageIndex: urls.length > 0 ? newFeaturedIndex : 0 };
+                });
+              }}
               maxImages={10}
               allowUrls={true}
               catalogueItemId={item?.id}
               disabled={loading}
+              featuredImageIndex={formData.featuredImageIndex}
+              onFeaturedImageChange={(index) => {
+                setFormData(prev => ({ ...prev, featuredImageIndex: index }));
+              }}
             />
           </div>
 

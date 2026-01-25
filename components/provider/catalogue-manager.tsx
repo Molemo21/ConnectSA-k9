@@ -50,6 +50,7 @@ interface CatalogueItem {
   currency: string;
   durationMins: number;
   images: string[];
+  featuredImageIndex?: number;
   isActive: boolean;
   createdAt: string;
   service: {

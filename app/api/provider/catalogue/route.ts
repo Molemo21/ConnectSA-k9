@@ -22,7 +22,8 @@ const createCatalogueItemSchema = z.object({
   price: z.number().min(1).max(100000),
   currency: z.string().default('ZAR'),
   durationMins: z.number().min(15).max(480), // 15 mins to 8 hours
-  images: z.array(z.string().url()).max(10).optional()
+  images: z.array(z.string().url()).max(10).optional(),
+  featuredImageIndex: z.number().int().min(0).optional() // Index of featured image (0-based)
 });
 
 export async function POST(request: NextRequest) {
@@ -84,6 +85,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Validate featuredImageIndex if provided
+    let featuredImageIndex = validated.featuredImageIndex;
+    if (featuredImageIndex !== undefined && validated.images) {
+      if (featuredImageIndex < 0 || featuredImageIndex >= validated.images.length) {
+        featuredImageIndex = 0; // Reset to first image if invalid
+      }
+    } else if (featuredImageIndex === undefined && validated.images && validated.images.length > 0) {
+      featuredImageIndex = 0; // Default to first image
+    }
+
     // Create catalogue item
     const catalogueItem = await prisma.catalogueItem.create({
       data: {
@@ -96,6 +107,7 @@ export async function POST(request: NextRequest) {
         currency: validated.currency,
         durationMins: validated.durationMins,
         images: validated.images || [],
+        featuredImageIndex: featuredImageIndex ?? null,
         isActive: true
       },
       include: {

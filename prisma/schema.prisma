@@ -365,6 +365,7 @@ model CatalogueItem {
   currency     String   @default("ZAR")
   durationMins Int
   images       String[] // Array of image URLs
+  featuredImageIndex Int? // Index of featured image (0-based), null = use first image
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

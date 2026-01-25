@@ -12,6 +12,7 @@ const updateCatalogueItemSchema = z.object({
   currency: z.string().optional(),
   durationMins: z.number().min(15).max(480).optional(),
   images: z.array(z.string().url()).max(10).optional(),
+  featuredImageIndex: z.number().int().min(0).optional(), // Index of featured image (0-based)
   isActive: z.boolean().optional()
 });
 
@@ -56,10 +57,27 @@ export async function PUT(
       return NextResponse.json({ error: 'Catalogue item not found' }, { status: 404 });
     }
 
+    // Validate featuredImageIndex if provided
+    let featuredImageIndex = validated.featuredImageIndex;
+    if (featuredImageIndex !== undefined && validated.images) {
+      if (featuredImageIndex < 0 || featuredImageIndex >= validated.images.length) {
+        featuredImageIndex = 0; // Reset to first image if invalid
+      }
+    } else if (featuredImageIndex === undefined && validated.images && validated.images.length > 0) {
+      // If images are updated but featuredImageIndex not provided, keep existing or default to 0
+      featuredImageIndex = catalogueItem.featuredImageIndex ?? 0;
+    }
+
+    // Prepare update data
+    const updateData: any = { ...validated };
+    if (featuredImageIndex !== undefined) {
+      updateData.featuredImageIndex = featuredImageIndex;
+    }
+
     // Update catalogue item
     const updatedItem = await prisma.catalogueItem.update({
       where: { id: params.id },
-      data: validated,
+      data: updateData,
       include: {
         service: true
       }

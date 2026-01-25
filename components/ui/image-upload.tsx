@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CheckCircle,
   Link as LinkIcon,
+  Star,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -24,6 +25,8 @@ interface ImageUploadProps {
   allowUrls?: boolean;
   catalogueItemId?: string;
   className?: string;
+  featuredImageIndex?: number; // Index of featured image (0-based)
+  onFeaturedImageChange?: (index: number) => void; // Callback when featured image changes
 }
 
 interface UploadProgress {
@@ -42,6 +45,8 @@ export function ImageUpload({
   allowUrls = true,
   catalogueItemId,
   className,
+  featuredImageIndex = 0,
+  onFeaturedImageChange,
 }: ImageUploadProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -278,6 +283,14 @@ export function ImageUpload({
     }
   }, [urlInput, value, onChange, maxImages, toast]);
 
+  const handleSetFeatured = useCallback(
+    (index: number) => {
+      if (disabled) return;
+      onFeaturedImageChange?.(index);
+    },
+    [disabled, onFeaturedImageChange]
+  );
+
   const uploadingImages = Array.from(uploadProgress.values());
   const canAddMore = value.length < maxImages;
 
@@ -365,7 +378,14 @@ export function ImageUpload({
             {value.map((url, index) => (
               <div
                 key={`existing-${index}`}
-                className="relative group aspect-square rounded-lg overflow-hidden bg-gray-800 border border-gray-300/20"
+                className="relative group aspect-square rounded-lg overflow-hidden bg-gray-800 transition-all"
+                style={{
+                  borderWidth: '2px',
+                  borderStyle: 'solid',
+                  borderColor: featuredImageIndex === index 
+                    ? 'rgb(234, 179, 8)' // yellow-500
+                    : 'rgba(255, 255, 255, 0.1)'
+                }}
               >
                 <Image
                   src={url}
@@ -374,17 +394,48 @@ export function ImageUpload({
                   className="object-cover"
                   sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
                 />
+                
+                {/* Featured Badge */}
+                {featuredImageIndex === index && (
+                  <div className="absolute top-2 left-2 bg-yellow-500 text-black text-xs font-semibold px-2 py-1 rounded flex items-center gap-1 z-10">
+                    <Star className="w-3 h-3 fill-current" />
+                    Featured
+                  </div>
+                )}
+                
+                {/* Star Button - Set as Featured */}
+                {!disabled && onFeaturedImageChange && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetFeatured(index)}
+                    className={`
+                      absolute top-2 right-2 p-1.5 rounded-full transition-all z-10
+                      ${featuredImageIndex === index
+                        ? 'bg-yellow-500 text-black hover:bg-yellow-400'
+                        : 'bg-black/70 text-white/70 hover:bg-black/90 hover:text-white'
+                      }
+                    `}
+                    title={featuredImageIndex === index ? 'Featured Image' : 'Set as Featured'}
+                  >
+                    <Star className={`w-4 h-4 ${featuredImageIndex === index ? 'fill-current' : ''}`} />
+                  </button>
+                )}
+                
+                {/* Remove Button */}
                 {!disabled && (
                   <Button
                     type="button"
                     variant="destructive"
                     size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600/90 hover:bg-red-700"
+                    className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-600/90 hover:bg-red-700 z-10"
                     onClick={() => handleRemoveImage(index)}
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 )}
+                
+                {/* Overlay on hover */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
               </div>
             ))}
 
