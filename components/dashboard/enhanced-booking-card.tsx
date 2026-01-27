@@ -213,19 +213,40 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
   // Check if payment is stuck in PROCESSING_RELEASE (more than 5 minutes)
   const isPaymentStuckInProcessingRelease = () => {
-    if (!displayBooking.payment || displayBooking.payment.status !== 'PROCESSING_RELEASE') return false
+    if (!displayBooking.payment || displayBooking.payment.status !== 'PROCESSING_RELEASE') {
+      return false
+    }
     
     // Use updatedAt if available, otherwise fall back to createdAt
     // This ensures the check works even if updatedAt is missing from the API response
     const timestamp = displayBooking.payment.updatedAt || displayBooking.payment.createdAt
-    if (!timestamp) return false
+    if (!timestamp) {
+      console.log('🔍 Retry Release Check: No timestamp found for payment', {
+        paymentId: displayBooking.payment.id,
+        hasUpdatedAt: !!displayBooking.payment.updatedAt,
+        hasCreatedAt: !!displayBooking.payment.createdAt
+      })
+      return false
+    }
     
     const now = new Date()
     const statusTime = new Date(timestamp)
     const minutesDiff = (now.getTime() - statusTime.getTime()) / (1000 * 60)
     
     // Show retry button after 5 minutes
-    return minutesDiff > 5
+    const isStuck = minutesDiff > 5
+    
+    if (displayBooking.payment.status === 'PROCESSING_RELEASE') {
+      console.log('🔍 Retry Release Check:', {
+        paymentId: displayBooking.payment.id,
+        status: displayBooking.payment.status,
+        timestamp,
+        minutesDiff: minutesDiff.toFixed(2),
+        isStuck
+      })
+    }
+    
+    return isStuck
   }
 
   // Check status and sync booking/payment status if needed
@@ -684,6 +705,40 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
             paymentMethod={booking.paymentMethod}
           />
           
+          {/* Payment Stuck in PROCESSING_RELEASE - Show Retry Button */}
+          {isPaymentStuckInProcessingRelease() && !isPaymentReleased && (
+            <Alert className="border-orange-500/50 bg-orange-500/10 mt-4 mb-4">
+              <AlertTriangle className="h-4 w-4 text-orange-400" />
+              <AlertDescription className="text-orange-300">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <span className="font-medium block mb-1">Payment release taking longer than expected</span>
+                    <p className="text-sm">The release may be stuck. You can retry it.</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowRecoveryDialog(true)}
+                    variant="outline"
+                    className="flex-shrink-0 border-orange-500 text-orange-500 hover:bg-orange-500/20"
+                    disabled={isRecoveringPayment}
+                  >
+                    {isRecoveringPayment ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        Recovering...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        Retry Release
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {/* Premium Details Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
             <div className="space-y-2">
@@ -823,40 +878,6 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   <CheckCircle className="w-4 h-4 mr-1" />
                   Payment Released
                 </div>
-              )}
-
-              {/* Payment Stuck in PROCESSING_RELEASE - Show Retry Button */}
-              {isPaymentStuckInProcessingRelease() && !isPaymentReleased && (
-                <Alert className="border-orange-500/50 bg-orange-500/10 mt-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-400" />
-                  <AlertDescription className="text-orange-300">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <span className="font-medium block mb-1">Payment release taking longer than expected</span>
-                        <p className="text-sm">The release may be stuck. You can retry it.</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setShowRecoveryDialog(true)}
-                        variant="outline"
-                        className="ml-4 border-orange-500 text-orange-500 hover:bg-orange-500/20"
-                        disabled={isRecoveringPayment}
-                      >
-                        {isRecoveringPayment ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                            Recovering...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-1" />
-                            Retry Release
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
               )}
               
               {canDispute && (
