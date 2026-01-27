@@ -160,6 +160,35 @@ export async function POST(
       );
     }
 
+    // Validate bank code against Paystack (production only)
+    const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
+    
+    if (!isTestMode) {
+      try {
+        const { paystackClient } = await import('@/lib/paystack');
+        console.log(`🔍 Validating bank code: ${bankCode} for South Africa...`);
+        
+        const isValidBankCode = await paystackClient.validateBankCode(bankCode, 'ZA');
+        
+        if (!isValidBankCode) {
+          console.error(`❌ Invalid bank code: ${bankCode}`);
+          return NextResponse.json(
+            { 
+              error: "Invalid bank code",
+              details: `The bank code "${bankCode}" is not valid for South African banks. Please select a valid bank from the list.`,
+              field: "bankCode"
+            },
+            { status: 400 }
+          );
+        }
+        console.log(`✅ Bank code validated successfully`);
+      } catch (validationError) {
+        // Log but don't block - validation is best effort
+        console.warn(`⚠️ Bank code validation warning:`, validationError);
+        // Continue with save - don't block user if validation service is down
+      }
+    }
+
     // Update provider with bank details
     console.log('Updating provider with data:', { bankName, bankCode, accountNumber: '***', accountName });
     

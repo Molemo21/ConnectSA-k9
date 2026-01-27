@@ -191,13 +191,38 @@ const BankDetailsFormComponent = function BankDetailsForm({
       })
 
       if (response.ok) {
+        const data = await response.json()
+        
         toast({
           title: "Bank details saved",
           description: "Your bank details have been saved successfully"
         })
         
-        // Don't call callback or clear form to prevent re-renders
-        // The parent will refresh the data if needed
+        // Call callback if provided to notify parent of successful save
+        // Parent can then refresh data if needed
+        if (onBankDetailsChangeRef.current && data.provider) {
+          try {
+            // Fetch fresh bank details from API to pass to parent
+            const refreshResponse = await fetch(`/api/provider/${userData.user.provider.id}/bank-details`)
+            if (refreshResponse.ok) {
+              const refreshData = await refreshResponse.json()
+              if (refreshData.bankDetails) {
+                onBankDetailsChangeRef.current!(refreshData.bankDetails)
+              }
+            }
+          } catch (refreshError) {
+            // If refresh fails, still notify parent with API response data
+            console.warn('Failed to refresh bank details after save:', refreshError)
+            if (data.provider) {
+              onBankDetailsChangeRef.current!({
+                bankName: data.provider.bankName || '',
+                bankCode: data.provider.bankCode || '',
+                accountNumber: data.provider.accountNumber || '', // Already masked
+                accountName: data.provider.accountName || '',
+              })
+            }
+          }
+        }
       } else {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to save bank details')

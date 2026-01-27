@@ -65,6 +65,35 @@ export async function POST(request: NextRequest) {
     const validatedData = onboardingSchema.parse(body)
     console.log("✅ Data validation successful")
 
+    // Validate bank code against Paystack (production only)
+    const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
+    
+    if (!isTestMode && validatedData.bankCode) {
+      try {
+        const { paystackClient } = await import('@/lib/paystack');
+        console.log(`🔍 Validating bank code: ${validatedData.bankCode} for South Africa...`);
+        
+        const isValidBankCode = await paystackClient.validateBankCode(validatedData.bankCode, 'ZA');
+        
+        if (!isValidBankCode) {
+          console.error(`❌ Invalid bank code: ${validatedData.bankCode}`);
+          return NextResponse.json(
+            { 
+              error: "Invalid bank code",
+              details: `The bank code "${validatedData.bankCode}" is not valid for South African banks. Please select a valid bank from the list.`,
+              field: "bankCode"
+            },
+            { status: 400 }
+          );
+        }
+        console.log(`✅ Bank code validated successfully`);
+      } catch (validationError) {
+        // Log but don't block - validation is best effort
+        console.warn(`⚠️ Bank code validation warning:`, validationError);
+        // Continue with onboarding - don't block user if validation service is down
+      }
+    }
+
     // Check if provider already exists
     console.log("🔍 Checking for existing provider...")
     const existingProvider = await db.provider.findUnique({

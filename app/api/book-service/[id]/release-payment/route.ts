@@ -577,6 +577,33 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
           bank_code: booking.provider.bankCode!,
         };
         
+        // Validate bank code before attempting to create recipient (only in production)
+        if (!isTestMode) {
+          try {
+            console.log(`🔍 Validating bank code: ${recipientData.bank_code} for South Africa...`);
+            const isValidBankCode = await paystackClient.validateBankCode(
+              recipientData.bank_code,
+              'ZA' // South Africa
+            );
+            
+            if (!isValidBankCode) {
+              console.error(`❌ Invalid bank code: ${recipientData.bank_code}`);
+              return NextResponse.json({
+                success: false,
+                error: "Invalid bank code",
+                details: `The bank code "${recipientData.bank_code}" is not valid for South African banks. Please ask the provider to update their bank details with a valid bank code. They can find valid bank codes in their bank details settings.`,
+                currentStatus: booking.payment.status,
+                expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
+                bookingStatus: booking.status
+              }, { status: 400 });
+            }
+            console.log(`✅ Bank code validated successfully`);
+          } catch (validationError) {
+            // Log but don't block - validation is best effort
+            console.warn(`⚠️ Bank code validation warning:`, validationError);
+          }
+        }
+        
         try {
           let recipientResponse;
           
@@ -619,21 +646,58 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         } catch (recipientError) {
           console.error(`❌ Failed to create transfer recipient:`, recipientError);
           
-          // Provide more specific error messages for common recipient creation issues
+          // Parse Paystack error response for better error messages
           let errorMessage = "Unable to create transfer recipient";
+          let errorDetails = "Your payment is safe in escrow. You can try again later or contact support for assistance.";
+          
           if (recipientError instanceof Error) {
-            if (recipientError.message.includes("Invalid bank code")) {
-              errorMessage = "Provider's bank code is invalid. Please ask them to update their bank details.";
-            } else if (recipientError.message.includes("Invalid account number")) {
-              errorMessage = "Provider's account number is invalid. Please ask them to verify their bank details.";
-            } else if (recipientError.message.includes("Account name")) {
-              errorMessage = "Provider's account name is invalid. Please ask them to update their bank details.";
+            // Check for structured Paystack error
+            if (recipientError.message.includes('Paystack API error')) {
+              try {
+                const errorMatch = recipientError.message.match(/\{.*\}/);
+                if (errorMatch) {
+                  const errorData = JSON.parse(errorMatch[0]);
+                  
+                  if (errorData.code === 'invalid_bank_code') {
+                    errorMessage = "Invalid bank code";
+                    errorDetails = `The bank code "${recipientData.bank_code}" is not valid. ` +
+                      `Please ask the provider to update their bank details. ` +
+                      `They can find valid bank codes in their bank details settings. ` +
+                      (errorData.meta?.nextStep || '');
+                  } else if (errorData.message) {
+                    errorMessage = `Paystack error: ${errorData.message}`;
+                    errorDetails = errorData.meta?.nextStep || errorDetails;
+                  }
+                }
+              } catch (parseError) {
+                // If parsing fails, use the error message as-is
+                errorMessage = recipientError.message;
+              }
+            } else if (recipientError.message.includes("Invalid bank code") || 
+                       recipientError.message.includes("invalid_bank_code")) {
+              errorMessage = "Invalid bank code";
+              errorDetails = `The bank code "${recipientData.bank_code}" is not valid for South African banks. Please ask the provider to update their bank details with a valid bank code.`;
+            } else if (recipientError.message.includes("Invalid account number") || 
+                       recipientError.message.includes("invalid_account_number")) {
+              errorMessage = "Invalid account number";
+              errorDetails = "The provider's account number is invalid. Please ask them to verify their bank account number.";
+            } else if (recipientError.message.includes("Account name") || 
+                       recipientError.message.includes("invalid_account_name")) {
+              errorMessage = "Invalid account name";
+              errorDetails = "The provider's account name is invalid. Please ask them to update their bank details.";
             } else {
               errorMessage = `Unable to create transfer recipient: ${recipientError.message}`;
             }
           }
           
-          throw new Error(errorMessage);
+          return NextResponse.json({
+            success: false,
+            error: errorMessage,
+            details: errorDetails,
+            currentStatus: booking.payment.status,
+            expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
+            bookingStatus: booking.status
+          }, { status: 400 });
         }
       } else {
         console.log(`✅ Using existing transfer recipient: ${recipientCode}`);

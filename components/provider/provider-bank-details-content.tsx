@@ -186,12 +186,10 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
       })
 
       if (response.ok) {
-        const data = await response.json()
-        const updatedDetails = {
-          ...formData,
-          accountNumber: data.provider?.accountNumber || '****' + formData.accountNumber.slice(-4)
-        }
-        setExistingDetails(updatedDetails)
+        // Reload bank details from API to ensure UI reflects database state
+        // This ensures we display exactly what was saved, including any server-side transformations
+        await loadBankDetails()
+        
         setIsEditing(false)
         showToast.success('Bank details saved successfully!')
         

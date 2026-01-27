@@ -282,12 +282,26 @@ class PaystackClient {
         body: body ? JSON.stringify(body) : undefined,
       });
 
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Paystack API error: ${response.status} - ${errorText}`);
+        // Try to parse error response for better error messages
+        let errorData: any = {};
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          // If parsing fails, use raw text
+          errorData = { message: responseText };
+        }
+        
+        // Create a more informative error with structured data
+        const error = new Error(`Paystack API error: ${response.status} - ${JSON.stringify(errorData)}`);
+        (error as any).paystackError = errorData;
+        (error as any).statusCode = response.status;
+        throw error;
       }
 
-      const data = await response.json();
+      const data = JSON.parse(responseText);
       return data as T;
     } catch (error) {
       this.logger.error(`Paystack API request failed: ${method} ${endpoint}`, error, { endpoint, method });
@@ -503,6 +517,78 @@ class PaystackClient {
     }
   }
 
+  // Fetch list of banks from Paystack
+  async listBanks(params?: {
+    country?: string;
+    currency?: string;
+  }): Promise<{
+    status: boolean;
+    message: string;
+    data: Array<{
+      id: number;
+      name: string;
+      slug: string;
+      code: string;
+      longcode?: string;
+      gateway?: string;
+      pay_with_bank?: boolean;
+      active: boolean;
+      is_deleted: boolean;
+      country: string;
+      currency: string;
+      type: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+  }> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.country) queryParams.append('country', params.country);
+      if (params?.currency) queryParams.append('currency', params.currency);
+      
+      const endpoint = `/bank${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+      const response = await this.makeRequest<{
+        status: boolean;
+        message: string;
+        data: any[];
+      }>(endpoint, 'GET');
+      
+      this.logger.info('Banks fetched successfully', { 
+        count: response.data?.length || 0,
+        country: params?.country || 'all'
+      });
+      return response as any;
+    } catch (error) {
+      this.logger.error('Failed to fetch banks', error, { country: params?.country });
+      throw error;
+    }
+  }
+
+  // Validate bank code against Paystack
+  async validateBankCode(bankCode: string, country: string = 'ZA'): Promise<boolean> {
+    try {
+      const banks = await this.listBanks({ country });
+      const isValid = banks.data?.some(bank => bank.code === bankCode) || false;
+      
+      this.logger.info('Bank code validation', { 
+        bankCode, 
+        country, 
+        isValid,
+        availableBanks: banks.data?.length || 0
+      });
+      
+      return isValid;
+    } catch (error) {
+      // Don't block operations if validation fails - log warning and proceed
+      this.logger.warn('Could not validate bank code, proceeding anyway', { 
+        bankCode, 
+        country, 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return true; // Don't block if validation fails
+    }
+  }
+
   // Create recipient for provider
   async createRecipient(params: {
     type: 'nuban';
@@ -523,6 +609,37 @@ class PaystackClient {
       return response;
     } catch (error) {
       this.logger.error('Recipient creation failed', error, logData);
+      
+      // Parse Paystack's structured error response for better error messages
+      if (error instanceof Error && error.message.includes('Paystack API error')) {
+        try {
+          const errorMatch = error.message.match(/\{.*\}/);
+          if (errorMatch) {
+            const errorData = JSON.parse(errorMatch[0]);
+            
+            // Handle specific error codes
+            if (errorData.code === 'invalid_bank_code') {
+              const enhancedError = new Error(
+                `Invalid bank code: ${params.bank_code}. ${errorData.meta?.nextStep || 'Please verify the bank code is correct for South African banks.'}`
+              );
+              (enhancedError as any).paystackError = errorData;
+              (enhancedError as any).errorCode = 'invalid_bank_code';
+              throw enhancedError;
+            }
+            
+            // Re-throw with parsed error message for other errors
+            if (errorData.message) {
+              const enhancedError = new Error(errorData.message);
+              (enhancedError as any).paystackError = errorData;
+              throw enhancedError;
+            }
+          }
+        } catch (parseError) {
+          // If parsing fails, use original error
+          this.logger.warn('Could not parse Paystack error response', { parseError });
+        }
+      }
+      
       throw error;
     }
   }
