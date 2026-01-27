@@ -98,12 +98,32 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
   }, [])
 
   // Refresh a specific booking
+  // This also syncs booking/payment status to fix any inconsistencies
   const refreshBooking = useCallback(async (id: string): Promise<void> => {
     if (refreshQueue.current.has(id)) {
       return // Already refreshing
     }
 
     try {
+      // First, sync booking and payment status to fix any inconsistencies
+      // This ensures we always get consistent data
+      try {
+        const syncResponse = await fetch(`/api/book-service/${id}/sync-status`, {
+          method: 'POST',
+        })
+        
+        if (syncResponse.ok) {
+          const syncData = await syncResponse.json()
+          if (syncData.synced) {
+            console.log(`✅ Synced booking ${id} before refresh`)
+          }
+        }
+      } catch (syncError) {
+        // Don't fail the refresh if sync fails, just log it
+        console.warn(`⚠️ Sync failed for booking ${id}, continuing with refresh:`, syncError)
+      }
+
+      // Then fetch the updated booking data
       const updatedBooking = await getCachedOrFetchBooking(id)
       if (updatedBooking) {
         setBookings(prev => prev.map(b => b.id === id ? updatedBooking : b))
