@@ -516,19 +516,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       }, { status: 500 });
     }
 
-    // 10. Update booking status to indicate payment is being released
-    try {
-      await prisma.booking.update({
-        where: { id: bookingId },
-        data: { 
-          status: "PENDING_EXECUTION",
-          updatedAt: new Date()
-        }
-      });
-      console.log(`📋 Booking status updated to PENDING_EXECUTION`);
-    } catch (updateError) {
-      console.error(`❌ Failed to update booking status:`, updateError);
-      // Try to revert payment status
+    // 10. Keep booking status as AWAITING_CONFIRMATION (don't change it)
+    // The booking is already in the correct state - payment is being released
+    // Only update to COMPLETED after successful transfer (later in the flow)
+    console.log(`📋 Booking status remains ${booking.status} during payment release`);
+    
+    // Validate that booking is in the correct state for payment release
+    if (!isValidBookingStatus(booking.status)) {
+      // Revert payment status if booking status is invalid
       try {
         await prisma.payment.update({
           where: { id: booking.payment.id },
@@ -543,12 +538,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       
       return NextResponse.json({
         success: false,
-        error: "Unable to update booking status",
-        details: "There was a problem updating the booking status. Please try again.",
+        error: "Invalid booking status for payment release",
+        details: `Booking must be in ${VALID_BOOKING_STATUSES_FOR_RELEASE.join(' or ')} status to release payment. Current status: ${booking.status}`,
         currentStatus: booking.payment.status,
         expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
         bookingStatus: booking.status
-      }, { status: 500 });
+      }, { status: 400 });
     }
 
     // 11. Paystack transfer processing with comprehensive error handling

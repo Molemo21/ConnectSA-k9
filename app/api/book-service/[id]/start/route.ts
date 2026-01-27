@@ -47,6 +47,22 @@ export async function POST(request: NextRequest) {
 
     // Payment validation based on payment method
     if (booking.paymentMethod === 'ONLINE') {
+      // Prevent starting if payment is already being released (client confirmed completion)
+      if (booking.payment?.status === 'PROCESSING_RELEASE') {
+        return NextResponse.json({ 
+          error: "Cannot start job - payment is already being released",
+          details: "The client has confirmed completion and payment is being processed. This job cannot be started."
+        }, { status: 400 });
+      }
+      
+      // Prevent starting if payment has already been released
+      if (booking.payment?.status === 'RELEASED' || booking.payment?.status === 'COMPLETED') {
+        return NextResponse.json({ 
+          error: "Cannot start job - payment already released",
+          details: "Payment has already been released to the provider. This job cannot be started."
+        }, { status: 400 });
+      }
+      
       // For online payments, ensure payment is secured in escrow
       if (!booking.payment || !['PENDING', 'ESCROW', 'HELD_IN_ESCROW'].includes(booking.payment.status)) {
         return NextResponse.json({ 
