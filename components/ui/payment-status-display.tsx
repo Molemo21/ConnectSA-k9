@@ -228,12 +228,26 @@ export function PaymentStatusDisplay({
     if (isStuck()) {
       return (
         <Alert className="border-orange-500/50 bg-orange-500/10">
-          <Loader2 className="h-4 w-4 text-orange-400 animate-spin" />
+          <AlertTriangle className="h-4 w-4 text-orange-400" />
           <AlertDescription className="text-orange-300">
-            <span className="font-medium mb-1 block">Payment Release Taking Longer Than Expected</span>
-            <p className="text-xs">
-              The payment release may be stuck. You can retry the release from the booking details.
-            </p>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <span className="font-medium mb-1 block">Payment Release Taking Longer Than Expected</span>
+                <p className="text-xs">
+                  The payment release may be stuck. You can check the status or retry the release.
+                </p>
+              </div>
+              {onCheckStatus && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onCheckStatus}
+                  className="ml-4 text-xs h-6 px-2 border-orange-500/50 text-orange-300 hover:bg-orange-500/20"
+                >
+                  Check Status
+                </Button>
+              )}
+            </div>
           </AlertDescription>
         </Alert>
       )

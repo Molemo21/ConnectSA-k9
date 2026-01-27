@@ -37,7 +37,11 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
   useEffect(() => {
     if (initialBookings.length > 0) {
       initialBookings.forEach(booking => {
-        const ttl = booking.payment?.status === 'PENDING' ? PAYMENT_CACHE_TTL : GENERAL_CACHE_TTL
+        // Use shorter TTL for payments that are actively processing or pending
+        // This includes PENDING, PROCESSING_RELEASE, and other transitional states
+        const needsFrequentRefresh = booking.payment?.status && 
+          ['PENDING', 'PROCESSING_RELEASE'].includes(booking.payment.status)
+        const ttl = needsFrequentRefresh ? PAYMENT_CACHE_TTL : GENERAL_CACHE_TTL
         bookingCache.set(booking.id, {
           data: booking,
           timestamp: Date.now(),
@@ -74,7 +78,10 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
       const booking = await response.json()
       
       // Update cache with new data
-      const ttl = booking.payment?.status === 'PENDING' ? PAYMENT_CACHE_TTL : GENERAL_CACHE_TTL
+      // Use shorter TTL for payments that are actively processing or pending
+      const needsFrequentRefresh = booking.payment?.status && 
+        ['PENDING', 'PROCESSING_RELEASE'].includes(booking.payment.status)
+      const ttl = needsFrequentRefresh ? PAYMENT_CACHE_TTL : GENERAL_CACHE_TTL
       bookingCache.set(id, {
         data: booking,
         timestamp: now,
@@ -107,9 +114,16 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
   }, [getCachedOrFetchBooking])
 
   // Refresh all bookings (for manual refresh)
+  // This refreshes ALL bookings, not just pending payments, to ensure
+  // users see the latest status for all their bookings (including PROCESSING_RELEASE, etc.)
   const refreshAllBookings = useCallback(async (): Promise<void> => {
     if (isRefreshing.current) {
       return // Already refreshing
+    }
+
+    // If no bookings, nothing to refresh
+    if (bookings.length === 0) {
+      return
     }
 
     setIsLoading(true)
@@ -117,16 +131,9 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
     isRefreshing.current = true
 
     try {
-      const pendingBookings = bookings.filter(b => 
-        b.payment && b.payment.status === 'PENDING'
-      )
-
-      if (pendingBookings.length === 0) {
-        return
-      }
-
-      // Refresh only pending payments (most likely to change)
-      const refreshPromises = pendingBookings.map(booking => 
+      // Refresh ALL bookings to get latest status for all payment states
+      // This includes PENDING, PROCESSING_RELEASE, ESCROW, RELEASED, etc.
+      const refreshPromises = bookings.map(booking => 
         getCachedOrFetchBooking(booking.id)
       )
 
@@ -140,6 +147,9 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
             const index = updated.findIndex(b => b.id === updatedBooking.id)
             if (index !== -1) {
               updated[index] = updatedBooking
+            } else {
+              // If booking not found in current list, add it (edge case)
+              updated.push(updatedBooking)
             }
           })
           return updated
@@ -154,13 +164,14 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
     }
   }, [bookings, getCachedOrFetchBooking])
 
-  // Auto-refresh pending payments (less aggressive)
+  // Auto-refresh payments that need frequent updates (less aggressive polling)
+  // This includes PENDING and PROCESSING_RELEASE payments that may change status
   useEffect(() => {
-    const pendingBookings = bookings.filter(b => 
-      b.payment && b.payment.status === 'PENDING'
+    const activePayments = bookings.filter(b => 
+      b.payment && ['PENDING', 'PROCESSING_RELEASE'].includes(b.payment.status)
     )
 
-    if (pendingBookings.length === 0) return
+    if (activePayments.length === 0) return
 
     const interval = setInterval(async () => {
       // Only refresh if not already refreshing and no manual refresh in progress
@@ -168,9 +179,9 @@ export function useBookingData(initialBookings: Booking[] = []): UseBookingDataR
         return
       }
 
-      // Refresh only one pending booking at a time to avoid overwhelming the server
-      const randomIndex = Math.floor(Math.random() * pendingBookings.length)
-      const bookingToRefresh = pendingBookings[randomIndex]
+      // Refresh only one active payment at a time to avoid overwhelming the server
+      const randomIndex = Math.floor(Math.random() * activePayments.length)
+      const bookingToRefresh = activePayments[randomIndex]
       
       if (bookingToRefresh) {
         await refreshBooking(bookingToRefresh.id)

@@ -53,6 +53,7 @@ interface Booking {
     amount: number
     status: string
     createdAt?: string // Add creation date for payment
+    updatedAt?: string // Add update date for payment status tracking
   } | null
   review?: {
     id: string
@@ -289,11 +290,15 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   // Check if payment is stuck in PROCESSING_RELEASE (more than 5 minutes)
   const isPaymentStuckInProcessingRelease = () => {
     if (!displayBooking.payment || displayBooking.payment.status !== 'PROCESSING_RELEASE') return false
-    if (!displayBooking.payment.updatedAt) return false
+    
+    // Use updatedAt if available, otherwise fall back to createdAt
+    // This ensures the check works even if updatedAt is missing from the API response
+    const timestamp = displayBooking.payment.updatedAt || displayBooking.payment.createdAt
+    if (!timestamp) return false
     
     const now = new Date()
-    const updated = new Date(displayBooking.payment.updatedAt)
-    const minutesDiff = (now.getTime() - updated.getTime()) / (1000 * 60)
+    const statusTime = new Date(timestamp)
+    const minutesDiff = (now.getTime() - statusTime.getTime()) / (1000 * 60)
     
     // Show retry button after 5 minutes
     return minutesDiff > 5
