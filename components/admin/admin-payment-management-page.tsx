@@ -135,6 +135,7 @@ export function AdminPaymentManagementPage() {
       total: payments.length,
       pending: payments.filter(p => p.status === 'PENDING').length,
       escrow: payments.filter(p => p.status === 'ESCROW' || p.status === 'HELD_IN_ESCROW').length,
+      processingRelease: payments.filter(p => p.status === 'PROCESSING_RELEASE').length,
       released: payments.filter(p => p.status === 'RELEASED').length,
       failed: payments.filter(p => p.status === 'FAILED').length
     }

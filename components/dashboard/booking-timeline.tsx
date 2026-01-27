@@ -127,7 +127,7 @@ const getStatusInfo = (status: string, hasPayment?: boolean, paymentMethod?: str
   }
 }
 
-const getTimelineSteps = (status: string, hasPayment?: boolean, paymentMethod?: string) => {
+const getTimelineSteps = (status: string, hasPayment?: boolean, paymentMethod?: string, payment?: { status?: string } | null) => {
   // For cash: 5 steps (skip Payment step, clearer labels)
   // For online: 6 steps (include Payment/escrow step)
   const allSteps = paymentMethod === 'CASH' 
@@ -147,7 +147,25 @@ const getTimelineSteps = (status: string, hasPayment?: boolean, paymentMethod?: 
         { id: 6, label: "Completed", icon: CheckCircle }
       ]
 
-  const currentStep = getStatusInfo(status, hasPayment, paymentMethod).step
+  const statusInfo = getStatusInfo(status, hasPayment, paymentMethod)
+  let currentStep = statusInfo.step
+  
+  // Check if payment is in PROCESSING_RELEASE status
+  // This indicates that provider completed the job and client confirmed completion
+  // Therefore, steps 4 (In Progress) and 5 (Awaiting) should be completed for online payments
+  // For cash payments, step 3 (In Progress) should be completed
+  const isProcessingRelease = payment?.status === "PROCESSING_RELEASE"
+  
+  if (isProcessingRelease) {
+    // If payment is PROCESSING_RELEASE, ensure appropriate steps are marked as completed
+    if (paymentMethod === 'CASH') {
+      // For cash: step 3 (In Progress) should be completed
+      currentStep = Math.max(currentStep, 3)
+    } else {
+      // For online: steps 4 (In Progress) and 5 (Awaiting) should be completed
+      currentStep = Math.max(currentStep, 5)
+    }
+  }
   
   return allSteps.map(step => ({
     ...step,
@@ -165,9 +183,9 @@ function BookingTimelineItem({
   isLast: boolean;
   onBookingClick?: (booking: Booking) => void;
 }) {
-  const statusInfo = getStatusInfo(booking.status, booking.payment, booking.paymentMethod)
+  const statusInfo = getStatusInfo(booking.status, !!booking.payment, booking.paymentMethod)
   const StatusIcon = statusInfo.icon
-  const timelineSteps = getTimelineSteps(booking.status, booking.payment, booking.paymentMethod)
+  const timelineSteps = getTimelineSteps(booking.status, !!booking.payment, booking.paymentMethod, booking.payment)
   const [showDetails, setShowDetails] = useState(false)
 
   return (

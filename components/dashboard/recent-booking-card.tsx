@@ -182,7 +182,8 @@ export function RecentBookingCard({
         paidAt: payment.paidAt
       } : null,
       hasPayment: !!payment,
-      paymentStatusValid: payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(payment.status)
+      paymentStatusValid: payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'PROCESSING_RELEASE'].includes(payment.status),
+      isProcessingRelease: payment?.status === "PROCESSING_RELEASE"
     })
 
     // Enhanced payment detection logic
@@ -202,11 +203,17 @@ export function RecentBookingCard({
       return false
     }
 
+    // Check if payment is in PROCESSING_RELEASE status
+    // This indicates that provider completed the job and client confirmed completion
+    // Therefore, "In Progress" step should be ticked
+    const isProcessingRelease = payment?.status === "PROCESSING_RELEASE"
+    const hasCompletedJob = isProcessingRelease || ['IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status)
+
     const steps = [
       { id: 'booked', label: 'Booked', completed: true },
       { id: 'confirmed', label: 'Confirmed', completed: ['CONFIRMED', 'PENDING_EXECUTION', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
       { id: 'paid', label: 'Paid', completed: isPaymentCompleted() },
-      { id: 'in_progress', label: 'In Progress', completed: ['IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
+      { id: 'in_progress', label: 'In Progress', completed: hasCompletedJob },
       { id: 'completed', label: 'Completed', completed: status === 'COMPLETED' }
     ]
     

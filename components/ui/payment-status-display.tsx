@@ -18,6 +18,7 @@ interface PaymentStatusDisplayProps {
     amount: number
     status: string
     createdAt?: string
+    updatedAt?: string
   } | null
   isProcessing?: boolean
   onCheckStatus?: () => void
@@ -207,6 +208,41 @@ export function PaymentStatusDisplay({
       <div className="flex items-center space-x-2 text-sm">
         <CheckCircle className="w-4 h-4 text-green-500" />
         <span className="text-green-600 font-medium">Payment Completed</span>
+      </div>
+    )
+  }
+
+  // Processing Release - Payment is being released to provider
+  if (payment.status === 'PROCESSING_RELEASE') {
+    // Check if payment is stuck (more than 5 minutes since status was set to PROCESSING_RELEASE)
+    const isStuck = () => {
+      // Prefer updatedAt (when status was set to PROCESSING_RELEASE), fallback to createdAt
+      const timestamp = payment.updatedAt || payment.createdAt
+      if (!timestamp) return false
+      const now = new Date()
+      const statusTime = new Date(timestamp)
+      const minutesDiff = (now.getTime() - statusTime.getTime()) / (1000 * 60)
+      return minutesDiff > 5
+    }
+
+    if (isStuck()) {
+      return (
+        <Alert className="border-orange-500/50 bg-orange-500/10">
+          <Loader2 className="h-4 w-4 text-orange-400 animate-spin" />
+          <AlertDescription className="text-orange-300">
+            <span className="font-medium mb-1 block">Payment Release Taking Longer Than Expected</span>
+            <p className="text-xs">
+              The payment release may be stuck. You can retry the release from the booking details.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )
+    }
+
+    return (
+      <div className="flex items-center space-x-2 text-sm">
+        <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+        <span className="text-orange-600 font-medium">Processing Payment Release</span>
       </div>
     )
   }
