@@ -517,6 +517,54 @@ class PaystackClient {
     }
   }
 
+  // Verify transfer status with Paystack
+  async verifyTransfer(transferCode: string): Promise<PaystackTransferResponse> {
+    try {
+      this.logger.info('Verifying transfer status', { transferCode });
+
+      // Skip during build time
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        const dummyResponse = {
+          status: true,
+          message: 'Transfer verified successfully',
+          data: {
+            id: 123456,
+            domain: 'test',
+            amount: 10000,
+            currency: 'ZAR',
+            source: 'balance',
+            reason: 'Payment release',
+            recipient: 123,
+            status: 'success',
+            transfer_code: transferCode,
+            titan_code: null,
+            transferred_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        };
+        this.logger.info('Using dummy response for build time', { transferCode });
+        return dummyResponse;
+      }
+
+      const response = await this.makeRequest<PaystackTransferResponse>(
+        `/transfer/${transferCode}`,
+        'GET'
+      );
+
+      const validatedResponse = PaystackTransferResponseSchema.parse(response);
+      this.logger.info('Transfer verification successful', {
+        transferCode,
+        status: validatedResponse.data.status
+      });
+
+      return validatedResponse;
+    } catch (error) {
+      this.logger.error('Transfer verification failed', error, { transferCode });
+      throw new Error(`Paystack transfer verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   // Fetch list of banks from Paystack
   async listBanks(params?: {
     country?: string;

@@ -460,18 +460,63 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     
     setIsRecoveringPayment(true)
     try {
-      console.log(`🔄 Attempting to recover payment for booking ${booking.id}`)
+      console.log(`🔄 Attempting to verify and recover payment for booking ${booking.id}`)
       
-      const response = await fetch('/api/payment/recover-processing-release', {
+      // Step 1: First, verify transfer status with Paystack
+      console.log(`📡 Step 1: Verifying transfer with Paystack...`)
+      const verifyResponse = await fetch('/api/payment/verify-transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ bookingId: booking.id })
       })
       
-      if (response.ok) {
-        const data = await response.json()
-        console.log(`✅ Payment recovered successfully:`, data)
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json()
+        console.log(`✅ Transfer verification result:`, verifyData)
+        
+        // If verification resolved the issue (released or rolled back), we're done
+        if (verifyData.action === 'released' || verifyData.action === 'rolled_back') {
+          if (verifyData.action === 'released') {
+            showToast.success('Transfer verified! Payment has been released successfully.')
+          } else {
+            showToast.success('Transfer verification found the transfer failed. Payment has been reset. You can try releasing again.')
+          }
+          
+          // Refresh the booking data
+          if (onRefresh) {
+            await onRefresh(booking.id)
+          } else {
+            setTimeout(() => window.location.reload(), 1000)
+          }
+          
+          setShowRecoveryDialog(false)
+          return
+        }
+        
+        // If transfer is still pending, proceed to recovery (rollback)
+        if (verifyData.action === 'pending') {
+          console.log(`⏳ Transfer still pending, proceeding with recovery rollback...`)
+          showToast.info('Transfer is still pending. Resetting payment status to allow retry...')
+        }
+      } else {
+        // If verification fails, log but continue to recovery
+        const verifyError = await verifyResponse.json().catch(() => ({}))
+        console.warn(`⚠️ Transfer verification failed, proceeding with recovery:`, verifyError)
+      }
+      
+      // Step 2: If verification didn't resolve it, use recovery endpoint to rollback
+      console.log(`📡 Step 2: Using recovery endpoint to rollback payment...`)
+      const recoveryResponse = await fetch('/api/payment/recover-processing-release', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bookingId: booking.id })
+      })
+      
+      if (recoveryResponse.ok) {
+        const recoveryData = await recoveryResponse.json()
+        console.log(`✅ Payment recovered successfully:`, recoveryData)
         showToast.success('Payment reset! You can now try releasing the payment again.')
         
         // Refresh the booking data
@@ -481,7 +526,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
           setTimeout(() => window.location.reload(), 1000)
         }
       } else {
-        const errorData = await response.json()
+        const errorData = await recoveryResponse.json()
         console.error(`❌ Recovery error:`, errorData)
         showToast.error(errorData.error || 'Failed to recover payment. Please try again.')
       }
