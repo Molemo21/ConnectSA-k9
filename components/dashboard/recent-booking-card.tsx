@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { RandIconSimple } from "@/components/ui/rand-icon"
 import { formatSADate, formatSATime } from '@/lib/date-utils'
 import { formatBookingPrice } from '@/lib/price-utils'
+import { getTimelineSteps } from '@/lib/booking-timeline-utils'
 
 interface Booking {
   id: string
@@ -156,70 +157,6 @@ export function RecentBookingCard({
     return hoursDiff < 24
   }
 
-  // Get timeline steps for booking progress
-  const getTimelineSteps = (status: string, payment: any) => {
-    // CASH PAYMENT TIMELINE (Simplified - 5 steps, clearer labels)
-    if (booking.paymentMethod === 'CASH') {
-      const steps = [
-        { id: 'booked', label: 'Booked', completed: true },
-        { id: 'confirmed', label: 'Confirmed', completed: ['CONFIRMED', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
-        { id: 'in_progress', label: 'In Progress', completed: ['IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
-        { id: 'pay_cash', label: 'Pay Cash', completed: ['AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
-        { id: 'completed', label: 'Completed', completed: status === 'COMPLETED' }
-      ]
-      
-      return steps
-    }
-
-    // Debug logging for payment status
-    console.log('🔍 Timeline Debug:', {
-      bookingId: booking.id,
-      bookingStatus: status,
-      payment: payment ? {
-        id: payment.id,
-        status: payment.status,
-        amount: payment.amount,
-        paidAt: payment.paidAt
-      } : null,
-      hasPayment: !!payment,
-      paymentStatusValid: payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'PROCESSING_RELEASE'].includes(payment.status),
-      isProcessingRelease: payment?.status === "PROCESSING_RELEASE"
-    })
-
-    // Enhanced payment detection logic
-    // If booking status is PENDING_EXECUTION or later, payment was likely completed
-    // even if payment object is missing or has wrong status
-    const isPaymentCompleted = () => {
-      // Direct payment status check
-      if (payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED'].includes(payment.status)) {
-        return true
-      }
-      
-      // Fallback: If booking status indicates payment was processed
-      if (['PENDING_EXECUTION', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status)) {
-        return true
-      }
-      
-      return false
-    }
-
-    // Check if payment is in PROCESSING_RELEASE status
-    // This indicates that provider completed the job and client confirmed completion
-    // Therefore, "In Progress" step should be ticked
-    const isProcessingRelease = payment?.status === "PROCESSING_RELEASE"
-    const hasCompletedJob = isProcessingRelease || ['IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status)
-
-    const steps = [
-      { id: 'booked', label: 'Booked', completed: true },
-      { id: 'confirmed', label: 'Confirmed', completed: ['CONFIRMED', 'PENDING_EXECUTION', 'IN_PROGRESS', 'AWAITING_CONFIRMATION', 'COMPLETED'].includes(status) },
-      { id: 'paid', label: 'Paid', completed: isPaymentCompleted() },
-      { id: 'in_progress', label: 'In Progress', completed: hasCompletedJob },
-      { id: 'completed', label: 'Completed', completed: status === 'COMPLETED' }
-    ]
-    
-    return steps
-  }
-
   // If no booking, show empty state
   if (!booking) {
     return (
@@ -285,8 +222,8 @@ export function RecentBookingCard({
     )
   }
 
-  // Get timeline steps for this booking
-  const timelineSteps = getTimelineSteps(booking.status, booking.payment);
+  // Get timeline steps for this booking using shared utility
+  const timelineSteps = getTimelineSteps(booking.status, booking.payment, booking.paymentMethod);
 
   // Determine if pay button should be shown
   const canPay = () => {

@@ -17,6 +17,7 @@ import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { RandIconSimple } from "@/components/ui/rand-icon"
 import { formatBookingPrice } from '@/lib/price-utils'
+import { getTimelineSteps } from '@/lib/booking-timeline-utils'
 
 interface Booking {
   id: string
@@ -117,15 +118,6 @@ const getTimelineSteps = (status: string, payment?: { status: string } | null, p
   }
 
   // ONLINE/CARD PAYMENT TIMELINE (existing logic)
-  console.log('🔍 Enhanced Timeline Debug:', {
-    bookingStatus: status,
-    payment: payment ? {
-      status: payment.status
-    } : null,
-    hasPayment: !!payment,
-    paymentStatusValid: payment && ["ESCROW", "HELD_IN_ESCROW", "RELEASED", "COMPLETED"].includes(payment.status)
-  })
-
   // Enhanced payment detection logic
   // If booking status is PENDING_EXECUTION or later, payment was likely completed
   // even if payment object is missing or has wrong status
@@ -143,12 +135,26 @@ const getTimelineSteps = (status: string, payment?: { status: string } | null, p
     return false
   }
 
+  // Check if payment is in PROCESSING_RELEASE status
+  // This indicates that:
+  // 1. Provider completed the job
+  // 2. Client confirmed completion (clicked "Confirm Completion")
+  // 3. Payment release is in progress
+  // Therefore, "In Progress" and "Awaiting Confirmation" steps should be ticked
+  const isProcessingRelease = payment?.status === "PROCESSING_RELEASE"
+  
+  // Determine if job completion steps should be marked as completed
+  // If payment is PROCESSING_RELEASE, it means the job was completed and client confirmed
+  // This should be true regardless of booking status when payment is PROCESSING_RELEASE
+  const hasCompletedJob = isProcessingRelease || ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status)
+  const hasConfirmedCompletion = isProcessingRelease || ["AWAITING_CONFIRMATION", "COMPLETED"].includes(status)
+
   const steps = [
     { id: "booked", label: "Booked", completed: true },
     { id: "confirmed", label: "Provider Confirmed", completed: ["CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
     { id: "payment", label: "Paid", completed: isPaymentCompleted() },
-    { id: "in_progress", label: "In Progress", completed: ["IN_PROGRESS", "AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
-    { id: "awaiting_confirmation", label: "Awaiting Confirmation", completed: ["AWAITING_CONFIRMATION", "COMPLETED"].includes(status) },
+    { id: "in_progress", label: "In Progress", completed: hasCompletedJob },
+    { id: "awaiting_confirmation", label: "Awaiting Confirmation", completed: hasConfirmedCompletion },
     { id: "completed", label: "Completed", completed: status === "COMPLETED" }
   ]
   
@@ -244,7 +250,22 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return hoursDiff < 24
   }
 
-  const timelineSteps = getTimelineSteps(displayBooking.status, displayBooking.payment, displayBooking.paymentMethod)
+  // Ensure payment object has status property for timeline calculation
+  // Use the same structure as recent-booking-card for consistency
+  const paymentForTimeline = displayBooking.payment ? {
+    status: displayBooking.payment.status
+  } : null
+  
+  // Debug: Log payment status to verify it's being passed correctly
+  if (displayBooking.payment?.status === 'PROCESSING_RELEASE') {
+    console.log('🔍 Enhanced Card - PROCESSING_RELEASE detected:', {
+      bookingStatus: displayBooking.status,
+      paymentStatus: displayBooking.payment.status,
+      paymentForTimeline: paymentForTimeline
+    })
+  }
+  
+  const timelineSteps = getTimelineSteps(displayBooking.status, paymentForTimeline, displayBooking.paymentMethod)
   
   // Enhanced payment status checking with better logic (includes cash payment statuses)
   const hasPayment = displayBooking.payment && ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'CASH_RECEIVED', 'CASH_VERIFIED'].includes(displayBooking.payment.status)
