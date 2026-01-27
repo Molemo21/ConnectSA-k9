@@ -186,6 +186,8 @@ interface Booking {
 
     authorizationUrl?: string
 
+    updatedAt?: string
+
   }
 
   review?: {
@@ -1093,6 +1095,21 @@ function ProviderMainContent({
                       paymentMethod={normalizePaymentMethod(booking.paymentMethod) || 'ONLINE'}
                       className="text-xs"
                     />
+                    
+                    {/* Show informational message if payment is stuck in PROCESSING_RELEASE */}
+                    {booking.payment.status === 'PROCESSING_RELEASE' && 
+                     booking.payment.updatedAt && 
+                     (Date.now() - new Date(booking.payment.updatedAt as string).getTime()) > 5 * 60 * 1000 && (
+                      <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                        <div className="flex items-start space-x-2">
+                          <AlertTriangle className="h-3 w-3 text-orange-400 mt-0.5 flex-shrink-0" />
+                          <div className="text-xs text-orange-300">
+                            <span className="font-medium">Payment release appears stuck.</span>
+                            <p className="mt-1">The client needs to retry the payment release.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2508,6 +2525,96 @@ function ProviderMainContent({
               )}
 
               
+
+              {/* Decline Success Display */}
+
+              {declineSuccess && (
+
+                <Card className="bg-orange-900/20 backdrop-blur-sm border-orange-500/30 mb-4">
+
+                  <CardContent className="p-4">
+
+                    <div className="flex items-center space-x-2">
+
+                      <CheckCircle className="h-5 w-5 text-orange-400" />
+
+                      <div>
+
+                        <h4 className="text-orange-400 font-medium">Job Declined</h4>
+
+                        <p className="text-orange-300 text-sm">{declineSuccess}</p>
+
+                      </div>
+
+                      <Button
+
+                        size="sm"
+
+                        variant="ghost"
+
+                        className="text-orange-400 hover:text-orange-300 ml-auto"
+
+                        onClick={clearDeclineSuccess}
+
+                      >
+
+                        <X className="h-4 w-4" />
+
+                      </Button>
+
+                    </div>
+
+                  </CardContent>
+
+                </Card>
+
+              )}
+
+              
+
+              {/* Decline Error Display */}
+
+              {declineError && (
+
+                <Card className="bg-red-900/20 backdrop-blur-sm border-red-500/30 mb-4">
+
+                  <CardContent className="p-4">
+
+                    <div className="flex items-center space-x-2">
+
+                      <AlertCircle className="h-5 w-5 text-red-400" />
+
+                      <div>
+
+                        <h4 className="text-red-400 font-medium">Failed to Decline Job</h4>
+
+                        <p className="text-red-300 text-sm">{declineError}</p>
+
+                      </div>
+
+                      <Button
+
+                        size="sm"
+
+                        variant="ghost"
+
+                        className="text-red-400 hover:text-red-300 ml-auto"
+
+                        onClick={clearDeclineError}
+
+                      >
+
+                        <X className="h-4 w-4" />
+
+                      </Button>
+
+                    </div>
+
+                  </CardContent>
+
+                </Card>
+
+              )}
 
               
               {filteredBookings.length === 0 && (

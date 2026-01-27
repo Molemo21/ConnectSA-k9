@@ -6,7 +6,7 @@ import { useBookingWebSocket } from "@/hooks/use-booking-websocket"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, MapPin, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertTriangle, FileText } from "lucide-react"
+import { Calendar, Clock, MapPin, X, Edit, MessageCircle, Phone, CheckCircle, Loader2, AlertTriangle, FileText, RefreshCw } from "lucide-react"
 import { ReviewSection } from "@/components/review-section"
 import { BookingActionsModal } from "./booking-actions-modal"
 import { showToast, handleApiError } from "@/lib/toast"
@@ -14,6 +14,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 import { processPayment, handlePaymentResult } from "@/lib/payment-utils"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { RandIconSimple } from "@/components/ui/rand-icon"
 import { formatBookingPrice } from '@/lib/price-utils'
 
@@ -174,6 +175,8 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const [isFlipping, setIsFlipping] = useState(false)
   const [previousStatus, setPreviousStatus] = useState(booking.status)
   const [currentBooking, setCurrentBooking] = useState(booking)
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false)
+  const [isRecoveringPayment, setIsRecoveringPayment] = useState(false)
 
   // Use WebSocket hook for real-time updates
   const { isConnected, lastUpdate } = useBookingWebSocket({
@@ -260,6 +263,19 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     // More user-friendly: only show warning after 8 minutes (instead of 5)
     // This gives more time for normal webhook processing
     return minutesDiff > 8
+  }
+
+  // Check if payment is stuck in PROCESSING_RELEASE (more than 5 minutes)
+  const isPaymentStuckInProcessingRelease = () => {
+    if (!displayBooking.payment || displayBooking.payment.status !== 'PROCESSING_RELEASE') return false
+    if (!displayBooking.payment.updatedAt) return false
+    
+    const now = new Date()
+    const updated = new Date(displayBooking.payment.updatedAt)
+    const minutesDiff = (now.getTime() - updated.getTime()) / (1000 * 60)
+    
+    // Show retry button after 5 minutes
+    return minutesDiff > 5
   }
 
   // Use the provided refresh function instead of making direct API calls
@@ -454,6 +470,45 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
   const handleDispute = async () => {
     // This will open the dispute modal in the actions modal
     setShowActionsModal(true)
+  }
+
+  const handleRecoverPayment = async () => {
+    if (isRecoveringPayment) return
+    
+    setIsRecoveringPayment(true)
+    try {
+      console.log(`🔄 Attempting to recover payment for booking ${booking.id}`)
+      
+      const response = await fetch('/api/payment/recover-processing-release', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bookingId: booking.id })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`✅ Payment recovered successfully:`, data)
+        showToast.success('Payment reset! You can now try releasing the payment again.')
+        
+        // Refresh the booking data
+        if (onRefresh) {
+          await onRefresh(booking.id)
+        } else {
+          setTimeout(() => window.location.reload(), 1000)
+        }
+      } else {
+        const errorData = await response.json()
+        console.error(`❌ Recovery error:`, errorData)
+        showToast.error(errorData.error || 'Failed to recover payment. Please try again.')
+      }
+    } catch (error) {
+      console.error('❌ Recovery error:', error)
+      showToast.error('Network error. Please try again.')
+    } finally {
+      setIsRecoveringPayment(false)
+      setShowRecoveryDialog(false)
+    }
   }
 
   // Normalize booking for BookingActionsModal expected shape
@@ -741,6 +796,40 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
                   Payment Released
                 </div>
               )}
+
+              {/* Payment Stuck in PROCESSING_RELEASE - Show Retry Button */}
+              {isPaymentStuckInProcessingRelease() && !isPaymentReleased && (
+                <Alert className="border-orange-500/50 bg-orange-500/10 mt-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-400" />
+                  <AlertDescription className="text-orange-300">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <span className="font-medium block mb-1">Payment release taking longer than expected</span>
+                        <p className="text-sm">The release may be stuck. You can retry it.</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowRecoveryDialog(true)}
+                        variant="outline"
+                        className="ml-4 border-orange-500 text-orange-500 hover:bg-orange-500/20"
+                        disabled={isRecoveringPayment}
+                      >
+                        {isRecoveringPayment ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            Recovering...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-1" />
+                            Retry Release
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
               
               {canDispute && (
                 <Button 
@@ -861,6 +950,18 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       />
       
       {/* New Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showRecoveryDialog}
+        onClose={() => setShowRecoveryDialog(false)}
+        onConfirm={handleRecoverPayment}
+        title="Retry Payment Release"
+        description="This will reset the payment release process. You'll be able to try releasing the payment again. Continue?"
+        confirmText="Yes, Retry"
+        cancelText="Cancel"
+        variant="warning"
+        loadingText="Recovering..."
+      />
+
       <ConfirmationDialog
         isOpen={showCancelConfirmation}
         onClose={() => setShowCancelConfirmation(false)}
