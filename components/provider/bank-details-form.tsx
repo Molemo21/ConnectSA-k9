@@ -30,18 +30,28 @@ interface BankDetailsFormProps {
   disabled?: boolean
 }
 
-// South African banks data
-const SOUTH_AFRICAN_BANKS = [
-  { name: "Standard Bank", code: "051" },
-  { name: "First National Bank (FNB)", code: "250655" },
-  { name: "Nedbank", code: "198765" },
-  { name: "ABSA Bank", code: "632005" },
+// Bank type from Paystack API
+interface Bank {
+  code: string
+  name: string
+  slug?: string
+  type?: string
+  country?: string
+  currency?: string
+}
+
+// Fallback banks in case API fails (using correct Paystack codes)
+const FALLBACK_BANKS: Bank[] = [
+  { name: "Standard Bank", code: "198774" },
+  { name: "First National Bank (FNB)", code: "198767" },
+  { name: "Nedbank", code: "198770" },
+  { name: "ABSA Bank", code: "044" },
   { name: "Capitec Bank", code: "470010" },
-  { name: "Investec Bank", code: "580105" },
+  { name: "Investec Bank", code: "198769" },
   { name: "Bidvest Bank", code: "462005" },
   { name: "Discovery Bank", code: "679000" },
-  { name: "TymeBank", code: "678910" },
-  { name: "African Bank", code: "430000" }
+  { name: "TymeBank", code: "198775" },
+  { name: "African Bank", code: "431150" }
 ]
 
 // Default form state
@@ -74,6 +84,9 @@ const BankDetailsFormComponent = function BankDetailsForm({
   
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [banks, setBanks] = useState<Bank[]>(FALLBACK_BANKS)
+  const [isLoadingBanks, setIsLoadingBanks] = useState(true)
+  const [banksError, setBanksError] = useState<string | null>(null)
   
   // Ref for callback to prevent re-renders
   const onBankDetailsChangeRef = useRef(onBankDetailsChange)
@@ -82,6 +95,57 @@ const BankDetailsFormComponent = function BankDetailsForm({
   useEffect(() => {
     onBankDetailsChangeRef.current = onBankDetailsChange
   }, [onBankDetailsChange])
+
+  // Fetch banks from Paystack API on mount
+  useEffect(() => {
+    let isMounted = true
+    
+    const fetchBanks = async () => {
+      setIsLoadingBanks(true)
+      setBanksError(null)
+      
+      try {
+        const response = await fetch('/api/paystack/banks?country=ZA&currency=ZAR')
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch banks: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        if (isMounted) {
+          if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
+            setBanks(data.data)
+            console.log(`✅ Loaded ${data.data.length} banks from Paystack API`)
+          } else {
+            console.warn('⚠️ No banks returned from API, using fallback')
+            setBanks(FALLBACK_BANKS)
+          }
+          setIsLoadingBanks(false)
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch banks from Paystack:', error)
+        if (isMounted) {
+          setBanksError(error instanceof Error ? error.message : 'Failed to load banks')
+          setBanks(FALLBACK_BANKS) // Use fallback on error
+          setIsLoadingBanks(false)
+          
+          // Show non-intrusive warning toast
+          toast({
+            title: "Using default bank list",
+            description: "Could not load latest banks. Using default list.",
+            variant: "default"
+          })
+        }
+      }
+    }
+    
+    fetchBanks()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [toast])
 
   // Form validation - STABLE CALLBACK
   const validateForm = useCallback((): boolean => {
@@ -118,13 +182,19 @@ const BankDetailsFormComponent = function BankDetailsForm({
       return
     }
     
-    const bank = SOUTH_AFRICAN_BANKS.find(b => b && b.name === bankName)
+    // Find bank by name in the fetched banks list
+    const bank = banks.find(b => b && b.name === bankName)
+    
+    if (!bank) {
+      console.warn('Bank not found in list:', bankName)
+      return
+    }
     
     setBankDetails(prevDetails => {
       const newBankDetails = {
         ...prevDetails,
-      bankName,
-      bankCode: bank?.code || ""
+        bankName,
+        bankCode: bank.code || ""
       }
       
       // DISABLED: No parent callbacks to prevent infinite loops
@@ -134,7 +204,7 @@ const BankDetailsFormComponent = function BankDetailsForm({
       
       return newBankDetails
     })
-  }, []) // NO DEPENDENCIES - using refs and functional setState
+  }, [banks]) // Include banks in dependencies
 
   // Handle input changes - NUCLEAR SOLUTION (NO PARENT CALLBACKS)
   const handleInputChange = useCallback((field: keyof BankDetails, value: string) => {
@@ -292,21 +362,33 @@ const BankDetailsFormComponent = function BankDetailsForm({
               <Select
                 value={bankDetails.bankName}
                 onValueChange={handleBankChange}
-                disabled={disabled}
+                disabled={disabled || isLoadingBanks}
               >
               <SelectTrigger>
-                <SelectValue placeholder="Select your bank" />
+                <SelectValue placeholder={isLoadingBanks ? "Loading banks..." : "Select your bank"} />
               </SelectTrigger>
               <SelectContent>
-                    {SOUTH_AFRICAN_BANKS
-                      .filter(bank => bank && bank.name && bank.code)
-                      .map((bank) => (
-                    <SelectItem key={bank.code} value={bank.name}>
-                    {bank.name}
-                  </SelectItem>
-                ))}
+                    {isLoadingBanks ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <span className="text-sm text-gray-500">Loading banks...</span>
+                      </div>
+                    ) : (
+                      banks
+                        .filter(bank => bank && bank.name && bank.code)
+                        .map((bank) => (
+                          <SelectItem key={bank.code} value={bank.name}>
+                            {bank.name}
+                          </SelectItem>
+                        ))
+                    )}
               </SelectContent>
             </Select>
+                {banksError && (
+                  <p className="text-xs text-yellow-600">
+                    ⚠️ Using default bank list. Some banks may not be available.
+                  </p>
+                )}
                 {errors.bankName && typeof errors.bankName === 'string' && (
                 <p className="text-sm text-red-600">{errors.bankName}</p>
               )}
