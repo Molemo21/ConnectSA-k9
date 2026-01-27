@@ -20,7 +20,6 @@ import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { useBookingWebSocket } from "@/hooks/use-booking-websocket"
 import { useToast } from "@/hooks/use-toast"
 import { saveLobbyState, clearLobbyState, updateLobbyState } from "@/lib/lobby-state"
-import { saveLobbyState, clearLobbyState, updateLobbyState } from "@/lib/lobby-state"
 
 interface Booking {
   id: string
