@@ -228,15 +228,34 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
     return minutesDiff > 5
   }
 
-  // Use the provided refresh function instead of making direct API calls
+  // Check status and sync booking/payment status if needed
   const handleCheckStatus = async () => {
-    if (onRefresh) {
-      try {
-        await onRefresh(booking.id)
-        showToast.success("Payment status checked successfully!")
-      } catch {
-        showToast.error("Unable to check payment status. Please try again.")
+    try {
+      // First, sync booking and payment status to fix any inconsistencies
+      const syncResponse = await fetch(`/api/book-service/${booking.id}/sync-status`, {
+        method: 'POST',
+      });
+
+      if (!syncResponse.ok) {
+        throw new Error('Failed to sync status');
       }
+
+      const syncData = await syncResponse.json();
+      
+      // Then refresh the booking data to get the latest status
+      if (onRefresh) {
+        await onRefresh(booking.id);
+      }
+
+      // Show appropriate message based on whether sync was needed
+      if (syncData.synced) {
+        showToast.success("Status synchronized and updated successfully!")
+      } else {
+        showToast.success("Payment status checked successfully!")
+      }
+    } catch (error) {
+      console.error('Check status error:', error);
+      showToast.error("Unable to check payment status. Please try again.")
     }
   }
 

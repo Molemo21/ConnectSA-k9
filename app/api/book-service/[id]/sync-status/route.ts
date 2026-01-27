@@ -1,0 +1,185 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db-utils";
+
+export const dynamic = 'force-dynamic'
+
+/**
+ * Sync Booking and Payment Status
+ * 
+ * This endpoint fixes inconsistencies between booking status and payment status.
+ * 
+ * Common issues:
+ * - Payment is PROCESSING_RELEASE but booking is PENDING_EXECUTION (should be AWAITING_CONFIRMATION)
+ * - Payment is RELEASED but booking is not COMPLETED
+ * - Other status mismatches
+ */
+export async function POST(request: NextRequest) {
+  // Skip during build time
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return NextResponse.json({
+      error: "Service temporarily unavailable during deployment"
+    }, { status: 503 });
+  }
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { pathname } = request.nextUrl;
+    const match = pathname.match(/book-service\/([^/]+)\/sync-status/);
+    const bookingId = match ? match[1] : null;
+    
+    if (!bookingId) {
+      return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
+    }
+
+    // Get booking with payment
+    const booking = await db.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        payment: true,
+        client: { select: { id: true } },
+        provider: { select: { id: true } }
+      }
+    });
+
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    // Verify user has access to this booking
+    if (user.role === 'CLIENT' && booking.clientId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (user.role === 'PROVIDER' && booking.providerId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!booking.payment) {
+      return NextResponse.json({ 
+        success: true, 
+        message: "No payment found for this booking",
+        booking: { id: booking.id, status: booking.status },
+        payment: null
+      });
+    }
+
+    let bookingUpdated = false;
+    let paymentUpdated = false;
+    let newBookingStatus = booking.status;
+    let newPaymentStatus = booking.payment.status;
+
+    // Fix: Payment is PROCESSING_RELEASE but booking is PENDING_EXECUTION
+    // This means the client confirmed completion, so booking should be AWAITING_CONFIRMATION
+    if (booking.payment.status === 'PROCESSING_RELEASE' && booking.status === 'PENDING_EXECUTION') {
+      await db.booking.update({
+        where: { id: bookingId },
+        data: { 
+          status: 'AWAITING_CONFIRMATION',
+          updatedAt: new Date()
+        }
+      });
+      bookingUpdated = true;
+      newBookingStatus = 'AWAITING_CONFIRMATION';
+      console.log(`✅ Fixed sync: Updated booking ${bookingId} from PENDING_EXECUTION to AWAITING_CONFIRMATION (payment is PROCESSING_RELEASE)`);
+    }
+
+    // Fix: Payment is RELEASED but booking is not COMPLETED
+    if (booking.payment.status === 'RELEASED' && booking.status !== 'COMPLETED') {
+      await db.booking.update({
+        where: { id: bookingId },
+        data: { 
+          status: 'COMPLETED',
+          updatedAt: new Date()
+        }
+      });
+      bookingUpdated = true;
+      newBookingStatus = 'COMPLETED';
+      console.log(`✅ Fixed sync: Updated booking ${bookingId} to COMPLETED (payment is RELEASED)`);
+    }
+
+    // Fix: Payment is COMPLETED but booking is not COMPLETED
+    if (booking.payment.status === 'COMPLETED' && booking.status !== 'COMPLETED') {
+      await db.booking.update({
+        where: { id: bookingId },
+        data: { 
+          status: 'COMPLETED',
+          updatedAt: new Date()
+        }
+      });
+      bookingUpdated = true;
+      newBookingStatus = 'COMPLETED';
+      console.log(`✅ Fixed sync: Updated booking ${bookingId} to COMPLETED (payment is COMPLETED)`);
+    }
+
+    // Get updated booking data
+    const updatedBooking = await db.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        payment: true,
+        service: {
+          select: {
+            name: true,
+            category: true
+          }
+        },
+        provider: {
+          select: {
+            id: true,
+            businessName: true,
+            user: {
+              select: {
+                name: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: bookingUpdated 
+        ? "Booking status synchronized successfully" 
+        : "Booking and payment statuses are already in sync",
+      synced: bookingUpdated || paymentUpdated,
+      booking: {
+        id: updatedBooking?.id,
+        status: updatedBooking?.status,
+        scheduledDate: updatedBooking?.scheduledDate,
+        totalAmount: updatedBooking?.totalAmount,
+        address: updatedBooking?.address,
+        description: updatedBooking?.description,
+        createdAt: updatedBooking?.createdAt,
+        updatedAt: updatedBooking?.updatedAt
+      },
+      payment: updatedBooking?.payment ? {
+        id: updatedBooking.payment.id,
+        amount: updatedBooking.payment.amount,
+        status: updatedBooking.payment.status,
+        paystackRef: updatedBooking.payment.paystackRef,
+        paidAt: updatedBooking.payment.paidAt,
+        createdAt: updatedBooking.payment.createdAt,
+        updatedAt: updatedBooking.payment.updatedAt
+      } : null,
+      provider: updatedBooking?.provider,
+      service: updatedBooking?.service
+    });
+
+  } catch (error) {
+    console.error('Error syncing booking status:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: "Failed to sync booking status",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
