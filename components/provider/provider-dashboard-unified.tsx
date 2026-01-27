@@ -86,7 +86,8 @@ import {
 
   ArrowUpDown,
 
-  FileText
+  FileText,
+  XCircle
 
 } from "lucide-react"
 
@@ -95,6 +96,10 @@ import { showToast } from "@/lib/toast"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 import { BankDetailsForm } from "./bank-details-form"
+
+import { StatusBadge } from "@/components/ui/status-badge"
+
+import { PaymentStatusDisplay } from "@/components/ui/payment-status-display"
 
 // Type for bank details (matches InitialBankDetails from bank-details-form)
 type InitialBankDetails = {
@@ -609,6 +614,18 @@ function ProviderMainContent({
 
   clearAcceptSuccess,
 
+  declineBooking,
+
+  decliningBooking,
+
+  declineError,
+
+  declineSuccess,
+
+  clearDeclineError,
+
+  clearDeclineSuccess,
+
   handleStartJob,
 
   handleCompleteJob,
@@ -659,6 +676,18 @@ function ProviderMainContent({
 
   clearAcceptSuccess: () => void
 
+  declineBooking: (bookingId: string) => Promise<void>
+
+  decliningBooking: string | null
+
+  declineError: string | null
+
+  declineSuccess: string | null
+
+  clearDeclineError: () => void
+
+  clearDeclineSuccess: () => void
+
   handleStartJob: (bookingId: string) => Promise<void>
 
   handleCompleteJob: (bookingId: string) => Promise<void>
@@ -672,7 +701,7 @@ function ProviderMainContent({
   dashboardState: {
     auth: { isAuthenticated: boolean; isLoading: boolean; error: string | null; user: User | null }
     data: { bookings: Booking[]; stats: ProviderStats; currentProviderId: string; hasBankDetails: boolean; bankDetails: unknown | null }
-    ui: { loading: boolean; error: string | null; lastRefresh: Date; selectedFilter: string; activeSection: string; isCollapsed: boolean; acceptingBooking: string | null; acceptError: string | null; acceptSuccess: string | null; processingAction: boolean }
+    ui: { loading: boolean; error: string | null; lastRefresh: Date; selectedFilter: string; activeSection: string; isCollapsed: boolean; acceptingBooking: string | null; acceptError: string | null; acceptSuccess: string | null; decliningBooking: string | null; declineError: string | null; declineSuccess: string | null; processingAction: boolean }
   }
 
   memoizedBankDetails: unknown | null
@@ -701,13 +730,13 @@ function ProviderMainContent({
   ]))
 
   // Helper function to normalize payment method for consistent comparison
-  const normalizePaymentMethod = (paymentMethod: unknown): 'CASH' | 'ONLINE' | null => {
+  const normalizePaymentMethod = useCallback((paymentMethod: unknown): 'CASH' | 'ONLINE' | null => {
     if (!paymentMethod) return null;
     const normalized = String(paymentMethod).toUpperCase().trim();
     if (normalized === 'CASH') return 'CASH';
     if (normalized === 'ONLINE') return 'ONLINE';
     return null;
-  };
+  }, []);
 
   // Calculate derived stats with comprehensive validation
 
@@ -892,6 +921,37 @@ function ProviderMainContent({
   }
 
   // Helper function to render a booking card (used in both grouped and regular views)
+  // Helper function to check if a booking can be started
+  // A booking can be started if:
+  // 1. Booking status is PENDING_EXECUTION or CONFIRMED
+  // 2. Payment is NOT in PROCESSING_RELEASE, RELEASED, or COMPLETED (for online payments)
+  const canStartJob = useCallback((booking: typeof filteredBookings[0]): boolean => {
+    if (!booking) return false;
+    
+    // Check booking status
+    if (booking.status !== 'PENDING_EXECUTION' && booking.status !== 'CONFIRMED') {
+      return false;
+    }
+    
+    // For online payments, check payment status
+    if (normalizePaymentMethod(booking.paymentMethod) === 'ONLINE') {
+      if (!booking.payment) return false;
+      
+      // Cannot start if payment is being released or already released
+      const blockedStatuses = ['PROCESSING_RELEASE', 'RELEASED', 'COMPLETED'];
+      if (blockedStatuses.includes(booking.payment.status)) {
+        return false;
+      }
+      
+      // Can start if payment is in escrow
+      const allowedStatuses = ['PENDING', 'ESCROW', 'HELD_IN_ESCROW'];
+      return allowedStatuses.includes(booking.payment.status);
+    }
+    
+    // For cash payments, can start if payment record exists
+    return !!booking.payment;
+  }, [normalizePaymentMethod]);
+
   const renderBookingCard = (booking: typeof filteredBookings[0]) => {
     if (!booking || !booking.id || typeof booking.id !== 'string') {
       return null
@@ -1016,27 +1076,62 @@ function ProviderMainContent({
                 )}
               </div>
               
-              <div className="flex flex-col items-end space-y-2">
-                <Badge variant={booking.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                  {booking.status || 'UNKNOWN'}
-                </Badge>
+              <div className="flex flex-col items-end space-y-2 min-w-[200px]">
+                <StatusBadge 
+                  status={booking.status || 'UNKNOWN'} 
+                  type="booking" 
+                  size="md"
+                  className="shadow-lg"
+                />
+                
+                {/* Payment Status Display - Show payment status prominently */}
+                {booking.payment && (
+                  <div className="mt-2">
+                    <PaymentStatusDisplay
+                      payment={booking.payment}
+                      bookingStatus={booking.status}
+                      paymentMethod={normalizePaymentMethod(booking.paymentMethod) || 'ONLINE'}
+                      className="text-xs"
+                    />
+                  </div>
+                )}
 
                 {booking.status === 'PENDING' && (
-                  <Button 
-                    size="sm" 
-                    className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => acceptBooking(booking.id)}
-                    disabled={acceptingBooking === booking.id}
-                  >
-                    {acceptingBooking === booking.id ? (
-                      <div className="flex items-center">
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Accepting...
-                      </div>
-                    ) : (
-                      'Accept Job'
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap w-full justify-end">
+                    <Button 
+                      size="sm" 
+                      className="bg-red-500 hover:bg-red-600 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[100px]"
+                      onClick={() => declineBooking(booking.id)}
+                      disabled={decliningBooking === booking.id || acceptingBooking === booking.id}
+                    >
+                      {decliningBooking === booking.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Declining...
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Decline
+                        </>
+                      )}
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="bg-green-500 hover:bg-green-600 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[100px]"
+                      onClick={() => acceptBooking(booking.id)}
+                      disabled={acceptingBooking === booking.id || decliningBooking === booking.id}
+                    >
+                      {acceptingBooking === booking.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Accepting...
+                        </>
+                      ) : (
+                        'Accept Job'
+                      )}
+                    </Button>
+                  </div>
                 )}
 
                 {booking.status === 'CONFIRMED' && (
@@ -1076,7 +1171,7 @@ function ProviderMainContent({
                   </>
                 )}
 
-                {booking.status === 'PENDING_EXECUTION' && (
+                {booking.status === 'PENDING_EXECUTION' && canStartJob(booking) && (
                   <Button 
                     size="sm" 
                     className="bg-green-400 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1094,6 +1189,23 @@ function ProviderMainContent({
                         Start Job
                       </div>
                     )}
+                  </Button>
+                )}
+                
+                {booking.status === 'PENDING_EXECUTION' && !canStartJob(booking) && booking.payment && (
+                  <Button 
+                    size="sm" 
+                    className="bg-orange-400 hover:bg-orange-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                  >
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-2" />
+                      {booking.payment.status === 'PROCESSING_RELEASE' 
+                        ? 'Payment Being Released' 
+                        : booking.payment.status === 'RELEASED' || booking.payment.status === 'COMPLETED'
+                        ? 'Payment Released'
+                        : 'Waiting...'}
+                    </div>
                   </Button>
                 )}
 
@@ -1365,21 +1477,24 @@ function ProviderMainContent({
 
                           {/* Status and Actions */}
                           <div className="flex flex-row lg:flex-col lg:items-end gap-2 sm:gap-3 flex-shrink-0 w-full lg:w-auto border-t lg:border-t-0 border-gray-600 lg:border-0 pt-3 lg:pt-0">
-                            <Badge 
-                              className={
-                                currentJob.status === 'COMPLETED' 
-                                  ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                  : currentJob.status === 'IN_PROGRESS'
-                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                  : currentJob.status === 'PENDING_EXECUTION'
-                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                  : currentJob.status === 'CONFIRMED'
-                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                  : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                              }
-                            >
-                              {currentJob.status || 'UNKNOWN'}
-                            </Badge>
+                            <StatusBadge 
+                              status={currentJob.status || 'UNKNOWN'} 
+                              type="booking" 
+                              size="sm"
+                              className="shadow-lg"
+                            />
+                            
+                            {/* Payment Status Display for Current Job */}
+                            {currentJob.payment && (
+                              <div className="mt-2">
+                                <PaymentStatusDisplay
+                                  payment={currentJob.payment}
+                                  bookingStatus={currentJob.status}
+                                  paymentMethod={normalizePaymentMethod(currentJob.paymentMethod) || 'ONLINE'}
+                                  className="text-xs"
+                                />
+                              </div>
+                            )}
 
                             {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'PENDING' && (
                               <Button 
@@ -1444,7 +1559,7 @@ function ProviderMainContent({
                               </>
                             )}
 
-                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'PENDING_EXECUTION' && (
+                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'PENDING_EXECUTION' && canStartJob(currentJob) && (
                               <Button 
                                 size="sm" 
                                 className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm flex-1 lg:flex-none"
@@ -1463,6 +1578,26 @@ function ProviderMainContent({
                                     Start Job
                                   </div>
                                 )}
+                              </Button>
+                            )}
+                            
+                            {currentJob.status && typeof currentJob.status === 'string' && currentJob.status === 'PENDING_EXECUTION' && !canStartJob(currentJob) && currentJob.payment && (
+                              <Button 
+                                size="sm" 
+                                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-xs sm:text-sm flex-1 lg:flex-none"
+                                disabled
+                              >
+                                <div className="flex items-center justify-center">
+                                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                  <span className="hidden sm:inline">
+                                    {currentJob.payment.status === 'PROCESSING_RELEASE' 
+                                      ? 'Payment Being Released' 
+                                      : currentJob.payment.status === 'RELEASED' || currentJob.payment.status === 'COMPLETED'
+                                      ? 'Payment Released'
+                                      : 'Waiting...'}
+                                  </span>
+                                  <span className="sm:hidden">...</span>
+                                </div>
                               </Button>
                             )}
 
@@ -2911,6 +3046,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       acceptSuccess: null as string | null, // Track accept success messages
 
+      decliningBooking: null as string | null, // Track which booking is being declined
+
+      declineError: null as string | null, // Track decline errors
+
+      declineSuccess: null as string | null, // Track decline success messages
+
       processingAction: false // Track when any action is being processed
 
     }
@@ -4225,6 +4366,30 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
   }, [])
 
+  const clearDeclineError = useCallback(() => {
+
+    setDashboardState(prev => ({
+
+      ...prev,
+
+      ui: { ...prev.ui, declineError: null }
+
+    }))
+
+  }, [])
+
+  const clearDeclineSuccess = useCallback(() => {
+
+    setDashboardState(prev => ({
+
+      ...prev,
+
+      ui: { ...prev.ui, declineSuccess: null }
+
+    }))
+
+  }, [])
+
 
 
   // Accept booking function
@@ -4390,6 +4555,158 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       // Show error message (you could add a toast notification here)
 
       console.error('❌ Failed to accept booking:', error instanceof Error ? error.message : String(error))
+
+    }
+
+  }, [])
+
+  // Decline booking function
+
+  const declineBooking = useCallback(async (bookingId: string) => {
+
+    try {
+
+      // Set loading state for this specific booking
+
+      setDashboardState(prev => ({
+
+        ...prev,
+
+        ui: {
+
+          ...prev.ui,
+
+          decliningBooking: bookingId,
+
+          declineError: null
+
+        }
+
+      }))
+
+      console.log('Declining booking:', bookingId)
+
+      const response = await fetch(`/api/book-service/${bookingId}/decline`, {
+
+        method: 'POST',
+
+        credentials: 'include',
+
+        headers: {
+
+          'Content-Type': 'application/json',
+
+        },
+
+      })
+
+      if (!response.ok) {
+
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+
+      }
+
+      const result = await response.json()
+
+      console.log('Booking declined successfully:', result)
+
+      // Update the booking status in the local state
+
+      setDashboardState(prev => ({
+
+        ...prev,
+
+        data: {
+
+          ...prev.data,
+
+          bookings: prev.data.bookings.map(booking =>
+
+            booking.id === bookingId
+
+              ? { ...booking, status: 'CANCELLED' as const }
+
+              : booking
+
+          )
+
+        },
+
+        ui: {
+
+          ...prev.ui,
+
+          decliningBooking: null,
+
+          declineError: null
+
+        }
+
+      }))
+
+      // Show success message
+
+      setDashboardState(prev => ({
+
+        ...prev,
+
+        ui: {
+
+          ...prev.ui,
+
+          declineSuccess: 'Job declined. Client has been notified to find another provider.'
+
+        }
+
+      }))
+
+      // Show toast notification
+      showToast.success('Job declined successfully. Client has been notified.')
+
+      // Auto-hide success message after 5 seconds
+
+      setTimeout(() => {
+
+        setDashboardState(prev => ({
+
+          ...prev,
+
+          ui: { ...prev.ui, declineSuccess: null }
+
+        }))
+
+      }, 5000)
+
+      console.log('✅ Booking declined successfully!')
+
+    } catch (error) {
+
+      console.error('Failed to decline booking:', error)
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to decline booking'
+      
+      setDashboardState(prev => ({
+
+        ...prev,
+
+        ui: {
+
+          ...prev.ui,
+
+          decliningBooking: null,
+
+          declineError: errorMessage
+
+        }
+
+      }))
+
+      // Show error toast
+      showToast.error(errorMessage)
+
+      console.error('❌ Failed to decline booking:', errorMessage)
 
     }
 
@@ -4999,6 +5316,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           acceptSuccess={dashboardState.ui.acceptSuccess}
           clearAcceptError={clearAcceptError}
           clearAcceptSuccess={clearAcceptSuccess}
+          declineBooking={declineBooking}
+          decliningBooking={dashboardState.ui.decliningBooking}
+          declineError={dashboardState.ui.declineError}
+          declineSuccess={dashboardState.ui.declineSuccess}
+          clearDeclineError={clearDeclineError}
+          clearDeclineSuccess={clearDeclineSuccess}
           handleStartJob={handleStartJob}
           handleCompleteJob={handleCompleteJob}
           confirmCashPayment={confirmCashPayment}
@@ -5038,6 +5361,12 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
           acceptSuccess={dashboardState.ui.acceptSuccess}
           clearAcceptError={clearAcceptError}
           clearAcceptSuccess={clearAcceptSuccess}
+          declineBooking={declineBooking}
+          decliningBooking={dashboardState.ui.decliningBooking}
+          declineError={dashboardState.ui.declineError}
+          declineSuccess={dashboardState.ui.declineSuccess}
+          clearDeclineError={clearDeclineError}
+          clearDeclineSuccess={clearDeclineSuccess}
           handleStartJob={handleStartJob}
           handleCompleteJob={handleCompleteJob}
           confirmCashPayment={confirmCashPayment}

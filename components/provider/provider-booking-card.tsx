@@ -15,10 +15,13 @@ import {
   Eye,
   Star,
   User,
-  FileText
+  FileText,
+  AlertCircle
 } from "lucide-react"
 import { formatSADate, formatSATime } from '@/lib/date-utils'
 import { formatBookingPrice } from '@/lib/price-utils'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { PaymentStatusDisplay } from '@/components/ui/payment-status-display'
 
 interface Booking {
   id: string
@@ -105,6 +108,13 @@ const getStatusInfo = (status: string, hasPayment?: boolean) => {
         icon: Play,
         description: "Currently working"
       }
+    case "AWAITING_CONFIRMATION":
+      return {
+        label: "Awaiting Confirmation",
+        color: "bg-orange-100 text-orange-800 border-orange-200",
+        icon: AlertCircle,
+        description: "Waiting for client to confirm completion"
+      }
     case "COMPLETED":
       return {
         label: "Completed",
@@ -156,10 +166,12 @@ export function ProviderBookingCard({
               <p className="text-xs sm:text-sm text-gray-600">{booking.service?.category || 'No Category'}</p>
             </div>
           </div>
-          <Badge className={`${statusInfo.color} border text-xs`}>
-            <StatusIcon className="w-3 h-3 mr-1" />
-            {statusInfo.label}
-          </Badge>
+          <StatusBadge 
+            status={booking.status} 
+            type="booking" 
+            size="sm"
+            className="text-xs"
+          />
         </div>
 
         {/* Client Info */}
@@ -224,10 +236,15 @@ export function ProviderBookingCard({
               <span className="text-gray-600">Amount:</span>
               <span className="font-semibold text-gray-900">{formatBookingPrice(booking)}</span>
             </div>
-            {hasPaymentInEscrowOrBeyond && (
-              <div className="flex items-center space-x-2 text-sm">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="text-green-600 font-medium">Payment Received</span>
+            {/* Payment Status Display */}
+            {booking.payment && (
+              <div className="mt-2">
+                <PaymentStatusDisplay
+                  payment={booking.payment}
+                  bookingStatus={booking.status}
+                  paymentMethod={booking.paymentMethod as "ONLINE" | "CASH" || "ONLINE"}
+                  className="text-xs"
+                />
               </div>
             )}
             {showReview && booking.review && (
