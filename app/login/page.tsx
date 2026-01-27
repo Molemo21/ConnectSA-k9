@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { showToast } from "@/lib/toast"
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2, CheckCircle } from "lucide-react"
+import { getLobbyState, clearLobbyState } from "@/lib/lobby-state"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -63,7 +64,71 @@ export default function LoginPage() {
         setResendSuccess(false)
         showToast.success("Welcome back! You've been successfully logged in.")
         
-        console.log('🔄 About to redirect to:', data.redirectUrl || "/dashboard")
+        // Check for lobby state recovery
+        const lobbyState = getLobbyState()
+        let redirectUrl = data.redirectUrl || "/dashboard"
+        
+        if (lobbyState && lobbyState.bookingId) {
+          console.log('🔍 Found lobby state, checking booking status...', lobbyState)
+          
+          try {
+            // Check current booking status
+            const statusResponse = await fetch(`/api/auth/check-lobby-state?bookingId=${encodeURIComponent(lobbyState.bookingId)}`, {
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json()
+              
+              if (statusData.success && statusData.booking) {
+                const currentStatus = statusData.booking.status
+                
+                console.log('📊 Booking status:', { 
+                  stored: lobbyState.status, 
+                  current: currentStatus 
+                })
+                
+                if (currentStatus === 'PENDING') {
+                  // Still waiting - take them back to lobby
+                  redirectUrl = `/book-service/${lobbyState.bookingId}/lobby`
+                  console.log('⏳ Booking still pending, redirecting to lobby')
+                } else if (currentStatus === 'CANCELLED') {
+                  // Provider cancelled - redirect to dashboard with notification
+                  redirectUrl = `/dashboard?booking=cancelled&id=${lobbyState.bookingId}`
+                  console.log('❌ Booking cancelled, redirecting to dashboard with notification')
+                  clearLobbyState()
+                } else if (currentStatus === 'CONFIRMED') {
+                  // Accepted while away - celebrate!
+                  redirectUrl = `/dashboard?booking=confirmed&id=${lobbyState.bookingId}`
+                  console.log('✅ Booking confirmed, redirecting to dashboard')
+                  clearLobbyState()
+                } else {
+                  // Other status - clear state and go to dashboard
+                  console.log('ℹ️ Booking status changed to:', currentStatus)
+                  clearLobbyState()
+                }
+              } else {
+                // Invalid response - clear state
+                console.log('⚠️ Invalid response from check-lobby-state, clearing lobby state')
+                clearLobbyState()
+              }
+            } else {
+              // Booking not found or error - clear state
+              const errorData = await statusResponse.json().catch(() => ({}))
+              console.log('⚠️ Could not check booking status:', statusResponse.status, errorData)
+              clearLobbyState()
+            }
+          } catch (error) {
+            console.error('❌ Error checking lobby state:', error)
+            // On error, clear state and proceed normally (don't block login)
+            clearLobbyState()
+          }
+        }
+        
+        console.log('🔄 About to redirect to:', redirectUrl)
         
         // Add a small delay to see the logs before redirect
         setTimeout(() => {
@@ -72,20 +137,20 @@ export default function LoginPage() {
           // Use Next.js router for better SPA navigation
           try {
             console.log('🔄 Using Next.js router.push for SPA navigation')
-            router.push(data.redirectUrl || "/dashboard")
+            router.push(redirectUrl)
             
             // Fallback: if router doesn't work, use window.location
             setTimeout(() => {
               if (window.location.pathname === '/login') {
                 console.log('🔄 Router failed, using window.location.replace')
-                window.location.replace(data.redirectUrl || "/dashboard")
+                window.location.replace(redirectUrl)
               }
             }, 100)
           } catch (error) {
             console.error('❌ Router redirect failed:', error)
             // Fallback to window.location
             console.log('🔄 Fallback to window.location.replace')
-            window.location.replace(data.redirectUrl || "/dashboard")
+            window.location.replace(redirectUrl)
           }
         }, 500) // Reduced delay for faster redirect
       } else {

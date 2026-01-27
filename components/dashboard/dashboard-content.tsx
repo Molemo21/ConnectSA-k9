@@ -26,6 +26,8 @@ import { useSmartBooking } from "@/hooks/use-smart-booking"
 import { SafeDateDisplay, SafeTimeOnlyDisplay } from "@/components/ui/safe-time-display"
 import { NotificationBell } from "@/components/ui/notification-bell"
 import { formatBookingPrice } from '@/lib/price-utils'
+import { BookingStatusChangeModal } from "@/components/ui/booking-status-change-modal"
+import { clearLobbyState } from "@/lib/lobby-state"
 
 // Helper function to get service icon
 function getServiceIcon(serviceName: string) {
@@ -56,6 +58,17 @@ export function DashboardContent() {
   const [isPaymentsDashboardExpanded, setIsPaymentsDashboardExpanded] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<any>(null)
 
+  // Status change modal state (for lobby recovery)
+  const [statusChangeModal, setStatusChangeModal] = useState<{
+    isOpen: boolean
+    type: 'cancelled' | 'confirmed' | null
+    booking: any | null
+  }>({
+    isOpen: false,
+    type: null,
+    booking: null
+  })
+
   // Get search params to detect payment success callback
   const searchParams = useSearchParams()
 
@@ -78,6 +91,78 @@ export function DashboardContent() {
       setLastRefresh(new Date())
     }
   })
+
+  // Check for booking status changes after login (lobby recovery)
+  useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return
+    
+    const checkStatusChange = async () => {
+      const bookingId = searchParams.get('id') || searchParams.get('bookingId')
+      const status = searchParams.get('booking') // 'cancelled' or 'confirmed'
+      
+      if (bookingId && (status === 'cancelled' || status === 'confirmed')) {
+        try {
+          // Fetch booking details
+          const response = await fetch(`/api/book-service/${bookingId}/status`, {
+            credentials: 'include'
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            
+            if (data.success && data.booking) {
+              // Show status change modal
+              setStatusChangeModal({
+                isOpen: true,
+                type: status as 'cancelled' | 'confirmed',
+                booking: {
+                  id: data.booking.id,
+                  status: data.booking.status,
+                  scheduledDate: data.booking.scheduledDate,
+                  totalAmount: data.booking.totalAmount,
+                  address: data.booking.address,
+                  provider: data.provider,
+                  service: data.service
+                }
+              })
+              
+              // Clear lobby state
+              clearLobbyState()
+              
+              // Clean URL params
+              const newUrl = new URL(window.location.href)
+              newUrl.searchParams.delete('booking')
+              newUrl.searchParams.delete('id')
+              newUrl.searchParams.delete('bookingId')
+              window.history.replaceState({}, '', newUrl.toString())
+            }
+          } else {
+            // If API call fails, just clean up URL params silently
+            const newUrl = new URL(window.location.href)
+            newUrl.searchParams.delete('booking')
+            newUrl.searchParams.delete('id')
+            newUrl.searchParams.delete('bookingId')
+            window.history.replaceState({}, '', newUrl.toString())
+          }
+        } catch (error) {
+          console.error('Error checking booking status change:', error)
+          // On error, clean up URL params to prevent retry loops
+          try {
+            const newUrl = new URL(window.location.href)
+            newUrl.searchParams.delete('booking')
+            newUrl.searchParams.delete('id')
+            newUrl.searchParams.delete('bookingId')
+            window.history.replaceState({}, '', newUrl.toString())
+          } catch (urlError) {
+            // Ignore URL errors
+          }
+        }
+      }
+    }
+    
+    checkStatusChange()
+  }, [searchParams])
 
   // Handle bookingId URL parameter - scroll to and highlight specific booking card
   useEffect(() => {
@@ -1011,6 +1096,16 @@ export function DashboardContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Booking Status Change Modal (for lobby recovery) - Only render on client */}
+      {typeof window !== 'undefined' && statusChangeModal.booking && statusChangeModal.type && (
+        <BookingStatusChangeModal
+          isOpen={statusChangeModal.isOpen}
+          onClose={() => setStatusChangeModal({ isOpen: false, type: null, booking: null })}
+          type={statusChangeModal.type}
+          booking={statusChangeModal.booking}
+        />
+      )}
     </div>
   )
 }

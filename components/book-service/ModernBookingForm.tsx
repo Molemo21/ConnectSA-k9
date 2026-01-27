@@ -1608,20 +1608,49 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
               {/* Confirm Booking Button */}
               <div className="pt-4 animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
                 {isConfirmingBooking && !bookingSuccess && (
-                  <div className="mb-4 p-4 bg-blue-500/20 border border-blue-500/50 rounded-lg">
-                    <div className="flex items-center gap-2 text-blue-300">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-sm">Creating your booking...</span>
-            </div>
-          </div>
+                  <div className="mb-4 p-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/50 rounded-lg backdrop-blur-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-shrink-0">
+                        <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+                        <div className="absolute inset-0 w-6 h-6 border-2 border-blue-400/30 rounded-full animate-ping opacity-75" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-blue-200">
+                          Creating your booking request...
+                        </p>
+                        <p className="text-xs text-blue-300/80 mt-1">
+                          Sending your request to the provider
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
                 {bookingSuccess && successMessage && (
-                  <div className="mb-4 p-4 bg-green-500/20 border border-green-500/50 rounded-lg">
-                    <div className="flex items-center gap-2 text-green-300">
-                      <CheckCircle className="w-5 h-5" />
-                      <span className="text-sm font-medium">{successMessage}</span>
-            </div>
-                    <p className="text-green-200/80 text-xs mt-2">Redirecting to dashboard...</p>
+                  <div className="mb-4 p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 rounded-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-start gap-3">
+                      <div className="relative flex-shrink-0">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-green-200 mb-1">
+                          {successMessage}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-green-300" />
+                          <p className="text-xs text-green-300/90">
+                            Taking you to the waiting room...
+                          </p>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-green-500/30">
+                          <p className="text-xs text-green-200/70">
+                            💡 You'll wait here for the provider to accept or decline your request
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
                 <Button
@@ -1690,9 +1719,14 @@ export function ModernBookingForm({ value, onChange, onNext, onBack, submitting,
                       setBookingSuccess(true);
                       setSuccessMessage(bookingData.message || 'Booking created successfully!');
                       
-                      // Redirect to dashboard after showing success message
+                      // Redirect to lobby page to wait for provider response
                       setTimeout(() => {
-                        router.push('/dashboard?booking=success');
+                        if (bookingData.booking?.id) {
+                          router.push(`/book-service/${bookingData.booking.id}/lobby`);
+                        } else {
+                          // Fallback if booking ID not in response
+                          router.push('/dashboard?booking=success');
+                        }
                       }, 2000);
                       
                       // Call onNext to trigger parent component's confirmation handling
