@@ -237,12 +237,26 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       });
 
       if (!syncResponse.ok) {
-        throw new Error('Failed to sync status');
+        const errorData = await syncResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to sync status');
       }
 
       const syncData = await syncResponse.json();
       
-      // Then refresh the booking data to get the latest status
+      // Update local state immediately with synced data if available
+      if (syncData.booking && syncData.payment) {
+        setCurrentBooking(prev => ({
+          ...prev,
+          status: syncData.booking.status,
+          payment: syncData.payment ? {
+            ...prev.payment,
+            status: syncData.payment.status,
+            updatedAt: syncData.payment.updatedAt
+          } : prev.payment
+        }));
+      }
+      
+      // Then refresh the booking data to get the latest status (this will update from server)
       if (onRefresh) {
         await onRefresh(booking.id);
       }
@@ -251,7 +265,7 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       if (syncData.synced) {
         showToast.success("Status synchronized and updated successfully!")
       } else {
-        showToast.success("Payment status checked successfully!")
+        showToast.info("Status checked - everything is up to date")
       }
     } catch (error) {
       console.error('Check status error:', error);

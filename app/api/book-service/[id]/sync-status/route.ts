@@ -72,9 +72,17 @@ export async function POST(request: NextRequest) {
     let newBookingStatus = booking.status;
     let newPaymentStatus = booking.payment.status;
 
+    // Log current state for debugging
+    console.log(`🔍 Sync check for booking ${bookingId}:`, {
+      bookingStatus: booking.status,
+      paymentStatus: booking.payment.status,
+      paymentUpdatedAt: booking.payment.updatedAt
+    });
+
     // Fix: Payment is PROCESSING_RELEASE but booking is PENDING_EXECUTION
     // This means the client confirmed completion, so booking should be AWAITING_CONFIRMATION
     if (booking.payment.status === 'PROCESSING_RELEASE' && booking.status === 'PENDING_EXECUTION') {
+      console.log(`⚠️ Inconsistency detected: Payment is PROCESSING_RELEASE but booking is PENDING_EXECUTION`);
       await db.booking.update({
         where: { id: bookingId },
         data: { 
@@ -141,6 +149,20 @@ export async function POST(request: NextRequest) {
         }
       }
     });
+
+    // Log final state
+    if (bookingUpdated) {
+      console.log(`✅ Sync completed for booking ${bookingId}:`, {
+        oldStatus: booking.status,
+        newStatus: newBookingStatus,
+        paymentStatus: booking.payment.status
+      });
+    } else {
+      console.log(`ℹ️ No sync needed for booking ${bookingId}:`, {
+        bookingStatus: booking.status,
+        paymentStatus: booking.payment.status
+      });
+    }
 
     return NextResponse.json({
       success: true,
