@@ -494,27 +494,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
     const transferReference = paymentProcessor.generateReference("TR");
     console.log(`💰 Generated transfer reference: ${transferReference}`);
 
-    // 9. Update payment status to indicate transfer is being processed
-    try {
-      await prisma.payment.update({
-        where: { id: booking.payment.id },
-        data: { 
-          status: "PROCESSING_RELEASE",
-          updatedAt: new Date()
-        }
-      });
-      console.log(`💳 Payment status updated to PROCESSING_RELEASE`);
-    } catch (updateError) {
-      console.error(`❌ Failed to update payment status:`, updateError);
-      return NextResponse.json({
-        success: false,
-        error: "Unable to update payment status",
-        details: "There was a problem updating the payment status. Please try again.",
-        currentStatus: booking.payment.status,
-        expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
-        bookingStatus: booking.status
-      }, { status: 500 });
-    }
+    // 9. DO NOT update payment status yet - wait until after all validations pass
+    // Payment status will be updated to PROCESSING_RELEASE only after:
+    // - Booking status validation passes
+    // - Bank code validation passes (if needed)
+    // - Recipient creation succeeds (if needed)
+    // - Transfer is about to be initiated
+    // This prevents payment from getting stuck in PROCESSING_RELEASE if early validations fail
+    console.log(`💳 Payment status will be updated to PROCESSING_RELEASE after all validations pass`);
 
     // 10. Keep booking status as AWAITING_CONFIRMATION (don't change it)
     // The booking is already in the correct state - payment is being released
@@ -523,24 +510,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
     
     // Validate that booking is in the correct state for payment release
     if (!isValidBookingStatus(booking.status)) {
-      // Revert payment status if booking status is invalid
-      try {
-        await prisma.payment.update({
-          where: { id: booking.payment.id },
-          data: { 
-            status: booking.payment.status,
-            updatedAt: new Date()
-          }
-        });
-      } catch (revertError) {
-        console.error(`❌ Failed to revert payment status:`, revertError);
-      }
-      
+      // Payment status is still ESCROW - no rollback needed
       return NextResponse.json({
         success: false,
         error: "Invalid booking status for payment release",
         details: `Booking must be in ${VALID_BOOKING_STATUSES_FOR_RELEASE.join(' or ')} status to release payment. Current status: ${booking.status}`,
-        currentStatus: booking.payment.status,
+        currentStatus: booking.payment.status, // Still ESCROW
         expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
         bookingStatus: booking.status
       }, { status: 400 });
@@ -583,11 +558,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             
             if (!isValidBankCode) {
               console.error(`❌ Invalid bank code: ${recipientData.bank_code}`);
+              // Payment status is still ESCROW - no rollback needed
               return NextResponse.json({
                 success: false,
                 error: "Invalid bank code",
                 details: `The bank code "${recipientData.bank_code}" is not valid for South African banks. Please ask the provider to update their bank details with a valid bank code. They can find valid bank codes in their bank details settings.`,
-                currentStatus: booking.payment.status,
+                currentStatus: booking.payment.status, // Still ESCROW
                 expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
                 bookingStatus: booking.status
               }, { status: 400 });
@@ -685,11 +661,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             }
           }
           
+          // Payment status is still ESCROW - no rollback needed
           return NextResponse.json({
             success: false,
             error: errorMessage,
             details: errorDetails,
-            currentStatus: booking.payment.status,
+            currentStatus: booking.payment.status, // Still ESCROW
             expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
             bookingStatus: booking.status
           }, { status: 400 });
@@ -698,8 +675,48 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         console.log(`✅ Using existing transfer recipient: ${recipientCode}`);
       }
 
-      // 13. Initiate transfer
+      // 13. NOW update payment status to PROCESSING_RELEASE - all validations passed
+      // This is the safe point to change status since:
+      // - Booking status is valid
+      // - Bank code is valid (if validated)
+      // - Recipient code exists or was created successfully
+      try {
+        await prisma.payment.update({
+          where: { id: booking.payment.id },
+          data: { 
+            status: "PROCESSING_RELEASE",
+            updatedAt: new Date()
+          }
+        });
+        console.log(`💳 Payment status updated to PROCESSING_RELEASE - all validations passed`);
+      } catch (updateError) {
+        console.error(`❌ Failed to update payment status:`, updateError);
+        return NextResponse.json({
+          success: false,
+          error: "Unable to update payment status",
+          details: "There was a problem updating the payment status. Please try again.",
+          currentStatus: booking.payment.status,
+          expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
+          bookingStatus: booking.status
+        }, { status: 500 });
+      }
+
+      // 14. Initiate transfer
       if (!recipientCode) {
+        // Rollback payment status since we can't proceed
+        try {
+          await prisma.payment.update({
+            where: { id: booking.payment.id },
+            data: { 
+              status: "ESCROW",
+              updatedAt: new Date()
+            }
+          });
+          console.log(`🔄 Rolled back payment status to ESCROW - recipient code missing`);
+        } catch (rollbackError) {
+          console.error(`❌ Failed to rollback payment status:`, rollbackError);
+        }
+        
         throw new Error('Recipient code is required for transfer but was not generated');
       }
       
@@ -743,12 +760,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
 
       console.log(`✅ Paystack transfer created:`, transferResponse.data);
 
-      // 14. Update payment status to reflect transfer in progress
+      // 15. Update payment with transfer code (status already set to PROCESSING_RELEASE)
       try {
         await prisma.payment.update({
           where: { id: booking.payment.id },
           data: { 
-            status: "PROCESSING_RELEASE",
             transactionId: transferResponse.data.transfer_code,
             updatedAt: new Date()
           }
