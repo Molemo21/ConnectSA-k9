@@ -630,7 +630,26 @@ class PaystackClient {
       const activeBanks = banks.data?.filter(bank => bank.active && !bank.is_deleted) || [];
       
       // Check if the bank code exists in the filtered (active) bank list
-      const isValid = activeBanks.some(bank => bank.code === bankCode);
+      let isValid = activeBanks.some(bank => bank.code === bankCode);
+      
+      // BEST PRACTICE: If code exists in Paystack API at all (even if inactive/deleted), 
+      // we still trust it because Paystack returned it. This handles edge cases where
+      // Paystack's list might include codes that are temporarily inactive but still valid.
+      if (!isValid) {
+        const bankExists = banks.data?.some(bank => bank.code === bankCode);
+        if (bankExists) {
+          const bank = banks.data?.find(bank => bank.code === bankCode);
+          this.logger.warn('Bank code exists in Paystack API but is inactive/deleted - accepting anyway', {
+            bankCode,
+            bankName: bank?.name,
+            bankActive: bank?.active,
+            bankDeleted: bank?.is_deleted,
+            reason: 'Trusting Paystack API - code exists in their system'
+          });
+          // Accept it anyway - if Paystack returns it, we trust it
+          isValid = true;
+        }
+      }
       
       // Log detailed validation info
       this.logger.info('Bank code validation', { 

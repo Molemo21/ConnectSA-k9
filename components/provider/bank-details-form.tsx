@@ -345,6 +345,20 @@ const BankDetailsFormComponent = function BankDetailsForm({
           fullResponse: errorData
         });
         
+        // Log debug info if available
+        if (errorData.debug) {
+          console.error('🔍 Validation Debug Info:', errorData.debug);
+          console.error('📊 Debug Details:', {
+            totalBanksFromAPI: errorData.debug.totalBanksFromAPI,
+            activeBanksCount: errorData.debug.activeBanksCount,
+            bankCodeExists: errorData.debug.bankCodeExists,
+            bankActive: errorData.debug.bankActive,
+            bankDeleted: errorData.debug.bankDeleted,
+            bankName: errorData.debug.bankName,
+            sampleActiveBanks: errorData.debug.sampleActiveBanks
+          });
+        }
+        
         // Set field-specific error if provided
         if (errorData.field) {
           setErrors(prev => ({
