@@ -110,15 +110,18 @@ export async function POST(request: NextRequest) {
     // Fix: Payment is PROCESSING_RELEASE and booking is AWAITING_CONFIRMATION (correct state)
     // IMMEDIATELY check for invalid bank codes (no time threshold - this is a validation issue)
     if (booking.payment.status === 'PROCESSING_RELEASE' && booking.status === 'AWAITING_CONFIRMATION') {
-      console.log(`🔍 Checking for invalid bank code for booking ${bookingId}...`, {
+      console.log(`🔍 [CRITICAL] Checking for invalid bank code for booking ${bookingId}...`, {
         hasProvider: !!booking.provider,
         hasBankCode: !!booking.provider?.bankCode,
         bankCode: booking.provider?.bankCode,
-        providerId: booking.provider?.id
+        providerId: booking.provider?.id,
+        paymentStatus: booking.payment.status,
+        bookingStatus: booking.status
       });
       
       // First, check if bank code is invalid (immediate check, no time threshold)
       if (booking.provider?.bankCode) {
+        console.log(`✅ Provider has bankCode: ${booking.provider.bankCode} - proceeding with validation`);
         try {
           const { PaystackClient } = await import('@/lib/paystack');
           const paystackClient = PaystackClient.getInstance();
@@ -382,6 +385,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Include bankCode in provider response for debugging
+    const providerResponse = updatedBooking?.provider ? {
+      ...updatedBooking.provider,
+      bankCode: updatedBooking.provider.bankCode || booking.provider?.bankCode || null
+    } : null;
+
+    console.log(`📤 Final sync response for booking ${bookingId}:`, {
+      synced: bookingUpdated || paymentUpdated,
+      bookingStatus: updatedBooking?.status,
+      paymentStatus: updatedBooking?.payment?.status,
+      hasProvider: !!providerResponse,
+      providerBankCode: providerResponse?.bankCode,
+      message: bookingUpdated 
+        ? "Booking status synchronized successfully" 
+        : "Booking and payment statuses are already in sync"
+    });
+
     return NextResponse.json({
       success: true,
       message: bookingUpdated 
@@ -407,7 +427,7 @@ export async function POST(request: NextRequest) {
         createdAt: updatedBooking.payment.createdAt,
         updatedAt: updatedBooking.payment.updatedAt
       } : null,
-      provider: updatedBooking?.provider,
+      provider: providerResponse,
       service: updatedBooking?.service
     });
 
