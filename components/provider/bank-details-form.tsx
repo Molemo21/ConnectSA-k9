@@ -42,8 +42,9 @@ interface Bank {
 
 // Fallback banks in case API fails (using correct Paystack codes)
 // NOTE: "470010" (Capitec) removed - it's invalid according to Paystack API
+// NOTE: "198774" (Standard Bank old code) removed - use "051" instead
 const FALLBACK_BANKS: Bank[] = [
-  { name: "Standard Bank", code: "198774" },
+  { name: "Standard Bank", code: "051" },
   { name: "First National Bank (FNB)", code: "198767" },
   { name: "Nedbank", code: "198770" },
   { name: "ABSA Bank", code: "044" },
@@ -117,6 +118,7 @@ const BankDetailsFormComponent = function BankDetailsForm({
           if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
             setBanks(data.data)
             console.log(`✅ Loaded ${data.data.length} banks from Paystack API`)
+            console.log('📋 Bank codes loaded:', data.data.map((b: Bank) => `${b.name} (${b.code})`).join(', '))
           } else {
             console.warn('⚠️ No banks returned from API, using fallback')
             setBanks(FALLBACK_BANKS)
@@ -147,6 +149,26 @@ const BankDetailsFormComponent = function BankDetailsForm({
     }
   }, [toast])
 
+  // Validate and clear invalid bank codes when banks are loaded
+  useEffect(() => {
+    if (!isLoadingBanks && banks.length > 0 && bankDetails.bankCode) {
+      const bankExists = banks.some(bank => bank.code === bankDetails.bankCode)
+      if (!bankExists) {
+        console.warn(`⚠️ Current bank code "${bankDetails.bankCode}" is not valid. Clearing bank selection.`)
+        setBankDetails(prev => ({
+          ...prev,
+          bankCode: '',
+          bankName: ''
+        }))
+        toast({
+          title: "Invalid bank code detected",
+          description: "Your previous bank selection is no longer valid. Please select a bank from the updated list.",
+          variant: "destructive"
+        })
+      }
+    }
+  }, [isLoadingBanks, banks, bankDetails.bankCode, toast])
+
   // Form validation - STABLE CALLBACK
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {}
@@ -157,6 +179,12 @@ const BankDetailsFormComponent = function BankDetailsForm({
 
     if (!bankDetails.bankCode?.trim()) {
       newErrors.bankCode = "Bank code is required"
+    } else {
+      // Validate that the selected bank code exists in the fetched banks list
+      const bankExists = banks.some(bank => bank.code === bankDetails.bankCode)
+      if (!bankExists) {
+        newErrors.bankCode = "Selected bank is not valid. Please select a bank from the list."
+      }
     }
 
     if (!bankDetails.accountNumber?.trim()) {
@@ -173,7 +201,7 @@ const BankDetailsFormComponent = function BankDetailsForm({
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }, [bankDetails]) // Keep bankDetails dependency for validation
+  }, [bankDetails, banks]) // Include banks to validate against fetched list
 
   // Handle bank selection - NUCLEAR SOLUTION (NO PARENT CALLBACKS)
   const handleBankChange = useCallback((bankName: string) => {
@@ -295,7 +323,23 @@ const BankDetailsFormComponent = function BankDetailsForm({
         }
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save bank details')
+        const errorMessage = errorData.error || 'Failed to save bank details'
+        const errorDetails = errorData.details || ''
+        
+        // Set field-specific error if provided
+        if (errorData.field) {
+          setErrors(prev => ({
+            ...prev,
+            [errorData.field]: errorData.details || errorMessage
+          }))
+        }
+        
+        // Show detailed error message
+        const fullErrorMessage = errorDetails 
+          ? `${errorMessage}: ${errorDetails}`
+          : errorMessage
+        
+        throw new Error(fullErrorMessage)
       }
     } catch (error) {
       console.error('Error saving bank details:', error)
