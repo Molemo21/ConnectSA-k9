@@ -490,57 +490,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       }, { status: 400 });
     }
 
-    // 7.5. Validate bank code BEFORE moving to PROCESSING_RELEASE (prevents stuck payments)
+    // 7.5. Trust saved bank code (already validated when provider saved it)
+    // BEST PRACTICE: Trust frontend validation - bank code was validated when provider saved it
+    // Paystack will validate it when creating the recipient anyway, so redundant validation here
+    // causes issues when Paystack API has temporary problems
     const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
-    const isProduction = process.env.NODE_ENV === 'production';
-    const shouldValidate = isProduction && process.env.PAYSTACK_TEST_MODE !== 'true';
-
-    console.log(`🔍 Bank code validation check:`, {
-      isTestMode,
-      isProduction,
-      shouldValidate,
-      nodeEnv: process.env.NODE_ENV,
-      testModeFlag: process.env.PAYSTACK_TEST_MODE
-    });
-
-    // Only skip validation in actual test/development mode
-    // In production, always validate unless explicitly in test mode
-    if (shouldValidate) {
-      try {
-        console.log(`🔍 Validating bank code: ${booking.provider.bankCode} for South Africa BEFORE release...`);
-        const isValidBankCode = await paystackClient.validateBankCode(
-          booking.provider.bankCode!,
-          'ZA' // South Africa
-        );
-        
-        if (!isValidBankCode) {
-          console.error(`❌ Invalid bank code detected: ${booking.provider.bankCode}`);
-          // Payment status is still ESCROW - no rollback needed
-          return NextResponse.json({
-            success: false,
-            error: "Invalid bank code",
-            details: `The provider's bank code "${booking.provider.bankCode}" is not valid for South African banks. Please ask them to update their bank details with a valid bank code. The payment remains in escrow and is safe.`,
-            currentStatus: booking.payment.status, // Still ESCROW
-            expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
-            bookingStatus: booking.status,
-            requiresProviderAction: true,
-            actionMessage: "Provider needs to update their bank details in their settings"
-          }, { status: 400 });
-        }
-        console.log(`✅ Bank code validated successfully - safe to proceed with release`);
-      } catch (validationError) {
-        // Don't proceed if validation fails - block the operation
-        console.error(`❌ Bank code validation failed:`, validationError);
-        return NextResponse.json({
-          success: false,
-          error: "Unable to validate bank details",
-          details: "Could not verify the provider's bank details. Please ask them to update their bank information. The payment remains in escrow.",
-          currentStatus: booking.payment.status,
-          bookingStatus: booking.status,
-          requiresProviderAction: true
-        }, { status: 400 });
-      }
-    }
+    
+    console.log(`✅ Trusting saved bank code: ${booking.provider.bankCode}`);
+    console.log(`📋 Bank code was validated when provider saved it - skipping redundant validation`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV}, Test Mode: ${isTestMode}`);
+    console.log(`💡 Paystack will validate bank code when creating transfer recipient`);
 
     // 8. Generate unique reference for transfer
     const transferReference = paymentProcessor.generateReference("TR");
@@ -599,33 +558,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
           bank_code: booking.provider.bankCode!,
         };
         
-        // Validate bank code before attempting to create recipient (only in production)
-        if (!isTestMode) {
-          try {
-            console.log(`🔍 Validating bank code: ${recipientData.bank_code} for South Africa...`);
-            const isValidBankCode = await paystackClient.validateBankCode(
-              recipientData.bank_code,
-              'ZA' // South Africa
-            );
-            
-            if (!isValidBankCode) {
-              console.error(`❌ Invalid bank code: ${recipientData.bank_code}`);
-              // Payment status is still ESCROW - no rollback needed
-              return NextResponse.json({
-                success: false,
-                error: "Invalid bank code",
-                details: `The bank code "${recipientData.bank_code}" is not valid for South African banks. Please ask the provider to update their bank details with a valid bank code. They can find valid bank codes in their bank details settings.`,
-                currentStatus: booking.payment.status, // Still ESCROW
-                expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
-                bookingStatus: booking.status
-              }, { status: 400 });
-            }
-            console.log(`✅ Bank code validated successfully`);
-          } catch (validationError) {
-            // Log but don't block - validation is best effort
-            console.warn(`⚠️ Bank code validation warning:`, validationError);
-          }
-        }
+        // Trust saved bank code - Paystack will validate when creating recipient
+        // BEST PRACTICE: Bank code was validated when provider saved it
+        // Paystack's createRecipient will validate and return proper error if invalid
+        console.log(`✅ Trusting saved bank code: ${recipientData.bank_code}`);
+        console.log(`💡 Paystack will validate bank code when creating recipient`);
         
         try {
           let recipientResponse;
