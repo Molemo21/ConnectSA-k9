@@ -78,6 +78,16 @@ export async function POST(request: NextRequest) {
     let paymentUpdated = false;
     let newBookingStatus = booking.status;
     let newPaymentStatus = booking.payment.status;
+    
+    // Track validation details for debugging (visible in browser console)
+    let validationDetails: {
+      ran: boolean;
+      isValid?: boolean;
+      bankCode?: string;
+      duration?: number;
+      warning?: string;
+      error?: string;
+    } = { ran: false };
 
     // Log current state for debugging
     console.log(`🔍 Sync check for booking ${bookingId}:`, {
@@ -122,6 +132,9 @@ export async function POST(request: NextRequest) {
       // First, check if bank code is invalid (immediate check, no time threshold)
       if (booking.provider?.bankCode) {
         console.log(`✅ Provider has bankCode: ${booking.provider.bankCode} - proceeding with validation`);
+        validationDetails.ran = true;
+        validationDetails.bankCode = booking.provider.bankCode;
+        
         try {
           const { PaystackClient } = await import('@/lib/paystack');
           const paystackClient = PaystackClient.getInstance();
@@ -157,6 +170,9 @@ export async function POST(request: NextRequest) {
             );
             const validationDuration = Date.now() - validationStartTime;
             
+            validationDetails.isValid = isValidBankCode;
+            validationDetails.duration = validationDuration;
+            
             console.log(`🔍 [CRITICAL] Bank code validation result:`, { 
               bankCode: booking.provider.bankCode, 
               isValid: isValidBankCode,
@@ -165,6 +181,7 @@ export async function POST(request: NextRequest) {
             });
             
             if (isValidBankCode) {
+              validationDetails.warning = `Bank code validated as VALID but payment is stuck - may be using fallback static config or Paystack API issue`;
               console.log(`⚠️ [WARNING] Bank code "${booking.provider.bankCode}" was validated as VALID, but payment is stuck!`);
               console.log(`   This suggests either:`);
               console.log(`   1. Paystack API returned true (code exists in their list)`);
@@ -248,6 +265,7 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (bankValidationError) {
+          validationDetails.error = bankValidationError instanceof Error ? bankValidationError.message : 'Unknown error';
           console.error('❌ Failed to validate bank code during sync:', {
             error: bankValidationError instanceof Error ? bankValidationError.message : 'Unknown error',
             stack: bankValidationError instanceof Error ? bankValidationError.stack : undefined,
@@ -427,6 +445,7 @@ export async function POST(request: NextRequest) {
         ? "Booking status synchronized successfully" 
         : "Booking and payment statuses are already in sync",
       synced: bookingUpdated || paymentUpdated,
+      validationDetails: validationDetails, // Include validation details for debugging
       booking: {
         id: updatedBooking?.id,
         status: updatedBooking?.status,
