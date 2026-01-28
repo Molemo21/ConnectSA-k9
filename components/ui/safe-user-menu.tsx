@@ -144,7 +144,8 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
           }
         }
         
-        if (bookingId) {
+        // Removed excessive logging - only log in development
+        if (bookingId && process.env.NODE_ENV === 'development') {
           console.log(`🔍 Extracted booking ID from notification: ${bookingId}`, { 
             notificationType: notif.type, 
             message: notif.message.substring(0, 100) 
@@ -221,8 +222,8 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
 
       const actionDetails = getActionDetails(notif.type, notif.userId)
       
-      // Debug logging
-      if (actionDetails.actionUrl.includes('bookingId=')) {
+      // Debug logging - only in development to reduce console noise
+      if (actionDetails.actionUrl.includes('bookingId=') && process.env.NODE_ENV === 'development') {
         console.log(`🔗 Generated action URL for notification: ${actionDetails.actionUrl}`, {
           notificationId: notif.id,
           notificationType: notif.type,

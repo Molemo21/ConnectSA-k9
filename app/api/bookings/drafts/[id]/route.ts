@@ -31,9 +31,19 @@ export async function GET(
       }, { status: 400 })
     }
 
-    const draft = await db.bookingDraft.findUnique({
-      where: { id }
-    })
+    let draft
+    try {
+      draft = await db.bookingDraft.findUnique({
+        where: { id }
+      })
+    } catch (dbError) {
+      // If bookingDraft table doesn't exist or there's a DB error, return 404 gracefully
+      console.warn(`⚠️ Draft lookup failed (table may not exist): ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
+      return NextResponse.json({
+        success: false,
+        error: "Draft not found"
+      }, { status: 404 })
+    }
 
     if (!draft) {
       return NextResponse.json({
