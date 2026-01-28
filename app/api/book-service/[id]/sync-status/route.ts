@@ -136,8 +136,8 @@ export async function POST(request: NextRequest) {
         validationDetails.bankCode = booking.provider.bankCode;
         
         try {
-          const { PaystackClient } = await import('@/lib/paystack');
-          const paystackClient = PaystackClient.getInstance();
+          // Import the paystackClient instance (not the class - it's not exported)
+          const { paystackClient } = await import('@/lib/paystack');
           
           // ALWAYS validate bank codes in sync endpoint - this is critical for detecting stuck payments
           // We don't want to skip validation even in test mode when checking for stuck payments
