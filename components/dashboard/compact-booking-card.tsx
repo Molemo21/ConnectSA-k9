@@ -297,24 +297,50 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
   }
 
   const handleCheckStatus = async () => {
+    console.log(`🔍 Check Status clicked for booking ${booking.id}`, {
+      currentStatus: booking.status,
+      paymentStatus: booking.payment?.status
+    });
+    
     setIsProcessingPayment(true)
     try {
-      const response = await fetch(`/api/book-service/${booking.id}/payment-status`, {
-        method: 'GET',
-      })
+      // Use sync-status endpoint to fix inconsistencies and validate bank codes
+      console.log(`📡 Calling sync-status endpoint for booking ${booking.id}...`);
+      const syncResponse = await fetch(`/api/book-service/${booking.id}/sync-status`, {
+        method: 'POST',
+      });
+
+      console.log(`📥 Sync response status: ${syncResponse.status}`, {
+        ok: syncResponse.ok,
+        statusText: syncResponse.statusText
+      });
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json().catch(() => ({}));
+        console.error(`❌ Sync failed:`, errorData);
+        throw new Error(errorData.error || 'Failed to sync status');
+      }
+
+      const syncData = await syncResponse.json();
+      console.log(`✅ Sync response data:`, {
+        synced: syncData.synced,
+        bookingStatus: syncData.booking?.status,
+        paymentStatus: syncData.payment?.status,
+        issueFound: syncData.issueFound,
+        issueDetails: syncData.issueDetails,
+        message: syncData.message
+      });
       
-      if (response.ok) {
-        const data = await response.json()
-        if (data.status && data.status !== booking.payment?.status) {
-          showToast.success("Payment status updated!")
-          onUpdate()
-        } else {
-          showToast.info("Payment status is up to date")
-        }
+      // Update local state
+      if (syncData.synced || syncData.issueFound) {
+        showToast.success(syncData.message || "Status synchronized and updated successfully!")
+        onUpdate()
+      } else {
+        showToast.info("Status checked - everything is up to date")
       }
     } catch (error) {
-      console.error("Check status error:", error)
-      showToast.error("Failed to check payment status")
+      console.error("❌ Check status error:", error)
+      showToast.error("Unable to check payment status. Please try again.")
     } finally {
       setIsProcessingPayment(false)
     }
