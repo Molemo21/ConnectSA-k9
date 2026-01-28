@@ -251,21 +251,41 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
 
   // Check status and sync booking/payment status if needed
   const handleCheckStatus = async () => {
+    console.log(`🔍 Check Status clicked for booking ${booking.id}`, {
+      currentStatus: booking.status,
+      paymentStatus: booking.payment?.status
+    });
+    
     try {
       // First, sync booking and payment status to fix any inconsistencies
+      console.log(`📡 Calling sync-status endpoint for booking ${booking.id}...`);
       const syncResponse = await fetch(`/api/book-service/${booking.id}/sync-status`, {
         method: 'POST',
       });
 
+      console.log(`📥 Sync response status: ${syncResponse.status}`, {
+        ok: syncResponse.ok,
+        statusText: syncResponse.statusText
+      });
+
       if (!syncResponse.ok) {
         const errorData = await syncResponse.json().catch(() => ({}));
+        console.error(`❌ Sync failed:`, errorData);
         throw new Error(errorData.error || 'Failed to sync status');
       }
 
       const syncData = await syncResponse.json();
+      console.log(`✅ Sync response data:`, {
+        synced: syncData.synced,
+        bookingStatus: syncData.booking?.status,
+        paymentStatus: syncData.payment?.status,
+        issueFound: syncData.issueFound,
+        issueDetails: syncData.issueDetails
+      });
       
       // Update local state immediately with synced data if available
       if (syncData.booking && syncData.payment) {
+        console.log(`🔄 Updating local booking state...`);
         setCurrentBooking(prev => ({
           ...prev,
           status: syncData.booking.status,
@@ -279,17 +299,24 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
       
       // Then refresh the booking data to get the latest status (this will update from server)
       if (onRefresh) {
+        console.log(`🔄 Calling onRefresh to get latest booking data...`);
         await onRefresh(booking.id);
       }
 
       // Show appropriate message based on whether sync was needed
       if (syncData.synced) {
-        showToast.success("Status synchronized and updated successfully!")
+        const message = syncData.issueFound === 'invalid_bank_code' 
+          ? syncData.message || "Payment rolled back due to invalid bank code. Provider needs to update their bank details."
+          : "Status synchronized and updated successfully!";
+        showToast.success(message);
+      } else if (syncData.issueFound) {
+        // Show issue-specific message even if not synced
+        showToast.warning(syncData.message || syncData.issueDetails || "Issue detected. Please check details.");
       } else {
-        showToast.info("Status checked - everything is up to date")
+        showToast.info("Status checked - everything is up to date");
       }
     } catch (error) {
-      console.error('Check status error:', error);
+      console.error('❌ Check status error:', error);
       showToast.error("Unable to check payment status. Please try again.")
     }
   }
