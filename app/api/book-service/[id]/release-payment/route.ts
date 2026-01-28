@@ -558,30 +558,66 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
           bank_code: booking.provider.bankCode!,
         };
         
-      // Bank code mapping: Convert known invalid codes to valid ones
-      // This handles cases where providers saved old/invalid codes before we fixed them
-      const BANK_CODE_MAPPING: Record<string, string> = {
-        '198774': '051', // Standard Bank: old invalid code -> correct code
-        // Add more mappings as needed
-      };
-      
-      const originalBankCode = recipientData.bank_code;
-      const mappedBankCode = BANK_CODE_MAPPING[originalBankCode] || originalBankCode;
-      
-      if (mappedBankCode !== originalBankCode) {
-        console.log(`🔄 Mapping bank code: ${originalBankCode} -> ${mappedBankCode} (Standard Bank fix)`);
-        recipientData.bank_code = mappedBankCode;
+      // Fetch actual bank from Paystack API to get the correct code format
+      // Paystack's listBanks might return codes that differ from what createRecipient accepts
+      // We need to use the exact code from Paystack's API response
+      let finalBankCode = recipientData.bank_code;
+      try {
+        console.log(`🔍 Fetching bank details from Paystack for code: ${finalBankCode}`);
+        const banks = await paystackClient.listBanks({ country: 'ZA' });
         
-        // Update provider's bank code in database to the correct one
-        try {
-          await prisma.provider.update({
-            where: { id: booking.provider.id },
-            data: { bankCode: mappedBankCode }
-          });
-          console.log(`✅ Updated provider's bank code in database: ${originalBankCode} -> ${mappedBankCode}`);
-        } catch (updateError) {
-          console.warn(`⚠️ Could not update provider bank code (non-critical):`, updateError);
+        // Try to find the bank by code first
+        let bank = banks.data?.find(b => b.code === finalBankCode);
+        
+        // If not found by code, try by longcode
+        if (!bank) {
+          bank = banks.data?.find(b => b.longcode === finalBankCode);
+          if (bank) {
+            console.log(`📋 Found bank by longcode, using code: ${bank.code}`);
+            finalBankCode = bank.code;
+          }
         }
+        
+        // If still not found, try to find Standard Bank by name (common case)
+        if (!bank && (finalBankCode === '051' || finalBankCode === '198774')) {
+          bank = banks.data?.find(b => 
+            b.name.toLowerCase().includes('standard') && 
+            b.active && 
+            !b.is_deleted
+          );
+          if (bank) {
+            console.log(`📋 Found Standard Bank in Paystack API:`, {
+              name: bank.name,
+              code: bank.code,
+              longcode: bank.longcode,
+              active: bank.active
+            });
+            finalBankCode = bank.code;
+          }
+        }
+        
+        if (bank) {
+          console.log(`✅ Using Paystack API bank code: ${finalBankCode} (${bank.name})`);
+          recipientData.bank_code = finalBankCode;
+          
+          // Update provider's bank code if it changed
+          if (finalBankCode !== booking.provider.bankCode) {
+            try {
+              await prisma.provider.update({
+                where: { id: booking.provider.id },
+                data: { bankCode: finalBankCode }
+              });
+              console.log(`✅ Updated provider's bank code: ${booking.provider.bankCode} -> ${finalBankCode}`);
+            } catch (updateError) {
+              console.warn(`⚠️ Could not update provider bank code (non-critical):`, updateError);
+            }
+          }
+        } else {
+          console.warn(`⚠️ Bank code ${finalBankCode} not found in Paystack API, using as-is`);
+        }
+      } catch (bankFetchError) {
+        console.warn(`⚠️ Could not fetch banks from Paystack (using saved code):`, bankFetchError);
+        // Continue with saved code - Paystack will validate it
       }
       
       console.log(`✅ Using bank code: ${recipientData.bank_code} for recipient creation`);
@@ -628,10 +664,42 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
           });
         } catch (recipientError) {
           console.error(`❌ Failed to create transfer recipient:`, recipientError);
+          console.error(`❌ Full error details:`, {
+            error: recipientError,
+            message: recipientError instanceof Error ? recipientError.message : String(recipientError),
+            recipientData: {
+              bank_code: recipientData.bank_code,
+              account_number: recipientData.account_number?.substring(0, 4) + '****',
+              name: recipientData.name
+            }
+          });
+          
+          // Try to fetch valid banks from Paystack to suggest correct code
+          let suggestedBankCode: string | null = null;
+          try {
+            const banks = await paystackClient.listBanks({ country: 'ZA' });
+            const bankWithName = banks.data?.find(b => 
+              b.name.toLowerCase().includes('standard') || 
+              b.code === recipientData.bank_code ||
+              b.longcode === recipientData.bank_code
+            );
+            if (bankWithName) {
+              suggestedBankCode = bankWithName.code;
+              console.log(`💡 Found bank in Paystack API:`, {
+                name: bankWithName.name,
+                code: bankWithName.code,
+                longcode: bankWithName.longcode,
+                active: bankWithName.active,
+                is_deleted: bankWithName.is_deleted
+              });
+            }
+          } catch (bankFetchError) {
+            console.warn(`⚠️ Could not fetch banks for suggestion:`, bankFetchError);
+          }
           
           // Parse Paystack error response for better error messages
           let errorMessage = "Unable to create transfer recipient";
-          let errorDetails = "Your payment is safe in escrow. You can try again later or contact support for assistance.";
+          let errorDetails = "Your payment is safe in escrow. Please ask the provider to update their bank details.";
           
           if (recipientError instanceof Error) {
             // Check for structured Paystack error
@@ -640,12 +708,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
                 const errorMatch = recipientError.message.match(/\{.*\}/);
                 if (errorMatch) {
                   const errorData = JSON.parse(errorMatch[0]);
+                  console.error(`📋 Paystack error data:`, errorData);
                   
-                  if (errorData.code === 'invalid_bank_code') {
+                  if (errorData.code === 'invalid_bank_code' || errorData.message?.includes('bank code')) {
                     errorMessage = "Invalid bank code";
-                    errorDetails = `The bank code "${recipientData.bank_code}" is not valid. ` +
-                      `Please ask the provider to update their bank details. ` +
-                      `They can find valid bank codes in their bank details settings. ` +
+                    const suggestion = suggestedBankCode && suggestedBankCode !== recipientData.bank_code
+                      ? ` Try using bank code "${suggestedBankCode}" instead.`
+                      : '';
+                    errorDetails = `The bank code "${recipientData.bank_code}" is not valid for creating transfer recipients. ` +
+                      `Please ask the provider to update their bank details with a valid bank code. ` +
+                      suggestion +
                       (errorData.meta?.nextStep || '');
                   } else if (errorData.message) {
                     errorMessage = `Paystack error: ${errorData.message}`;
@@ -653,13 +725,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
                   }
                 }
               } catch (parseError) {
-                // If parsing fails, use the error message as-is
+                console.error(`❌ Error parsing Paystack response:`, parseError);
                 errorMessage = recipientError.message;
               }
             } else if (recipientError.message.includes("Invalid bank code") || 
                        recipientError.message.includes("invalid_bank_code")) {
               errorMessage = "Invalid bank code";
-              errorDetails = `The bank code "${recipientData.bank_code}" is not valid for South African banks. Please ask the provider to update their bank details with a valid bank code.`;
+              const suggestion = suggestedBankCode && suggestedBankCode !== recipientData.bank_code
+                ? ` Try using bank code "${suggestedBankCode}" instead.`
+                : '';
+              errorDetails = `The bank code "${recipientData.bank_code}" is not valid for South African banks. ` +
+                `Please ask the provider to update their bank details with a valid bank code.` +
+                suggestion;
             } else if (recipientError.message.includes("Invalid account number") || 
                        recipientError.message.includes("invalid_account_number")) {
               errorMessage = "Invalid account number";
