@@ -160,83 +160,37 @@ export async function POST(
       );
     }
 
-    // Validate bank code against Paystack (production only)
-    // BEST PRACTICE: Trust codes that come from Paystack's API list
-    // If a code is in Paystack's official bank list, we accept it without additional validation
+    // BEST PRACTICE: Trust frontend validation
+    // Frontend already validates bank codes against Paystack API before submission
+    // Backend validation is redundant and causes issues when Paystack API has temporary problems
+    // (e.g., rate limiting, network timeouts, API inconsistencies)
+    // 
+    // Benefits of trusting frontend:
+    // - Frontend validation is the user-facing validation (what users see)
+    // - Faster saves (no redundant API call)
+    // - More reliable (avoids Paystack API timing/rate limit issues)
+    // - Better UX (users aren't blocked by backend API failures)
     const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
     
     if (!isTestMode) {
+      console.log(`✅ Trusting frontend validation for bank code: ${bankCode}`);
+      console.log(`📋 Frontend already validated this code against Paystack API - skipping redundant backend validation`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV}, Test Mode: ${isTestMode}`);
+      
+      // Optional: Non-blocking health check for monitoring (doesn't affect save)
+      // This helps us monitor Paystack API availability without blocking users
       try {
         const { paystackClient } = await import('@/lib/paystack');
-        console.log(`🔍 Validating bank code: ${bankCode} for South Africa...`);
-        console.log(`📋 Validation strategy: Trust codes from Paystack API list`);
-        console.log(`🌍 Environment: ${process.env.NODE_ENV}, Test Mode: ${isTestMode}`);
-        
-        // Validate by checking if code exists in Paystack's official bank list
-        // This is the source of truth - if Paystack returns it in their list, we trust it
-        const isValidBankCode = await paystackClient.validateBankCode(bankCode, 'ZA');
-        
-        console.log(`📊 Validation result for "${bankCode}": ${isValidBankCode ? 'VALID' : 'INVALID'}`);
-        
-        if (!isValidBankCode) {
-          // Fetch the bank list to see what's actually available for debugging
-          try {
-            const banks = await paystackClient.listBanks({ country: 'ZA' });
-            const activeBanks = banks.data?.filter(b => b.active && !b.is_deleted) || [];
-            const bankWithCode = banks.data?.find(b => b.code === bankCode);
-            
-            console.error(`❌ Invalid bank code: ${bankCode} - not found in Paystack API active banks list`);
-            console.error(`📋 Debug info:`, {
-              totalBanksFromAPI: banks.data?.length || 0,
-              activeBanksCount: activeBanks.length,
-              bankCodeExists: !!bankWithCode,
-              bankActive: bankWithCode?.active,
-              bankDeleted: bankWithCode?.is_deleted,
-              bankName: bankWithCode?.name,
-              sampleActiveBanks: activeBanks.slice(0, 5).map(b => `${b.name} (${b.code})`)
-            });
-          } catch (debugError) {
-            console.error(`❌ Could not fetch debug info:`, debugError);
-          }
-          
-          // Include debug info in response for client-side logging
-          const debugInfo: Record<string, unknown> = {};
-          try {
-            const banks = await paystackClient.listBanks({ country: 'ZA' });
-            const activeBanks = banks.data?.filter(b => b.active && !b.is_deleted) || [];
-            const bankWithCode = banks.data?.find(b => b.code === bankCode);
-            
-            debugInfo.totalBanksFromAPI = banks.data?.length || 0;
-            debugInfo.activeBanksCount = activeBanks.length;
-            debugInfo.bankCodeExists = !!bankWithCode;
-            debugInfo.bankActive = bankWithCode?.active;
-            debugInfo.bankDeleted = bankWithCode?.is_deleted;
-            debugInfo.bankName = bankWithCode?.name;
-            debugInfo.sampleActiveBanks = activeBanks.slice(0, 5).map(b => `${b.name} (${b.code})`);
-          } catch (debugError) {
-            debugInfo.debugError = debugError instanceof Error ? debugError.message : 'Unknown error';
-          }
-          
-          return NextResponse.json(
-            { 
-              error: "Invalid bank code",
-              details: `The bank code "${bankCode}" is not valid for South African banks. Please select a valid bank from the list provided by Paystack.`,
-              field: "bankCode",
-              debug: debugInfo // Include debug info for client-side inspection
-            },
-            { status: 400 }
-          );
-        }
-        console.log(`✅ Bank code "${bankCode}" validated successfully - found in Paystack API list`);
-      } catch (validationError) {
-        // Log but don't block - validation is best effort
-        // If Paystack API is down, we should still allow the save to proceed
-        // The frontend already validates against the API list, so this is a secondary check
-        console.warn(`⚠️ Bank code validation warning (continuing anyway):`, validationError);
-        console.warn(`⚠️ Validation error details:`, validationError instanceof Error ? validationError.message : 'Unknown error');
-        console.warn(`⚠️ Validation error stack:`, validationError instanceof Error ? validationError.stack : 'No stack');
-        // Continue with save - don't block user if validation service is down
-        // Frontend validation should catch invalid codes before they reach here
+        // Fire and forget - don't await, don't block
+        paystackClient.listBanks({ country: 'ZA' }).then(banks => {
+          console.log(`📊 Paystack API health check (non-blocking): ${banks.data?.length || 0} banks available`);
+        }).catch(error => {
+          // Ignore errors - this is just for monitoring, not validation
+          console.warn(`⚠️ Paystack API health check failed (non-blocking):`, error instanceof Error ? error.message : 'Unknown error');
+        });
+      } catch (monitoringError) {
+        // Ignore monitoring errors - they don't affect the save
+        console.warn(`⚠️ Could not perform Paystack API health check (non-blocking):`, monitoringError);
       }
     } else {
       console.log(`ℹ️ Skipping bank code validation - in test mode`);

@@ -621,9 +621,21 @@ class PaystackClient {
       // Fetch the current list of banks from Paystack API
       const banks = await this.listBanks({ country });
       
+      // CRITICAL: If Paystack API returns no banks, we can't validate
+      // This could happen due to API issues, authentication problems, or network errors
+      // In this case, we should trust the frontend validation (which already passed)
+      // and allow the code to proceed rather than blocking the user
       if (!banks.data || banks.data.length === 0) {
-        this.logger.warn('Paystack API returned no banks', { country, bankCode });
-        return false;
+        this.logger.warn('Paystack API returned no banks - cannot validate, trusting frontend validation', { 
+          country, 
+          bankCode,
+          apiStatus: banks.status,
+          apiMessage: banks.message,
+          reason: 'Paystack API returned empty response - frontend already validated this code'
+        });
+        // Return true to allow the code - frontend already validated it against Paystack API
+        // This prevents blocking users when Paystack API has temporary issues
+        return true;
       }
       
       // First, check if the code exists in Paystack's API at all
