@@ -95,6 +95,83 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Fixed sync: Updated booking ${bookingId} from PENDING_EXECUTION to AWAITING_CONFIRMATION (payment is PROCESSING_RELEASE)`);
     }
 
+    // Fix: Payment is PROCESSING_RELEASE and booking is AWAITING_CONFIRMATION (correct state)
+    // But if payment has been stuck for >5 minutes, verify with Paystack and update accordingly
+    if (booking.payment.status === 'PROCESSING_RELEASE' && booking.status === 'AWAITING_CONFIRMATION') {
+      const paymentUpdatedAt = booking.payment.updatedAt || booking.payment.createdAt;
+      if (paymentUpdatedAt) {
+        const now = new Date();
+        const statusTime = new Date(paymentUpdatedAt);
+        const minutesDiff = (now.getTime() - statusTime.getTime()) / (1000 * 60);
+        
+        // If payment has been stuck for more than 5 minutes, verify with Paystack
+        if (minutesDiff > 5) {
+          console.log(`⚠️ Payment ${booking.payment.id} has been in PROCESSING_RELEASE for ${minutesDiff.toFixed(2)} minutes. Verifying with Paystack...`);
+          
+          try {
+            // Import Paystack client dynamically to avoid circular dependencies
+            const { PaystackClient } = await import('@/lib/paystack');
+            const paystackClient = PaystackClient.getInstance();
+            
+            // Check if payment has a transfer code
+            if (booking.payment.transactionId) {
+              const transferResponse = await paystackClient.verifyTransfer(booking.payment.transactionId);
+              const transferStatus = transferResponse.data.status;
+              
+              console.log(`🔍 Transfer status for ${booking.payment.transactionId}: ${transferStatus}`);
+              
+              if (transferStatus === 'success') {
+                // Transfer completed - update to RELEASED and COMPLETED
+                await db.payment.update({
+                  where: { id: booking.payment.id },
+                  data: {
+                    status: 'RELEASED',
+                    updatedAt: new Date()
+                  }
+                });
+                
+                await db.booking.update({
+                  where: { id: bookingId },
+                  data: {
+                    status: 'COMPLETED',
+                    updatedAt: new Date()
+                  }
+                });
+                
+                paymentUpdated = true;
+                bookingUpdated = true;
+                newPaymentStatus = 'RELEASED';
+                newBookingStatus = 'COMPLETED';
+                console.log(`✅ Transfer verified as successful - Payment ${booking.payment.id} updated to RELEASED, booking to COMPLETED`);
+              } else if (transferStatus === 'failed' || transferStatus === 'reversed') {
+                // Transfer failed - rollback to ESCROW
+                await db.payment.update({
+                  where: { id: booking.payment.id },
+                  data: {
+                    status: 'ESCROW',
+                    updatedAt: new Date()
+                  }
+                });
+                
+                paymentUpdated = true;
+                newPaymentStatus = 'ESCROW';
+                console.log(`⚠️ Transfer verified as failed - Payment ${booking.payment.id} rolled back to ESCROW`);
+              } else {
+                // Transfer still pending
+                console.log(`⏳ Transfer still pending: ${transferStatus}`);
+              }
+            } else {
+              console.log(`⚠️ Payment ${booking.payment.id} has no transfer code. Cannot verify transfer status.`);
+            }
+          } catch (verifyError) {
+            console.error('Failed to verify transfer with Paystack:', verifyError);
+            // Don't fail the sync - just log the error
+            // The user can use the "Retry Release" button to manually verify
+          }
+        }
+      }
+    }
+
     // Fix: Payment is RELEASED but booking is not COMPLETED
     if (booking.payment.status === 'RELEASED' && booking.status !== 'COMPLETED') {
       await db.booking.update({
