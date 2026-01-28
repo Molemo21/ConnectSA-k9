@@ -41,12 +41,12 @@ interface Bank {
 }
 
 // Fallback banks in case API fails (using correct Paystack codes)
+// NOTE: "470010" (Capitec) removed - it's invalid according to Paystack API
 const FALLBACK_BANKS: Bank[] = [
   { name: "Standard Bank", code: "198774" },
   { name: "First National Bank (FNB)", code: "198767" },
   { name: "Nedbank", code: "198770" },
   { name: "ABSA Bank", code: "044" },
-  { name: "Capitec Bank", code: "470010" },
   { name: "Investec Bank", code: "198769" },
   { name: "Bidvest Bank", code: "462005" },
   { name: "Discovery Bank", code: "679000" },

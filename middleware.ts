@@ -105,7 +105,8 @@ const PUBLIC_API_ENDPOINTS = [
   '/api/webhooks/paystack',
   '/api/book-service/discover-providers',
   '/api/book-service/refresh',
-  '/api/services/debug' // Allow debug endpoint
+  '/api/services/debug', // Allow debug endpoint
+  '/api/paystack/banks' // Bank list is public info - needed for forms
 ];
 
 export async function middleware(request: NextRequest) {

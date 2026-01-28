@@ -28,13 +28,15 @@ import { showToast } from "@/lib/toast"
 import Link from "next/link"
 
 // South African Bank Codes (Paystack supported)
+// NOTE: "470010" (Capitec) removed - it's invalid according to Paystack API
+// Providers should fetch banks from Paystack API which will have the correct codes
 const SA_BANKS = [
   { code: '044', name: 'ABSA Bank' },
   { code: '632005', name: 'Access Bank' },
   { code: '431150', name: 'African Bank' },
   { code: '198765', name: 'Bank of Athens' },
   { code: '462005', name: 'Bidvest Bank' },
-  { code: '470010', name: 'Capitec Bank' },
+  // { code: '470010', name: 'Capitec Bank' }, // REMOVED - Invalid code according to Paystack
   { code: '198766', name: 'Citibank' },
   { code: '198767', name: 'FNB Bank' },
   { code: '580105', name: 'Grindrod Bank' },
