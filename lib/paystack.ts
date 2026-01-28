@@ -627,13 +627,34 @@ class PaystackClient {
       
       return isValid;
     } catch (error) {
-      // Don't block operations if validation fails - log warning and proceed
-      this.logger.warn('Could not validate bank code, proceeding anyway', { 
+      // If Paystack API fails, fall back to static config validation
+      // This ensures we still validate even if API is down
+      this.logger.warn('Paystack API validation failed, using fallback static config', { 
         bankCode, 
         country, 
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-      return true; // Don't block if validation fails
+      
+      try {
+        // Import static config as fallback
+        const { getSupportedBanks } = await import('@/lib/config/paystack-config');
+        const staticBanks = getSupportedBanks();
+        const isValidInStatic = staticBanks.some(bank => bank.code === bankCode);
+        
+        this.logger.info('Fallback validation result', {
+          bankCode,
+          isValidInStatic,
+          staticBanksCount: staticBanks.length
+        });
+        
+        // Return false if not in static config - we should be strict about validation
+        // Only return true if bank code exists in our known list
+        return isValidInStatic;
+      } catch (fallbackError) {
+        // If even fallback fails, we should reject to be safe
+        this.logger.error('Both Paystack API and fallback validation failed', fallbackError);
+        return false; // Reject unknown bank codes for safety
+      }
     }
   }
 

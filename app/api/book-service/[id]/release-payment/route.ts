@@ -492,8 +492,20 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
 
     // 7.5. Validate bank code BEFORE moving to PROCESSING_RELEASE (prevents stuck payments)
     const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const shouldValidate = isProduction && process.env.PAYSTACK_TEST_MODE !== 'true';
 
-    if (!isTestMode) {
+    console.log(`🔍 Bank code validation check:`, {
+      isTestMode,
+      isProduction,
+      shouldValidate,
+      nodeEnv: process.env.NODE_ENV,
+      testModeFlag: process.env.PAYSTACK_TEST_MODE
+    });
+
+    // Only skip validation in actual test/development mode
+    // In production, always validate unless explicitly in test mode
+    if (shouldValidate) {
       try {
         console.log(`🔍 Validating bank code: ${booking.provider.bankCode} for South Africa BEFORE release...`);
         const isValidBankCode = await paystackClient.validateBankCode(

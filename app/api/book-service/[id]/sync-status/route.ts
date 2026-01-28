@@ -124,9 +124,20 @@ export async function POST(request: NextRequest) {
           const paystackClient = PaystackClient.getInstance();
           
           const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
-          console.log(`🔍 Bank code validation mode:`, { isTestMode, nodeEnv: process.env.NODE_ENV, testModeFlag: process.env.PAYSTACK_TEST_MODE });
+          const isProduction = process.env.NODE_ENV === 'production';
+          const shouldValidate = isProduction && process.env.PAYSTACK_TEST_MODE !== 'true';
           
-          if (!isTestMode) {
+          console.log(`🔍 Bank code validation mode:`, { 
+            isTestMode, 
+            nodeEnv: process.env.NODE_ENV, 
+            testModeFlag: process.env.PAYSTACK_TEST_MODE,
+            isProduction,
+            shouldValidate
+          });
+          
+          // Only skip validation in actual test/development mode
+          // In production, always validate unless explicitly in test mode
+          if (shouldValidate) {
             console.log(`🔍 Validating bank code "${booking.provider.bankCode}" with Paystack...`);
             const isValidBankCode = await paystackClient.validateBankCode(
               booking.provider.bankCode,
@@ -216,8 +227,13 @@ export async function POST(request: NextRequest) {
             console.log(`⚠️ Skipping bank code validation - running in test mode`);
           }
         } catch (bankValidationError) {
-          console.error('❌ Failed to validate bank code during sync:', bankValidationError);
-          // Continue with transfer verification below
+          console.error('❌ Failed to validate bank code during sync:', {
+            error: bankValidationError instanceof Error ? bankValidationError.message : 'Unknown error',
+            stack: bankValidationError instanceof Error ? bankValidationError.stack : undefined,
+            bankCode: booking.provider.bankCode,
+            providerId: booking.provider.id
+          });
+          // Continue with transfer verification below - but log the failure
         }
       } else {
         console.log(`⚠️ No bank code found for provider ${booking.provider?.id} - cannot validate`);
