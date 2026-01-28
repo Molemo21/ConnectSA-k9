@@ -490,6 +490,46 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       }, { status: 400 });
     }
 
+    // 7.5. Validate bank code BEFORE moving to PROCESSING_RELEASE (prevents stuck payments)
+    const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
+
+    if (!isTestMode) {
+      try {
+        console.log(`🔍 Validating bank code: ${booking.provider.bankCode} for South Africa BEFORE release...`);
+        const isValidBankCode = await paystackClient.validateBankCode(
+          booking.provider.bankCode!,
+          'ZA' // South Africa
+        );
+        
+        if (!isValidBankCode) {
+          console.error(`❌ Invalid bank code detected: ${booking.provider.bankCode}`);
+          // Payment status is still ESCROW - no rollback needed
+          return NextResponse.json({
+            success: false,
+            error: "Invalid bank code",
+            details: `The provider's bank code "${booking.provider.bankCode}" is not valid for South African banks. Please ask them to update their bank details with a valid bank code. The payment remains in escrow and is safe.`,
+            currentStatus: booking.payment.status, // Still ESCROW
+            expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
+            bookingStatus: booking.status,
+            requiresProviderAction: true,
+            actionMessage: "Provider needs to update their bank details in their settings"
+          }, { status: 400 });
+        }
+        console.log(`✅ Bank code validated successfully - safe to proceed with release`);
+      } catch (validationError) {
+        // Don't proceed if validation fails - block the operation
+        console.error(`❌ Bank code validation failed:`, validationError);
+        return NextResponse.json({
+          success: false,
+          error: "Unable to validate bank details",
+          details: "Could not verify the provider's bank details. Please ask them to update their bank information. The payment remains in escrow.",
+          currentStatus: booking.payment.status,
+          bookingStatus: booking.status,
+          requiresProviderAction: true
+        }, { status: 400 });
+      }
+    }
+
     // 8. Generate unique reference for transfer
     const transferReference = paymentProcessor.generateReference("TR");
     console.log(`💰 Generated transfer reference: ${transferReference}`);

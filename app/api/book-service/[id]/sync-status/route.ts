@@ -36,13 +36,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid booking ID" }, { status: 400 });
     }
 
-    // Get booking with payment
+    // Get booking with payment and provider bank details
     const booking = await db.booking.findUnique({
       where: { id: bookingId },
       include: {
         payment: true,
         client: { select: { id: true } },
-        provider: { select: { id: true } }
+        provider: { 
+          select: { 
+            id: true,
+            bankCode: true,
+            accountNumber: true,
+            accountName: true
+          } 
+        }
       }
     });
 
@@ -96,8 +103,102 @@ export async function POST(request: NextRequest) {
     }
 
     // Fix: Payment is PROCESSING_RELEASE and booking is AWAITING_CONFIRMATION (correct state)
-    // But if payment has been stuck for >5 minutes, verify with Paystack and update accordingly
+    // IMMEDIATELY check for invalid bank codes (no time threshold - this is a validation issue)
     if (booking.payment.status === 'PROCESSING_RELEASE' && booking.status === 'AWAITING_CONFIRMATION') {
+      // First, check if bank code is invalid (immediate check, no time threshold)
+      if (booking.provider?.bankCode) {
+        try {
+          const { PaystackClient } = await import('@/lib/paystack');
+          const paystackClient = PaystackClient.getInstance();
+          
+          const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
+          
+          if (!isTestMode) {
+            const isValidBankCode = await paystackClient.validateBankCode(
+              booking.provider.bankCode,
+              'ZA'
+            );
+            
+            if (!isValidBankCode) {
+              console.log(`❌ Invalid bank code detected: ${booking.provider.bankCode} - This is likely why payment is stuck`);
+              
+              // Rollback payment to ESCROW immediately since bank code is invalid
+              await db.payment.update({
+                where: { id: booking.payment.id },
+                data: {
+                  status: 'ESCROW',
+                  updatedAt: new Date()
+                }
+              });
+              
+              paymentUpdated = true;
+              newPaymentStatus = 'ESCROW';
+              console.log(`✅ Rolled back payment ${booking.payment.id} to ESCROW due to invalid bank code`);
+              
+              // Get updated booking data for response
+              const updatedBooking = await db.booking.findUnique({
+                where: { id: bookingId },
+                include: {
+                  payment: true,
+                  service: {
+                    select: {
+                      name: true,
+                      category: true
+                    }
+                  },
+                  provider: {
+                    select: {
+                      id: true,
+                      businessName: true,
+                      user: {
+                        select: {
+                          name: true,
+                          email: true,
+                          phone: true
+                        }
+                      }
+                    }
+                  }
+                }
+              });
+              
+              return NextResponse.json({
+                success: true,
+                message: "Payment rolled back to escrow due to invalid bank code. Provider needs to update their bank details.",
+                synced: true,
+                issueFound: "invalid_bank_code",
+                issueDetails: `The provider's bank code "${booking.provider.bankCode}" is not valid. Payment has been rolled back to escrow.`,
+                booking: {
+                  id: updatedBooking?.id,
+                  status: updatedBooking?.status,
+                  scheduledDate: updatedBooking?.scheduledDate,
+                  totalAmount: updatedBooking?.totalAmount,
+                  address: updatedBooking?.address,
+                  description: updatedBooking?.description,
+                  createdAt: updatedBooking?.createdAt,
+                  updatedAt: updatedBooking?.updatedAt
+                },
+                payment: updatedBooking?.payment ? {
+                  id: updatedBooking.payment.id,
+                  amount: updatedBooking.payment.amount,
+                  status: updatedBooking.payment.status,
+                  paystackRef: updatedBooking.payment.paystackRef,
+                  paidAt: updatedBooking.payment.paidAt,
+                  createdAt: updatedBooking.payment.createdAt,
+                  updatedAt: updatedBooking.payment.updatedAt
+                } : null,
+                provider: updatedBooking?.provider,
+                service: updatedBooking?.service
+              });
+            }
+          }
+        } catch (bankValidationError) {
+          console.error('Failed to validate bank code during sync:', bankValidationError);
+          // Continue with transfer verification below
+        }
+      }
+      
+      // If bank code is valid, check if payment has been stuck for >5 minutes and verify transfer
       const paymentUpdatedAt = booking.payment.updatedAt || booking.payment.createdAt;
       if (paymentUpdatedAt) {
         const now = new Date();
