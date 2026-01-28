@@ -558,11 +558,34 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
           bank_code: booking.provider.bankCode!,
         };
         
-        // Trust saved bank code - Paystack will validate when creating recipient
-        // BEST PRACTICE: Bank code was validated when provider saved it
-        // Paystack's createRecipient will validate and return proper error if invalid
-        console.log(`✅ Trusting saved bank code: ${recipientData.bank_code}`);
-        console.log(`💡 Paystack will validate bank code when creating recipient`);
+      // Bank code mapping: Convert known invalid codes to valid ones
+      // This handles cases where providers saved old/invalid codes before we fixed them
+      const BANK_CODE_MAPPING: Record<string, string> = {
+        '198774': '051', // Standard Bank: old invalid code -> correct code
+        // Add more mappings as needed
+      };
+      
+      const originalBankCode = recipientData.bank_code;
+      const mappedBankCode = BANK_CODE_MAPPING[originalBankCode] || originalBankCode;
+      
+      if (mappedBankCode !== originalBankCode) {
+        console.log(`🔄 Mapping bank code: ${originalBankCode} -> ${mappedBankCode} (Standard Bank fix)`);
+        recipientData.bank_code = mappedBankCode;
+        
+        // Update provider's bank code in database to the correct one
+        try {
+          await prisma.provider.update({
+            where: { id: booking.provider.id },
+            data: { bankCode: mappedBankCode }
+          });
+          console.log(`✅ Updated provider's bank code in database: ${originalBankCode} -> ${mappedBankCode}`);
+        } catch (updateError) {
+          console.warn(`⚠️ Could not update provider bank code (non-critical):`, updateError);
+        }
+      }
+      
+      console.log(`✅ Using bank code: ${recipientData.bank_code} for recipient creation`);
+      console.log(`💡 Paystack will validate bank code when creating recipient`);
         
         try {
           let recipientResponse;
