@@ -328,8 +328,35 @@ export function CompactBookingCard({ booking, onUpdate }: CompactBookingCardProp
         paymentStatus: syncData.payment?.status,
         issueFound: syncData.issueFound,
         issueDetails: syncData.issueDetails,
-        message: syncData.message
+        message: syncData.message,
+        providerBankCode: syncData.provider?.bankCode,
+        hasProvider: !!syncData.provider,
+        fullResponse: syncData // Log full response for debugging
       });
+      
+      // Log provider info if available
+      if (syncData.provider) {
+        console.log(`👤 Provider info from sync:`, {
+          id: syncData.provider.id,
+          businessName: syncData.provider.businessName,
+          hasBankCode: !!syncData.provider.bankCode,
+          bankCode: syncData.provider.bankCode
+        });
+      }
+      
+      // Check if validation should have run but didn't
+      if (syncData.payment?.status === 'PROCESSING_RELEASE' && 
+          syncData.booking?.status === 'AWAITING_CONFIRMATION' &&
+          syncData.provider?.bankCode &&
+          !syncData.issueFound &&
+          !syncData.synced) {
+        console.warn(`⚠️ [WARNING] Payment is PROCESSING_RELEASE with bankCode but no issue found!`, {
+          bankCode: syncData.provider.bankCode,
+          paymentStatus: syncData.payment.status,
+          bookingStatus: syncData.booking.status,
+          message: 'Validation may not have run or bank code was validated as valid'
+        });
+      }
       
       // Update local state
       if (syncData.synced || syncData.issueFound) {
