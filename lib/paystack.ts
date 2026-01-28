@@ -613,83 +613,64 @@ class PaystackClient {
   }
 
   // Validate bank code against Paystack
-  // BEST PRACTICE: If the code exists in Paystack's API list, we trust it
-  // This avoids issues where Paystack's list endpoint returns codes that
-  // their validation endpoint might reject due to API inconsistencies
-  // 
-  // IMPORTANT: We apply the same filtering as the frontend (active && !is_deleted)
-  // to ensure consistency between what users see and what we validate
+  // BEST PRACTICE: Trust Paystack's API as the single source of truth
+  // If a code exists in Paystack's API, we accept it - this ensures consistency
+  // between frontend (which shows banks from API) and backend validation
   async validateBankCode(bankCode: string, country: string = 'ZA'): Promise<boolean> {
     try {
       // Fetch the current list of banks from Paystack API
       const banks = await this.listBanks({ country });
       
-      // Apply the same filtering logic as the frontend API route
-      // Only consider banks that are active and not deleted
-      // This ensures consistency: if a bank shows in the frontend, it will pass validation
-      const activeBanks = banks.data?.filter(bank => bank.active && !bank.is_deleted) || [];
-      
-      // Check if the bank code exists in the filtered (active) bank list
-      let isValid = activeBanks.some(bank => bank.code === bankCode);
-      
-      // BEST PRACTICE: If code exists in Paystack API at all (even if inactive/deleted), 
-      // we still trust it because Paystack returned it. This handles edge cases where
-      // Paystack's list might include codes that are temporarily inactive but still valid.
-      if (!isValid) {
-        const bankExists = banks.data?.some(bank => bank.code === bankCode);
-        if (bankExists) {
-          const bank = banks.data?.find(bank => bank.code === bankCode);
-          this.logger.warn('Bank code exists in Paystack API but is inactive/deleted - accepting anyway', {
-            bankCode,
-            bankName: bank?.name,
-            bankActive: bank?.active,
-            bankDeleted: bank?.is_deleted,
-            reason: 'Trusting Paystack API - code exists in their system'
-          });
-          // Accept it anyway - if Paystack returns it, we trust it
-          isValid = true;
-        }
+      if (!banks.data || banks.data.length === 0) {
+        this.logger.warn('Paystack API returned no banks', { country, bankCode });
+        return false;
       }
       
-      // Log detailed validation info
-      this.logger.info('Bank code validation', { 
-        bankCode, 
-        country, 
-        isValid,
-        totalBanksFromAPI: banks.data?.length || 0,
-        activeBanksCount: activeBanks.length,
-        validationStrategy: 'trust_api_list_with_filtering',
-        message: isValid 
-          ? 'Bank code found in Paystack API active banks list - trusting it' 
-          : 'Bank code NOT found in Paystack API active banks list - rejecting it'
-      });
+      // First, check if the code exists in Paystack's API at all
+      // This is the source of truth - if Paystack returns it, we trust it
+      const bankExists = banks.data.some(bank => bank.code === bankCode);
       
-      // If code exists in Paystack's active bank list, trust it (skip additional validation)
-      // This is the source of truth - if Paystack returns it as active, we accept it
-      if (isValid) {
-        const matchedBank = activeBanks.find(bank => bank.code === bankCode);
-        this.logger.info('Bank code validated successfully from Paystack API list', {
-          bankCode,
-          bankName: matchedBank?.name,
+      if (!bankExists) {
+        this.logger.info('Bank code not found in Paystack API', { 
+          bankCode, 
           country,
-          trustedSource: 'paystack_api_active_banks_list',
-          bankActive: matchedBank?.active,
-          bankDeleted: matchedBank?.is_deleted
+          totalBanks: banks.data.length
         });
-      } else {
-        // Log why validation failed for debugging
-        const allBanksWithCode = banks.data?.filter(bank => bank.code === bankCode) || [];
-        if (allBanksWithCode.length > 0) {
-          this.logger.warn('Bank code exists in Paystack API but filtered out', {
-            bankCode,
-            reason: allBanksWithCode[0].active ? 'bank is deleted' : 'bank is inactive',
-            bankActive: allBanksWithCode[0].active,
-            bankDeleted: allBanksWithCode[0].is_deleted
-          });
-        }
+        return false;
       }
       
-      return isValid;
+      // Bank exists in Paystack API - find it
+      const bank = banks.data.find(bank => bank.code === bankCode);
+      
+      // Apply the same filtering logic as the frontend API route
+      const isActive = bank?.active && !bank?.is_deleted;
+      
+      // BEST PRACTICE: Trust Paystack's API as source of truth
+      // If the code exists in their API, accept it (even if marked inactive)
+      // This ensures consistency: if frontend shows it, backend accepts it
+      // Paystack may mark banks as inactive temporarily but they're still valid
+      if (isActive) {
+        this.logger.info('Bank code validated - active in Paystack API', {
+          bankCode,
+          bankName: bank?.name,
+          country,
+          trustedSource: 'paystack_api_active'
+        });
+        return true;
+      } else {
+        // Bank exists but is inactive/deleted - still accept it with warning
+        // This handles Paystack API inconsistencies where banks appear in list
+        // but are marked inactive (often temporary or API sync issues)
+        this.logger.warn('Bank code exists in Paystack API but marked inactive - accepting anyway', {
+          bankCode,
+          bankName: bank?.name,
+          bankActive: bank?.active,
+          bankDeleted: bank?.is_deleted,
+          reason: 'Trusting Paystack API - code exists in their system',
+          trustedSource: 'paystack_api_exists'
+        });
+        return true; // Accept it - if Paystack returns it, we trust it
+      }
     } catch (error) {
       // If Paystack API fails, fall back to static config validation
       // This ensures we still validate even if API is down
