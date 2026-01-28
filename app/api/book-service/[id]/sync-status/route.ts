@@ -142,16 +142,35 @@ export async function POST(request: NextRequest) {
           // Always validate in sync endpoint - we need to detect invalid codes even in test mode
           // This is critical for recovering stuck payments
           {
-            console.log(`🔍 Validating bank code "${booking.provider.bankCode}" with Paystack...`);
+            console.log(`🔍 [CRITICAL] Validating bank code "${booking.provider.bankCode}" with Paystack...`);
+            console.log(`   Environment:`, {
+              nodeEnv: process.env.NODE_ENV,
+              paystackTestMode: process.env.PAYSTACK_TEST_MODE,
+              isTestMode,
+              isProduction
+            });
+            
+            const validationStartTime = Date.now();
             const isValidBankCode = await paystackClient.validateBankCode(
               booking.provider.bankCode,
               'ZA'
             );
+            const validationDuration = Date.now() - validationStartTime;
             
-            console.log(`🔍 Bank code validation result:`, { 
+            console.log(`🔍 [CRITICAL] Bank code validation result:`, { 
               bankCode: booking.provider.bankCode, 
-              isValid: isValidBankCode 
+              isValid: isValidBankCode,
+              validationDuration: `${validationDuration}ms`,
+              timestamp: new Date().toISOString()
             });
+            
+            if (isValidBankCode) {
+              console.log(`⚠️ [WARNING] Bank code "${booking.provider.bankCode}" was validated as VALID, but payment is stuck!`);
+              console.log(`   This suggests either:`);
+              console.log(`   1. Paystack API returned true (code exists in their list)`);
+              console.log(`   2. Paystack API failed and fallback static config has this code`);
+              console.log(`   3. There's another issue causing the payment to be stuck`);
+            }
             
             if (!isValidBankCode) {
               console.log(`❌ Invalid bank code detected: ${booking.provider.bankCode} - This is likely why payment is stuck`);
