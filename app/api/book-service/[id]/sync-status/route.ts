@@ -105,6 +105,13 @@ export async function POST(request: NextRequest) {
     // Fix: Payment is PROCESSING_RELEASE and booking is AWAITING_CONFIRMATION (correct state)
     // IMMEDIATELY check for invalid bank codes (no time threshold - this is a validation issue)
     if (booking.payment.status === 'PROCESSING_RELEASE' && booking.status === 'AWAITING_CONFIRMATION') {
+      console.log(`🔍 Checking for invalid bank code for booking ${bookingId}...`, {
+        hasProvider: !!booking.provider,
+        hasBankCode: !!booking.provider?.bankCode,
+        bankCode: booking.provider?.bankCode,
+        providerId: booking.provider?.id
+      });
+      
       // First, check if bank code is invalid (immediate check, no time threshold)
       if (booking.provider?.bankCode) {
         try {
@@ -112,12 +119,19 @@ export async function POST(request: NextRequest) {
           const paystackClient = PaystackClient.getInstance();
           
           const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
+          console.log(`🔍 Bank code validation mode:`, { isTestMode, nodeEnv: process.env.NODE_ENV, testModeFlag: process.env.PAYSTACK_TEST_MODE });
           
           if (!isTestMode) {
+            console.log(`🔍 Validating bank code "${booking.provider.bankCode}" with Paystack...`);
             const isValidBankCode = await paystackClient.validateBankCode(
               booking.provider.bankCode,
               'ZA'
             );
+            
+            console.log(`🔍 Bank code validation result:`, { 
+              bankCode: booking.provider.bankCode, 
+              isValid: isValidBankCode 
+            });
             
             if (!isValidBankCode) {
               console.log(`❌ Invalid bank code detected: ${booking.provider.bankCode} - This is likely why payment is stuck`);
@@ -190,12 +204,18 @@ export async function POST(request: NextRequest) {
                 provider: updatedBooking?.provider,
                 service: updatedBooking?.service
               });
+            } else {
+              console.log(`✅ Bank code "${booking.provider.bankCode}" is valid - continuing with transfer verification`);
             }
+          } else {
+            console.log(`⚠️ Skipping bank code validation - running in test mode`);
           }
         } catch (bankValidationError) {
-          console.error('Failed to validate bank code during sync:', bankValidationError);
+          console.error('❌ Failed to validate bank code during sync:', bankValidationError);
           // Continue with transfer verification below
         }
+      } else {
+        console.log(`⚠️ No bank code found for provider ${booking.provider?.id} - cannot validate`);
       }
       
       // If bank code is valid, check if payment has been stuck for >5 minutes and verify transfer
