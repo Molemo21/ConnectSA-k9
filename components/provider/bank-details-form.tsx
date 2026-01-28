@@ -280,6 +280,14 @@ const BankDetailsFormComponent = function BankDetailsForm({
         throw new Error('Provider information not found')
       }
 
+      console.log('📤 Sending bank details to server:', {
+        bankCode: bankDetails.bankCode,
+        bankName: bankDetails.bankName,
+        accountNumber: '***' + bankDetails.accountNumber.slice(-4),
+        accountName: bankDetails.accountName,
+        providerId: userData.user.provider.id
+      });
+
       const response = await fetch(`/api/provider/${userData.user.provider.id}/bank-details`, {
         method: 'POST',
         headers: {
@@ -287,6 +295,8 @@ const BankDetailsFormComponent = function BankDetailsForm({
         },
         body: JSON.stringify(bankDetails),
       })
+
+      console.log('📥 Server response status:', response.status, response.statusText);
 
       if (response.ok) {
         const data = await response.json()
@@ -325,6 +335,15 @@ const BankDetailsFormComponent = function BankDetailsForm({
         const errorData = await response.json()
         const errorMessage = errorData.error || 'Failed to save bank details'
         const errorDetails = errorData.details || ''
+        
+        // Log full error response for debugging
+        console.error('❌ Server error response:', {
+          status: response.status,
+          error: errorMessage,
+          details: errorDetails,
+          field: errorData.field,
+          fullResponse: errorData
+        });
         
         // Set field-specific error if provided
         if (errorData.field) {

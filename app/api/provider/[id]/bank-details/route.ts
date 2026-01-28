@@ -170,18 +170,59 @@ export async function POST(
         const { paystackClient } = await import('@/lib/paystack');
         console.log(`🔍 Validating bank code: ${bankCode} for South Africa...`);
         console.log(`📋 Validation strategy: Trust codes from Paystack API list`);
+        console.log(`🌍 Environment: ${process.env.NODE_ENV}, Test Mode: ${isTestMode}`);
         
         // Validate by checking if code exists in Paystack's official bank list
         // This is the source of truth - if Paystack returns it in their list, we trust it
         const isValidBankCode = await paystackClient.validateBankCode(bankCode, 'ZA');
         
+        console.log(`📊 Validation result for "${bankCode}": ${isValidBankCode ? 'VALID' : 'INVALID'}`);
+        
         if (!isValidBankCode) {
-          console.error(`❌ Invalid bank code: ${bankCode} - not found in Paystack API list`);
+          // Fetch the bank list to see what's actually available for debugging
+          try {
+            const banks = await paystackClient.listBanks({ country: 'ZA' });
+            const activeBanks = banks.data?.filter(b => b.active && !b.is_deleted) || [];
+            const bankWithCode = banks.data?.find(b => b.code === bankCode);
+            
+            console.error(`❌ Invalid bank code: ${bankCode} - not found in Paystack API active banks list`);
+            console.error(`📋 Debug info:`, {
+              totalBanksFromAPI: banks.data?.length || 0,
+              activeBanksCount: activeBanks.length,
+              bankCodeExists: !!bankWithCode,
+              bankActive: bankWithCode?.active,
+              bankDeleted: bankWithCode?.is_deleted,
+              bankName: bankWithCode?.name,
+              sampleActiveBanks: activeBanks.slice(0, 5).map(b => `${b.name} (${b.code})`)
+            });
+          } catch (debugError) {
+            console.error(`❌ Could not fetch debug info:`, debugError);
+          }
+          
+          // Include debug info in response for client-side logging
+          const debugInfo: Record<string, unknown> = {};
+          try {
+            const banks = await paystackClient.listBanks({ country: 'ZA' });
+            const activeBanks = banks.data?.filter(b => b.active && !b.is_deleted) || [];
+            const bankWithCode = banks.data?.find(b => b.code === bankCode);
+            
+            debugInfo.totalBanksFromAPI = banks.data?.length || 0;
+            debugInfo.activeBanksCount = activeBanks.length;
+            debugInfo.bankCodeExists = !!bankWithCode;
+            debugInfo.bankActive = bankWithCode?.active;
+            debugInfo.bankDeleted = bankWithCode?.is_deleted;
+            debugInfo.bankName = bankWithCode?.name;
+            debugInfo.sampleActiveBanks = activeBanks.slice(0, 5).map(b => `${b.name} (${b.code})`);
+          } catch (debugError) {
+            debugInfo.debugError = debugError instanceof Error ? debugError.message : 'Unknown error';
+          }
+          
           return NextResponse.json(
             { 
               error: "Invalid bank code",
               details: `The bank code "${bankCode}" is not valid for South African banks. Please select a valid bank from the list provided by Paystack.`,
-              field: "bankCode"
+              field: "bankCode",
+              debug: debugInfo // Include debug info for client-side inspection
             },
             { status: 400 }
           );
@@ -193,9 +234,12 @@ export async function POST(
         // The frontend already validates against the API list, so this is a secondary check
         console.warn(`⚠️ Bank code validation warning (continuing anyway):`, validationError);
         console.warn(`⚠️ Validation error details:`, validationError instanceof Error ? validationError.message : 'Unknown error');
+        console.warn(`⚠️ Validation error stack:`, validationError instanceof Error ? validationError.stack : 'No stack');
         // Continue with save - don't block user if validation service is down
         // Frontend validation should catch invalid codes before they reach here
       }
+    } else {
+      console.log(`ℹ️ Skipping bank code validation - in test mode`);
     }
 
     // Update provider with bank details
