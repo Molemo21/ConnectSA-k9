@@ -83,40 +83,56 @@ export async function GET(request: NextRequest) {
     }
     
     // If Paystack returned no banks, use fallback static list (without invalid codes)
+    // This ensures providers always have banks to select from
     if (formattedBanks.length === 0 && country === 'ZA') {
       console.warn(`⚠️ Paystack returned no banks for South Africa, using fallback static list`);
-      const { getSupportedBanks } = await import('@/lib/config/paystack-config');
-      const fallbackBanks = getSupportedBanks();
-      
-      // Filter out invalid codes (like "470010")
-      const validFallbackBanks = fallbackBanks
-        .filter(bank => bank.code !== '470010') // Remove invalid Capitec code
-        .map(bank => ({
-          code: bank.code,
-          name: bank.name,
-          slug: bank.code.toLowerCase(),
-          type: 'nuban',
-          country: 'ZA',
-          currency: 'ZAR'
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-      
-      console.log(`📋 Using ${validFallbackBanks.length} banks from fallback static list`);
-      
-      return NextResponse.json({
-        success: true,
-        data: validFallbackBanks,
-        count: validFallbackBanks.length,
-        country,
-        currency,
-        source: 'fallback', // Indicate this is from fallback, not Paystack API
-        debug: {
-          rawCount: banks.data.length,
-          filteredCount: formattedBanks.length,
-          fallbackCount: validFallbackBanks.length,
-          message: 'Paystack API returned no banks, using fallback static list'
-        }
-      });
+      try {
+        const { getSupportedBanks } = await import('@/lib/config/paystack-config');
+        const fallbackBanks = getSupportedBanks();
+        
+        // Filter out invalid codes (like "470010" which Paystack rejects)
+        const validFallbackBanks = fallbackBanks
+          .filter(bank => bank.code !== '470010') // Remove invalid Capitec code
+          .map(bank => ({
+            code: bank.code,
+            name: bank.name,
+            slug: bank.code.toLowerCase(),
+            type: 'nuban',
+            country: 'ZA',
+            currency: 'ZAR'
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        
+        console.log(`📋 Using ${validFallbackBanks.length} banks from fallback static list (Paystack API returned empty)`);
+        
+        return NextResponse.json({
+          success: true,
+          data: validFallbackBanks,
+          count: validFallbackBanks.length,
+          country,
+          currency,
+          source: 'fallback', // Indicate this is from fallback, not Paystack API
+          debug: {
+            rawCount: banks.data.length,
+            filteredCount: formattedBanks.length,
+            fallbackCount: validFallbackBanks.length,
+            message: 'Paystack API returned no banks, using fallback static list (invalid codes filtered out)'
+          }
+        });
+      } catch (fallbackError) {
+        console.error('❌ Failed to load fallback banks:', fallbackError);
+        // Return empty but with error info
+        return NextResponse.json({
+          success: false,
+          error: 'Paystack API returned no banks and fallback failed',
+          data: [],
+          debug: {
+            rawCount: banks.data.length,
+            filteredCount: formattedBanks.length,
+            fallbackError: fallbackError instanceof Error ? fallbackError.message : 'Unknown error'
+          }
+        }, { status: 500 });
+      }
     }
     
     return NextResponse.json({
