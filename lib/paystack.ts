@@ -635,20 +635,24 @@ class PaystackClient {
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       
+      // IMPORTANT: If Paystack API fails, we should be conservative and reject the code
+      // The static config may contain outdated or incorrect codes (like "470010" which Paystack rejects)
+      // Only use static config as a last resort, and log a warning
       try {
-        // Import static config as fallback
+        // Import static config as fallback ONLY if Paystack API is completely unavailable
         const { getSupportedBanks } = await import('@/lib/config/paystack-config');
         const staticBanks = getSupportedBanks();
         const isValidInStatic = staticBanks.some(bank => bank.code === bankCode);
         
-        this.logger.info('Fallback validation result', {
+        this.logger.warn('Using fallback static config validation (Paystack API unavailable)', {
           bankCode,
           isValidInStatic,
-          staticBanksCount: staticBanks.length
+          staticBanksCount: staticBanks.length,
+          warning: 'Static config may contain outdated codes. Paystack API validation is preferred.'
         });
         
-        // Return false if not in static config - we should be strict about validation
-        // Only return true if bank code exists in our known list
+        // Be conservative: If Paystack API is down, we should still validate
+        // But note that static config might have wrong codes, so this is not ideal
         return isValidInStatic;
       } catch (fallbackError) {
         // If even fallback fails, we should reject to be safe

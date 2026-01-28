@@ -123,21 +123,22 @@ export async function POST(request: NextRequest) {
           const { PaystackClient } = await import('@/lib/paystack');
           const paystackClient = PaystackClient.getInstance();
           
+          // ALWAYS validate bank codes in sync endpoint - this is critical for detecting stuck payments
+          // We don't want to skip validation even in test mode when checking for stuck payments
           const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
           const isProduction = process.env.NODE_ENV === 'production';
-          const shouldValidate = isProduction && process.env.PAYSTACK_TEST_MODE !== 'true';
           
           console.log(`🔍 Bank code validation mode:`, { 
             isTestMode, 
             nodeEnv: process.env.NODE_ENV, 
             testModeFlag: process.env.PAYSTACK_TEST_MODE,
             isProduction,
-            shouldValidate
+            willValidate: true // Always validate in sync endpoint
           });
           
-          // Only skip validation in actual test/development mode
-          // In production, always validate unless explicitly in test mode
-          if (shouldValidate) {
+          // Always validate in sync endpoint - we need to detect invalid codes even in test mode
+          // This is critical for recovering stuck payments
+          {
             console.log(`🔍 Validating bank code "${booking.provider.bankCode}" with Paystack...`);
             const isValidBankCode = await paystackClient.validateBankCode(
               booking.provider.bankCode,
@@ -223,8 +224,6 @@ export async function POST(request: NextRequest) {
             } else {
               console.log(`✅ Bank code "${booking.provider.bankCode}" is valid - continuing with transfer verification`);
             }
-          } else {
-            console.log(`⚠️ Skipping bank code validation - running in test mode`);
           }
         } catch (bankValidationError) {
           console.error('❌ Failed to validate bank code during sync:', {
