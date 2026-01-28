@@ -280,8 +280,20 @@ export function EnhancedBookingCard({ booking, onStatusChange, onRefresh }: Enha
         bookingStatus: syncData.booking?.status,
         paymentStatus: syncData.payment?.status,
         issueFound: syncData.issueFound,
-        issueDetails: syncData.issueDetails
+        issueDetails: syncData.issueDetails,
+        message: syncData.message,
+        fullResponse: syncData // Log full response for debugging
       });
+      
+      // Log provider info if available
+      if (syncData.provider) {
+        console.log(`👤 Provider info:`, {
+          id: syncData.provider.id,
+          businessName: syncData.provider.businessName,
+          hasBankCode: !!syncData.provider.bankCode,
+          bankCode: syncData.provider.bankCode
+        });
+      }
       
       // Update local state immediately with synced data if available
       if (syncData.booking && syncData.payment) {

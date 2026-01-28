@@ -83,7 +83,12 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Sync check for booking ${bookingId}:`, {
       bookingStatus: booking.status,
       paymentStatus: booking.payment.status,
-      paymentUpdatedAt: booking.payment.updatedAt
+      paymentUpdatedAt: booking.payment.updatedAt,
+      hasProvider: !!booking.provider,
+      providerId: booking.provider?.id,
+      providerBankCode: booking.provider?.bankCode,
+      nodeEnv: process.env.NODE_ENV,
+      paystackTestMode: process.env.PAYSTACK_TEST_MODE
     });
 
     // Fix: Payment is PROCESSING_RELEASE but booking is PENDING_EXECUTION
