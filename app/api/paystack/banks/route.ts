@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('❌ Failed to fetch banks:`, error);
+    console.error('❌ Failed to fetch banks:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch banks',
