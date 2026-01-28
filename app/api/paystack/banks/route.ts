@@ -21,12 +21,35 @@ export async function GET(request: NextRequest) {
     
     const banks = await paystackClient.listBanks({ country, currency });
     
+    // Add detailed logging
+    console.log(`📊 Paystack API response:`, {
+      status: banks.status,
+      message: banks.message,
+      rawDataLength: banks.data?.length || 0,
+      hasData: !!banks.data
+    });
+    
     if (!banks.status || !banks.data) {
+      console.error(`❌ Paystack API error:`, {
+        status: banks.status,
+        message: banks.message,
+        data: banks.data
+      });
       return NextResponse.json({
         success: false,
         error: banks.message || 'Failed to fetch banks',
-        data: []
+        data: [],
+        debug: {
+          paystackStatus: banks.status,
+          paystackMessage: banks.message
+        }
       }, { status: 500 });
+    }
+    
+    // Log raw data before filtering
+    console.log(`📋 Raw banks from Paystack (before filtering):`, banks.data.length);
+    if (banks.data.length > 0) {
+      console.log(`   Sample bank:`, banks.data[0]);
     }
     
     // Format banks for frontend use
@@ -42,21 +65,38 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
     
-    console.log(`✅ Fetched ${formattedBanks.length} active banks for ${country}`);
+    console.log(`✅ After filtering: ${formattedBanks.length} active banks`);
+    
+    // If filtering removed all banks, log why
+    if (banks.data.length > 0 && formattedBanks.length === 0) {
+      console.warn(`⚠️ All banks were filtered out!`, {
+        totalBanks: banks.data.length,
+        inactiveBanks: banks.data.filter(b => !b.active).length,
+        deletedBanks: banks.data.filter(b => b.is_deleted).length
+      });
+    }
     
     return NextResponse.json({
       success: true,
       data: formattedBanks,
       count: formattedBanks.length,
       country,
-      currency
+      currency,
+      debug: {
+        rawCount: banks.data.length,
+        filteredCount: formattedBanks.length
+      }
     });
   } catch (error) {
-    console.error('❌ Failed to fetch banks:', error);
+    console.error('❌ Failed to fetch banks:`, error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch banks',
-      data: []
+      data: [],
+      debug: {
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      }
     }, { status: 500 });
   }
 }
