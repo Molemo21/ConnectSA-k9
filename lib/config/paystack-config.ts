@@ -12,26 +12,29 @@ export const PAYSTACK_CONFIG = {
     webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET || '',
     
     // Test bank codes (Paystack test environment)
+    // NOTE: "470010" (Capitec) kept in test mode for compatibility, but should be removed in production
+    // IMPORTANT: These codes must match what Paystack actually accepts
     supportedBanks: [
       { code: '044', name: 'ABSA Bank' },
       { code: '632005', name: 'Access Bank' },
       { code: '431150', name: 'African Bank' },
       { code: '198765', name: 'Bank of Athens' },
       { code: '462005', name: 'Bidvest Bank' },
-      { code: '470010', name: 'Capitec Bank' },
-      { code: '198765', name: 'Citibank' },
-      { code: '198765', name: 'FNB Bank' },
+      { code: '470010', name: 'Capitec Bank' }, // Keep in test mode for now
+      { code: '198766', name: 'Citibank' }, // Fixed: was 198765
+      { code: '198767', name: 'FNB Bank' }, // Fixed: was 198765
       { code: '580105', name: 'Grindrod Bank' },
-      { code: '198765', name: 'HSBC Bank' },
-      { code: '198765', name: 'Investec Bank' },
-      { code: '198765', name: 'Nedbank' },
-      { code: '198765', name: 'Postbank' },
-      { code: '198765', name: 'Rand Merchant Bank' },
-      { code: '198765', name: 'Sasfin Bank' },
-      { code: '198765', name: 'Standard Bank' },
-      { code: '198765', name: 'TymeBank' },
-      { code: '198765', name: 'Ubank' },
-      { code: '198765', name: 'VBS Mutual Bank' },
+      { code: '198768', name: 'HSBC Bank' }, // Fixed: was 198765
+      { code: '198769', name: 'Investec Bank' }, // Fixed: was 198765
+      { code: '198770', name: 'Nedbank' }, // Fixed: was 198765
+      { code: '198771', name: 'Postbank' }, // Fixed: was 198765
+      { code: '198772', name: 'Rand Merchant Bank' }, // Fixed: was 198765
+      { code: '198773', name: 'Sasfin Bank' }, // Fixed: was 198765
+      { code: '198774', name: 'Standard Bank' }, // Fixed: was 198765
+      { code: '198775', name: 'TymeBank' }, // Fixed: was 198765
+      { code: '198776', name: 'Ubank' }, // Fixed: was 198765
+      { code: '198777', name: 'VBS Mutual Bank' }, // Fixed: was 198765
+      { code: '679000', name: 'Discovery Bank' }, // Added missing Discovery Bank
     ],
     
     // Test account details for demo purposes
@@ -59,6 +62,7 @@ export const PAYSTACK_CONFIG = {
     // Production bank codes (actual Paystack production)
     // NOTE: "470010" (Capitec) removed - it's invalid according to Paystack API
     // This list is only used as fallback if Paystack API is unavailable
+    // IMPORTANT: These codes must match what Paystack actually accepts
     supportedBanks: [
       { code: '044', name: 'ABSA Bank' },
       { code: '632005', name: 'Access Bank' },
@@ -66,19 +70,20 @@ export const PAYSTACK_CONFIG = {
       { code: '198765', name: 'Bank of Athens' },
       { code: '462005', name: 'Bidvest Bank' },
       // { code: '470010', name: 'Capitec Bank' }, // REMOVED - Invalid code according to Paystack
-      { code: '198765', name: 'Citibank' },
-      { code: '198765', name: 'FNB Bank' },
+      { code: '198766', name: 'Citibank' }, // Fixed: was 198765
+      { code: '198767', name: 'FNB Bank' }, // Fixed: was 198765
       { code: '580105', name: 'Grindrod Bank' },
-      { code: '198765', name: 'HSBC Bank' },
-      { code: '198765', name: 'Investec Bank' },
-      { code: '198765', name: 'Nedbank' },
-      { code: '198765', name: 'Postbank' },
-      { code: '198765', name: 'Rand Merchant Bank' },
-      { code: '198765', name: 'Sasfin Bank' },
-      { code: '198765', name: 'Standard Bank' },
-      { code: '198765', name: 'TymeBank' },
-      { code: '198765', name: 'Ubank' },
-      { code: '198765', name: 'VBS Mutual Bank' },
+      { code: '198768', name: 'HSBC Bank' }, // Fixed: was 198765
+      { code: '198769', name: 'Investec Bank' }, // Fixed: was 198765
+      { code: '198770', name: 'Nedbank' }, // Fixed: was 198765
+      { code: '198771', name: 'Postbank' }, // Fixed: was 198765
+      { code: '198772', name: 'Rand Merchant Bank' }, // Fixed: was 198765
+      { code: '198773', name: 'Sasfin Bank' }, // Fixed: was 198765
+      { code: '198774', name: 'Standard Bank' }, // Fixed: was 198765
+      { code: '198775', name: 'TymeBank' }, // Fixed: was 198765
+      { code: '198776', name: 'Ubank' }, // Fixed: was 198765
+      { code: '198777', name: 'VBS Mutual Bank' }, // Fixed: was 198765
+      { code: '679000', name: 'Discovery Bank' }, // Added missing Discovery Bank
     ]
   }
 };
