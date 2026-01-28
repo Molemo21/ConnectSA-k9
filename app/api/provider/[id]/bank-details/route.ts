@@ -161,31 +161,40 @@ export async function POST(
     }
 
     // Validate bank code against Paystack (production only)
+    // BEST PRACTICE: Trust codes that come from Paystack's API list
+    // If a code is in Paystack's official bank list, we accept it without additional validation
     const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
     
     if (!isTestMode) {
       try {
         const { paystackClient } = await import('@/lib/paystack');
         console.log(`🔍 Validating bank code: ${bankCode} for South Africa...`);
+        console.log(`📋 Validation strategy: Trust codes from Paystack API list`);
         
+        // Validate by checking if code exists in Paystack's official bank list
+        // This is the source of truth - if Paystack returns it in their list, we trust it
         const isValidBankCode = await paystackClient.validateBankCode(bankCode, 'ZA');
         
         if (!isValidBankCode) {
-          console.error(`❌ Invalid bank code: ${bankCode}`);
+          console.error(`❌ Invalid bank code: ${bankCode} - not found in Paystack API list`);
           return NextResponse.json(
             { 
               error: "Invalid bank code",
-              details: `The bank code "${bankCode}" is not valid for South African banks. Please select a valid bank from the list.`,
+              details: `The bank code "${bankCode}" is not valid for South African banks. Please select a valid bank from the list provided by Paystack.`,
               field: "bankCode"
             },
             { status: 400 }
           );
         }
-        console.log(`✅ Bank code validated successfully`);
+        console.log(`✅ Bank code "${bankCode}" validated successfully - found in Paystack API list`);
       } catch (validationError) {
         // Log but don't block - validation is best effort
-        console.warn(`⚠️ Bank code validation warning:`, validationError);
+        // If Paystack API is down, we should still allow the save to proceed
+        // The frontend already validates against the API list, so this is a secondary check
+        console.warn(`⚠️ Bank code validation warning (continuing anyway):`, validationError);
+        console.warn(`⚠️ Validation error details:`, validationError instanceof Error ? validationError.message : 'Unknown error');
         // Continue with save - don't block user if validation service is down
+        // Frontend validation should catch invalid codes before they reach here
       }
     }
 

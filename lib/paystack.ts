@@ -613,17 +613,62 @@ class PaystackClient {
   }
 
   // Validate bank code against Paystack
+  // BEST PRACTICE: If the code exists in Paystack's API list, we trust it
+  // This avoids issues where Paystack's list endpoint returns codes that
+  // their validation endpoint might reject due to API inconsistencies
+  // 
+  // IMPORTANT: We apply the same filtering as the frontend (active && !is_deleted)
+  // to ensure consistency between what users see and what we validate
   async validateBankCode(bankCode: string, country: string = 'ZA'): Promise<boolean> {
     try {
+      // Fetch the current list of banks from Paystack API
       const banks = await this.listBanks({ country });
-      const isValid = banks.data?.some(bank => bank.code === bankCode) || false;
       
+      // Apply the same filtering logic as the frontend API route
+      // Only consider banks that are active and not deleted
+      // This ensures consistency: if a bank shows in the frontend, it will pass validation
+      const activeBanks = banks.data?.filter(bank => bank.active && !bank.is_deleted) || [];
+      
+      // Check if the bank code exists in the filtered (active) bank list
+      const isValid = activeBanks.some(bank => bank.code === bankCode);
+      
+      // Log detailed validation info
       this.logger.info('Bank code validation', { 
         bankCode, 
         country, 
         isValid,
-        availableBanks: banks.data?.length || 0
+        totalBanksFromAPI: banks.data?.length || 0,
+        activeBanksCount: activeBanks.length,
+        validationStrategy: 'trust_api_list_with_filtering',
+        message: isValid 
+          ? 'Bank code found in Paystack API active banks list - trusting it' 
+          : 'Bank code NOT found in Paystack API active banks list - rejecting it'
       });
+      
+      // If code exists in Paystack's active bank list, trust it (skip additional validation)
+      // This is the source of truth - if Paystack returns it as active, we accept it
+      if (isValid) {
+        const matchedBank = activeBanks.find(bank => bank.code === bankCode);
+        this.logger.info('Bank code validated successfully from Paystack API list', {
+          bankCode,
+          bankName: matchedBank?.name,
+          country,
+          trustedSource: 'paystack_api_active_banks_list',
+          bankActive: matchedBank?.active,
+          bankDeleted: matchedBank?.is_deleted
+        });
+      } else {
+        // Log why validation failed for debugging
+        const allBanksWithCode = banks.data?.filter(bank => bank.code === bankCode) || [];
+        if (allBanksWithCode.length > 0) {
+          this.logger.warn('Bank code exists in Paystack API but filtered out', {
+            bankCode,
+            reason: allBanksWithCode[0].active ? 'bank is deleted' : 'bank is inactive',
+            bankActive: allBanksWithCode[0].active,
+            bankDeleted: allBanksWithCode[0].is_deleted
+          });
+        }
+      }
       
       return isValid;
     } catch (error) {
