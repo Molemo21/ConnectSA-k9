@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,34 +27,33 @@ import { BrandHeaderClient } from "@/components/ui/brand-header-client"
 import { showToast } from "@/lib/toast"
 import Link from "next/link"
 
-// South African Bank Codes (Paystack supported)
-// NOTE: "470010" (Capitec) removed - it's invalid according to Paystack API
-// Providers should fetch banks from Paystack API which will have the correct codes
-const SA_BANKS = [
-  { code: '044', name: 'ABSA Bank' },
-  { code: '632005', name: 'Access Bank' },
-  { code: '431150', name: 'African Bank' },
-  { code: '198765', name: 'Bank of Athens' },
-  { code: '462005', name: 'Bidvest Bank' },
-  // { code: '470010', name: 'Capitec Bank' }, // REMOVED - Invalid code according to Paystack
-  { code: '198766', name: 'Citibank' },
-  { code: '198767', name: 'FNB Bank' },
-  { code: '580105', name: 'Grindrod Bank' },
-  { code: '198768', name: 'HSBC Bank' },
-  { code: '198769', name: 'Investec Bank' },
-  { code: '198770', name: 'Nedbank' },
-  { code: '198771', name: 'Postbank' },
-  { code: '198772', name: 'Rand Merchant Bank' },
-  { code: '198773', name: 'Sasfin Bank' },
-  { code: '198774', name: 'Standard Bank' },
-  { code: '198775', name: 'TymeBank' },
-  { code: '198776', name: 'Ubank' },
-  { code: '198777', name: 'VBS Mutual Bank' },
+// Bank type from Paystack API
+interface Bank {
+  code: string
+  name: string
+  slug?: string
+  type?: string
+  country?: string
+  currency?: string
+}
+
+// Fallback banks in case API fails (using correct Paystack codes)
+// NOTE: These should match what Paystack actually accepts
+const FALLBACK_BANKS: Bank[] = [
+  { name: "Standard Bank", code: "051" },
+  { name: "First National Bank (FNB)", code: "198767" },
+  { name: "Nedbank", code: "198770" },
+  { name: "ABSA Bank", code: "044" },
+  { name: "Investec Bank", code: "198769" },
+  { name: "Bidvest Bank", code: "462005" },
+  { name: "Discovery Bank", code: "679000" },
+  { name: "TymeBank", code: "198775" },
+  { name: "African Bank", code: "431150" }
 ]
 
-// Helper function to get bank name from code
-const getBankName = (code: string): string => {
-  const bank = SA_BANKS.find(bank => bank.code === code)
+// Helper function to get bank name from code (uses fetched banks)
+const getBankName = (code: string, banks: Bank[]): string => {
+  const bank = banks.find(bank => bank.code === code)
   return bank?.name || ''
 }
 
@@ -83,16 +82,85 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
   const [existingDetails, setExistingDetails] = useState<BankDetails | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [banks, setBanks] = useState<Bank[]>(FALLBACK_BANKS)
+  const [isLoadingBanks, setIsLoadingBanks] = useState(true)
+  const [banksError, setBanksError] = useState<string | null>(null)
+  const [banksSource, setBanksSource] = useState<'api' | 'fallback' | 'loading'>('loading')
+  const [banksCount, setBanksCount] = useState<number>(0)
 
-  // Load existing bank details
+  // Fetch banks from Paystack API on mount
   useEffect(() => {
-    if (providerId) {
-      loadBankDetails()
+    let isMounted = true
+    
+    const fetchBanks = async () => {
+      setIsLoadingBanks(true)
+      setBanksError(null)
+      
+      try {
+        const response = await fetch('/api/paystack/banks?country=ZA&currency=ZAR')
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch banks: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        // Log full API response for debugging
+        console.group('🔍 Paystack Banks API Response')
+        console.log('Response Status:', response.status, response.statusText)
+        console.log('Response Data:', data)
+        console.log('Success:', data.success)
+        console.log('Source:', data.source || 'paystack')
+        console.log('Banks Count:', data.data?.length || 0)
+        if (data.debug) {
+          console.log('Debug Info:', data.debug)
+        }
+        console.groupEnd()
+        
+        if (isMounted) {
+          if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
+            setBanks(data.data)
+            setBanksSource('api')
+            setBanksCount(data.data.length)
+            console.log(`✅ Loaded ${data.data.length} banks from Paystack API`)
+            console.log('📋 Bank codes loaded:', data.data.map((b: Bank) => `${b.name} (${b.code})`).join(', '))
+            console.log('📊 API Response source:', data.source || 'paystack')
+            
+            // Log sample bank structure for verification
+            if (data.data.length > 0) {
+              console.log('📝 Sample bank structure:', data.data[0])
+            }
+          } else {
+            console.warn('⚠️ No banks returned from API, using fallback')
+            setBanks(FALLBACK_BANKS)
+            setBanksSource('fallback')
+            setBanksCount(FALLBACK_BANKS.length)
+            console.log('📋 Using fallback banks:', FALLBACK_BANKS.map(b => `${b.name} (${b.code})`).join(', '))
+          }
+          setIsLoadingBanks(false)
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch banks from Paystack:', error)
+        if (isMounted) {
+          setBanksError(error instanceof Error ? error.message : 'Failed to load banks')
+          setBanks(FALLBACK_BANKS) // Use fallback on error
+          setBanksSource('fallback')
+          setBanksCount(FALLBACK_BANKS.length)
+          setIsLoadingBanks(false)
+          console.log('📋 Using fallback banks due to error:', FALLBACK_BANKS.map(b => `${b.name} (${b.code})`).join(', '))
+        }
+      }
     }
-  }, [providerId])
+    
+    fetchBanks()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
-  const loadBankDetails = async () => {
-    if (!providerId) return
+  const loadBankDetails = useCallback(async () => {
+    if (!providerId || banks.length === 0) return
     
     setIsLoading(true)
     try {
@@ -105,7 +173,7 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
           setFormData({
             ...data.bankDetails,
             accountNumber: '', // Force re-entry for security
-            bankName: getBankName(data.bankDetails.bankCode),
+            bankName: getBankName(data.bankDetails.bankCode, banks),
           })
         }
       } else if (response.status === 404) {
@@ -120,7 +188,14 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [providerId, banks])
+
+  // Load existing bank details after banks are loaded
+  useEffect(() => {
+    if (providerId && !isLoadingBanks && banks.length > 0) {
+      loadBankDetails()
+    }
+  }, [providerId, isLoadingBanks, banks.length, loadBankDetails])
 
   const handleInputChange = (field: keyof BankDetails, value: string) => {
     const trimmedValue = field === 'accountName' ? value.trim() : value
@@ -133,7 +208,7 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
   }
 
   const handleBankCodeChange = (bankCode: string) => {
-    const bankName = getBankName(bankCode)
+    const bankName = getBankName(bankCode, banks)
     setFormData(prev => ({
       ...prev,
       bankCode,
@@ -149,14 +224,24 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
     
-    if (!formData.bankCode) errors.bankCode = 'Please select a bank'
+    if (!formData.bankCode) {
+      errors.bankCode = 'Please select a bank'
+    } else {
+      // Validate that the selected bank code exists in the fetched banks list
+      const bankExists = banks.some(bank => bank.code === formData.bankCode)
+      if (!bankExists) {
+        errors.bankCode = 'Selected bank is not valid. Please refresh the page to reload bank list.'
+      }
+    }
+    
     if (!formData.accountNumber) errors.accountNumber = 'Account number is required'
-    if (!formData.accountName) errors.accountName = 'Account holder name is required'
     
     // Validate account number format
     if (formData.accountNumber && !/^\d{6,17}$/.test(formData.accountNumber)) {
       errors.accountNumber = 'Account number should be 6-17 digits'
     }
+    
+    if (!formData.accountName) errors.accountName = 'Account holder name is required'
     
     // Validate account name is not just whitespace
     if (formData.accountName && formData.accountName.trim() === '') {
@@ -204,13 +289,30 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
         })
       } else {
         let errorMessage = 'Failed to save bank details'
+        let errorDetails = ''
+        
         try {
           const errorData = await response.json()
           errorMessage = errorData.error || errorMessage
+          errorDetails = errorData.details || ''
+          
+          // If there's a field-specific error, set it in validation errors
+          if (errorData.field && errorData.details) {
+            setValidationErrors(prev => ({
+              ...prev,
+              [errorData.field]: errorData.details
+            }))
+          }
         } catch (parseError) {
           console.error('Error parsing error response:', parseError)
         }
-        showToast.error(errorMessage)
+        
+        // Show detailed error message
+        if (errorDetails) {
+          showToast.error(`${errorMessage}: ${errorDetails}`)
+        } else {
+          showToast.error(errorMessage)
+        }
       }
     } catch (error) {
       console.error('Error saving bank details:', error)
@@ -225,7 +327,7 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
     setFormData({
       ...existingDetails!,
       accountNumber: '', // Force re-entry for security
-      bankName: getBankName(existingDetails!.bankCode),
+      bankName: getBankName(existingDetails!.bankCode, banks),
     })
   }
 
@@ -236,7 +338,7 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
       setFormData({
         ...existingDetails,
         accountNumber: '', // Keep empty for security
-        bankName: getBankName(existingDetails.bankCode),
+        bankName: getBankName(existingDetails.bankCode, banks),
       })
     } else {
       setFormData({
@@ -373,12 +475,13 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
                           <Select 
                             value={formData.bankCode} 
                             onValueChange={handleBankCodeChange}
+                            disabled={isLoadingBanks}
                           >
                             <SelectTrigger className={validationErrors.bankCode ? 'border-red-500' : ''}>
-                              <SelectValue placeholder="Select your bank" />
+                              <SelectValue placeholder={isLoadingBanks ? "Loading banks..." : "Select your bank"} />
                             </SelectTrigger>
                             <SelectContent>
-                              {SA_BANKS.map((bank) => (
+                              {banks.map((bank) => (
                                 <SelectItem key={bank.code} value={bank.code}>
                                   {bank.name}
                                 </SelectItem>
@@ -387,6 +490,21 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
                           </Select>
                           {validationErrors.bankCode && (
                             <p className="text-sm text-red-600">{validationErrors.bankCode}</p>
+                          )}
+                          {banksError && (
+                            <p className="text-xs text-yellow-600">
+                              ⚠️ Using fallback bank list. Some banks may not be available.
+                            </p>
+                          )}
+                          {!isLoadingBanks && !banksError && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <CheckCircle className="w-3 h-3 text-green-600" />
+                              <span>
+                                {banksSource === 'api' 
+                                  ? `Loaded ${banksCount} banks from Paystack API`
+                                  : `Using ${banksCount} fallback banks`}
+                              </span>
+                            </div>
                           )}
                         </div>
 
@@ -548,6 +666,64 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
                       <p className="text-sm text-gray-700">Funds transferred to your bank account</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Bank List Status */}
+              <Card className={`shadow-lg border-0 ${
+                banksSource === 'api' 
+                  ? 'bg-green-50 border-green-200' 
+                  : banksSource === 'fallback'
+                  ? 'bg-yellow-50 border-yellow-200'
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
+                <CardHeader>
+                  <CardTitle className={`flex items-center gap-2 text-lg ${
+                    banksSource === 'api' 
+                      ? 'text-green-900' 
+                      : banksSource === 'fallback'
+                      ? 'text-yellow-900'
+                      : 'text-gray-900'
+                  }`}>
+                    {banksSource === 'api' ? (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : banksSource === 'fallback' ? (
+                      <AlertCircle className="w-5 h-5 text-yellow-600" />
+                    ) : (
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
+                    )}
+                    Bank List Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingBanks ? (
+                    <p className="text-sm text-gray-800">
+                      Loading banks from Paystack API...
+                    </p>
+                  ) : banksSource === 'api' ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-800">
+                        <strong>✅ Successfully loaded {banksCount} banks from Paystack API</strong>
+                      </p>
+                      <p className="text-xs text-green-700">
+                        All bank codes are validated and up-to-date from Paystack.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-yellow-800">
+                        <strong>⚠️ Using fallback bank list ({banksCount} banks)</strong>
+                      </p>
+                      <p className="text-xs text-yellow-700">
+                        Could not fetch from Paystack API. Using cached list. Some banks may not be available.
+                      </p>
+                      {banksError && (
+                        <p className="text-xs text-yellow-600 mt-1">
+                          Error: {banksError}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
