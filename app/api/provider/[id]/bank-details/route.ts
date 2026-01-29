@@ -206,63 +206,8 @@ export async function POST(
       try {
         const { paystackClient } = await import('@/lib/paystack');
         
-        // BEST PRACTICE: Resolve bank code to ensure compatibility
-        // Paystack's listBanks might return codes that differ from what createRecipient accepts
-        // We need to fetch the bank from Paystack API and use the correct code format
-        let finalBankCode = bankCode;
-        try {
-          console.log(`🔍 Fetching bank details from Paystack for code: ${finalBankCode}`);
-          const banks = await paystackClient.listBanks({ country: 'ZA' });
-          
-          // Try to find the bank by code first
-          let bank = banks.data?.find(b => b.code === finalBankCode);
-          
-          // If not found by code, try by longcode
-          if (!bank) {
-            bank = banks.data?.find(b => b.longcode === finalBankCode);
-            if (bank) {
-              console.log(`📋 Found bank by longcode, using code: ${bank.code}`);
-              finalBankCode = bank.code;
-            }
-          }
-          
-          // Special handling for Standard Bank (common issue)
-          // Paystack's listBanks returns "198774" but createRecipient needs "051"
-          if (!bank && (finalBankCode === '051' || finalBankCode === '198774')) {
-            bank = banks.data?.find(b => 
-              b.name.toLowerCase().includes('standard') && 
-              b.active && 
-              !b.is_deleted
-            );
-            if (bank) {
-              console.log(`📋 Found Standard Bank in Paystack API:`, {
-                name: bank.name,
-                code: bank.code,
-                longcode: bank.longcode,
-                active: bank.active
-              });
-              finalBankCode = bank.code;
-            }
-          }
-          
-          if (bank) {
-            console.log(`✅ Using Paystack API bank code: ${finalBankCode} (${bank.name})`);
-            recipientData.bank_code = finalBankCode;
-            
-            // Update bankCode variable for database save if it changed
-            if (finalBankCode !== bankCode) {
-              console.log(`🔄 Bank code resolved: ${bankCode} -> ${finalBankCode}`);
-              bankCode = finalBankCode; // Update for database save
-            }
-          } else {
-            console.warn(`⚠️ Bank code ${finalBankCode} not found in Paystack API, using as-is`);
-            // Continue with original code - Paystack will validate it
-          }
-        } catch (bankFetchError) {
-          console.warn(`⚠️ Could not fetch banks from Paystack (using saved code):`, bankFetchError);
-          // Continue with saved code - Paystack will validate it
-        }
-        
+        // BEST PRACTICE: Frontend now sends transfer-compatible codes from /api/paystack/banks
+        // No conversion needed - codes are already correct for createRecipient API
         console.log('📤 Creating Paystack recipient for validation:', {
           type: recipientData.type,
           name: recipientData.name,

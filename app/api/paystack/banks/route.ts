@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { paystackClient } from '@/lib/paystack';
+import { getTransferCode, hasMapping } from '@/lib/config/bank-code-mappings';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,16 +60,28 @@ export async function GET(request: NextRequest) {
     }
     
     // Format banks for frontend use
+    // BEST PRACTICE: Convert display codes to transfer-compatible codes
+    // This ensures frontend only sees codes that work with createRecipient API
     const formattedBanks = banks.data
       .filter(bank => bank.active && !bank.is_deleted)
-      .map(bank => ({
-        code: bank.code,
-        name: bank.name,
-        slug: bank.slug,
-        type: bank.type,
-        country: bank.country,
-        currency: bank.currency
-      }))
+      .map(bank => {
+        // Convert display code to transfer-compatible code
+        const transferCode = getTransferCode(bank.code);
+        
+        // Log if mapping was used (for monitoring)
+        if (hasMapping(bank.code)) {
+          console.log(`🔄 Bank code mapped: ${bank.name} ${bank.code} -> ${transferCode}`);
+        }
+        
+        return {
+          code: transferCode, // Use transfer-compatible code
+          name: bank.name,
+          slug: bank.slug,
+          type: bank.type,
+          country: bank.country,
+          currency: bank.currency
+        };
+      })
       .sort((a, b) => a.name.localeCompare(b.name));
     
     console.log(`✅ After filtering: ${formattedBanks.length} active banks`);
@@ -91,16 +104,27 @@ export async function GET(request: NextRequest) {
         const fallbackBanks = getSupportedBanks();
         
         // Filter out invalid codes (like "470010" which Paystack rejects)
+        // BEST PRACTICE: Apply bank code mappings to fallback banks too
         const validFallbackBanks = fallbackBanks
           .filter(bank => bank.code !== '470010') // Remove invalid Capitec code
-          .map(bank => ({
-            code: bank.code,
-            name: bank.name,
-            slug: bank.code.toLowerCase(),
-            type: 'nuban',
-            country: 'ZA',
-            currency: 'ZAR'
-          }))
+          .map(bank => {
+            // Convert display code to transfer-compatible code
+            const transferCode = getTransferCode(bank.code);
+            
+            // Log if mapping was used
+            if (hasMapping(bank.code)) {
+              console.log(`🔄 Fallback bank code mapped: ${bank.name} ${bank.code} -> ${transferCode}`);
+            }
+            
+            return {
+              code: transferCode, // Use transfer-compatible code
+              name: bank.name,
+              slug: bank.code.toLowerCase(),
+              type: 'nuban',
+              country: 'ZA',
+              currency: 'ZAR'
+            };
+          })
           .sort((a, b) => a.name.localeCompare(b.name));
         
         console.log(`📋 Using ${validFallbackBanks.length} banks from fallback static list (Paystack API returned empty)`);
