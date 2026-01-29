@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, Building, Loader2, AlertTriangle, RefreshCw } from "lucide-react"
+import { CreditCard, Building, Loader2, AlertTriangle, RefreshCw, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // TypeScript interfaces for type safety
 interface BankDetails {
@@ -40,20 +41,10 @@ interface Bank {
   currency?: string
 }
 
-// Fallback banks in case API fails (using correct Paystack codes)
-// NOTE: "470010" (Capitec) removed - it's invalid according to Paystack API
-// NOTE: "198774" (Standard Bank old code) removed - use "051" instead
-const FALLBACK_BANKS: Bank[] = [
-  { name: "Standard Bank", code: "051" },
-  { name: "First National Bank (FNB)", code: "198767" },
-  { name: "Nedbank", code: "198770" },
-  { name: "ABSA Bank", code: "044" },
-  { name: "Investec Bank", code: "198769" },
-  { name: "Bidvest Bank", code: "462005" },
-  { name: "Discovery Bank", code: "679000" },
-  { name: "TymeBank", code: "198775" },
-  { name: "African Bank", code: "431150" }
-]
+// NOTE: Fallback banks are NOT used for payout flows
+// Only transfer-enabled banks from /api/paystack/banks/payout are valid
+// This ensures providers can only select banks that support Paystack transfers
+const FALLBACK_BANKS: Bank[] = [] // Empty - only use transfer-enabled banks from API
 
 // Default form state
 const DEFAULT_BANK_DETAILS: BankDetails = {
@@ -85,7 +76,7 @@ const BankDetailsFormComponent = function BankDetailsForm({
   
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
-  const [banks, setBanks] = useState<Bank[]>(FALLBACK_BANKS)
+  const [banks, setBanks] = useState<Bank[]>([]) // Start empty - only load transfer-enabled banks
   const [isLoadingBanks, setIsLoadingBanks] = useState(true)
   const [banksError, setBanksError] = useState<string | null>(null)
   
@@ -106,10 +97,10 @@ const BankDetailsFormComponent = function BankDetailsForm({
       setBanksError(null)
       
       try {
-        const response = await fetch('/api/paystack/banks?country=ZA&currency=ZAR')
+        const response = await fetch('/api/paystack/banks/payout?country=ZA')
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch banks: ${response.status}`)
+          throw new Error(`Failed to fetch transfer-enabled banks: ${response.status}`)
         }
         
         const data = await response.json()
@@ -117,26 +108,28 @@ const BankDetailsFormComponent = function BankDetailsForm({
         if (isMounted) {
           if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
             setBanks(data.data)
-            console.log(`✅ Loaded ${data.data.length} banks from Paystack API`)
-            console.log('📋 Bank codes loaded:', data.data.map((b: Bank) => `${b.name} (${b.code})`).join(', '))
+            console.log(`✅ Loaded ${data.data.length} transfer-enabled banks from Paystack API`)
+            console.log('📋 Transfer-enabled bank codes:', data.data.map((b: Bank) => `${b.name} (${b.code})`).join(', '))
+            console.log('📊 Source: transfer-enabled-banks-service (advisory metadata)')
           } else {
-            console.warn('⚠️ No banks returned from API, using fallback')
-            setBanks(FALLBACK_BANKS)
+            console.warn('⚠️ No transfer-enabled banks returned from API')
+            setBanksError('No transfer-enabled banks available. Please try again later.')
+            setBanks([]) // Don't use fallback - only transfer-enabled banks are valid
           }
           setIsLoadingBanks(false)
         }
       } catch (error) {
-        console.error('❌ Failed to fetch banks from Paystack:', error)
+        console.error('❌ Failed to fetch transfer-enabled banks:', error)
         if (isMounted) {
-          setBanksError(error instanceof Error ? error.message : 'Failed to load banks')
-          setBanks(FALLBACK_BANKS) // Use fallback on error
+          setBanksError(error instanceof Error ? error.message : 'Failed to load transfer-enabled banks')
+          setBanks([]) // Don't use fallback - only transfer-enabled banks are valid
           setIsLoadingBanks(false)
           
-          // Show non-intrusive warning toast
+          // Show error toast
           toast({
-            title: "Using default bank list",
-            description: "Could not load latest banks. Using default list.",
-            variant: "default"
+            title: "Unable to load banks",
+            description: "Could not load transfer-enabled banks. Please refresh the page and try again.",
+            variant: "destructive"
           })
         }
       }
@@ -433,6 +426,15 @@ const BankDetailsFormComponent = function BankDetailsForm({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Transfer-Enabled Banks Notice */}
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Only transfer-enabled banks supported.</strong> Only banks that support Paystack transfers are shown. 
+                If your bank is not listed, it may not support transfers with the current payment provider.
+              </AlertDescription>
+            </Alert>
+
             {/* Bank Selection */}
           <div className="space-y-2">
               <Label htmlFor="bankName">Bank Name *</Label>
@@ -462,8 +464,13 @@ const BankDetailsFormComponent = function BankDetailsForm({
               </SelectContent>
             </Select>
                 {banksError && (
+                  <p className="text-xs text-red-600">
+                    ⚠️ {banksError}
+                  </p>
+                )}
+                {!isLoadingBanks && banks.length === 0 && !banksError && (
                   <p className="text-xs text-yellow-600">
-                    ⚠️ Using default bank list. Some banks may not be available.
+                    ⚠️ No transfer-enabled banks available. Please refresh the page.
                   </p>
                 )}
                 {errors.bankName && typeof errors.bankName === 'string' && (

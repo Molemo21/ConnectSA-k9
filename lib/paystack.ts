@@ -569,6 +569,7 @@ class PaystackClient {
   async listBanks(params?: {
     country?: string;
     currency?: string;
+    pay_with_bank_transfer?: boolean; // Filter for transfer-enabled banks (advisory)
   }): Promise<{
     status: boolean;
     message: string;
@@ -580,6 +581,7 @@ class PaystackClient {
       longcode?: string;
       gateway?: string;
       pay_with_bank?: boolean;
+      pay_with_bank_transfer?: boolean; // Advisory metadata from Paystack
       active: boolean;
       is_deleted: boolean;
       country: string;
@@ -593,6 +595,9 @@ class PaystackClient {
       const queryParams = new URLSearchParams();
       if (params?.country) queryParams.append('country', params.country);
       if (params?.currency) queryParams.append('currency', params.currency);
+      if (params?.pay_with_bank_transfer === true) {
+        queryParams.append('pay_with_bank_transfer', 'true');
+      }
       
       const endpoint = `/bank${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await this.makeRequest<{
@@ -603,7 +608,8 @@ class PaystackClient {
       
       this.logger.info('Banks fetched successfully', { 
         count: response.data?.length || 0,
-        country: params?.country || 'all'
+        country: params?.country || 'all',
+        pay_with_bank_transfer: params?.pay_with_bank_transfer || false
       });
       return response as any;
     } catch (error) {

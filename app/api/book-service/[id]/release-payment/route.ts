@@ -495,16 +495,22 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       }, { status: 400 });
     }
 
-    // 7.5. Trust saved bank code (already validated when provider saved it)
-    // BEST PRACTICE: Trust frontend validation - bank code was validated when provider saved it
-    // Paystack will validate it when creating the recipient anyway, so redundant validation here
-    // causes issues when Paystack API has temporary problems
+    // 7.5. Advisory validation: Check if bank is in transfer-enabled list
+    // NOTE: This is advisory, not authoritative. Hard validation happens during recipient creation.
+    const { BankValidationService } = await import('@/lib/services/bank-validation-service');
+    const advisoryValidation = await BankValidationService.validateForTransfer(booking.provider.bankCode);
+    
+    if (!advisoryValidation.valid) {
+      console.warn(`⚠️ Advisory validation failed: ${advisoryValidation.error}`);
+      // Don't fail here - let hard validation during recipient creation handle it
+      // This is just a warning for monitoring
+    }
+    
     const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
     
-    console.log(`✅ Trusting saved bank code: ${booking.provider.bankCode}`);
-    console.log(`📋 Bank code was validated when provider saved it - skipping redundant validation`);
+    console.log(`✅ Bank code advisory check: ${advisoryValidation.valid ? 'PASSED' : 'WARNING'}`);
+    console.log(`📋 Hard validation will occur during recipient creation`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV}, Test Mode: ${isTestMode}`);
-    console.log(`💡 Paystack will validate bank code when creating transfer recipient`);
 
     // 8. Generate unique reference for transfer
     const transferReference = paymentProcessor.generateReference("TR");
@@ -694,126 +700,36 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             recipientCode
           });
         } catch (recipientError) {
-          console.error(`❌ Failed to create transfer recipient:`, recipientError);
-          console.error(`❌ Full error details:`, {
-            error: recipientError,
-            message: recipientError instanceof Error ? recipientError.message : String(recipientError),
-            recipientData: {
-              bank_code: recipientData.bank_code,
-              account_number: recipientData.account_number?.substring(0, 4) + '****',
-              name: recipientData.name
-            }
+          console.error(`❌ HARD FAILURE: Recipient creation failed:`, recipientError);
+          
+          // Hard failure handling - authoritative validation from payment provider
+          const failureResult = BankValidationService.handleRecipientCreationFailure(recipientError);
+          
+          // Log hard failure for monitoring
+          console.error('🚨 Hard failure details:', {
+            isHardFailure: failureResult.isHardFailure,
+            error: failureResult.error,
+            details: failureResult.details,
+            recoverable: failureResult.recoverable,
+            actionRequired: failureResult.actionRequired,
+            bankCode: recipientData.bank_code,
+            accountNumber: recipientData.account_number?.substring(0, 4) + '****',
+            providerId: booking.provider.id,
           });
           
-          // Try to fetch valid banks from Paystack to suggest correct code
-          let suggestedBankCode: string | null = null;
-          try {
-            const banks = await paystackClient.listBanks({ country: 'ZA' });
-            const bankWithName = banks.data?.find(b => 
-              b.name.toLowerCase().includes('standard') || 
-              b.code === recipientData.bank_code ||
-              b.longcode === recipientData.bank_code
-            );
-            if (bankWithName) {
-              suggestedBankCode = bankWithName.code;
-              console.log(`💡 Found bank in Paystack API:`, {
-                name: bankWithName.name,
-                code: bankWithName.code,
-                longcode: bankWithName.longcode,
-                active: bankWithName.active,
-                is_deleted: bankWithName.is_deleted
-              });
-            }
-          } catch (bankFetchError) {
-            console.warn(`⚠️ Could not fetch banks for suggestion:`, bankFetchError);
-          }
-          
-          // FIX 4: Enhanced error messages with actionable guidance
-          let errorMessage = "Provider's bank account details are invalid";
-          let errorDetails = "The provider needs to update their bank details in their dashboard. " +
-            "Please contact them and ask them to go to Settings > Bank Details and verify their account information. " +
-            "Your payment is safe in escrow and will be released once the provider updates their details.";
-          let actionRequired = "PROVIDER_UPDATE_BANK_DETAILS";
-          
-          if (recipientError instanceof Error) {
-            // Check for structured Paystack error
-            if (recipientError.message.includes('Paystack API error')) {
-              try {
-                const errorMatch = recipientError.message.match(/\{.*\}/);
-                if (errorMatch) {
-                  const errorData = JSON.parse(errorMatch[0]);
-                  console.error(`📋 Paystack error data:`, errorData);
-                  
-                  if (errorData.code === 'invalid_bank_code' || errorData.message?.includes('bank code')) {
-                    errorMessage = "Provider's bank code is invalid";
-                    const suggestion = suggestedBankCode && suggestedBankCode !== recipientData.bank_code
-                      ? ` Try using bank code "${suggestedBankCode}" instead.`
-                      : '';
-                    errorDetails = `The provider's bank code "${recipientData.bank_code}" is not valid for creating transfer recipients. ` +
-                      `Please ask the provider to update their bank details in their dashboard (Settings > Bank Details) ` +
-                      `and select a valid bank from the list.` +
-                      suggestion +
-                      (errorData.meta?.nextStep ? ` ${errorData.meta.nextStep}` : '') +
-                      ` Your payment is safe in escrow and will be released once they update their details.`;
-                  } else if (errorData.code === 'invalid_account_number' || errorData.message?.includes('account number')) {
-                    errorMessage = "Provider's account number is invalid";
-                    errorDetails = "The provider's account number is invalid. Please ask them to update their bank details " +
-                      "in their dashboard (Settings > Bank Details) and verify their account number is correct (10-12 digits). " +
-                      "Your payment is safe in escrow and will be released once they update their details.";
-                  } else if (errorData.code === 'invalid_account_name' || errorData.message?.includes('account name')) {
-                    errorMessage = "Provider's account name is invalid";
-                    errorDetails = "The provider's account name doesn't match. Please ask them to update their bank details " +
-                      "in their dashboard (Settings > Bank Details) and ensure the account name matches exactly as it appears " +
-                      "on their bank account statement. Your payment is safe in escrow and will be released once they update their details.";
-                  } else if (errorData.message) {
-                    errorMessage = `Provider's bank account validation failed: ${errorData.message}`;
-                    errorDetails = (errorData.meta?.nextStep || errorDetails) +
-                      " Please ask the provider to update their bank details in their dashboard (Settings > Bank Details).";
-                  }
-                }
-              } catch (parseError) {
-                console.error(`❌ Error parsing Paystack response:`, parseError);
-                errorMessage = "Provider's bank account details are invalid";
-                errorDetails = "Please ask the provider to update their bank details in their dashboard. " +
-                  "Your payment is safe in escrow and will be released once they update their details.";
-              }
-            } else if (recipientError.message.includes("Invalid bank code") || 
-                       recipientError.message.includes("invalid_bank_code")) {
-              errorMessage = "Provider's bank code is invalid";
-              const suggestion = suggestedBankCode && suggestedBankCode !== recipientData.bank_code
-                ? ` Try using bank code "${suggestedBankCode}" instead.`
-                : '';
-              errorDetails = `The provider's bank code "${recipientData.bank_code}" is not valid for South African banks. ` +
-                `Please ask the provider to update their bank details in their dashboard (Settings > Bank Details) ` +
-                `and select a valid bank from the list.` +
-                suggestion +
-                ` Your payment is safe in escrow and will be released once they update their details.`;
-            } else if (recipientError.message.includes("Invalid account number") || 
-                       recipientError.message.includes("invalid_account_number")) {
-              errorMessage = "Provider's account number is invalid";
-              errorDetails = "The provider's account number is invalid. Please ask them to update their bank details " +
-                "in their dashboard (Settings > Bank Details) and verify their account number is correct. " +
-                "Your payment is safe in escrow and will be released once they update their details.";
-            } else if (recipientError.message.includes("Account name") || 
-                       recipientError.message.includes("invalid_account_name")) {
-              errorMessage = "Provider's account name is invalid";
-              errorDetails = "The provider's account name doesn't match. Please ask them to update their bank details " +
-                "in their dashboard (Settings > Bank Details) and ensure the account name matches exactly as it appears " +
-                "on their bank account statement. Your payment is safe in escrow and will be released once they update their details.";
-            } else {
-              errorMessage = "Provider's bank account details are invalid";
-              errorDetails = `Unable to validate provider's bank account: ${recipientError.message}. ` +
-                "Please ask the provider to update their bank details in their dashboard (Settings > Bank Details). " +
-                "Your payment is safe in escrow and will be released once they update their details.";
-            }
-          }
+          // Enhance error details with provider context
+          const enhancedDetails = failureResult.details + 
+            " Please ask the provider to update their bank details in their dashboard (Settings > Bank Details). " +
+            "Your payment is safe in escrow and will be released once they update their details.";
           
           // Payment status is still ESCROW - no rollback needed
           return NextResponse.json({
             success: false,
-            error: errorMessage,
-            details: errorDetails,
-            actionRequired: actionRequired,
+            error: failureResult.error,
+            details: enhancedDetails,
+            isHardFailure: true,
+            recoverable: failureResult.recoverable,
+            actionRequired: failureResult.actionRequired || "PROVIDER_UPDATE_BANK_DETAILS",
             providerId: booking.provider.id,
             providerName: booking.provider.businessName || booking.provider.user.name,
             currentStatus: booking.payment.status, // Still ESCROW
@@ -899,8 +815,35 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         try {
           transferResponse = await paystackClient.createTransfer(transferData);
         } catch (transferInitError) {
-          console.error(`❌ Failed to create transfer:`, transferInitError);
-          throw new Error(`Unable to create transfer: ${transferInitError instanceof Error ? transferInitError.message : 'Unknown error'}`);
+          console.error(`❌ HARD FAILURE: Transfer creation failed:`, transferInitError);
+          
+          // Hard failure handling - authoritative validation from payment provider
+          const failureResult = BankValidationService.handleTransferCreationFailure(transferInitError);
+          
+          // Log hard failure for monitoring
+          console.error('🚨 Hard failure details:', {
+            isHardFailure: failureResult.isHardFailure,
+            error: failureResult.error,
+            details: failureResult.details,
+            recoverable: failureResult.recoverable,
+            actionRequired: failureResult.actionRequired,
+            transferReference,
+            recipientCode,
+            amount: booking.payment.amount,
+          });
+          
+          // Return structured error response
+          return NextResponse.json({
+            success: false,
+            error: failureResult.error,
+            details: failureResult.details,
+            isHardFailure: true,
+            recoverable: failureResult.recoverable,
+            actionRequired: failureResult.actionRequired,
+            bookingId: booking.id,
+            paymentId: booking.payment.id,
+            currentStatus: booking.payment.status,
+          }, { status: 400 });
         }
       }
 

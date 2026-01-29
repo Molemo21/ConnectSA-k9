@@ -37,19 +37,10 @@ interface Bank {
   currency?: string
 }
 
-// Fallback banks in case API fails (using correct Paystack codes)
-// NOTE: These should match what Paystack actually accepts
-const FALLBACK_BANKS: Bank[] = [
-  { name: "Standard Bank", code: "051" },
-  { name: "First National Bank (FNB)", code: "198767" },
-  { name: "Nedbank", code: "198770" },
-  { name: "ABSA Bank", code: "044" },
-  { name: "Investec Bank", code: "198769" },
-  { name: "Bidvest Bank", code: "462005" },
-  { name: "Discovery Bank", code: "679000" },
-  { name: "TymeBank", code: "198775" },
-  { name: "African Bank", code: "431150" }
-]
+// NOTE: Fallback banks are NOT used for payout flows
+// Only transfer-enabled banks from /api/paystack/banks/payout are valid
+// This ensures providers can only select banks that support Paystack transfers
+const FALLBACK_BANKS: Bank[] = [] // Empty - only use transfer-enabled banks from API
 
 // Helper function to get bank name from code (uses fetched banks)
 const getBankName = (code: string, banks: Bank[]): string => {
@@ -82,10 +73,10 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
   const [existingDetails, setExistingDetails] = useState<BankDetails | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const [banks, setBanks] = useState<Bank[]>(FALLBACK_BANKS)
+  const [banks, setBanks] = useState<Bank[]>([]) // Start empty - only load transfer-enabled banks
   const [isLoadingBanks, setIsLoadingBanks] = useState(true)
   const [banksError, setBanksError] = useState<string | null>(null)
-  const [banksSource, setBanksSource] = useState<'api' | 'fallback' | 'loading'>('loading')
+  const [banksSource, setBanksSource] = useState<'api' | 'error' | 'loading'>('loading')
   const [banksCount, setBanksCount] = useState<number>(0)
 
   // Fetch banks from Paystack API on mount
@@ -97,23 +88,23 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
       setBanksError(null)
       
       try {
-        const response = await fetch('/api/paystack/banks?country=ZA&currency=ZAR')
+        const response = await fetch('/api/paystack/banks/payout?country=ZA')
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch banks: ${response.status}`)
+          throw new Error(`Failed to fetch transfer-enabled banks: ${response.status}`)
         }
         
         const data = await response.json()
         
         // Log full API response for debugging
-        console.group('🔍 Paystack Banks API Response')
+        console.group('🔍 Transfer-Enabled Banks API Response')
         console.log('Response Status:', response.status, response.statusText)
         console.log('Response Data:', data)
         console.log('Success:', data.success)
-        console.log('Source:', data.source || 'paystack')
+        console.log('Source:', data.source || 'transfer-enabled-banks-service')
         console.log('Banks Count:', data.data?.length || 0)
-        if (data.debug) {
-          console.log('Debug Info:', data.debug)
+        if (data.metadata) {
+          console.log('Cache Info:', data.metadata.cache)
         }
         console.groupEnd()
         
@@ -122,32 +113,31 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
             setBanks(data.data)
             setBanksSource('api')
             setBanksCount(data.data.length)
-            console.log(`✅ Loaded ${data.data.length} banks from Paystack API`)
-            console.log('📋 Bank codes loaded:', data.data.map((b: Bank) => `${b.name} (${b.code})`).join(', '))
-            console.log('📊 API Response source:', data.source || 'paystack')
+            console.log(`✅ Loaded ${data.data.length} transfer-enabled banks from Paystack API`)
+            console.log('📋 Transfer-enabled bank codes:', data.data.map((b: Bank) => `${b.name} (${b.code})`).join(', '))
+            console.log('📊 API Response source: transfer-enabled-banks-service (advisory metadata)')
             
             // Log sample bank structure for verification
             if (data.data.length > 0) {
               console.log('📝 Sample bank structure:', data.data[0])
             }
           } else {
-            console.warn('⚠️ No banks returned from API, using fallback')
-            setBanks(FALLBACK_BANKS)
-            setBanksSource('fallback')
-            setBanksCount(FALLBACK_BANKS.length)
-            console.log('📋 Using fallback banks:', FALLBACK_BANKS.map(b => `${b.name} (${b.code})`).join(', '))
+            console.warn('⚠️ No transfer-enabled banks returned from API')
+            setBanksError('No transfer-enabled banks available. Please try again later.')
+            setBanks([]) // Don't use fallback - only transfer-enabled banks are valid
+            setBanksSource('error')
+            setBanksCount(0)
           }
           setIsLoadingBanks(false)
         }
       } catch (error) {
-        console.error('❌ Failed to fetch banks from Paystack:', error)
+        console.error('❌ Failed to fetch transfer-enabled banks:', error)
         if (isMounted) {
-          setBanksError(error instanceof Error ? error.message : 'Failed to load banks')
-          setBanks(FALLBACK_BANKS) // Use fallback on error
-          setBanksSource('fallback')
-          setBanksCount(FALLBACK_BANKS.length)
+          setBanksError(error instanceof Error ? error.message : 'Failed to load transfer-enabled banks')
+          setBanks([]) // Don't use fallback - only transfer-enabled banks are valid
+          setBanksSource('error')
+          setBanksCount(0)
           setIsLoadingBanks(false)
-          console.log('📋 Using fallback banks due to error:', FALLBACK_BANKS.map(b => `${b.name} (${b.code})`).join(', '))
         }
       }
     }
@@ -467,6 +457,15 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
+                      {/* Transfer-Enabled Banks Notice */}
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>Only transfer-enabled banks supported.</strong> Only banks that support Paystack transfers are shown. 
+                          If your bank is not listed, it may not support transfers with the current payment provider.
+                        </AlertDescription>
+                      </Alert>
+
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label htmlFor="bankCode" className="text-sm font-medium">
@@ -492,17 +491,20 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
                             <p className="text-sm text-red-600">{validationErrors.bankCode}</p>
                           )}
                           {banksError && (
-                            <p className="text-xs text-yellow-600">
-                              ⚠️ Using fallback bank list. Some banks may not be available.
+                            <p className="text-xs text-red-600">
+                              ⚠️ {banksError}
                             </p>
                           )}
-                          {!isLoadingBanks && !banksError && (
+                          {!isLoadingBanks && banks.length === 0 && !banksError && (
+                            <p className="text-xs text-yellow-600">
+                              ⚠️ No transfer-enabled banks available. Please refresh the page.
+                            </p>
+                          )}
+                          {!isLoadingBanks && !banksError && banks.length > 0 && (
                             <div className="flex items-center gap-2 text-xs text-gray-500">
                               <CheckCircle className="w-3 h-3 text-green-600" />
                               <span>
-                                {banksSource === 'api' 
-                                  ? `Loaded ${banksCount} banks from Paystack API`
-                                  : `Using ${banksCount} fallback banks`}
+                                Loaded {banksCount} transfer-enabled banks from Paystack API
                               </span>
                             </div>
                           )}
@@ -673,52 +675,52 @@ export function ProviderBankDetailsContent({ providerId }: ProviderBankDetailsCo
               <Card className={`shadow-lg border-0 ${
                 banksSource === 'api' 
                   ? 'bg-green-50 border-green-200' 
-                  : banksSource === 'fallback'
-                  ? 'bg-yellow-50 border-yellow-200'
+                  : banksSource === 'error'
+                  ? 'bg-red-50 border-red-200'
                   : 'bg-gray-50 border-gray-200'
               }`}>
                 <CardHeader>
                   <CardTitle className={`flex items-center gap-2 text-lg ${
                     banksSource === 'api' 
                       ? 'text-green-900' 
-                      : banksSource === 'fallback'
-                      ? 'text-yellow-900'
+                      : banksSource === 'error'
+                      ? 'text-red-900'
                       : 'text-gray-900'
                   }`}>
                     {banksSource === 'api' ? (
                       <CheckCircle className="w-5 h-5 text-green-600" />
-                    ) : banksSource === 'fallback' ? (
-                      <AlertCircle className="w-5 h-5 text-yellow-600" />
+                    ) : banksSource === 'error' ? (
+                      <AlertCircle className="w-5 h-5 text-red-600" />
                     ) : (
                       <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
                     )}
-                    Bank List Status
+                    Transfer-Enabled Banks Status
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {isLoadingBanks ? (
                     <p className="text-sm text-gray-800">
-                      Loading banks from Paystack API...
+                      Loading transfer-enabled banks from Paystack API...
                     </p>
-                  ) : banksSource === 'api' ? (
+                  ) : banksSource === 'api' && banks.length > 0 ? (
                     <div className="space-y-2">
                       <p className="text-sm text-green-800">
-                        <strong>✅ Successfully loaded {banksCount} banks from Paystack API</strong>
+                        <strong>✅ Successfully loaded {banksCount} transfer-enabled banks</strong>
                       </p>
                       <p className="text-xs text-green-700">
-                        All bank codes are validated and up-to-date from Paystack.
+                        All banks support Paystack transfers (advisory metadata from Paystack API).
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-sm text-yellow-800">
-                        <strong>⚠️ Using fallback bank list ({banksCount} banks)</strong>
+                      <p className="text-sm text-red-800">
+                        <strong>⚠️ Unable to load transfer-enabled banks</strong>
                       </p>
-                      <p className="text-xs text-yellow-700">
-                        Could not fetch from Paystack API. Using cached list. Some banks may not be available.
+                      <p className="text-xs text-red-700">
+                        Could not fetch transfer-enabled banks from Paystack API. Please refresh the page and try again.
                       </p>
                       {banksError && (
-                        <p className="text-xs text-yellow-600 mt-1">
+                        <p className="text-xs text-red-600 mt-1">
                           Error: {banksError}
                         </p>
                       )}

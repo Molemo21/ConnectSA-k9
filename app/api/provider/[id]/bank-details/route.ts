@@ -167,6 +167,24 @@ export async function POST(
       );
     }
 
+    // Advisory validation: Check if bank is in transfer-enabled list
+    // NOTE: This is advisory, not authoritative. Hard validation happens during recipient creation.
+    const { BankValidationService } = await import('@/lib/services/bank-validation-service');
+    const advisoryValidation = await BankValidationService.validateForTransfer(bankCode);
+    
+    if (!advisoryValidation.valid) {
+      console.warn(`⚠️ Advisory validation failed: ${advisoryValidation.error}`);
+      return NextResponse.json(
+        { 
+          error: "Bank not in transfer-enabled list (advisory)",
+          details: advisoryValidation.error || "This bank may not support transfers. Please select a transfer-enabled bank from the list.",
+          field: "bankCode",
+          isAdvisory: true,
+        },
+        { status: 400 }
+      );
+    }
+
     // FIX 2: Smart recipient code management - Check if bank details actually changed
     const bankDetailsChanged = 
       existingProvider.bankCode !== bankCode ||
@@ -233,68 +251,40 @@ export async function POST(
           console.log('✅ Bank account validated - account can receive transfers');
         }
       } catch (recipientError) {
-        console.error('❌ Failed to validate bank account with Paystack:', recipientError);
+        console.error('❌ HARD FAILURE: Recipient creation failed:', recipientError);
         
-        // Parse Paystack error for better user feedback
-        let errorMessage = "Unable to validate bank account";
-        let errorDetails = "Please verify your bank details are correct.";
+        // Hard failure handling - authoritative validation from payment provider
+        const failureResult = BankValidationService.handleRecipientCreationFailure(recipientError);
+        
+        // Log hard failure for monitoring
+        console.error('🚨 Hard failure details:', {
+          isHardFailure: failureResult.isHardFailure,
+          error: failureResult.error,
+          details: failureResult.details,
+          recoverable: failureResult.recoverable,
+          actionRequired: failureResult.actionRequired,
+          bankCode: recipientData.bank_code,
+          accountNumber: '***' + accountNumber.slice(-4),
+        });
+        
+        // Determine error field from failure type
         let errorField: string | undefined = undefined;
-        
-        if (recipientError instanceof Error) {
-          // Check for structured Paystack error
-          if (recipientError.message.includes('Paystack API error')) {
-            try {
-              const errorMatch = recipientError.message.match(/\{.*\}/);
-              if (errorMatch) {
-                const errorData = JSON.parse(errorMatch[0]);
-                console.error('📋 Paystack error data:', errorData);
-                
-                if (errorData.code === 'invalid_bank_code' || errorData.message?.includes('bank code')) {
-                  errorMessage = "Invalid bank code";
-                  errorDetails = `The bank code "${recipientData.bank_code}" is not valid for creating transfer recipients. Please select a valid bank from the list.`;
-                  errorField = "bankCode";
-                } else if (errorData.code === 'invalid_account_number' || errorData.message?.includes('account number')) {
-                  errorMessage = "Invalid account number";
-                  errorDetails = "The account number is invalid. Please verify your account number is correct (10-12 digits).";
-                  errorField = "accountNumber";
-                } else if (errorData.code === 'invalid_account_name' || errorData.message?.includes('account name')) {
-                  errorMessage = "Invalid account name";
-                  errorDetails = "The account name doesn't match. Please ensure it matches exactly as it appears on your bank account statement.";
-                  errorField = "accountName";
-                } else if (errorData.message) {
-                  errorMessage = `Paystack validation error: ${errorData.message}`;
-                  errorDetails = errorData.meta?.nextStep || errorDetails;
-                }
-              }
-            } catch (parseError) {
-              console.error('❌ Error parsing Paystack response:', parseError);
-              errorMessage = recipientError.message;
-            }
-          } else if (recipientError.message.includes("Invalid bank code") || 
-                     recipientError.message.includes("invalid_bank_code")) {
-            errorMessage = "Invalid bank code";
-            errorDetails = `The bank code "${recipientData.bank_code}" is not valid for South African banks. Please select a valid bank from the list.`;
-            errorField = "bankCode";
-          } else if (recipientError.message.includes("Invalid account number") || 
-                     recipientError.message.includes("invalid_account_number")) {
-            errorMessage = "Invalid account number";
-            errorDetails = "The account number is invalid. Please verify your account number is correct.";
-            errorField = "accountNumber";
-          } else if (recipientError.message.includes("Account name") || 
-                     recipientError.message.includes("invalid_account_name")) {
-            errorMessage = "Invalid account name";
-            errorDetails = "The account name doesn't match. Please ensure it matches exactly as it appears on your bank account.";
-            errorField = "accountName";
-          } else {
-            errorMessage = `Unable to validate bank account: ${recipientError.message}`;
-          }
+        if (failureResult.error.includes('bank code')) {
+          errorField = 'bankCode';
+        } else if (failureResult.error.includes('account number')) {
+          errorField = 'accountNumber';
+        } else if (failureResult.error.includes('account name')) {
+          errorField = 'accountName';
         }
         
         return NextResponse.json(
           { 
-            error: errorMessage,
-            details: errorDetails,
-            field: errorField
+            error: failureResult.error,
+            details: failureResult.details,
+            field: errorField,
+            isHardFailure: true,
+            recoverable: failureResult.recoverable,
+            actionRequired: failureResult.actionRequired,
           },
           { status: 400 }
         );
