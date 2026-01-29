@@ -129,7 +129,8 @@ export async function POST(
 
     const body = await request.json();
     console.log('Request body received:', body);
-    const { bankName, bankCode, accountNumber, accountName } = body;
+    const { bankName, accountNumber, accountName } = body;
+    let bankCode = body.bankCode; // Use let since we may need to update it with resolved code
 
     // Check if provider exists and get current bank details for comparison
     const existingProvider = await db.provider.findUnique({
