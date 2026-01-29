@@ -107,6 +107,7 @@ type InitialBankDetails = {
   bankCode?: string
   accountNumber?: string
   accountName?: string
+  hasRecipientCode?: boolean
 }
 
 import { ComponentErrorBoundary } from "@/components/error-boundaries/ComponentErrorBoundary"
@@ -2782,21 +2783,47 @@ function ProviderMainContent({
 
               <CardHeader>
 
-                <CardTitle className="text-white flex items-center gap-2">
-
-                  <CreditCard className="w-5 h-5 text-blue-400" />
-
-                  Bank Details Setup
-
+                <CardTitle className="text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-blue-400" />
+                    Bank Details Setup
+                  </div>
+                  {hasBankDetails && (() => {
+                    // Check if account is validated (has recipient code)
+                    const bankDetailsData = memoizedBankDetails as InitialBankDetails | null;
+                    const isAccountValidated = bankDetailsData && typeof bankDetailsData === 'object' && 
+                      'hasRecipientCode' in bankDetailsData && bankDetailsData.hasRecipientCode === true;
+                    
+                    return isAccountValidated ? (
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Validated
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Needs Validation
+                      </Badge>
+                    );
+                  })()}
                 </CardTitle>
 
                 <CardDescription className="text-gray-400">
 
                   {hasBankDetails 
 
-                    ? 'Your bank details are configured. You can update them below.' 
+                    ? (() => {
+                        // Check if account is validated (has recipient code)
+                        const bankDetailsData = memoizedBankDetails as InitialBankDetails | null;
+                        const isAccountValidated = bankDetailsData && typeof bankDetailsData === 'object' && 
+                          'hasRecipientCode' in bankDetailsData && bankDetailsData.hasRecipientCode === true;
+                        
+                        return isAccountValidated
+                          ? '✅ Your bank account is validated and ready to receive payments. You can update your details below if needed.'
+                          : '⚠️ Your bank details are saved but not yet validated. Please save your details again to validate your account.';
+                      })()
 
-                    : 'Setup your bank details to receive payments from completed jobs.'
+                    : 'Setup your bank details to receive payments from completed jobs. Your account will be validated when you save.'
 
                   }
 

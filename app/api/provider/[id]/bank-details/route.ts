@@ -131,10 +131,16 @@ export async function POST(
     console.log('Request body received:', body);
     const { bankName, bankCode, accountNumber, accountName } = body;
 
-    // Check if provider exists
+    // Check if provider exists and get current bank details for comparison
     const existingProvider = await db.provider.findUnique({
       where: { id: providerId },
-      select: { id: true }
+      select: { 
+        id: true,
+        bankCode: true,
+        accountNumber: true,
+        accountName: true,
+        recipientCode: true,
+      }
     });
     
     if (!existingProvider) {
@@ -160,44 +166,146 @@ export async function POST(
       );
     }
 
-    // BEST PRACTICE: Trust frontend validation
-    // Frontend already validates bank codes against Paystack API before submission
-    // Backend validation is redundant and causes issues when Paystack API has temporary problems
-    // (e.g., rate limiting, network timeouts, API inconsistencies)
-    // 
-    // Benefits of trusting frontend:
-    // - Frontend validation is the user-facing validation (what users see)
-    // - Faster saves (no redundant API call)
-    // - More reliable (avoids Paystack API timing/rate limit issues)
-    // - Better UX (users aren't blocked by backend API failures)
+    // FIX 2: Smart recipient code management - Check if bank details actually changed
+    const bankDetailsChanged = 
+      existingProvider.bankCode !== bankCode ||
+      existingProvider.accountNumber !== accountNumber ||
+      existingProvider.accountName !== accountName;
+
+    console.log('Bank details change check:', {
+      bankCodeChanged: existingProvider.bankCode !== bankCode,
+      accountNumberChanged: existingProvider.accountNumber !== accountNumber,
+      accountNameChanged: existingProvider.accountName !== accountName,
+      overallChanged: bankDetailsChanged,
+      hasExistingRecipientCode: !!existingProvider.recipientCode
+    });
+
+    // FIX 1: Validate bank details with Paystack by creating recipient
+    // This ensures the account is valid and can receive transfers
+    let recipientCode: string | null = null;
     const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
     
-    if (!isTestMode) {
-      console.log(`✅ Trusting frontend validation for bank code: ${bankCode}`);
-      console.log(`📋 Frontend already validated this code against Paystack API - skipping redundant backend validation`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV}, Test Mode: ${isTestMode}`);
+    // Only validate if bank details changed OR if recipient code doesn't exist
+    if (bankDetailsChanged || !existingProvider.recipientCode) {
+      console.log('🔄 Validating bank account with Paystack...');
       
-      // Optional: Non-blocking health check for monitoring (doesn't affect save)
-      // This helps us monitor Paystack API availability without blocking users
       try {
         const { paystackClient } = await import('@/lib/paystack');
-        // Fire and forget - don't await, don't block
-        paystackClient.listBanks({ country: 'ZA' }).then(banks => {
-          console.log(`📊 Paystack API health check (non-blocking): ${banks.data?.length || 0} banks available`);
-        }).catch(error => {
-          // Ignore errors - this is just for monitoring, not validation
-          console.warn(`⚠️ Paystack API health check failed (non-blocking):`, error instanceof Error ? error.message : 'Unknown error');
+        
+        // Prepare recipient data for Paystack validation
+        const recipientData = {
+          type: 'nuban' as const,
+          name: accountName,
+          account_number: accountNumber,
+          bank_code: bankCode,
+        };
+        
+        console.log('📤 Creating Paystack recipient for validation:', {
+          type: recipientData.type,
+          name: recipientData.name,
+          bank_code: recipientData.bank_code,
+          account_number: '***' + accountNumber.slice(-4) // Masked for logging
         });
-      } catch (monitoringError) {
-        // Ignore monitoring errors - they don't affect the save
-        console.warn(`⚠️ Could not perform Paystack API health check (non-blocking):`, monitoringError);
+        
+        if (isTestMode) {
+          // In test mode, simulate successful recipient creation
+          console.log('🧪 Test mode: Simulating recipient creation');
+          recipientCode = `TEST_RECIPIENT_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+          console.log(`✅ Test recipient code generated: ${recipientCode}`);
+        } else {
+          // Create actual Paystack recipient to validate bank account
+          const recipientResponse = await paystackClient.createRecipient(recipientData);
+          
+          if (!recipientResponse.status || !recipientResponse.data?.recipient_code) {
+            throw new Error('Failed to validate bank account with Paystack');
+          }
+          
+          recipientCode = recipientResponse.data.recipient_code;
+          console.log(`✅ Paystack recipient created successfully: ${recipientCode}`);
+          console.log('✅ Bank account validated - account can receive transfers');
+        }
+      } catch (recipientError) {
+        console.error('❌ Failed to validate bank account with Paystack:', recipientError);
+        
+        // Parse Paystack error for better user feedback
+        let errorMessage = "Unable to validate bank account";
+        let errorDetails = "Please verify your bank details are correct.";
+        let errorField: string | undefined = undefined;
+        
+        if (recipientError instanceof Error) {
+          // Check for structured Paystack error
+          if (recipientError.message.includes('Paystack API error')) {
+            try {
+              const errorMatch = recipientError.message.match(/\{.*\}/);
+              if (errorMatch) {
+                const errorData = JSON.parse(errorMatch[0]);
+                console.error('📋 Paystack error data:', errorData);
+                
+                if (errorData.code === 'invalid_bank_code' || errorData.message?.includes('bank code')) {
+                  errorMessage = "Invalid bank code";
+                  errorDetails = `The bank code "${bankCode}" is not valid for creating transfer recipients. Please select a valid bank from the list.`;
+                  errorField = "bankCode";
+                } else if (errorData.code === 'invalid_account_number' || errorData.message?.includes('account number')) {
+                  errorMessage = "Invalid account number";
+                  errorDetails = "The account number is invalid. Please verify your account number is correct (10-12 digits).";
+                  errorField = "accountNumber";
+                } else if (errorData.code === 'invalid_account_name' || errorData.message?.includes('account name')) {
+                  errorMessage = "Invalid account name";
+                  errorDetails = "The account name doesn't match. Please ensure it matches exactly as it appears on your bank account statement.";
+                  errorField = "accountName";
+                } else if (errorData.message) {
+                  errorMessage = `Paystack validation error: ${errorData.message}`;
+                  errorDetails = errorData.meta?.nextStep || errorDetails;
+                }
+              }
+            } catch (parseError) {
+              console.error('❌ Error parsing Paystack response:', parseError);
+              errorMessage = recipientError.message;
+            }
+          } else if (recipientError.message.includes("Invalid bank code") || 
+                     recipientError.message.includes("invalid_bank_code")) {
+            errorMessage = "Invalid bank code";
+            errorDetails = `The bank code "${bankCode}" is not valid for South African banks. Please select a valid bank from the list.`;
+            errorField = "bankCode";
+          } else if (recipientError.message.includes("Invalid account number") || 
+                     recipientError.message.includes("invalid_account_number")) {
+            errorMessage = "Invalid account number";
+            errorDetails = "The account number is invalid. Please verify your account number is correct.";
+            errorField = "accountNumber";
+          } else if (recipientError.message.includes("Account name") || 
+                     recipientError.message.includes("invalid_account_name")) {
+            errorMessage = "Invalid account name";
+            errorDetails = "The account name doesn't match. Please ensure it matches exactly as it appears on your bank account.";
+            errorField = "accountName";
+          } else {
+            errorMessage = `Unable to validate bank account: ${recipientError.message}`;
+          }
+        }
+        
+        return NextResponse.json(
+          { 
+            error: errorMessage,
+            details: errorDetails,
+            field: errorField
+          },
+          { status: 400 }
+        );
       }
     } else {
-      console.log(`ℹ️ Skipping bank code validation - in test mode`);
+      // Bank details unchanged - keep existing recipient code
+      recipientCode = existingProvider.recipientCode;
+      console.log('✅ Bank details unchanged, keeping existing recipient code');
     }
 
-    // Update provider with bank details
-    console.log('Updating provider with data:', { bankName, bankCode, accountNumber: '***', accountName });
+    // Update provider with bank details and validated recipient code
+    console.log('Updating provider with validated bank details:', { 
+      bankName, 
+      bankCode, 
+      accountNumber: '***', 
+      accountName,
+      hasRecipientCode: !!recipientCode,
+      recipientCodeChanged: bankDetailsChanged || !existingProvider.recipientCode
+    });
     
     const updatedProvider = await db.provider.update({
       where: { id: providerId },
@@ -206,8 +314,7 @@ export async function POST(
         bankCode,
         accountNumber,
         accountName,
-        // Clear recipient code when bank details change
-        recipientCode: null,
+        recipientCode, // Store validated recipient code (or keep existing if unchanged)
       },
       select: {
         id: true,
@@ -219,12 +326,15 @@ export async function POST(
       },
     });
     
-    console.log('Provider updated successfully:', updatedProvider.id);
-
-    console.log(`Bank details updated for provider ${providerId}`);
+    console.log('✅ Provider updated successfully with validated bank details:', {
+      providerId: updatedProvider.id,
+      hasRecipientCode: !!updatedProvider.recipientCode
+    });
 
     return NextResponse.json({
-      message: "Bank details updated successfully",
+      message: bankDetailsChanged 
+        ? "Bank details validated and saved successfully" 
+        : "Bank details saved successfully",
       provider: {
         id: updatedProvider.id,
         bankName: updatedProvider.bankName,
