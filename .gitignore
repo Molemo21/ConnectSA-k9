@@ -47,3 +47,7 @@ production-migration-report.json
 phase0-checkpoint.log
 deleted-migrations-*.txt
 
+
+# Quarantined legacy scripts (never commit or execute)
+scripts/quarantine/
+
