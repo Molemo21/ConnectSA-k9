@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { BEAUTY_SUBCATEGORIES, CLEANING_SUBCATEGORIES } from '../config/services';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -25,18 +26,9 @@ const prisma = new PrismaClient({
   }
 });
 
-// Expected subcategories from ServiceSelection.tsx
-const EXPECTED_CLEANING_SUBCATEGORIES = {
-  'Home Cleaning': ['House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
-  'Specialized Cleaning': ['Carpet Cleaning', 'Cleaning Services', 'Mobile Car Wash']
-};
-
-const EXPECTED_BEAUTY_SUBCATEGORIES = {
-  'Hair Services': ['Haircut (Men & Women)', 'Braiding', 'Weave Installation'],
-  'Makeup & Lashes': ['Eyelash Extensions', 'Bridal Makeup', 'Makeup Application (Regular)'],
-  'Nails': ['Manicure', 'Pedicure', 'Nail Extensions'],
-  'Skincare & Hair Removal': ['Facial', 'Waxing']
-};
+// Use subcategories from config/services.ts (single source of truth)
+const EXPECTED_CLEANING_SUBCATEGORIES = CLEANING_SUBCATEGORIES;
+const EXPECTED_BEAUTY_SUBCATEGORIES = BEAUTY_SUBCATEGORIES;
 
 async function verifyProductionFrontend() {
   console.log('🔍 Verifying Production Frontend & Backend Sync\n');
