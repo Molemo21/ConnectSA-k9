@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -348,24 +348,38 @@ export function EnhancedProviderDashboard({ initialUser }: EnhancedProviderDashb
     initializeDashboard()
   }, []) // Empty dependency array to run only once
 
-  // Auto-refresh effect
+  // Track interaction state
+  const isInteractingRef = useRef<boolean>(false)
+
+  // Auto-refresh effect - less aggressive
   useEffect(() => {
     if (!authState.isAuthenticated) return
 
     const pollInterval = setInterval(async () => {
       try {
-        // Only refresh if we have bookings or if it's been a while since last refresh
+        // Only refresh if:
+        // 1. Page is visible
+        // 2. Not currently loading
+        // 3. User is not interacting
+        // 4. At least 60 seconds have passed since last refresh
         const timeSinceLastRefresh = Date.now() - lastRefresh.getTime()
-        if (bookings.length > 0 || timeSinceLastRefresh > 60000) { // 1 minute
+        if (document.hidden || 
+            loading || 
+            isInteractingRef.current ||
+            timeSinceLastRefresh < 60000) {
+          return
+        }
+        
+        if (bookings.length > 0 || timeSinceLastRefresh > 60000) {
           await fetchProviderData()
         }
       } catch (error) {
         console.error('Auto-refresh error:', error)
       }
-    }, 30000) // Refresh every 30 seconds
+    }, 60000) // Check every 60 seconds (was 30 seconds)
 
     return () => clearInterval(pollInterval)
-  }, [authState.isAuthenticated, bookings.length, lastRefresh]) // Remove fetchProviderData dependency
+  }, [authState.isAuthenticated, bookings.length, lastRefresh, loading]) // Remove fetchProviderData dependency
 
   // Loading state
   if (authState.isLoading || loading) {

@@ -27,6 +27,7 @@ import { AdminUserManagementEnhanced } from "@/components/admin/admin-user-manag
 import { AdminProviderManagementEnhanced } from "@/components/admin/admin-provider-management-enhanced"
 import { AdminBookingManagementEnhanced } from "@/components/admin/admin-booking-management-enhanced"
 import { AdminPaymentManagement } from "@/components/admin/admin-payment-management"
+import { AdminPayoutManagement } from "@/components/admin/admin-payout-management"
 import { AdminAnalytics } from "@/components/admin/admin-analytics"
 import AdminSystemHealth from "@/components/admin/admin-system-health"
 import { AdminProviderCleanupTool } from "@/components/admin/admin-provider-cleanup-tool"
@@ -308,6 +309,13 @@ export function MainContentAdmin({
         return (
           <div className="space-y-6">
             <AdminPaymentManagement />
+          </div>
+        )
+
+      case "payouts":
+        return (
+          <div className="space-y-6">
+            <AdminPayoutManagement />
           </div>
         )
 

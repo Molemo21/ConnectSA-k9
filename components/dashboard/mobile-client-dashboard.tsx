@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { safeRedirect } from "@/lib/redirect-guard"
@@ -1398,7 +1398,11 @@ export function MobileClientDashboard() {
     onRefreshAll: refreshAllBookings
   })
 
-  // Enhanced auto-refresh mechanism for payment status updates
+  // Track interaction state and last refresh time
+  const isInteractingRef = useRef<boolean>(false)
+  const lastPaymentPollRef = useRef<number>(0)
+
+  // Enhanced auto-refresh mechanism for payment status updates - less aggressive
   useEffect(() => {
     if (!bookings.length || !user) return
 
@@ -1411,8 +1415,23 @@ export function MobileClientDashboard() {
     console.log('🔄 Starting payment status polling for', bookings.length, 'bookings')
 
     const pollInterval = setInterval(async () => {
+      // Only poll if:
+      // 1. Page is visible
+      // 2. Not currently refreshing
+      // 3. User is not interacting
+      // 4. At least 30 seconds have passed since last poll
+      const timeSinceLastPoll = Date.now() - lastPaymentPollRef.current
+      if (document.hidden || 
+          isRefreshing || 
+          isInteractingRef.current ||
+          timeSinceLastPoll < 30000) {
+        return
+      }
+
       try {
         console.log('🔍 Polling for payment status updates...')
+        lastPaymentPollRef.current = Date.now()
+        
         const currentBookings = await fetch('/api/bookings/my-bookings', {
           credentials: 'include'
         }).then(res => res.json()).catch(() => null)
@@ -1447,13 +1466,13 @@ export function MobileClientDashboard() {
       } catch (error) {
         console.error('Payment status polling error:', error)
       }
-    }, 5000) // Reduced interval to 5 seconds for faster updates
+    }, 30000) // Increased to 30 seconds (was 5 seconds - too aggressive)
 
     return () => {
       console.log('🛑 Stopping payment status polling')
       clearInterval(pollInterval)
     }
-  }, [bookings, user, refreshAllBookings])
+  }, [bookings, user, refreshAllBookings, isRefreshing])
 
   useEffect(() => {
     async function fetchDashboardData() {

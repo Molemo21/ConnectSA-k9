@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 // import { useWebSocket } from "@/hooks/use-websocket"
 
 // import { providerApi } from "@/services/providerApi"
+import { useSocket, SocketEvent } from "@/lib/socket-client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -3099,6 +3100,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
   
   // Track initialization timeout to clear it when initialization completes
   const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Ref to store refreshData function for socket handlers (breaks circular dependency)
+  const refreshDataRef = useRef<(() => Promise<void>) | null>(null)
 
   const [mounted, setMounted] = useState(false)
 
@@ -3216,9 +3220,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
       
       
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging - increased to 15 seconds for slow connections
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
       
       let response: Response | null = null
       try {
@@ -3243,7 +3247,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
       } catch (fetchError: unknown) {
         clearTimeout(timeoutId)
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('❌ Authentication check timed out')
+          console.error('❌ Authentication check timed out after 15 seconds')
           // Clear ref on timeout
           authenticatedUserRef.current = null
           setDashboardState(prev => ({
@@ -3251,7 +3255,7 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             auth: {
               isAuthenticated: false,
               isLoading: false,
-              error: 'Authentication check timed out',
+              error: 'Authentication check timed out. Please check your connection and try again.',
               user: null
             }
           }))
@@ -3464,59 +3468,51 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
 
 
+  // Handle real-time booking updates (using ref to avoid circular dependency)
+  const handleBookingUpdate = useCallback((event: SocketEvent) => {
+    console.log('🔔 Provider booking update received:', event)
+    
+    if (event.action === 'status_changed') {
+      console.log('📋 Booking status changed, refreshing provider data')
+      // Refresh data when booking status changes
+      if (refreshDataRef.current) {
+        refreshDataRef.current()
+      }
+    }
+  }, [])
+
+  // Handle real-time payment updates
+  const handlePaymentUpdate = useCallback((event: SocketEvent) => {
+    console.log('💳 Provider payment update received:', event)
+    // Refresh data when payment status changes
+    if (refreshDataRef.current) {
+      refreshDataRef.current()
+    }
+  }, [])
+
+  // Handle real-time payout updates
+  const handlePayoutUpdate = useCallback((event: SocketEvent) => {
+    console.log('💰 Provider payout update received:', event)
+    // Refresh data when payout status changes
+    if (refreshDataRef.current) {
+      refreshDataRef.current()
+    }
+  }, [])
+
   // WebSocket connection for real-time updates - only initialize after mount
-
-  // const { connected, error: socketError, reconnect, isPolling } = useSocket({
-
-  //   userId: mounted ? (dashboardState.auth.user?.id || 'test_provider_123') : undefined,
-
-  //   role: 'PROVIDER',
-
-  //   enablePolling: mounted, // Only enable polling after mount
-
-  //   pollingInterval: 60000, // 60 seconds
-
-  //   onBookingUpdate: (event) => {
-
-  //     console.log('🔔 Provider booking update received:', event)
-
-  //     // Refresh data when booking status changes
-
-  //     fetchProviderData()
-
-  //   },
-
-  //   onPaymentUpdate: (event) => {
-
-  //     console.log('💳 Provider payment update received:', event)
-
-  //     // Refresh data when payment status changes
-
-  //     fetchProviderData()
-
-  //   },
-
-  //   onPayoutUpdate: (event) => {
-
-  //     console.log('💰 Provider payout update received:', event)
-
-  //     // Refresh data when payout status changes
-
-  //     fetchProviderData()
-
-  //   },
-
-  //   onNotification: (event) => {
-
-  //     console.log('🔔 Provider notification received:', event)
-
-  //     // Show notification to user
-
-  //     showToast.info(event.data.message || 'New notification')
-
-  //   }
-
-  // })
+  const { connected, error: socketError, reconnect, isPolling } = useSocket({
+    userId: mounted ? (dashboardState.auth.user?.id || undefined) : undefined,
+    role: 'PROVIDER',
+    enablePolling: mounted, // Only enable polling after mount
+    pollingInterval: 60000, // 60 seconds
+    onBookingUpdate: handleBookingUpdate,
+    onPaymentUpdate: handlePaymentUpdate,
+    onPayoutUpdate: handlePayoutUpdate,
+    onNotification: (event) => {
+      console.log('🔔 Provider notification received:', event)
+      // Show notification to user
+    }
+  })
 
 
 
@@ -4054,13 +4050,13 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
 
           console.log('No initialUser, checking authentication...')
           
-          // Add timeout to prevent infinite loading
+          // Add timeout to prevent infinite loading - increased to 20 seconds
           const authCheckPromise = checkAuthentication()
           const timeoutPromise = new Promise<{ success: boolean; user: User | null }>((resolve) => {
             setTimeout(() => {
-              console.warn('⚠️ Authentication check timeout (10s)')
+              console.warn('⚠️ Authentication check timeout (20s)')
               resolve({ success: false, user: null })
-            }, 10000)
+            }, 20000)
           })
           
           const authResult = await Promise.race([authCheckPromise, timeoutPromise])
@@ -4082,6 +4078,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
             authenticatedUserRef.current = authResult.user
 
             // Check provider status before allowing dashboard access
+            // Add small delay to ensure Prisma connection is established after login
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             const statusCheck = await checkProviderStatus()
             if (!statusCheck.shouldContinue) {
               console.log('🛑 Provider status check failed, redirecting...')
@@ -4092,6 +4091,9 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
               }
               return // Exit early, redirect is happening
             }
+            
+            // Add another small delay before fetching data to stagger API calls
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             try {
               // Pass the authenticated user directly to avoid race condition with state update
@@ -4247,6 +4249,78 @@ export function UnifiedProviderDashboard({ initialUser }: UnifiedProviderDashboa
     await fetchProviderData(0, true) // Force refresh
 
   }, [fetchProviderData])
+
+  // Store refreshData in ref for socket handlers
+  useEffect(() => {
+    refreshDataRef.current = refreshData
+  }, [refreshData])
+
+  // Immediate refresh after mount to catch any status changes
+  useEffect(() => {
+    if (!mounted) return
+    
+    // Small delay to ensure page is fully loaded
+    const timeout = setTimeout(() => {
+      console.log('🔄 Initial refresh for provider bookings on mount')
+      refreshData()
+    }, 1000)
+    
+    return () => clearTimeout(timeout)
+  }, [mounted, refreshData])
+
+  // Track interaction state and last refresh time for auto-refresh
+  const lastRefreshRef = useRef<number>(0)
+  const isInteractingRef = useRef<boolean>(false)
+
+  // Auto-refresh bookings every 60 seconds as fallback (reduced frequency)
+  useEffect(() => {
+    if (!mounted) return
+    
+    const interval = setInterval(() => {
+      // Only refresh if:
+      // 1. Page is visible
+      // 2. Not currently refreshing
+      // 3. User is not interacting
+      // 4. At least 60 seconds have passed
+      const timeSinceLastRefresh = Date.now() - lastRefreshRef.current
+      if (!document.hidden && 
+          !dashboardState.ui.loading && 
+          !isInteractingRef.current &&
+          timeSinceLastRefresh >= 60000) {
+        console.log('🔄 Auto-refreshing provider bookings (fallback)')
+        lastRefreshRef.current = Date.now()
+        refreshData()
+      }
+    }, 60000) // Check every 60 seconds (was 15 seconds - too aggressive)
+
+    return () => clearInterval(interval)
+  }, [mounted, refreshData, dashboardState.ui.loading])
+
+  // Refresh when page becomes visible - with cooldown
+  useEffect(() => {
+    if (!mounted) return
+    
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        const timeSinceLastRefresh = Date.now() - lastRefreshRef.current
+        // Only refresh if it's been more than 30 seconds since last refresh
+        // and user is not interacting
+        if (timeSinceLastRefresh > 30000 && 
+            !dashboardState.ui.loading && 
+            !isInteractingRef.current) {
+          console.log('📱 Page visible, refreshing provider bookings')
+          lastRefreshRef.current = Date.now()
+          refreshData()
+        }
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [mounted, refreshData, dashboardState.ui.loading])
 
 
 

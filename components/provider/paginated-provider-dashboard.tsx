@@ -213,20 +213,73 @@ export function PaginatedProviderDashboard() {
         read: false
       }, ...prev])
     }
+    
+    if (event.action === 'status_changed' || event.action === 'payment_released') {
+      console.log('📋 Booking status changed:', event.data)
+      
+      // Update the booking in state immediately
+      const updatedBooking = bookings.find(b => b.id === event.data.id)
+      if (updatedBooking) {
+        const newStatus = event.data.status || (event.data.paymentStatus === 'RELEASED' ? 'COMPLETED' : updatedBooking.status)
+        updateItem({
+          ...updatedBooking,
+          status: newStatus,
+          payment: event.data.paymentStatus ? {
+            ...updatedBooking.payment!,
+            status: event.data.paymentStatus
+          } : updatedBooking.payment,
+          updatedAt: event.data.updatedAt || new Date().toISOString()
+        } as Booking)
+      }
+      
+      // Show toast notification
+      const statusMessages: Record<string, string> = {
+        'COMPLETED': '✅ Booking completed!',
+        'IN_PROGRESS': '🔄 Booking in progress',
+        'AWAITING_CONFIRMATION': '⏳ Awaiting client confirmation',
+        'CANCELLED': '❌ Booking cancelled'
+      }
+      
+      const displayStatus = event.data.status || (event.data.paymentStatus === 'RELEASED' ? 'COMPLETED' : '')
+      const message = displayStatus ? (statusMessages[displayStatus] || `Booking status changed to ${displayStatus}`) : 'Booking updated'
+      if (message) {
+        toast.success(message, {
+          duration: 5000,
+          position: 'top-center'
+        })
+      }
+      
+      // Trigger a full refresh to get latest data from server
+      // This ensures we have the most up-to-date booking information
+      setTimeout(() => {
+        refresh()
+      }, 500) // Small delay to ensure database transaction is committed
+      
+      // Add notification
+      setNotifications(prev => [{
+        id: `booking_${event.data.id}_status_${Date.now()}`,
+        type: 'booking_status_changed',
+        title: 'Booking Status Updated',
+        message: `${event.data.serviceName || 'Booking'} status changed to ${displayStatus || 'updated'}`,
+        timestamp: new Date().toISOString(),
+        read: false
+      }, ...prev])
+    }
   }
 
   // Handle real-time payment updates
   function handlePaymentUpdate(event: SocketEvent) {
     console.log('💳 Provider payment update received:', event)
     
-    if (event.action === 'status_changed') {
+    if (event.action === 'status_changed' || event.action === 'payment_released') {
       const statusMessages = {
         'ESCROW': '💰 Payment received and held in escrow',
         'RELEASED': '✅ Payment released to you',
         'FAILED': '❌ Payment failed'
       }
       
-      const message = statusMessages[event.data.status as keyof typeof statusMessages]
+      const paymentStatus = event.data.status || 'RELEASED'
+      const message = statusMessages[paymentStatus as keyof typeof statusMessages]
       if (message) {
         toast.success(message, {
           duration: 5000,
@@ -235,10 +288,15 @@ export function PaginatedProviderDashboard() {
       }
       
       // Find and update the booking with the payment change
-      const updatedBooking = bookings.find(b => b.payment?.id === event.data.id)
+      const updatedBooking = bookings.find(b => b.payment?.id === event.data.id || b.id === event.data.bookingId)
       if (updatedBooking) {
-        const updatedPayment = { ...updatedBooking.payment!, status: event.data.status }
-        const newBooking = { ...updatedBooking, payment: updatedPayment }
+        const updatedPayment = { ...updatedBooking.payment!, status: paymentStatus }
+        const newBooking = { 
+          ...updatedBooking, 
+          payment: updatedPayment,
+          // If payment is released, booking should be completed
+          status: paymentStatus === 'RELEASED' ? 'COMPLETED' : updatedBooking.status
+        }
         updateItem(newBooking)
       }
       
@@ -247,7 +305,7 @@ export function PaginatedProviderDashboard() {
         id: `payment_${event.data.id}_${Date.now()}`,
         type: 'payment_update',
         title: 'Payment Update',
-        message: `Payment status changed to ${event.data.status}`,
+        message: `Payment status changed to ${paymentStatus}`,
         timestamp: new Date().toISOString(),
         read: false
       }, ...prev])

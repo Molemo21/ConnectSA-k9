@@ -71,10 +71,45 @@ export default function AdminDashboard() {
       const user = userData.user
       
       console.log('Admin dashboard: User data received:', user)
+      console.log('Admin dashboard: User role:', user?.role)
       
-      if (!user || user.role !== "ADMIN") {
-        console.log('User is not admin, redirecting to dashboard')
-        router.push("/dashboard")
+      if (!user) {
+        console.log('No user found, redirecting to login')
+        router.push("/login")
+        return
+      }
+      
+      // Normalize role to uppercase for comparison
+      const userRole = (user.role || "").toUpperCase().trim()
+      
+      if (userRole !== "ADMIN") {
+        console.log(`User is not admin (role: ${userRole}), redirecting to appropriate dashboard`)
+        // Use proper dashboard path based on role
+        if (userRole === "PROVIDER") {
+          // Check provider status and redirect accordingly
+          const providerRes = await fetch('/api/provider/status', {
+            credentials: 'include'
+          })
+          if (providerRes.ok) {
+            const providerData = await providerRes.json()
+            const status = providerData.provider?.status
+            if (status === "INCOMPLETE" || status === "REJECTED") {
+              router.push("/provider/onboarding")
+            } else if (status === "PENDING") {
+              router.push("/provider/pending")
+            } else if (status === "APPROVED" || status === "ACTIVE") {
+              router.push("/provider/dashboard")
+            } else {
+              router.push("/provider/onboarding")
+            }
+          } else {
+            router.push("/provider/onboarding")
+          }
+        } else if (userRole === "CLIENT") {
+          router.push("/dashboard")
+        } else {
+          router.push("/login")
+        }
         return
       }
       

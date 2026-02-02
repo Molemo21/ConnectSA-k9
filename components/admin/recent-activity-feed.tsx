@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useSocket, SocketEvent } from '@/lib/socket-client'
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
@@ -32,7 +33,7 @@ export function RecentActivityFeed({ type, limit = 5 }: RecentActivityProps) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  const fetchRecentActivities = async () => {
+  const fetchRecentActivities = useCallback(async () => {
     try {
       setRefreshing(true)
       
@@ -75,7 +76,7 @@ export function RecentActivityFeed({ type, limit = 5 }: RecentActivityProps) {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [type])
 
   const transformDataToActivities = (data: any, type: string): RecentActivity[] => {
     switch (type) {
@@ -84,10 +85,10 @@ export function RecentActivityFeed({ type, limit = 5 }: RecentActivityProps) {
           id: booking.id,
           type: 'booking' as const,
           title: getBookingTitle(booking.status),
-          description: `${booking.service} - ${formatCurrency(booking.price)}`,
+          description: `${booking.serviceName || booking.service?.name || 'Unknown Service'} - ${formatCurrency(booking.totalAmount || booking.amount || 0)}`,
           status: booking.status,
           timestamp: booking.createdAt,
-          amount: booking.price
+          amount: booking.totalAmount || booking.amount || 0
         })) || []
 
       case 'users':
@@ -130,7 +131,9 @@ export function RecentActivityFeed({ type, limit = 5 }: RecentActivityProps) {
     switch (status) {
       case 'PENDING': return 'New Booking'
       case 'CONFIRMED': return 'Booking Confirmed'
+      case 'PENDING_EXECUTION': return 'Payment Received'
       case 'IN_PROGRESS': return 'Booking In Progress'
+      case 'AWAITING_CONFIRMATION': return 'Awaiting Confirmation'
       case 'COMPLETED': return 'Booking Completed'
       case 'CANCELLED': return 'Booking Cancelled'
       default: return 'Booking Update'
@@ -233,9 +236,70 @@ export function RecentActivityFeed({ type, limit = 5 }: RecentActivityProps) {
     return date.toLocaleDateString()
   }
 
+  // Handle real-time booking updates
+  const handleBookingUpdate = useCallback((event: SocketEvent) => {
+    if (event.action === 'status_changed' && type === 'bookings') {
+      console.log('📋 Admin: Booking status changed, refreshing activities', event.data)
+      // Refresh activities when booking status changes
+      fetchRecentActivities()
+    }
+  }, [type, fetchRecentActivities])
+
+  // Socket connection for real-time updates (only for bookings)
+  const { connected } = useSocket({
+    userId: 'admin',
+    role: 'ADMIN',
+    enablePolling: false,
+    onBookingUpdate: type === 'bookings' ? handleBookingUpdate : undefined,
+  })
+
+  // Initial fetch
   useEffect(() => {
     fetchRecentActivities()
-  }, [type])
+  }, [fetchRecentActivities])
+
+  // Immediate refresh on mount for bookings (to catch any status changes)
+  useEffect(() => {
+    if (type === 'bookings') {
+      // Small delay to ensure page is fully loaded
+      const timeout = setTimeout(() => {
+        console.log('🔄 Initial refresh for bookings on mount')
+        fetchRecentActivities()
+      }, 1000)
+      
+      return () => clearTimeout(timeout)
+    }
+  }, [type, fetchRecentActivities])
+
+  // Auto-refresh every 15 seconds as fallback (for bookings only)
+  useEffect(() => {
+    if (type !== 'bookings') return // Only auto-refresh bookings
+    
+    const interval = setInterval(() => {
+      console.log(`🔄 Auto-refreshing ${type} activities`)
+      fetchRecentActivities()
+    }, 15000) // 15 seconds (reduced for faster updates)
+
+    return () => clearInterval(interval)
+  }, [type, fetchRecentActivities])
+
+  // Refresh when page becomes visible (user switches back to tab)
+  useEffect(() => {
+    if (type !== 'bookings') return
+    
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('📱 Page visible, refreshing bookings')
+        fetchRecentActivities()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [type, fetchRecentActivities])
 
   if (loading) {
     return (

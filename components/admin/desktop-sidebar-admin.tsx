@@ -12,7 +12,8 @@ import {
   Settings,
   Shield,
   ChevronRight,
-  X
+  X,
+  DollarSign
 } from "lucide-react"
 
 interface DesktopSidebarAdminProps {
@@ -39,49 +40,64 @@ export function DesktopSidebarAdmin({
       id: "overview",
       label: "Overview",
       icon: BarChart3,
-      badge: null
+      badge: null,
+      href: null
     },
     {
       id: "users",
       label: "Users",
       icon: Users,
-      badge: null
+      badge: null,
+      href: null
     },
     {
       id: "providers",
       label: "Providers",
       icon: Briefcase,
-      badge: pendingBookings > 0 ? pendingBookings.toString() : null
+      badge: pendingBookings > 0 ? pendingBookings.toString() : null,
+      href: null
     },
     {
       id: "bookings",
       label: "Bookings",
       icon: Calendar,
-      badge: totalBookings > 0 ? totalBookings.toString() : null
+      badge: totalBookings > 0 ? totalBookings.toString() : null,
+      href: null
     },
     {
       id: "payments",
       label: "Payments",
       icon: CreditCard,
-      badge: null
+      badge: null,
+      href: null
+    },
+    {
+      id: "payouts",
+      label: "Payouts",
+      icon: DollarSign,
+      badge: null,
+      href: null
     },
     {
       id: "analytics",
       label: "Analytics",
       icon: TrendingUp,
-      badge: null
+      badge: null,
+      href: null
     },
     {
       id: "system",
       label: "System Health",
       icon: Shield,
-      badge: null
+      badge: null,
+      href: null
     },
     {
       id: "settings",
       label: "Settings",
       icon: Settings,
-      badge: null
+      badge: null,
+      href: null
     }
   ]
 

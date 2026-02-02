@@ -1,5 +1,6 @@
 "use client"
 
+import { memo, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { 
@@ -28,7 +29,7 @@ interface PaymentStatusDisplayProps {
   paymentMethod?: "ONLINE" | "CASH"
 }
 
-export function PaymentStatusDisplay({ 
+function PaymentStatusDisplayComponent({ 
   payment, 
   isProcessing = false, 
   onCheckStatus,
@@ -43,7 +44,7 @@ export function PaymentStatusDisplay({
   if (paymentMethod === 'CASH') {
     if (payment.status === 'CASH_PENDING') {
       return (
-        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+        <Alert key="cash-pending" className="border-yellow-500/50 bg-yellow-500/10">
           <Banknote className="h-4 w-4 text-yellow-400" />
           <AlertDescription className="text-yellow-300">
             <span className="font-medium mb-1 block">Awaiting Cash Payment</span>
@@ -57,7 +58,7 @@ export function PaymentStatusDisplay({
 
     if (payment.status === 'CASH_RECEIVED') {
       return (
-        <Alert className="border-green-500/50 bg-green-500/10">
+        <Alert key="cash-received" className="border-green-500/50 bg-green-500/10">
           <CheckCircle className="h-4 w-4 text-green-400" />
           <AlertDescription className="text-green-300">
             <span className="font-medium mb-1 block">Cash Payment Received</span>
@@ -80,21 +81,23 @@ export function PaymentStatusDisplay({
   }
 
   const isPaymentProcessing = payment.status === 'PENDING' && isProcessing
-  const isPaymentStuck = () => {
+  
+  // Memoize these calculations to prevent re-renders
+  const isPaymentStuck = useMemo(() => {
     if (!payment.createdAt) return false
     const now = new Date()
     const created = new Date(payment.createdAt)
     const minutesDiff = (now.getTime() - created.getTime()) / (1000 * 60)
     return minutesDiff > 8
-  }
+  }, [payment.createdAt])
 
-  const isPaymentDelayed = () => {
+  const isPaymentDelayed = useMemo(() => {
     if (!payment.createdAt) return false
     const now = new Date()
     const created = new Date(payment.createdAt)
     const minutesDiff = (now.getTime() - created.getTime()) / (1000 * 60)
     return minutesDiff > 5 && minutesDiff <= 8
-  }
+  }, [payment.createdAt])
 
   // Processing state
   if (isPaymentProcessing) {
@@ -107,9 +110,9 @@ export function PaymentStatusDisplay({
   }
 
   // Stuck payment
-  if (payment.status === 'PENDING' && isPaymentStuck()) {
+  if (payment.status === 'PENDING' && isPaymentStuck) {
     return (
-      <Alert className="border-amber-500/50 bg-amber-500/10">
+      <Alert key="stuck-payment" className="border-amber-500/50 bg-amber-500/10">
         <AlertTriangle className="h-4 w-4 text-amber-400" />
         <AlertDescription className="text-amber-300">
           <div className="flex items-start justify-between mb-2">
@@ -139,9 +142,9 @@ export function PaymentStatusDisplay({
   }
 
   // Delayed payment
-  if (payment.status === 'PENDING' && isPaymentDelayed()) {
+  if (payment.status === 'PENDING' && isPaymentDelayed) {
     return (
-      <Alert className="border-blue-500/50 bg-blue-500/10">
+      <Alert key="delayed-payment" className="border-blue-500/50 bg-blue-500/10">
         <Clock className="h-4 w-4 text-blue-400" />
         <AlertDescription className="text-blue-300">
           <span className="font-medium mb-2 block">Payment Taking Longer Than Expected</span>
@@ -185,7 +188,7 @@ export function PaymentStatusDisplay({
   // Failed payment
   if (payment.status === 'FAILED') {
     return (
-      <Alert className="border-red-200 bg-red-50">
+      <Alert key="payment-failed" className="border-red-200 bg-red-50">
         <AlertTriangle className="h-4 w-4 text-red-600" />
         <AlertDescription className="text-red-800">
           <span className="font-medium mb-2 block">Payment Failed</span>
@@ -202,20 +205,10 @@ export function PaymentStatusDisplay({
     )
   }
 
-  // Completed payment
-  if (['RELEASED', 'COMPLETED'].includes(payment.status)) {
-    return (
-      <div className="flex items-center space-x-2 text-sm">
-        <CheckCircle className="w-4 h-4 text-green-500" />
-        <span className="text-green-600 font-medium">Payment Completed</span>
-      </div>
-    )
-  }
-
   // Processing Release - Payment is being released to provider
   if (payment.status === 'PROCESSING_RELEASE') {
     // Check if payment is stuck (more than 5 minutes since status was set to PROCESSING_RELEASE)
-    const isStuck = () => {
+    const isStuck = useMemo(() => {
       // Prefer updatedAt (when status was set to PROCESSING_RELEASE), fallback to createdAt
       const timestamp = payment.updatedAt || payment.createdAt
       if (!timestamp) return false
@@ -223,11 +216,11 @@ export function PaymentStatusDisplay({
       const statusTime = new Date(timestamp)
       const minutesDiff = (now.getTime() - statusTime.getTime()) / (1000 * 60)
       return minutesDiff > 5
-    }
+    }, [payment.updatedAt, payment.createdAt])
 
-    if (isStuck()) {
+    if (isStuck) {
       return (
-        <Alert className="border-orange-500/50 bg-orange-500/10">
+        <Alert key="processing-stuck" className="border-orange-500/50 bg-orange-500/10">
           <AlertTriangle className="h-4 w-4 text-orange-400" />
           <AlertDescription className="text-orange-300">
             <div className="flex items-start justify-between">
@@ -302,6 +295,30 @@ export function PaymentStatusDisplay({
     )
   }
 
+  // Completed payment - but check booking status first for AWAITING_CONFIRMATION
+  // If booking is awaiting confirmation, payment might be in escrow but status shows as completed
+  // In manual payout flow, payment stays in ESCROW until admin marks payout as paid
+  if (['RELEASED', 'COMPLETED'].includes(payment.status)) {
+    // If booking is awaiting confirmation, this shouldn't happen in manual flow
+    // But show appropriate message if it does
+    if (bookingStatus === 'AWAITING_CONFIRMATION') {
+      return (
+        <div className="flex items-center space-x-2 text-sm">
+          <Clock className="w-4 h-4 text-orange-500" />
+          <span className="text-orange-600 font-medium">Payment in Escrow - Awaiting Client Confirmation</span>
+        </div>
+      )
+    }
+    
+    // Normal completed payment (admin has marked payout as paid)
+    return (
+      <div className="flex items-center space-x-2 text-sm">
+        <CheckCircle className="w-4 h-4 text-green-500" />
+        <span className="text-green-600 font-medium">Payment Completed</span>
+      </div>
+    )
+  }
+
   // Default status badge
   return (
     <StatusBadge 
@@ -312,3 +329,29 @@ export function PaymentStatusDisplay({
     />
   )
 }
+
+// Memoize to prevent infinite re-renders when props haven't actually changed
+export const PaymentStatusDisplay = memo(PaymentStatusDisplayComponent, (prevProps, nextProps) => {
+  // Only re-render if these critical props actually changed
+  const prevPayment = prevProps.payment
+  const nextPayment = nextProps.payment
+  
+  // Handle null payments
+  if (!prevPayment && !nextPayment) return true // Both null, no change
+  if (!prevPayment || !nextPayment) return false // One null, one not, changed
+  
+  // Compare payment properties
+  const paymentChanged = (
+    prevPayment.id !== nextPayment.id ||
+    prevPayment.status !== nextPayment.status
+  )
+  
+  const otherPropsChanged = (
+    prevProps.bookingStatus !== nextProps.bookingStatus ||
+    prevProps.paymentMethod !== nextProps.paymentMethod ||
+    prevProps.isProcessing !== nextProps.isProcessing
+  )
+  
+  // Return true if nothing changed (should NOT re-render)
+  return !paymentChanged && !otherPropsChanged
+})
