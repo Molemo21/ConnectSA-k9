@@ -41,3 +41,9 @@ test-notification-*.js
 scripts/move-project-outside-onedrive.js
 scripts/suppress-onedrive-errors.js
 scripts/unlock-file.js
+# Production artifacts (DO NOT COMMIT)
+prod_backup_*.sql
+production-migration-report.json
+phase0-checkpoint.log
+deleted-migrations-*.txt
+
