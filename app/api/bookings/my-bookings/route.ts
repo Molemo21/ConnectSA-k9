@@ -160,7 +160,16 @@ export async function GET(request: NextRequest) {
             paystackRef: true,
             paidAt: true,
             createdAt: true,
-            updatedAt: true
+            updatedAt: true,
+            payout: {
+              select: {
+                id: true,
+                status: true,
+                amount: true,
+                createdAt: true,
+                updatedAt: true
+              }
+            }
           }
         },
         review: {

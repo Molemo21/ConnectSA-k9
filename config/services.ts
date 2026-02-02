@@ -271,9 +271,33 @@ export const SERVICES: ServiceConfig[] = [
 ] as const;
 
 /**
+ * Subcategory definitions
+ * 
+ * IMPORTANT: This is the single source of truth for subcategory organization.
+ * Service names in subcategories MUST match exactly with service names in SERVICES array.
+ */
+export const BEAUTY_SUBCATEGORIES = {
+  'Hair Services': ['Haircut (Men & Women)', 'Braiding', 'Weave Installation'],
+  'Makeup & Lashes': ['Eyelash Extensions', 'Bridal Makeup', 'Makeup Application (Regular)'],
+  'Nails': ['Manicure', 'Pedicure', 'Nail Extensions'],
+  'Skincare & Hair Removal': ['Facial', 'Waxing']
+} as const;
+
+export const CLEANING_SUBCATEGORIES = {
+  'Home Cleaning': ['Standard House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
+  'Specialized Cleaning': ['Carpet Cleaning', 'Mobile Car Wash', 'Office Cleaning']
+} as const;
+
+/**
  * Type-safe service names
  */
 export type ServiceName = typeof SERVICES[number]['name'];
+
+/**
+ * Subcategory type definitions
+ */
+export type BeautySubcategory = keyof typeof BEAUTY_SUBCATEGORIES;
+export type CleaningSubcategory = keyof typeof CLEANING_SUBCATEGORIES;
 
 /**
  * Get services by category
@@ -294,6 +318,88 @@ export function getServiceByName(name: string): ServiceConfig | undefined {
  */
 export function getActiveServices(): ServiceConfig[] {
   return SERVICES.filter(service => service.isActive);
+}
+
+/**
+ * Get subcategories for a category
+ */
+export function getSubcategories(category: ServiceCategoryType): Record<string, readonly string[]> | null {
+  if (category === 'BEAUTY') {
+    return BEAUTY_SUBCATEGORIES as Record<string, readonly string[]>;
+  }
+  if (category === 'CLEANING') {
+    return CLEANING_SUBCATEGORIES as Record<string, readonly string[]>;
+  }
+  return null;
+}
+
+/**
+ * Get all service names in a subcategory
+ */
+export function getServicesInSubcategory(
+  category: ServiceCategoryType,
+  subcategory: string
+): string[] {
+  const subcategories = getSubcategories(category);
+  if (!subcategories || !subcategories[subcategory]) {
+    return [];
+  }
+  return [...subcategories[subcategory]];
+}
+
+/**
+ * Validate that all services in subcategories exist in SERVICES array
+ */
+export function validateSubcategories(): {
+  valid: boolean;
+  errors: Array<{ subcategory: string; service: string; error: string }>;
+} {
+  const errors: Array<{ subcategory: string; service: string; error: string }> = [];
+
+  // Validate beauty subcategories
+  for (const [subcategory, serviceNames] of Object.entries(BEAUTY_SUBCATEGORIES)) {
+    for (const serviceName of serviceNames) {
+      const service = getServiceByName(serviceName);
+      if (!service) {
+        errors.push({
+          subcategory: `Beauty: ${subcategory}`,
+          service: serviceName,
+          error: 'Service not found in SERVICES array'
+        });
+      } else if (service.category !== 'BEAUTY') {
+        errors.push({
+          subcategory: `Beauty: ${subcategory}`,
+          service: serviceName,
+          error: `Service category mismatch: expected BEAUTY, got ${service.category}`
+        });
+      }
+    }
+  }
+
+  // Validate cleaning subcategories
+  for (const [subcategory, serviceNames] of Object.entries(CLEANING_SUBCATEGORIES)) {
+    for (const serviceName of serviceNames) {
+      const service = getServiceByName(serviceName);
+      if (!service) {
+        errors.push({
+          subcategory: `Cleaning: ${subcategory}`,
+          service: serviceName,
+          error: 'Service not found in SERVICES array'
+        });
+      } else if (service.category !== 'CLEANING') {
+        errors.push({
+          subcategory: `Cleaning: ${subcategory}`,
+          service: serviceName,
+          error: `Service category mismatch: expected CLEANING, got ${service.category}`
+        });
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
 }
 
 /**

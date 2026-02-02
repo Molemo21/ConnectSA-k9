@@ -29,12 +29,41 @@ export async function GET(
     }
 
     // Get the booking with payment details
+    // Using select instead of include to avoid fetching non-existent payoutStatus field
     let booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: {
-        payment: true,
+      select: {
+        id: true,
+        clientId: true,
+        providerId: true,
+        serviceId: true,
+        status: true,
+        scheduledDate: true,
+        totalAmount: true,
+        address: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
+        payment: {
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            escrowAmount: true,
+            platformFee: true,
+            paystackRef: true,
+            authorizationUrl: true,
+            accessCode: true,
+            paidAt: true,
+            currency: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        },
         provider: {
-          include: {
+          select: {
+            id: true,
+            businessName: true,
             user: {
               select: {
                 name: true,
@@ -82,7 +111,6 @@ export async function GET(
               data: {
                 status: 'ESCROW',
                 paidAt: new Date(),
-                transactionId: verification.data.id?.toString() || null,
                 updatedAt: new Date(),
               }
             });

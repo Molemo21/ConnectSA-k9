@@ -474,96 +474,8 @@ class PaystackClient {
     }
   }
 
-  // Create transfer to provider (payout)
-  async createTransfer(params: {
-    source: 'balance';
-    amount: number;
-    recipient: string;
-    reason: string;
-    reference: string;
-  }): Promise<PaystackTransferResponse> {
-    const logData = {
-      reference: params.reference,
-      amount: params.amount,
-      recipient: params.recipient
-    };
-
-    try {
-      this.logger.info('Creating transfer', logData);
-
-      const response = await this.makeRequest<PaystackTransferResponse>(
-        '/transfer',
-        'POST',
-        {
-          source: params.source,
-          amount: params.amount * 100, // Convert to cents
-          recipient: params.recipient,
-          reason: params.reason,
-          reference: params.reference,
-          currency: 'ZAR',
-        }
-      );
-
-      const validatedResponse = PaystackTransferResponseSchema.parse(response);
-      this.logger.info('Transfer created successfully', { 
-        reference: params.reference, 
-        transfer_code: validatedResponse.data.transfer_code 
-      });
-
-      return validatedResponse;
-    } catch (error) {
-      this.logger.error('Transfer creation failed', error, logData);
-      throw new Error(`Paystack transfer creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  // Verify transfer status with Paystack
-  async verifyTransfer(transferCode: string): Promise<PaystackTransferResponse> {
-    try {
-      this.logger.info('Verifying transfer status', { transferCode });
-
-      // Skip during build time
-      if (process.env.NEXT_PHASE === 'phase-production-build') {
-        const dummyResponse = {
-          status: true,
-          message: 'Transfer verified successfully',
-          data: {
-            id: 123456,
-            domain: 'test',
-            amount: 10000,
-            currency: 'ZAR',
-            source: 'balance',
-            reason: 'Payment release',
-            recipient: 123,
-            status: 'success',
-            transfer_code: transferCode,
-            titan_code: null,
-            transferred_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }
-        };
-        this.logger.info('Using dummy response for build time', { transferCode });
-        return dummyResponse;
-      }
-
-      const response = await this.makeRequest<PaystackTransferResponse>(
-        `/transfer/${transferCode}`,
-        'GET'
-      );
-
-      const validatedResponse = PaystackTransferResponseSchema.parse(response);
-      this.logger.info('Transfer verification successful', {
-        transferCode,
-        status: validatedResponse.data.status
-      });
-
-      return validatedResponse;
-    } catch (error) {
-      this.logger.error('Transfer verification failed', error, { transferCode });
-      throw new Error(`Paystack transfer verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
+  // Transfer methods removed - no longer using Paystack for payouts
+  // Payouts are now handled via manual CSV exports or future Ozow integration
 
   // Fetch list of banks from Paystack
   async listBanks(params?: {
@@ -725,60 +637,8 @@ class PaystackClient {
     }
   }
 
-  // Create recipient for provider
-  async createRecipient(params: {
-    type: 'nuban';
-    name: string;
-    account_number: string;
-    bank_code: string;
-  }): Promise<any> {
-    const logData = {
-      type: params.type,
-      name: params.name,
-      bank_code: params.bank_code
-    };
-
-    try {
-      this.logger.info('Creating recipient', logData);
-      const response = await this.makeRequest('/transferrecipient', 'POST', params);
-      this.logger.info('Recipient created successfully', { name: params.name });
-      return response;
-    } catch (error) {
-      this.logger.error('Recipient creation failed', error, logData);
-      
-      // Parse Paystack's structured error response for better error messages
-      if (error instanceof Error && error.message.includes('Paystack API error')) {
-        try {
-          const errorMatch = error.message.match(/\{.*\}/);
-          if (errorMatch) {
-            const errorData = JSON.parse(errorMatch[0]);
-            
-            // Handle specific error codes
-            if (errorData.code === 'invalid_bank_code') {
-              const enhancedError = new Error(
-                `Invalid bank code: ${params.bank_code}. ${errorData.meta?.nextStep || 'Please verify the bank code is correct for South African banks.'}`
-              );
-              (enhancedError as any).paystackError = errorData;
-              (enhancedError as any).errorCode = 'invalid_bank_code';
-              throw enhancedError;
-            }
-            
-            // Re-throw with parsed error message for other errors
-            if (errorData.message) {
-              const enhancedError = new Error(errorData.message);
-              (enhancedError as any).paystackError = errorData;
-              throw enhancedError;
-            }
-          }
-        } catch (parseError) {
-          // If parsing fails, use original error
-          this.logger.warn('Could not parse Paystack error response', { parseError });
-        }
-      }
-      
-      throw error;
-    }
-  }
+  // Recipient creation removed - no longer using Paystack for payouts
+  // Bank details are stored directly in Provider model for manual/Ozow payouts
 
   // Process refund
   async processRefund(params: {

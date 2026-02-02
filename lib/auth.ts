@@ -62,6 +62,7 @@ export async function getCurrentUser(): Promise<(AuthUser & { provider?: { id: s
     if (!decoded) return null
 
     // Verify user still exists and is active
+    // db.user.findFirst() will handle connection via withRetry
     const user = await db.user.findFirst({
       where: { id: decoded.id as string, isActive: true },
       select: {

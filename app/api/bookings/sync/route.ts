@@ -113,7 +113,6 @@ export async function GET(request: NextRequest) {
                 data: {
                   status: 'ESCROW',
                   paidAt: new Date(),
-                  transactionId: verification.data.id?.toString() || null,
                 }
               });
 
@@ -131,7 +130,6 @@ export async function GET(request: NextRequest) {
                 ...booking.payment,
                 status: 'ESCROW',
                 paidAt: new Date().toISOString(),
-                transactionId: verification.data.id?.toString() || null,
               };
 
               console.log(`✅ Payment ${booking.payment.paystackRef} updated to ESCROW`);

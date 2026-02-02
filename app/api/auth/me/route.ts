@@ -16,10 +16,23 @@ export async function GET() {
   }
 
   try {
-    const user = await getCurrentUser()
+    // Add timeout to prevent hanging (10 seconds max for auth check)
+    const authTimeout = new Promise<null>((resolve) => {
+      setTimeout(() => {
+        console.error('❌ Auth check timed out after 10 seconds');
+        resolve(null);
+      }, 10000);
+    });
+
+    const userPromise = getCurrentUser();
+    const user = await Promise.race([userPromise, authTimeout]);
 
     if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      // If timeout occurred, return 503 (Service Unavailable) instead of 401
+      // This helps distinguish between "not authenticated" and "service timeout"
+      return NextResponse.json({ 
+        error: "Authentication service temporarily unavailable. Please try again." 
+      }, { status: 503 })
     }
 
     // If user is a provider and avatar is null, try to get from profileImages

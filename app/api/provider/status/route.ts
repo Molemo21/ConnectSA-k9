@@ -15,6 +15,21 @@ export async function GET() {
   }
 
   try {
+    // Ensure Prisma connection before any database operations
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      if (typeof (prisma as any).connect === 'function') {
+        await (prisma as any).connect();
+      } else {
+        await prisma.$connect();
+      }
+    } catch (connectError) {
+      const errorMessage = connectError instanceof Error ? connectError.message : String(connectError);
+      if (!errorMessage.includes('already connected') && !errorMessage.includes('already been connected')) {
+        console.warn('⚠️ Prisma connection check failed in provider status route:', errorMessage);
+      }
+    }
+    
     const user = await getCurrentUser();
     if (!user || user.role !== "PROVIDER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

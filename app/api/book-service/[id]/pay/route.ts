@@ -105,6 +105,17 @@ export async function POST(request: NextRequest) {
       // For cash payments, the payment record should already exist with CASH_PENDING status
       const existingCashPayment = await prisma.payment.findUnique({
         where: { bookingId: booking.id },
+        select: {
+          id: true,
+          status: true,
+          amount: true,
+          escrowAmount: true,
+          platformFee: true,
+          paystackRef: true,
+          paidAt: true,
+          createdAt: true,
+          updatedAt: true
+        }
       });
 
       if (existingCashPayment && existingCashPayment.status === 'CASH_PENDING') {
@@ -168,12 +179,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if payment already exists and is completed (for online payments only)
+    // Note: Using only statuses that exist in the database enum
+    // HELD_IN_ESCROW is treated as equivalent to ESCROW
     const existingPayment = await prisma.payment.findFirst({
       where: { 
         bookingId: bookingId,
         status: {
-          in: ['ESCROW', 'HELD_IN_ESCROW', 'RELEASED', 'COMPLETED', 'CASH_RECEIVED', 'CASH_VERIFIED']
+          in: ['ESCROW', 'RELEASED', 'COMPLETED', 'CASH_RECEIVED', 'CASH_VERIFIED']
         }
+      },
+      select: {
+        id: true,
+        status: true,
+        amount: true,
+        escrowAmount: true,
+        platformFee: true,
+        paystackRef: true,
+        paidAt: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -189,6 +213,17 @@ export async function POST(request: NextRequest) {
       where: { 
         bookingId: bookingId,
         status: 'PENDING'
+      },
+      select: {
+        id: true,
+        status: true,
+        amount: true,
+        escrowAmount: true,
+        platformFee: true,
+        paystackRef: true,
+        paidAt: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -263,8 +298,11 @@ export async function POST(request: NextRequest) {
       data: {
         bookingId: booking.id,
         amount: paymentBreakdown.totalAmount,
+        escrowAmount: paymentBreakdown.escrowAmount,
+        platformFee: paymentBreakdown.platformFee,
         paystackRef: paymentReference,
         status: 'PENDING',
+        currency: 'ZAR',
       }
     });
 

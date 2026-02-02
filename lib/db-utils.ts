@@ -44,6 +44,67 @@ const isRetryableError = (error: any): boolean => {
 };
 
 // Generic retry wrapper for database operations
+// Ensure Prisma connection is established with timeout
+async function ensureConnection(): Promise<void> {
+  if (!prisma) {
+    throw new Error('Prisma client not available in this environment');
+  }
+
+  // Check if custom connect method exists (PrismaWithRetry)
+  if (typeof (prisma as any).connect === 'function') {
+    try {
+      // Add timeout to connection attempts (8 seconds max)
+      const connectionTimeout = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timeout after 8 seconds')), 8000);
+      });
+
+      const connectPromise = (prisma as any).connect();
+      await Promise.race([connectPromise, connectionTimeout]);
+      return;
+    } catch (error) {
+      // If custom connect fails, try standard $connect
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('timeout')) {
+        console.warn('⚠️ Custom connect() timed out, trying $connect():', error);
+      } else {
+        console.warn('⚠️ Custom connect() failed, trying $connect():', error);
+      }
+    }
+  }
+
+  // Try standard Prisma $connect with timeout
+  try {
+    const connectionTimeout = new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout after 8 seconds')), 8000);
+    });
+
+    const connectPromise = prisma.$connect();
+    await Promise.race([connectPromise, connectionTimeout]);
+  } catch (error) {
+    // Connection might already be established
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('already connected') || errorMessage.includes('already been connected')) {
+      // Connection is already established, this is fine
+      return;
+    }
+    
+    // If it's a timeout, we need to verify the connection is actually working
+    if (errorMessage.includes('timeout')) {
+      console.warn('⚠️ Connection attempt timed out, verifying connection...');
+      // Try a simple query to verify connection
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+        console.log('✅ Connection verified despite timeout');
+        return;
+      } catch (verifyError) {
+        throw new Error(`Connection timeout and verification failed: ${verifyError}`);
+      }
+    }
+    
+    throw error;
+  }
+}
+
 export async function withRetry<T>(
   operation: () => Promise<T>,
   context: string = 'database operation'
@@ -51,6 +112,26 @@ export async function withRetry<T>(
   // Check if Prisma client is available
   if (!prisma) {
     throw new Error(`Cannot execute ${context} - Prisma client not available in this environment`);
+  }
+
+  // Ensure connection before first attempt - this is critical
+  try {
+    await ensureConnection();
+  } catch (connectError) {
+    const errorMessage = connectError instanceof Error ? connectError.message : String(connectError);
+    // If connection fails, try to verify with a simple query
+    if (errorMessage.includes('timeout')) {
+      console.warn(`⚠️ Connection check timed out for ${context}, verifying with test query...`);
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+        console.log(`✅ Connection verified for ${context}`);
+      } catch (verifyError) {
+        console.error(`❌ Connection verification failed for ${context}:`, verifyError);
+        throw new Error(`Cannot execute ${context} - Prisma connection failed: ${errorMessage}`);
+      }
+    } else {
+      console.warn(`⚠️ Connection check failed for ${context}, proceeding anyway:`, connectError);
+    }
   }
 
   let lastError: any;
@@ -72,11 +153,19 @@ export async function withRetry<T>(
       await new Promise(resolve => setTimeout(resolve, getDelay(attempt)));
       
       // For connection errors, try to refresh the connection
-      if (error.message && (error.message.includes('prepared statement') || error.message.includes('Engine is not yet connected') || error.message.includes('connection pool'))) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('prepared statement') || errorMessage.includes('Engine is not yet connected') || errorMessage.includes('connection pool')) {
         console.log('🔄 Attempting to refresh Prisma connection...');
         try {
-          await prisma.$disconnect();
-          await prisma.$connect();
+          // Try to disconnect first (ignore errors)
+          try {
+            await prisma.$disconnect();
+          } catch (disconnectError) {
+            // Ignore disconnect errors
+          }
+          
+          // Reconnect using custom method if available
+          await ensureConnection();
           console.log('✅ Prisma connection refreshed');
         } catch (refreshError) {
           console.warn('⚠️ Failed to refresh Prisma connection:', refreshError);
