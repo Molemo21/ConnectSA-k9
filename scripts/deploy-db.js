@@ -245,15 +245,8 @@ async function deployMigrations() {
     
     console.log(`✅ All ${validDirs.length} migration directories are valid (have migration.sql)`);
     
-    // Step 1: Generate Prisma client FIRST (required before database queries)
-    console.log('\n📦 Generating Prisma client...');
-    execSync('npx prisma generate', {
-      stdio: 'inherit',
-      env: { ...process.env }
-    });
-    console.log('✅ Prisma client generated');
-    
-    // Step 1.5: Check for migrations in database that don't have local files
+    // NOTE: Prisma client already generated in main() before audit logging
+    // Step 1: Check for migrations in database that don't have local files
     console.log('\n🔍 Checking for database migrations without local files...');
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
@@ -499,10 +492,18 @@ async function main() {
   // NOTE: CI guards already executed at top of file
   enforceDeploymentGuards();
   
-  // Step 2: Create audit log entry (after guards pass, before mutations)
+  // Step 2: Generate Prisma client (required before audit logging and migrations)
+  console.log('\n📦 Generating Prisma client...');
+  execSync('npx prisma generate', {
+    stdio: 'inherit',
+    env: { ...process.env }
+  });
+  console.log('✅ Prisma client generated');
+  
+  // Step 3: Create audit log entry (after guards pass, before mutations)
   await createAuditLogEntry();
   
-  // Step 3: Deploy migrations (THE ONLY ACTION)
+  // Step 4: Deploy migrations (THE ONLY ACTION)
   await deployMigrations();
   
   // Release deployment lock
