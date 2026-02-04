@@ -63,6 +63,7 @@ class TransferEnabledBanksService {
    * Refresh transfer-enabled banks from Paystack
    * Uses pay_with_bank_transfer=true parameter (advisory metadata)
    * NO fake operations, NO probing, NO test recipients
+   * Falls back to static config if Paystack API fails
    */
   async refreshTransferEnabledBanks(country: string = 'ZA'): Promise<TransferEnabledBank[]> {
     if (this.isRefreshing) {
@@ -89,7 +90,7 @@ class TransferEnabledBanksService {
       }
 
       // Filter only active, non-deleted banks
-      const transferEnabledBanks: TransferEnabledBank[] = banksResponse.data
+      let transferEnabledBanks: TransferEnabledBank[] = banksResponse.data
         .filter(bank => bank.active && !bank.is_deleted)
         .map(bank => ({
           code: bank.code,
@@ -104,6 +105,52 @@ class TransferEnabledBanksService {
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
+      // If Paystack API returns empty, try without the transfer filter
+      if (transferEnabledBanks.length === 0) {
+        console.warn('⚠️ No banks returned with pay_with_bank_transfer filter, trying without filter...');
+        const allBanksResponse = await paystackClient.listBanks({ country });
+        
+        if (allBanksResponse.status && allBanksResponse.data && allBanksResponse.data.length > 0) {
+          transferEnabledBanks = allBanksResponse.data
+            .filter(bank => bank.active && !bank.is_deleted)
+            .map(bank => ({
+              code: bank.code,
+              name: bank.name,
+              slug: bank.slug,
+              type: bank.type,
+              country: bank.country || country,
+              currency: bank.currency || 'ZAR',
+              pay_with_bank_transfer: bank.pay_with_bank_transfer ?? false,
+              verified: true,
+              fetchedAt: new Date(),
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+          
+          console.log(`✅ Fetched ${transferEnabledBanks.length} banks without transfer filter`);
+        }
+      }
+
+      // If still empty, use fallback static config
+      if (transferEnabledBanks.length === 0) {
+        console.warn('⚠️ Paystack API returned no banks, using fallback static config');
+        const { getSupportedBanks } = await import('@/lib/config/paystack-config');
+        const staticBanks = getSupportedBanks();
+        
+        transferEnabledBanks = staticBanks.map(bank => ({
+          code: bank.code,
+          name: bank.name,
+          slug: bank.name.toLowerCase().replace(/\s+/g, '-'),
+          type: 'nuban',
+          country: country,
+          currency: 'ZAR',
+          pay_with_bank_transfer: true, // Assume all static banks support transfers
+          verified: false, // Not verified via API
+          fetchedAt: new Date(),
+        })).sort((a, b) => a.name.localeCompare(b.name));
+        
+        console.log(`✅ Using fallback static config: ${transferEnabledBanks.length} banks`);
+      }
+
       // Cache results
       const now = new Date();
       const cache: BankCache = {
@@ -117,21 +164,54 @@ class TransferEnabledBanksService {
 
       const duration = Date.now() - startTime;
       console.log(`✅ Transfer-enabled banks fetched: ${transferEnabledBanks.length} banks (${duration}ms)`);
-      console.log(`📊 Source: Paystack API with pay_with_bank_transfer=true (advisory metadata)`);
+      console.log(`📊 Source: ${transferEnabledBanks[0]?.verified ? 'Paystack API' : 'Static fallback config'}`);
 
       return transferEnabledBanks;
 
     } catch (error) {
-      console.error('❌ Failed to fetch transfer-enabled banks:', error);
+      console.error('❌ Failed to fetch transfer-enabled banks from Paystack API:', error);
       
       // Return stale cache if available
       const cached = this.cache.get(country);
-      if (cached) {
+      if (cached && cached.banks.length > 0) {
         console.warn('⚠️ Using stale cache due to refresh failure');
         return cached.banks;
       }
 
-      throw error;
+      // Last resort: use static fallback config
+      console.warn('⚠️ No cache available, using fallback static config');
+      try {
+        const { getSupportedBanks } = await import('@/lib/config/paystack-config');
+        const staticBanks = getSupportedBanks();
+        
+        const fallbackBanks: TransferEnabledBank[] = staticBanks.map(bank => ({
+          code: bank.code,
+          name: bank.name,
+          slug: bank.name.toLowerCase().replace(/\s+/g, '-'),
+          type: 'nuban',
+          country: country,
+          currency: 'ZAR',
+          pay_with_bank_transfer: true,
+          verified: false,
+          fetchedAt: new Date(),
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        // Cache the fallback for a shorter period (1 hour instead of 24)
+        const now = new Date();
+        const fallbackCache: BankCache = {
+          banks: fallbackBanks,
+          fetchedAt: now,
+          expiresAt: new Date(now.getTime() + 60 * 60 * 1000), // 1 hour
+          country,
+        };
+        this.cache.set(country, fallbackCache);
+
+        console.log(`✅ Using fallback static config: ${fallbackBanks.length} banks`);
+        return fallbackBanks;
+      } catch (fallbackError) {
+        console.error('❌ Fallback static config also failed:', fallbackError);
+        throw new Error('Failed to load banks: Paystack API unavailable and fallback failed');
+      }
     } finally {
       this.isRefreshing = false;
     }

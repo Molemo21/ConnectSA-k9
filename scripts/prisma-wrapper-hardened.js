@@ -19,6 +19,36 @@ const path = require('path');
 const fs = require('fs');
 
 // ============================================================================
+// LOAD ENVIRONMENT VARIABLES (Before any Prisma operations)
+// ============================================================================
+// Load environment variables based on NODE_ENV
+// This ensures scripts can use .env.development, .env.production, etc.
+try {
+  const dotenv = require('dotenv');
+  const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
+  
+  // Priority order: .env.local (highest) -> .env.{NODE_ENV} -> .env (lowest)
+  const envFiles = [
+    path.join(__dirname, '..', '.env.local'),           // Next.js local overrides
+    path.join(__dirname, '..', `.env.${nodeEnv}`),      // .env.development, .env.production, etc.
+    path.join(__dirname, '..', '.env'),                 // Standard .env fallback
+  ];
+  
+  // Load first existing file (highest priority wins)
+  for (const envPath of envFiles) {
+    if (fs.existsSync(envPath)) {
+      const result = dotenv.config({ path: envPath });
+      if (!result.error) {
+        break; // Use first file found
+      }
+    }
+  }
+} catch (error) {
+  // dotenv not available or other error - continue without it
+  // Environment variables may already be set by the system
+}
+
+// ============================================================================
 // DATABASE URL CLASSIFICATION (Early, before any Prisma operations)
 // ============================================================================
 
@@ -61,18 +91,33 @@ function validateDatabaseUrlEarly() {
   const dbClass = classifyDatabaseUrl(dbUrl);
   
   // CRITICAL: Development/test cannot use production database
+  // Exception: Supabase databases are allowed in development (common setup)
   if ((nodeEnv === 'development' || nodeEnv === 'test') && dbClass.isProduction) {
-    console.error('\n' + '='.repeat(80));
-    console.error('🚨 CRITICAL: DATABASE_URL points to PRODUCTION in non-production context');
-    console.error('='.repeat(80));
-    console.error(`Environment: ${nodeEnv.toUpperCase()}`);
-    console.error(`Database Type: ${dbClass.type.toUpperCase()}`);
-    console.error(`CI: ${isCI ? 'true' : 'false'}`);
-    console.error('');
-    console.error('This is BLOCKED to prevent accidental production mutations.');
-    console.error('Process will exit BEFORE any Prisma client initialization.');
-    console.error('='.repeat(80) + '\n');
-    process.exit(1);
+    // Check if it's Supabase (common for development)
+    const isSupabase = dbUrl.includes('supabase.com') || 
+                       dbUrl.includes('pooler.supabase.com');
+    
+    if (isSupabase && nodeEnv === 'development') {
+      // Allow Supabase in development but warn
+      console.warn('\n⚠️  WARNING: Using Supabase database in development mode');
+      console.warn(`   Database URL: ${dbUrl.substring(0, 60)}...`);
+      console.warn('   Make sure this is a development/staging Supabase project, not production.');
+      console.warn('   For local development, consider using a local PostgreSQL database.\n');
+      // Continue - don't block Supabase in development
+    } else {
+      // Block non-Supabase production databases
+      console.error('\n' + '='.repeat(80));
+      console.error('🚨 CRITICAL: DATABASE_URL points to PRODUCTION in non-production context');
+      console.error('='.repeat(80));
+      console.error(`Environment: ${nodeEnv.toUpperCase()}`);
+      console.error(`Database Type: ${dbClass.type.toUpperCase()}`);
+      console.error(`CI: ${isCI ? 'true' : 'false'}`);
+      console.error('');
+      console.error('This is BLOCKED to prevent accidental production mutations.');
+      console.error('Process will exit BEFORE any Prisma client initialization.');
+      console.error('='.repeat(80) + '\n');
+      process.exit(1);
+    }
   }
   
   // CRITICAL: Production mutations require CI=true

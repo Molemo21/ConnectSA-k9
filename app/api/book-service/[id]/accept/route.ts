@@ -52,12 +52,22 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Processing booking acceptance:', { bookingId, userId: user.id });
 
+    // Using select instead of include to avoid fetching non-existent payoutStatus field
     const booking = await db.booking.findUnique({ 
       where: { id: bookingId },
-      include: {
+      select: {
+        id: true,
+        clientId: true,
+        providerId: true,
+        serviceId: true,
+        status: true,
+        totalAmount: true,
+        scheduledDate: true,
         client: { select: { name: true, email: true } },
         provider: { 
-          include: { 
+          select: {
+            id: true,
+            businessName: true,
             user: { select: { name: true } }
           }
         },
@@ -139,17 +149,39 @@ export async function POST(request: NextRequest) {
       const { broadcastBookingUpdate } = await import('@/lib/socket-server');
       
       // Get the full updated booking with relations for the client
+      // Using select instead of include to avoid fetching non-existent payoutStatus field
       const fullBooking = await db.booking.findUnique({
         where: { id: bookingId },
-        include: {
+        select: {
+          id: true,
+          clientId: true,
+          providerId: true,
+          serviceId: true,
+          status: true,
+          totalAmount: true,
+          scheduledDate: true,
           client: { select: { name: true, email: true } },
           provider: { 
-            include: { 
+            select: {
+              id: true,
+              businessName: true,
               user: { select: { name: true, email: true } }
             }
           },
           service: { select: { name: true } },
-          payment: true
+          payment: {
+            select: {
+              id: true,
+              status: true,
+              amount: true,
+              escrowAmount: true,
+              platformFee: true,
+              paystackRef: true,
+              paidAt: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          }
         }
       });
 

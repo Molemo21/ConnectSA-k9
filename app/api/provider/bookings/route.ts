@@ -9,6 +9,21 @@ export async function GET(request: NextRequest) {
   try {
     console.log('=== PROVIDER BOOKINGS API START ===')
     
+    // Ensure Prisma connection before any database operations
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      if (typeof (prisma as any).connect === 'function') {
+        await (prisma as any).connect();
+      } else {
+        await prisma.$connect();
+      }
+    } catch (connectError) {
+      const errorMessage = connectError instanceof Error ? connectError.message : String(connectError);
+      if (!errorMessage.includes('already connected') && !errorMessage.includes('already been connected')) {
+        console.warn('⚠️ Prisma connection check failed in provider bookings route:', errorMessage);
+      }
+    }
+    
     const user = await getCurrentUser()
     
     if (!user) {
@@ -33,14 +48,44 @@ export async function GET(request: NextRequest) {
     console.log('Fetching bookings for provider:', provider.id)
 
     // Fetch all bookings for this provider with related data
+    // Using select instead of include to avoid fetching non-existent payoutStatus field
     const bookings = await db.booking.findMany({
       where: {
         providerId: provider.id,
       },
-      include: {
+      select: {
+        id: true,
+        clientId: true,
+        providerId: true,
+        serviceId: true,
+        scheduledDate: true,
+        duration: true,
+        totalAmount: true,
+        platformFee: true,
+        description: true,
+        address: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        catalogueItemId: true,
+        bookedPrice: true,
+        bookedCurrency: true,
+        bookedDurationMins: true,
+        paymentMethod: true,
         service: {
-          include: {
-            category: true
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            basePrice: true,
+            category: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                icon: true
+              }
+            }
           }
         },
         client: {
@@ -48,12 +93,31 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             email: true,
-            avatar: true, // Use avatar instead of image
+            avatar: true,
             phone: true
           }
         },
-        payment: true,
-        review: true
+        payment: {
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            escrowAmount: true,
+            platformFee: true,
+            paystackRef: true,
+            paidAt: true,
+            createdAt: true,
+            updatedAt: true
+          }
+        },
+        review: {
+          select: {
+            id: true,
+            rating: true,
+            comment: true,
+            createdAt: true
+          }
+        }
       },
       orderBy: {
         scheduledDate: 'desc'

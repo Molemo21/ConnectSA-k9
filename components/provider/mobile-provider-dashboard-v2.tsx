@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -825,12 +825,30 @@ export function MobileProviderDashboardV2() {
     fetchProviderData()
   }, [])
 
-  // Auto-refresh mechanism
+  // Track interaction state and last refresh time
+  const lastRefreshRef = useRef<number>(0)
+  const isInteractingRef = useRef<boolean>(false)
+
+  // Auto-refresh mechanism - less aggressive
   useEffect(() => {
     if (!bookings.length || !user) return
 
     const pollInterval = setInterval(async () => {
+      // Only refresh if:
+      // 1. Page is visible
+      // 2. Not currently loading
+      // 3. User is not interacting
+      // 4. At least 60 seconds have passed
+      const timeSinceLastRefresh = Date.now() - lastRefreshRef.current
+      if (document.hidden || 
+          loading || 
+          isInteractingRef.current ||
+          timeSinceLastRefresh < 60000) {
+        return
+      }
+
       try {
+        lastRefreshRef.current = Date.now()
         const response = await fetch('/api/provider/bookings', {
           credentials: 'include',
           headers: {
@@ -845,10 +863,10 @@ export function MobileProviderDashboardV2() {
       } catch (error) {
         console.error('Auto-refresh error:', error)
       }
-    }, 30000) // Refresh every 30 seconds
+    }, 60000) // Check every 60 seconds (was 30 seconds)
 
     return () => clearInterval(pollInterval)
-  }, [bookings, user, stats])
+  }, [bookings, user, stats, loading])
 
   const refreshAllBookings = useCallback(async () => {
     try {

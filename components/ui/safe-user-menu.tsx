@@ -171,7 +171,21 @@ export function SafeUserMenu({ user, showNotifications = true, userStats }: Safe
         }
         
         if (upperType.includes('PAYMENT') || upperType.includes('ESCROW')) {
-          if (user?.role === 'PROVIDER') {
+          if (user?.role === 'ADMIN') {
+            // For admins, ESCROW_RELEASED notifications should go to payouts page
+            if (upperType.includes('ESCROW_RELEASED')) {
+              return {
+                actionUrl: '/admin/payouts',
+                actionText: 'View Payouts'
+              }
+            }
+            return {
+              actionUrl: bookingId
+                ? `/admin/dashboard?bookingId=${bookingId}`
+                : '/admin/dashboard',
+              actionText: 'View Payment'
+            }
+          } else if (user?.role === 'PROVIDER') {
             return {
               actionUrl: bookingId
                 ? `/provider/dashboard?tab=earnings&bookingId=${bookingId}`

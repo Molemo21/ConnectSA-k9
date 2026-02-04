@@ -240,6 +240,11 @@ export function RecentBookingCard({
 
   // Determine if confirm completion button should be shown
   const canConfirmCompletion = () => {
+    // Don't show button if payout already exists
+    if (booking.payment?.payout) {
+      return false;
+    }
+    
     if (booking.status === "AWAITING_CONFIRMATION") {
       // For cash: Only show when payment is CASH_PENDING (not CASH_PAID - button should be hidden after payment)
       if (booking.paymentMethod === 'CASH') {
@@ -251,7 +256,7 @@ export function RecentBookingCard({
       }
       return true
     }
-    // Allow if booking is completed and payment is in escrow
+    // Allow if booking is completed and payment is in escrow (but no payout exists yet)
     return (booking.status === "COMPLETED" && booking.payment && ["ESCROW", "HELD_IN_ESCROW"].includes(booking.payment.status))
   }
   
@@ -279,13 +284,30 @@ export function RecentBookingCard({
       if (response.ok) {
         const data = await response.json()
         console.log(`✅ Success response:`, data);
-        showToast.success(data.message || "Payment submitted! Provider will confirm receipt.")
+        
+        // Show appropriate message based on whether payout already existed
+        if (data.alreadyExists) {
+          showToast.info(data.message || "Payout request already exists. Admin will process it shortly.")
+        } else {
+          showToast.success(data.message || "Payment submitted! Provider will confirm receipt.")
+        }
+        
         onRefresh?.() // Refresh the booking data
-        window.location.reload()
+        // Don't reload page if payout already existed - just refresh data
+        if (!data.alreadyExists) {
+          window.location.reload()
+        }
       } else {
         const errorData = await response.json()
         console.error(`❌ Error response:`, errorData);
-        showToast.error(errorData.error || "Failed to confirm completion")
+        
+        // Handle "payout already exists" error gracefully
+        if (errorData.error?.includes('already exists')) {
+          showToast.info("Payout request already exists. Admin will process it shortly.")
+          onRefresh?.() // Refresh to get updated booking data with payout
+        } else {
+          showToast.error(errorData.error || "Failed to confirm completion")
+        }
         
         // If it's an authentication error, redirect to login
         if (response.status === 401) {

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { SERVICES } from '../config/services';
+import { SERVICES, CLEANING_SUBCATEGORIES } from '../config/services';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -25,11 +25,8 @@ const prisma = new PrismaClient({
   }
 });
 
-// Expected subcategories (from ServiceSelection.tsx)
-const EXPECTED_SUBCATEGORIES = {
-  'Home Cleaning': ['Standard House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
-  'Specialized Cleaning': ['Carpet Cleaning', 'Mobile Car Wash', 'Office Cleaning']
-};
+// Use subcategories from config/services.ts (single source of truth)
+const EXPECTED_SUBCATEGORIES = CLEANING_SUBCATEGORIES;
 
 async function diagnoseMissingServices() {
   console.log('🔍 Diagnosing Missing Services in Production UI\n');

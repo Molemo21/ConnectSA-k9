@@ -408,25 +408,37 @@ export function FixedProviderDashboard({ initialUser }: FixedProviderDashboardPr
     initializeDashboard()
   }, []) // Empty dependency array - runs only once
 
-  // Auto-refresh effect - only runs when authenticated
+  // Track interaction state
+  const isInteractingRef = useRef<boolean>(false)
+
+  // Auto-refresh effect - only runs when authenticated, less aggressive
   useEffect(() => {
     if (!dashboardState.auth.isAuthenticated) return
 
     const pollInterval = setInterval(async () => {
       try {
-        // Only refresh if it's been a while since last refresh
+        // Only refresh if:
+        // 1. Page is visible
+        // 2. Not currently loading
+        // 3. User is not interacting
+        // 4. At least 60 seconds have passed since last refresh
         const timeSinceLastRefresh = Date.now() - lastRefreshTime.current
-        if (timeSinceLastRefresh > 60000) { // 1 minute
-          lastRefreshTime.current = Date.now()
-          await fetchProviderData()
+        if (document.hidden || 
+            dashboardState.ui.loading || 
+            isInteractingRef.current ||
+            timeSinceLastRefresh < 60000) {
+          return
         }
+        
+        lastRefreshTime.current = Date.now()
+        await fetchProviderData()
       } catch (error) {
         console.error('Auto-refresh error:', error)
       }
-    }, 30000) // Check every 30 seconds
+    }, 60000) // Check every 60 seconds (was 30 seconds)
 
     return () => clearInterval(pollInterval)
-  }, [dashboardState.auth.isAuthenticated]) // Only depend on authentication state
+  }, [dashboardState.auth.isAuthenticated, dashboardState.ui.loading]) // Only depend on authentication state
 
   // Refresh function for manual refresh
   const refreshData = useCallback(async () => {

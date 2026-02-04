@@ -3,10 +3,10 @@ export const runtime = 'nodejs'
 import { paystackClient, paymentProcessor } from "@/lib/paystack";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import crypto from "crypto";
-import { handleTransferFailureWithRetry } from '@/lib/transfer-retry';
+import * as crypto from "crypto";
 import { logPayment } from '@/lib/logger';
-import { broadcastPaymentStatusChange, broadcastPayoutStatusChange } from '@/lib/socket-server';
+import { broadcastPaymentStatusChange } from '@/lib/socket-server';
+import { LedgerServiceHardened } from '@/lib/ledger-hardened';
 
 // Webhook event schemas for validation
 const WebhookEventSchema = z.object({
@@ -112,7 +112,7 @@ export async function GET() {
         _count: { status: true }
       });
       
-      paymentStatusDistribution = statusCounts.reduce((acc, item) => {
+      paymentStatusDistribution = statusCounts.reduce((acc: Record<string, number>, item: { status: string; _count: { status: number } }) => {
         acc[item.status] = item._count.status;
         return acc;
       }, {} as Record<string, number>);
@@ -302,17 +302,29 @@ export async function POST(request: NextRequest) {
       
       switch (event) {
         case 'charge.success':
-          processingResult = await handlePaymentSuccess(data, webhookEventId);
+          if (!data.reference) {
+            throw new Error('Missing reference in payment success webhook');
+          }
+          processingResult = await handlePaymentSuccess({
+            reference: data.reference,
+            id: data.id,
+            amount: data.amount,
+            currency: data.currency
+          }, webhookEventId || '');
           break;
         case 'charge.failed':
-          processingResult = await handlePaymentFailed(data, webhookEventId);
+          if (!data.reference) {
+            throw new Error('Missing reference in payment failed webhook');
+          }
+          processingResult = await handlePaymentFailed({
+            reference: data.reference,
+            failure_reason: data.failure_reason,
+            gateway_response: data.gateway_response
+          }, webhookEventId || '');
           break;
-        case 'transfer.success':
-          processingResult = await handleTransferSuccess(data, webhookEventId);
-          break;
-        case 'transfer.failed':
-          processingResult = await handleTransferFailed(data, webhookEventId);
-          break;
+        // Transfer webhooks removed - no longer using Paystack for payouts
+        // case 'transfer.success':
+        // case 'transfer.failed':
         default:
           throw new Error(`Unsupported event type: ${event}`);
       }
@@ -463,9 +475,10 @@ async function validateWebhookSignature(payload: string, signature: string): Pro
 }
 
 // Handle successful payment - Update to ESCROW status
-async function handlePaymentSuccess(data: any, webhookEventId: string) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function handlePaymentSuccess(data: { reference: string; id?: number; amount?: number; currency?: string }, _webhookEventId: string) {
   try {
-    const { reference, id: transactionId, amount, currency } = data;
+    const { reference, currency } = data;
 
     console.log(`💰 Processing payment success webhook for reference: ${reference}`);
 
@@ -519,19 +532,82 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
       // and came from Paystack's servers
     }
 
+    // Ensure escrowAmount and platformFee are set (calculate if missing)
+    let escrowAmount = existingPayment.escrowAmount;
+    let platformFee = existingPayment.platformFee;
+    
+    if (!escrowAmount || !platformFee) {
+      const breakdown = paymentProcessor.calculatePaymentBreakdown(existingPayment.amount);
+      escrowAmount = breakdown.escrowAmount;
+      platformFee = breakdown.platformFee;
+      
+      console.log(`📊 Calculated payment breakdown: escrowAmount=${escrowAmount}, platformFee=${platformFee}`);
+    }
+
     // Use transaction with better error handling
     let result;
     try {
-      result = await prisma.$transaction(async (tx) => {
-        // Update payment status to ESCROW
-        await tx.payment.update({
-          where: { id: existingPayment.id },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result = await prisma.$transaction(async (tx: any) => {
+        // CRITICAL: Atomic status update - only update if still PENDING
+        const updatedCount = await tx.payment.updateMany({
+          where: {
+            id: existingPayment.id,
+            status: 'PENDING', // Only update if still PENDING
+          },
           data: {
             status: 'ESCROW',
             paidAt: new Date(),
-            transactionId: transactionId?.toString() || null,
+            escrowAmount: escrowAmount!,
+            platformFee: platformFee!,
+            currency: currency || 'ZAR',
           }
         });
+
+        // If no rows updated, payment was already processed
+        if (updatedCount.count === 0) {
+          console.log(`⚠️ Payment ${existingPayment.id} already processed (status: ${existingPayment.status})`);
+          return { 
+            success: true, 
+            message: `Payment already processed with status: ${existingPayment.status}`,
+            payment: existingPayment,
+            booking: existingPayment.booking
+          };
+        }
+
+        const updatedPayment = await tx.payment.findUnique({
+          where: { id: existingPayment.id },
+        });
+
+        if (!updatedPayment) {
+          throw new Error(`Payment ${existingPayment.id} not found after update`);
+        }
+
+        // Note: SettlementBatch model removed from schema
+        // Settlement tracking is now handled separately via admin reconciliation
+
+        // Create ledger entries with idempotency (use transaction client)
+        // 1. Credit provider balance
+        await LedgerServiceHardened.createEntryIdempotent({
+          accountType: 'PROVIDER_BALANCE',
+          accountId: existingPayment.booking.providerId,
+          entryType: 'CREDIT',
+          amount: escrowAmount!,
+          referenceType: 'PAYMENT',
+          referenceId: existingPayment.id,
+          description: `Payment received for booking ${existingPayment.bookingId}`,
+        }, tx);
+
+        // 2. Credit platform revenue
+        await LedgerServiceHardened.createEntryIdempotent({
+          accountType: 'PLATFORM_REVENUE',
+          accountId: 'PLATFORM',
+          entryType: 'CREDIT',
+          amount: platformFee!,
+          referenceType: 'PAYMENT',
+          referenceId: existingPayment.id,
+          description: `Platform fee for booking ${existingPayment.bookingId}`,
+        }, tx);
 
         // Update booking status to PENDING_EXECUTION (payment received, waiting for execution)
         await tx.booking.update({
@@ -545,35 +621,65 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
             userId: existingPayment.booking.provider.user.id,
             type: 'PAYMENT_RECEIVED',
             title: 'Payment Received',
-            content: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
+            message: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
             isRead: false,
           }
         });
 
         console.log(`🎉 Payment successful for booking ${existingPayment.bookingId}, amount: ${existingPayment.amount}`);
+        console.log(`💰 Ledger entries created: Provider Balance +${escrowAmount}, Platform Revenue +${platformFee}`);
         console.log(`📊 Updated payment status to ESCROW and booking status to PENDING_EXECUTION`);
         console.log(`🔔 Provider notification created for user ${existingPayment.booking.provider.user.id}`);
 
         return { 
           success: true, 
           message: `Payment ${existingPayment.id} successfully moved to escrow for booking ${existingPayment.bookingId}`,
-          payment: existingPayment,
+          payment: updatedPayment!,
           booking: existingPayment.booking
         };
+      }, {
+        isolationLevel: 'Serializable', // Prevent race conditions
+        timeout: 30000,
       });
     } catch (transactionError) {
       console.error('❌ Transaction failed, attempting individual operations:', transactionError);
       
       // Fallback: try individual operations if transaction fails
       try {
-        // Update payment status to ESCROW
+        // Update payment status to ESCROW and ensure breakdown is set
         await prisma.payment.update({
           where: { id: existingPayment.id },
           data: {
             status: 'ESCROW',
             paidAt: new Date(),
-            transactionId: transactionId?.toString() || null,
+            escrowAmount: escrowAmount!,
+            platformFee: platformFee!,
+            currency: currency || 'ZAR',
           }
+        });
+
+        // Note: SettlementBatch model removed from schema
+        // Settlement tracking is now handled separately via admin reconciliation
+
+        // Create ledger entries (using hardened service for idempotency)
+        await LedgerServiceHardened.createEntryIdempotent({
+          accountType: 'PROVIDER_BALANCE',
+          accountId: existingPayment.booking.providerId,
+          entryType: 'CREDIT',
+          amount: escrowAmount!,
+          referenceType: 'PAYMENT',
+          referenceId: existingPayment.id,
+          description: `Payment received for booking ${existingPayment.bookingId}`,
+        });
+
+        await LedgerServiceHardened.createEntryIdempotent({
+          accountType: 'PLATFORM_REVENUE',
+          accountId: 'PLATFORM',
+          entryType: 'CREDIT',
+          amount: platformFee!,
+          referenceType: 'PAYMENT',
+          referenceId: existingPayment.id,
+          description: `Platform fee for booking ${existingPayment.bookingId}`,
         });
 
         // Update booking status to PENDING_EXECUTION
@@ -588,7 +694,7 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
             userId: existingPayment.booking.provider.user.id,
             type: 'PAYMENT_RECEIVED',
             title: 'Payment Received',
-            content: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
+            message: `Payment received for ${existingPayment.booking.service?.name || 'your service'} - Booking #${existingPayment.booking.id}. You can now start the job!`,
             isRead: false,
           }
         });
@@ -652,13 +758,15 @@ async function handlePaymentSuccess(data: any, webhookEventId: string) {
 }
 
 // Handle failed payment
-async function handlePaymentFailed(data: any, webhookEventId: string) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function handlePaymentFailed(data: { reference: string; failure_reason?: string; gateway_response?: string }, _webhookEventId: string) {
   try {
-    const { reference, failure_reason, gateway_response } = data;
+    const { reference, failure_reason } = data;
 
     console.log(`❌ Processing payment failure webhook for reference: ${reference}`);
 
-    const result = await prisma.$transaction(async (tx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await prisma.$transaction(async (tx: any) => {
       const payment = await tx.payment.findUnique({
         where: { paystackRef: reference },
         include: { booking: true }
@@ -700,179 +808,5 @@ async function handlePaymentFailed(data: any, webhookEventId: string) {
   }
 }
 
-// Handle successful transfer (payout to provider)
-async function handleTransferSuccess(data: any, webhookEventId: string) {
-  try {
-    const { reference, transfer_code } = data;
-
-    logPayment.success('webhook', 'Processing transfer success webhook', {
-      metadata: { reference, transfer_code }
-    });
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Find payment by transactionId (which stores the transfer_code)
-      const payment = await tx.payment.findFirst({
-        where: { 
-          transactionId: transfer_code,
-          status: 'PROCESSING_RELEASE'
-        },
-        include: { booking: true }
-      });
-
-      if (!payment) {
-        throw new Error(`Payment not found for transfer code: ${transfer_code}`);
-      }
-
-      // Update payment status to RELEASED
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: { 
-          status: 'RELEASED',
-          updatedAt: new Date()
-        }
-      });
-
-      // Update booking status to COMPLETED
-      await tx.booking.update({
-        where: { id: payment.bookingId },
-        data: { 
-          status: 'COMPLETED',
-          updatedAt: new Date()
-        }
-      });
-
-      logPayment.success('webhook', 'Transfer completed successfully', {
-        paymentId: payment.id,
-        bookingId: payment.bookingId,
-        metadata: {
-          amount: payment.amount,
-          transferCode: transfer_code,
-          reference
-        }
-      });
-
-      return { 
-        success: true, 
-        message: `Payment ${payment.id} released to provider successfully`,
-        payment: payment,
-        booking: payment.booking
-      };
-    });
-
-    // Broadcast payment status change (commented out until broadcastPayoutStatusChange is updated)
-    if (false && result.success && result.payment && result.booking) {
-      try {
-        broadcastPayoutStatusChange(
-          {
-            id: result.payout.id,
-            status: result.payout.status,
-            amount: result.payout.amount,
-            transferCode: result.payout.transferCode,
-            paymentId: result.payout.paymentId,
-            providerId: result.payout.providerId
-          },
-          result.payout.providerId
-        );
-        
-        logPayment.success('webhook', 'Payout status change broadcasted via WebSocket', {
-          payoutId: result.payout.id,
-          paymentId: result.payment.id,
-          bookingId: result.booking.id,
-          metadata: { 
-            providerId: result.payout.providerId,
-            status: result.payout.status,
-            amount: result.payout.amount
-          }
-        });
-      } catch (broadcastError) {
-        logPayment.error('webhook', 'Failed to broadcast payout status change', broadcastError as Error, {
-          payoutId: result.payout.id,
-          paymentId: result.payment.id,
-          bookingId: result.booking.id,
-          error_code: 'BROADCAST_FAILED',
-          metadata: { 
-            providerId: result.payout.providerId
-          }
-        });
-        // Don't fail the webhook if broadcast fails
-      }
-    }
-
-    return result;
-
-  } catch (error) {
-    logPayment.error('webhook', 'Error handling transfer success', error as Error, {
-      error_code: 'TRANSFER_SUCCESS_HANDLING_ERROR',
-      metadata: { errorMessage: (error as Error).message }
-    });
-    throw error;
-  }
-}
-
-// Handle failed transfer
-async function handleTransferFailed(data: any, webhookEventId: string) {
-  try {
-    const { reference, failure_reason } = data;
-
-    logPayment.error('webhook', 'Processing transfer failure webhook', new Error(failure_reason), {
-      error_code: 'TRANSFER_FAILED',
-      metadata: { reference, failure_reason }
-    });
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Find payout by reference
-      const payout = await tx.payout.findUnique({
-        where: { paystackRef: reference },
-        include: { payment: { include: { booking: true } } }
-      });
-
-      if (!payout) {
-        throw new Error(`Payout not found for reference: ${reference}`);
-      }
-
-      // Update payout status to FAILED
-      await tx.payout.update({
-        where: { id: payout.id },
-        data: { status: 'FAILED' }
-      });
-
-      // Revert payment status back to ESCROW
-      await tx.payment.update({
-        where: { id: payout.paymentId },
-        data: { status: 'ESCROW' }
-      });
-
-      // Revert booking status back to PENDING_EXECUTION
-      await tx.booking.update({
-        where: { id: payout.payment.bookingId },
-        data: { status: 'PENDING_EXECUTION' }
-      });
-
-      logPayment.error('webhook', 'Transfer failed, reverted payment to escrow', new Error(failure_reason), {
-        payoutId: payout.id,
-        paymentId: payout.paymentId,
-        bookingId: payout.payment.bookingId,
-        error_code: 'TRANSFER_FAILED',
-        metadata: { reference, failure_reason }
-      });
-
-      return { 
-        success: true, 
-        payoutId: payout.id,
-        message: `Transfer ${payout.id} failed, payment ${payout.paymentId} reverted to escrow` 
-      };
-    });
-
-    // Schedule automatic retry for the failed transfer
-    await handleTransferFailureWithRetry(result.payoutId, failure_reason);
-
-    return result;
-
-  } catch (error) {
-    logPayment.error('webhook', 'Error handling transfer failure', error as Error, {
-      error_code: 'TRANSFER_FAILURE_HANDLING_ERROR',
-      metadata: { errorMessage: (error as Error).message }
-    });
-    throw error;
-  }
-}
+// Transfer webhook handlers removed - no longer using Paystack for payouts
+// Payouts are now handled via manual CSV exports or future Ozow integration

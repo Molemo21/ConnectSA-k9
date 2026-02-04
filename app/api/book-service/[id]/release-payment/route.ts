@@ -1,28 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { paystackClient, paymentProcessor } from "@/lib/paystack";
+import { paymentProcessor, paystackClient } from "@/lib/paystack";
 import { logPayment } from "@/lib/logger";
 import { createNotification } from "@/lib/notification-service";
-import { sendMultiChannelNotification } from "@/lib/notification-service-enhanced";
+import { broadcastPayoutUpdate, broadcastBookingUpdate, broadcastPaymentUpdate } from "@/lib/socket-server";
 
 export const dynamic = 'force-dynamic'
 
 // Enhanced types for better type safety
-interface TransferRecipientData {
-  type: 'nuban';
-  name: string;
-  account_number: string;
-  bank_code: string;
-}
-
-interface TransferData {
-  source: 'balance';
-  amount: number;
-  recipient: string;
-  reason: string;
-  reference: string;
-}
 
 interface PaymentReleaseResponse {
   success: boolean;
@@ -191,7 +177,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
               bankCode: true,
               accountNumber: true,
               accountName: true,
-              recipientCode: true,
               user: {
                 select: {
                   id: true,
@@ -341,7 +326,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             data: { 
               status: 'ESCROW',
               paidAt: new Date(),
-              transactionId: paystackVerification.data.id?.toString() || null,
               updatedAt: new Date()
             }
           });
@@ -495,588 +479,240 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
       }, { status: 400 });
     }
 
-    // 7.5. Advisory validation: Check if bank is in transfer-enabled list
-    // NOTE: This is advisory, not authoritative. Hard validation happens during recipient creation.
-    const { BankValidationService } = await import('@/lib/services/bank-validation-service');
-    const advisoryValidation = await BankValidationService.validateForTransfer(booking.provider.bankCode);
-    
-    if (!advisoryValidation.valid) {
-      console.warn(`⚠️ Advisory validation failed: ${advisoryValidation.error}`);
-      // Don't fail here - let hard validation during recipient creation handle it
-      // This is just a warning for monitoring
-    }
-    
-    const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
-    
-    console.log(`✅ Bank code advisory check: ${advisoryValidation.valid ? 'PASSED' : 'WARNING'}`);
-    console.log(`📋 Hard validation will occur during recipient creation`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV}, Test Mode: ${isTestMode}`);
-
-    // 8. Generate unique reference for transfer
-    const transferReference = paymentProcessor.generateReference("TR");
-    console.log(`💰 Generated transfer reference: ${transferReference}`);
-
-    // 9. DO NOT update payment status yet - wait until after all validations pass
-    // Payment status will be updated to PROCESSING_RELEASE only after:
-    // - Booking status validation passes
-    // - Bank code validation passes (if needed)
-    // - Recipient creation succeeds (if needed)
-    // - Transfer is about to be initiated
-    // This prevents payment from getting stuck in PROCESSING_RELEASE if early validations fail
-    console.log(`💳 Payment status will be updated to PROCESSING_RELEASE after all validations pass`);
-
-    // 10. Keep booking status as AWAITING_CONFIRMATION (don't change it)
-    // The booking is already in the correct state - payment is being released
-    // Only update to COMPLETED after successful transfer (later in the flow)
-    console.log(`📋 Booking status remains ${booking.status} during payment release`);
-    
-    // Validate that booking is in the correct state for payment release
-    if (!isValidBookingStatus(booking.status)) {
-      // Payment status is still ESCROW - no rollback needed
-      return NextResponse.json({
-        success: false,
-        error: "Invalid booking status for payment release",
-        details: `Booking must be in ${VALID_BOOKING_STATUSES_FOR_RELEASE.join(' or ')} status to release payment. Current status: ${booking.status}`,
-        currentStatus: booking.payment.status, // Still ESCROW
-        expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
-        bookingStatus: booking.status
-      }, { status: 400 });
+    // 7.5. Ensure escrowAmount is set
+    if (!booking.payment.escrowAmount || !booking.payment.platformFee) {
+      // Calculate if missing
+      const breakdown = paymentProcessor.calculatePaymentBreakdown(booking.payment.amount);
+      await prisma.payment.update({
+        where: { id: booking.payment.id },
+        data: {
+          escrowAmount: breakdown.escrowAmount,
+          platformFee: breakdown.platformFee,
+        },
+      });
+      booking.payment.escrowAmount = breakdown.escrowAmount;
+      booking.payment.platformFee = breakdown.platformFee;
     }
 
-    // 11. Paystack transfer processing with comprehensive error handling
-    console.log(`🔄 Processing Paystack transfer for booking: ${bookingId}`);
+    // 8. SIMPLIFIED: Create payout record - admin will manually transfer via Paystack
+    console.log(`🔄 Creating payout request for booking: ${bookingId}`);
     
     try {
-      // 12. Create transfer recipient if not already created or if existing is invalid
-      let recipientCode = booking.provider.recipientCode;
-      
-      // Check if we're in test mode
-      const isTestMode = process.env.NODE_ENV === 'development' || process.env.PAYSTACK_TEST_MODE === 'true';
-      
-      // FIX 3: Enhanced validation - Check if existing recipient code is valid
-      const isTestRecipient = recipientCode && recipientCode.startsWith('TEST_RECIPIENT_');
-      
-      // If we have an existing recipient code, verify it's still valid (optional check)
-      if (recipientCode && !isTestRecipient && !isTestMode) {
-        try {
-          // Note: Paystack doesn't have a direct "verify recipient" endpoint,
-          // but we can try to use it in a transfer and catch errors.
-          // For now, we'll trust the stored recipient code if it exists.
-          // If it fails during transfer, we'll handle it then.
-          console.log(`✅ Using existing recipient code: ${recipientCode}`);
-          console.log(`💡 Recipient code was validated when provider saved bank details`);
-        } catch (verifyError) {
-          // If verification fails, clear the recipient code and create a new one
-          console.warn(`⚠️ Existing recipient code may be invalid, will create new one:`, verifyError);
-          recipientCode = null;
-          // Clear invalid recipient code from provider record
-          try {
-            await prisma.provider.update({
-              where: { id: booking.provider.id },
-              data: { recipientCode: null }
-            });
-            console.log(`🔄 Cleared invalid recipient code from provider record`);
-          } catch (updateError) {
-            console.warn(`⚠️ Could not clear recipient code (non-critical):`, updateError);
-          }
-        }
-      }
-      
-      if (!recipientCode || isTestRecipient) {
-        console.log(`👤 Creating transfer recipient for provider ${booking.provider.id}...`);
-        if (isTestRecipient) {
-          console.log(`⚠️ Existing recipient code is a test code (${recipientCode}), creating new valid recipient...`);
-        }
-        
-        const recipientData: TransferRecipientData = {
-          type: 'nuban',
-          name: booking.provider.accountName || booking.provider.user.name || booking.provider.businessName || 'Unknown Provider',
-          account_number: booking.provider.accountNumber!,
-          bank_code: booking.provider.bankCode!,
-        };
-        
-      // Fetch actual bank from Paystack API to get the correct code format
-      // Paystack's listBanks might return codes that differ from what createRecipient accepts
-      // We need to use the exact code from Paystack's API response
-      let finalBankCode = recipientData.bank_code;
-      try {
-        console.log(`🔍 Fetching bank details from Paystack for code: ${finalBankCode}`);
-        const banks = await paystackClient.listBanks({ country: 'ZA' });
-        
-        // Try to find the bank by code first
-        let bank = banks.data?.find(b => b.code === finalBankCode);
-        
-        // If not found by code, try by longcode
-        if (!bank) {
-          bank = banks.data?.find(b => b.longcode === finalBankCode);
-          if (bank) {
-            console.log(`📋 Found bank by longcode, using code: ${bank.code}`);
-            finalBankCode = bank.code;
-          }
-        }
-        
-        // If still not found, try to find Standard Bank by name (common case)
-        if (!bank && (finalBankCode === '051' || finalBankCode === '198774')) {
-          bank = banks.data?.find(b => 
-            b.name.toLowerCase().includes('standard') && 
-            b.active && 
-            !b.is_deleted
-          );
-          if (bank) {
-            console.log(`📋 Found Standard Bank in Paystack API:`, {
-              name: bank.name,
-              code: bank.code,
-              longcode: bank.longcode,
-              active: bank.active
-            });
-            finalBankCode = bank.code;
-          }
-        }
-        
-        if (bank) {
-          console.log(`✅ Using Paystack API bank code: ${finalBankCode} (${bank.name})`);
-          recipientData.bank_code = finalBankCode;
-          
-          // Update provider's bank code if it changed
-          if (finalBankCode !== booking.provider.bankCode) {
-            try {
-              await prisma.provider.update({
-                where: { id: booking.provider.id },
-                data: { bankCode: finalBankCode }
-              });
-              console.log(`✅ Updated provider's bank code: ${booking.provider.bankCode} -> ${finalBankCode}`);
-            } catch (updateError) {
-              console.warn(`⚠️ Could not update provider bank code (non-critical):`, updateError);
-            }
-          }
-        } else {
-          console.warn(`⚠️ Bank code ${finalBankCode} not found in Paystack API, using as-is`);
-        }
-      } catch (bankFetchError) {
-        console.warn(`⚠️ Could not fetch banks from Paystack (using saved code):`, bankFetchError);
-        // Continue with saved code - Paystack will validate it
-      }
-      
-      console.log(`✅ Using bank code: ${recipientData.bank_code} for recipient creation`);
-      console.log(`💡 Paystack will validate bank code when creating recipient`);
-        
-        try {
-          let recipientResponse;
-          
-          // Check if we're in test mode
-          if (isTestMode) {
-            console.log(`🧪 Test mode detected - simulating recipient creation`);
-            recipientResponse = {
-              status: true,
-              data: {
-                recipient_code: `TEST_RECIPIENT_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                type: 'nuban',
-                name: recipientData.name,
-                account_number: recipientData.account_number,
-                bank_code: recipientData.bank_code
-              },
-              message: 'Recipient simulated successfully in test mode'
-            };
-          } else {
-            recipientResponse = await paystackClient.createRecipient(recipientData);
-          }
-          
-          if (!recipientResponse.status) {
-            throw new Error(`Failed to create transfer recipient: ${recipientResponse.message}`);
-          }
-          recipientCode = recipientResponse.data.recipient_code;
-          console.log(`✅ Transfer recipient created: ${recipientCode}`);
-
-          // Store recipient_code in provider record
-          await prisma.provider.update({
-            where: { id: booking.provider.id },
-            data: { recipientCode }
-          });
-          
-          logPayment.success('escrow_release', 'Recipient code stored in provider record', {
-            bookingId: booking.id,
-            paymentId: booking.payment.id,
-            providerId: booking.provider.id,
-            recipientCode
-          });
-        } catch (recipientError) {
-          console.error(`❌ HARD FAILURE: Recipient creation failed:`, recipientError);
-          
-          // Hard failure handling - authoritative validation from payment provider
-          const failureResult = BankValidationService.handleRecipientCreationFailure(recipientError);
-          
-          // Log hard failure for monitoring
-          console.error('🚨 Hard failure details:', {
-            isHardFailure: failureResult.isHardFailure,
-            error: failureResult.error,
-            details: failureResult.details,
-            recoverable: failureResult.recoverable,
-            actionRequired: failureResult.actionRequired,
-            bankCode: recipientData.bank_code,
-            accountNumber: recipientData.account_number?.substring(0, 4) + '****',
-            providerId: booking.provider.id,
-          });
-          
-          // Enhance error details with provider context
-          const enhancedDetails = failureResult.details + 
-            " Please ask the provider to update their bank details in their dashboard (Settings > Bank Details). " +
-            "Your payment is safe in escrow and will be released once they update their details.";
-          
-          // Payment status is still ESCROW - no rollback needed
-          return NextResponse.json({
-            success: false,
-            error: failureResult.error,
-            details: enhancedDetails,
-            isHardFailure: true,
-            recoverable: failureResult.recoverable,
-            actionRequired: failureResult.actionRequired || "PROVIDER_UPDATE_BANK_DETAILS",
-            providerId: booking.provider.id,
-            providerName: booking.provider.businessName || booking.provider.user.name,
-            currentStatus: booking.payment.status, // Still ESCROW
-            expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
-            bookingStatus: booking.status
-          }, { status: 400 });
-        }
-      } else {
-        console.log(`✅ Using existing transfer recipient: ${recipientCode}`);
-      }
-
-      // 13. NOW update payment status to PROCESSING_RELEASE - all validations passed
-      // This is the safe point to change status since:
-      // - Booking status is valid
-      // - Bank code is valid (if validated)
-      // - Recipient code exists or was created successfully
-      try {
-        await prisma.payment.update({
+      // Simple transaction - just create payout record
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await prisma.$transaction(async (tx: any) => {
+        // Step 1: Re-check payment status atomically (prevent race conditions)
+        const currentPayment = await tx.payment.findUnique({
           where: { id: booking.payment.id },
-          data: { 
-            status: "PROCESSING_RELEASE",
-            updatedAt: new Date()
-          }
-        });
-        console.log(`💳 Payment status updated to PROCESSING_RELEASE - all validations passed`);
-      } catch (updateError) {
-        console.error(`❌ Failed to update payment status:`, updateError);
-        return NextResponse.json({
-          success: false,
-          error: "Unable to update payment status",
-          details: "There was a problem updating the payment status. Please try again.",
-          currentStatus: booking.payment.status,
-          expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
-          bookingStatus: booking.status
-        }, { status: 500 });
-      }
-
-      // 14. Initiate transfer
-      if (!recipientCode) {
-        // Rollback payment status since we can't proceed
-        try {
-          await prisma.payment.update({
-            where: { id: booking.payment.id },
-            data: { 
-              status: "ESCROW",
-              updatedAt: new Date()
-            }
-          });
-          console.log(`🔄 Rolled back payment status to ESCROW - recipient code missing`);
-        } catch (rollbackError) {
-          console.error(`❌ Failed to rollback payment status:`, rollbackError);
-        }
-        
-        throw new Error('Recipient code is required for transfer but was not generated');
-      }
-      
-      console.log(`💸 Initiating transfer to recipient ${recipientCode} for amount ${booking.payment.amount}...`);
-      
-      let transferResponse;
-      
-      if (isTestMode) {
-        console.log(`🧪 Test mode detected - simulating successful transfer`);
-        transferResponse = {
-          status: true,
-          data: {
-            transfer_code: `TEST_TRANSFER_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-            amount: booking.payment.amount * 100,
-            status: 'success',
-            reference: transferReference,
-            recipient: recipientCode
+          select: {
+            id: true,
+            status: true,
           },
-          message: 'Transfer simulated successfully in test mode'
-        };
-      } else {
-        const transferData: TransferData = {
-          source: 'balance',
-          amount: booking.payment.amount * 100, // Paystack amount in kobo
-          recipient: recipientCode,
-          reason: `Payment for booking ${booking.id} - ${booking.service?.name || 'Service'}`,
-          reference: transferReference,
-        };
-        
-        try {
-          transferResponse = await paystackClient.createTransfer(transferData);
-        } catch (transferInitError) {
-          console.error(`❌ HARD FAILURE: Transfer creation failed:`, transferInitError);
-          
-          // Hard failure handling - authoritative validation from payment provider
-          const failureResult = BankValidationService.handleTransferCreationFailure(transferInitError);
-          
-          // Log hard failure for monitoring
-          console.error('🚨 Hard failure details:', {
-            isHardFailure: failureResult.isHardFailure,
-            error: failureResult.error,
-            details: failureResult.details,
-            recoverable: failureResult.recoverable,
-            actionRequired: failureResult.actionRequired,
-            transferReference,
-            recipientCode,
-            amount: booking.payment.amount,
-          });
-          
-          // Return structured error response
-          return NextResponse.json({
-            success: false,
-            error: failureResult.error,
-            details: failureResult.details,
-            isHardFailure: true,
-            recoverable: failureResult.recoverable,
-            actionRequired: failureResult.actionRequired,
-            bookingId: booking.id,
-            paymentId: booking.payment.id,
-            currentStatus: booking.payment.status,
-          }, { status: 400 });
-        }
-      }
-
-      if (!transferResponse.status) {
-        throw new Error(`Failed to create transfer: ${transferResponse.message}`);
-      }
-
-      console.log(`✅ Paystack transfer created:`, transferResponse.data);
-
-      // 15. Update payment with transfer code (status already set to PROCESSING_RELEASE)
-      try {
-        await prisma.payment.update({
-          where: { id: booking.payment.id },
-          data: { 
-            transactionId: transferResponse.data.transfer_code,
-            updatedAt: new Date()
-          }
         });
-      } catch (updateError) {
-        console.error(`❌ Failed to update payment with transfer code:`, updateError);
-        // Continue processing even if this update fails
-      }
 
-      // 15. IMMEDIATE TRANSFER COMPLETION - Check transfer status from response
-      console.log(`🔄 Checking transfer status for immediate completion...`);
-      
-      // Check if transfer was successful based on response
-      if (transferResponse.data.status === 'success') {
-        console.log(`✅ Transfer completed successfully! Updating payment status...`);
-        
-        try {
-          // Update payment status to RELEASED
-          await prisma.payment.update({
-            where: { id: booking.payment.id },
-            data: { 
-              status: 'RELEASED',
-              updatedAt: new Date()
-            }
-          });
-          
-          // Update booking status to COMPLETED using unified service
-          const { updateBookingStatusWithNotification, getTargetUsersForBookingStatusChange } = await import('@/lib/booking-status-service');
-          
-          // Get full booking data for the service
-          const fullBooking = await prisma.booking.findUnique({
-            where: { id: bookingId },
-            include: {
-              client: { select: { id: true, name: true, email: true } },
-              provider: { 
-                include: { 
-                  user: { select: { id: true, name: true, email: true } }
-                }
-              },
-              service: { select: { name: true } },
-              payment: true
-            }
-          });
+        if (!currentPayment || currentPayment.status !== 'ESCROW') {
+          throw new Error(`Payment is not in ESCROW status (current: ${currentPayment?.status})`);
+        }
 
-          if (fullBooking) {
-            // Update status and send notifications/broadcast
-            await prisma.booking.update({
-              where: { id: bookingId },
-              data: { 
-                status: 'COMPLETED',
-                updatedAt: new Date()
-              }
+        // Step 2: Check if payout already exists (database constraint also prevents this)
+        const existingPayout = await tx.payout.findUnique({
+          where: { paymentId: booking.payment.id },
+          select: {
+            id: true,
+            paymentId: true,
+            status: true,
+            amount: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+
+        if (existingPayout) {
+          // Return existing payout info instead of erroring
+          // This handles the case where user clicks button multiple times
+          console.log(`ℹ️ Payout already exists: ${existingPayout.id} with status ${existingPayout.status}`);
+          
+          // Still update booking status if it's not COMPLETED yet
+          let updatedBooking = booking;
+          if (booking.status !== 'COMPLETED') {
+            updatedBooking = await tx.booking.update({
+              where: { id: booking.id },
+              data: { status: 'COMPLETED' },
+              select: { id: true, status: true }
             });
-
-            // Send notifications and broadcast via unified service
-            try {
-              await updateBookingStatusWithNotification({
-                bookingId,
-                newStatus: 'COMPLETED',
-                notificationType: 'PAYMENT_RELEASED',
-                targetUserIds: getTargetUsersForBookingStatusChange(fullBooking, 'COMPLETED'),
-                skipStatusUpdate: true, // Status already updated above
-                skipNotification: false,
-                skipBroadcast: false,
-              });
-            } catch (serviceError) {
-              console.error('Failed to send notifications/broadcast via unified service:', serviceError);
-              // Don't fail - payment was released successfully
-            }
+            console.log(`✅ Booking status updated to COMPLETED: ${updatedBooking.id}`);
           }
           
-          console.log(`🎉 Payment release completed successfully!`);
-          
-          logPayment.success('escrow_release', 'Payment release completed immediately', {
-            bookingId: booking.id,
-            paymentId: booking.payment.id,
-            transferCode: transferResponse.data.transfer_code,
-            recipientCode,
-            amount: booking.payment.amount,
-            processingTime: Date.now() - startTime
-          });
-          
-          return NextResponse.json({
-            success: true,
-            message: "Payment released successfully! Funds have been transferred to the provider.",
-            bookingId: booking.id,
-            paymentId: booking.payment.id,
-            transferCode: transferResponse.data.transfer_code,
-            status: "RELEASED"
-          });
-          
-        } catch (completionError) {
-          console.error(`❌ Failed to complete payment release:`, completionError);
-          // Don't throw here - the transfer was successful, just status update failed
-          logPayment.warning('escrow_release', 'Transfer successful but status update failed', {
-            bookingId: booking.id,
-            paymentId: booking.payment.id,
-            transferCode: transferResponse.data.transfer_code,
-            error: completionError instanceof Error ? completionError.message : 'Unknown error'
-          });
+          return { payout: existingPayout, booking: updatedBooking, alreadyExists: true };
         }
+
+        // Step 3: Update booking status to COMPLETED
+        const updatedBooking = await tx.booking.update({
+          where: { id: booking.id },
+          data: { status: 'COMPLETED' },
+          select: { id: true, status: true }
+        });
+
+        // Step 4: Create payout record (database unique constraint prevents duplicates)
+        // Money stays in escrow - admin will manually transfer via Paystack
+        const payout = await tx.payout.create({
+          data: {
+            paymentId: booking.payment.id,
+            providerId: booking.providerId,
+            amount: booking.payment.escrowAmount!,
+            status: 'PENDING', // Admin will process manually
+            method: 'MANUAL' as const, // Manual transfer via Paystack dashboard
+            bankName: booking.provider.bankName || '',
+            bankCode: booking.provider.bankCode || '',
+            accountNumber: booking.provider.accountNumber || '',
+            accountName: booking.provider.accountName || '',
+            requestedAt: new Date(),
+            retryCount: 0,
+          },
+        });
+
+        console.log(`✅ Payout record created: ${payout.id} for amount R${payout.amount}`);
+        console.log(`✅ Booking status updated to COMPLETED: ${updatedBooking.id}`);
+        console.log(`💰 Money remains in escrow - admin will transfer manually via Paystack`);
+
+        return { payout, booking: updatedBooking, alreadyExists: false };
+      });
+
+      // Skip notifications if payout already existed (was created previously)
+      if (result.alreadyExists) {
+        console.log(`ℹ️ Payout already existed, skipping notifications`);
         
-      } else if (transferResponse.data.status === 'pending') {
-        console.log(`⏳ Transfer is pending. Will be completed via webhook.`);
-        
-        // Transfer is pending - webhook will handle completion
-        logPayment.info('escrow_release', 'Transfer pending - waiting for webhook completion', {
+        logPayment.success('escrow_release', 'Payout already exists (idempotent request)', {
           bookingId: booking.id,
           paymentId: booking.payment.id,
-          transferCode: transferResponse.data.transfer_code,
-          recipientCode,
-          amount: booking.payment.amount,
+          payoutId: result.payout.id,
+          amount: result.payout.amount,
+          status: result.payout.status,
           processingTime: Date.now() - startTime
         });
-        
-      } else {
-        console.log(`❌ Transfer failed with status:`, transferResponse.data.status);
-        
-        // For failed transfers, revert the payment status and throw error
-        try {
-          await prisma.payment.update({
-            where: { id: booking.payment.id },
-            data: { 
-              status: 'ESCROW',
-              updatedAt: new Date()
-            }
-          });
-          
-          await prisma.booking.update({
-            where: { id: bookingId },
-            data: { 
-              status: booking.status === "COMPLETED" ? "COMPLETED" : "AWAITING_CONFIRMATION",
-              updatedAt: new Date()
-            }
-          });
-        } catch (revertError) {
-          console.error(`❌ Failed to revert statuses after transfer failure:`, revertError);
-        }
-        
-        throw new Error(`Transfer failed with status: ${transferResponse.data.status}`);
+
+        return NextResponse.json({
+          success: true,
+          message: "Payout request already exists. Admin will process it shortly.",
+          bookingId: booking.id,
+          paymentId: booking.payment.id,
+          payoutId: result.payout.id,
+          status: result.payout.status,
+          alreadyExists: true,
+        });
       }
 
-      // 16. Send notifications and broadcast (if transfer is pending, notifications will be sent when webhook completes)
-      // For immediate success, notifications were already sent above
-      // For pending transfers, we'll send notifications when webhook confirms completion
-      if (transferResponse.data.status === 'pending') {
-        try {
-          // Notify that payment release is pending
-          const { updateBookingStatusWithNotification, getTargetUsersForBookingStatusChange } = await import('@/lib/booking-status-service');
-          
-          const fullBooking = await prisma.booking.findUnique({
-            where: { id: bookingId },
-            include: {
-              client: { select: { id: true, name: true, email: true } },
-              provider: { 
-                include: { 
-                  user: { select: { id: true, name: true, email: true } }
-                }
-              },
-              service: { select: { name: true } },
-              payment: true
-            }
+      // Notify all parties: admins, provider, and client
+      try {
+        // 1. Notify all admins of pending payout
+        const adminUsers = await prisma.user.findMany({
+          where: { role: 'ADMIN' },
+          select: { id: true, name: true, email: true }
+        });
+        
+        for (const admin of adminUsers) {
+          await createNotification({
+            userId: admin.id,
+            type: 'ESCROW_RELEASED', // Better notification type
+            title: 'New Payout Request Pending',
+            content: `Payout request for R${result.payout.amount.toFixed(2)} to ${booking.provider.businessName || booking.provider.user.name} - Booking ${booking.id.substring(0, 8)}. Please process via Paystack dashboard.`,
+            metadata: { payoutId: result.payout.id, bookingId: booking.id }
           });
-
-          if (fullBooking) {
-            // Note: Status remains AWAITING_CONFIRMATION until webhook confirms
-            // Just send notification that release is in progress
-            await sendMultiChannelNotification({
-              userId: user.id,
-              type: 'PAYMENT_RELEASED',
-              title: 'Payment Release Initiated',
-              content: `Payment release has been initiated for ${booking.service?.name || 'Service'}. The transfer is being processed.`,
-              metadata: { booking }
-            }, {
-              channels: ['in-app', 'email', 'push'],
-              email: {
-                to: booking.client?.email || '',
-                subject: 'Payment Release Initiated'
-              },
-              push: {
-                userId: user.id,
-                title: 'Payment Release Initiated',
-                body: `Payment release is being processed.`,
-                url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/bookings/${bookingId}`
-              }
-            });
-          }
-        } catch (notificationError) {
-          console.warn('Failed to send pending notification:', notificationError);
         }
+        console.log(`📧 Notified ${adminUsers.length} admin(s) of pending payout`);
+
+        // 2. Notify provider that payout request was created
+        await createNotification({
+          userId: booking.provider.user.id,
+          type: 'ESCROW_RELEASED',
+          title: 'Payout Request Submitted',
+          content: `Your payout request for R${result.payout.amount.toFixed(2)} has been submitted. Admin will process it shortly. Booking ${booking.id.substring(0, 8)}.`,
+          metadata: { payoutId: result.payout.id, bookingId: booking.id }
+        });
+        console.log(`📧 Notified provider of payout request`);
+
+        // 3. Notify client that completion was confirmed
+        await createNotification({
+          userId: booking.clientId,
+          type: 'JOB_COMPLETED',
+          title: 'Completion Confirmed',
+          content: `You've confirmed completion for ${booking.service?.name || 'your service'}. Payment will be released to the provider shortly. Booking ${booking.id.substring(0, 8)}.`,
+          metadata: { bookingId: booking.id, payoutId: result.payout.id }
+        });
+        console.log(`📧 Notified client of completion confirmation`);
+
+      } catch (notificationError) {
+        console.warn('⚠️ Failed to send notifications (payout still created):', notificationError);
+        // Don't fail the request if notification fails
       }
 
-      logPayment.success('escrow_release', 'Payment release initiated successfully', {
+      // Emit real-time socket events for instant UI updates
+      try {
+        // Get admin user IDs for broadcasting
+        const adminUsers = await prisma.user.findMany({
+          where: { role: 'ADMIN' },
+          select: { id: true }
+        });
+        const adminIds = adminUsers.map((admin: { id: string }) => admin.id);
+        
+        // Broadcast payout creation to provider and admins
+        broadcastPayoutUpdate(result.payout.id, 'created', {
+          id: result.payout.id,
+          status: result.payout.status,
+          amount: result.payout.amount,
+          bookingId: booking.id
+        }, [booking.provider.user.id, ...adminIds]);
+
+        // Broadcast booking status update to client, provider, and admins
+        broadcastBookingUpdate(booking.id, 'status_changed', {
+          id: booking.id,
+          status: result.booking.status,
+          previousStatus: booking.status,
+          payoutId: result.payout.id,
+          updatedAt: new Date().toISOString(),
+          // Include full booking data for UI updates
+          serviceName: booking.service?.name,
+          clientName: booking.client?.name,
+          providerName: booking.provider?.businessName || booking.provider?.user?.name,
+          totalAmount: booking.totalAmount
+        }, [booking.clientId, booking.provider.user.id, ...adminIds]);
+
+        // Broadcast payment status (still ESCROW, but payout created)
+        broadcastPaymentUpdate(booking.payment.id, 'payout_requested', {
+          id: booking.payment.id,
+          status: booking.payment.status,
+          payoutId: result.payout.id
+        }, [booking.clientId, booking.provider.user.id]);
+
+        console.log(`📡 Emitted real-time socket events for payout, booking, and payment updates`);
+      } catch (socketError) {
+        console.warn('⚠️ Failed to emit socket events (payout still created):', socketError);
+        // Don't fail the request if socket emission fails
+      }
+
+      logPayment.success('escrow_release', 'Payout request created successfully', {
         bookingId: booking.id,
         paymentId: booking.payment.id,
-        transferCode: transferResponse.data.transfer_code,
-        recipientCode,
-        amount: booking.payment.amount,
-        bookingStatus: booking.status,
+        payoutId: result.payout.id,
+        amount: result.payout.amount,
+        status: result.payout.status,
         processingTime: Date.now() - startTime
       });
 
       return NextResponse.json({
         success: true,
-        message: "Payment release initiated successfully. Funds are being transferred to the provider.",
+        message: "Payout request created successfully. Admin will process the payment via Paystack shortly.",
         bookingId: booking.id,
         paymentId: booking.payment.id,
-        transferCode: transferResponse.data.transfer_code,
-        status: "PROCESSING"
+        payoutId: result.payout.id,
+        status: result.payout.status,
       });
 
-    } catch (transferError) {
-      console.error("❌ Paystack transfer failed:", transferError);
+    } catch (payoutError) {
+      console.error("❌ Payout creation failed:", payoutError);
       
-      // 17. Rollback database changes if transfer fails
-      console.log(`🔄 Rolling back database changes due to transfer failure...`);
-      
+      // Rollback payment status if payout creation failed
       try {
-        // Revert payment status
         await prisma.payment.update({
           where: { id: booking.payment.id },
           data: { 
@@ -1084,48 +720,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             updatedAt: new Date()
           }
         });
-
-        // Revert booking status
-        await prisma.booking.update({
-          where: { id: bookingId },
-          data: { 
-            status: booking.status === "COMPLETED" ? "COMPLETED" : "AWAITING_CONFIRMATION",
-            updatedAt: new Date()
-          }
-        });
-        
-        console.log(`✅ Database changes rolled back successfully`);
+        console.log(`🔄 Rolled back payment status to ESCROW`);
       } catch (rollbackError) {
-        console.error("❌ Failed to rollback database changes:", rollbackError);
+        console.error("❌ Failed to rollback payment status:", rollbackError);
       }
 
-      // Return appropriate error message with enhanced details
-      let errorMessage = "Unable to transfer payment to provider. Please try again.";
+      let errorMessage = "Unable to create payout request. Please try again.";
       let statusCode = 500;
 
-      if (transferError instanceof Error) {
-        errorMessage = transferError.message;
+      if (payoutError instanceof Error) {
+        errorMessage = payoutError.message;
         
-        // Provide user-friendly error messages for common issues
-        if (errorMessage.includes("Recipient not found") || errorMessage.includes("Invalid account")) {
-          errorMessage = "Provider's bank account details are invalid. Please ask them to update their bank information.";
+        if (errorMessage.includes("already exists")) {
           statusCode = 400;
-        } else if (errorMessage.includes("Insufficient funds")) {
-          errorMessage = "Insufficient funds to complete the transfer. Please contact support.";
-          statusCode = 402;
-        } else if (errorMessage.includes("Invalid bank code")) {
-          errorMessage = "Provider's bank code is invalid. Please ask them to update their bank details.";
-          statusCode = 400;
-        } else if (errorMessage.includes("Account number")) {
-          errorMessage = "Provider's account number is invalid. Please ask them to verify their bank details.";
-          statusCode = 400;
-        } else if (errorMessage.includes("Transfer failed")) {
-          errorMessage = "Payment transfer failed. Please try again or contact support.";
-          statusCode = 500;
         }
       }
 
-      logPayment.error('escrow_release', 'Payment release failed', transferError instanceof Error ? transferError : new Error(errorMessage), {
+      logPayment.error('escrow_release', 'Payout creation failed', payoutError instanceof Error ? payoutError : new Error(errorMessage), {
         bookingId: bookingId,
         paymentId: booking.payment.id,
         error: errorMessage,
@@ -1139,7 +750,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
         details: "Your payment is safe in escrow. You can try again later or contact support for assistance.",
         currentStatus: "ESCROW", // After rollback
         expectedStatus: VALID_PAYMENT_STATUSES_FOR_RELEASE.join(' or '),
-        bookingStatus: booking.status === "COMPLETED" ? "COMPLETED" : "AWAITING_CONFIRMATION" // After rollback
+        bookingStatus: booking.status
       }, { status: statusCode });
     }
 

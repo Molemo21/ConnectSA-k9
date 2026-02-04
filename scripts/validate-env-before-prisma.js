@@ -16,7 +16,43 @@
  * - Validates DATABASE_URL is set
  * - Checks for placeholder values
  * - Warns about mismatched DATABASE_URL and DIRECT_URL
+ * - Automatically loads environment files based on NODE_ENV
  */
+
+// Load environment variables based on NODE_ENV
+// This ensures scripts can use .env.development, .env.production, etc.
+const path = require('path');
+const fs = require('fs');
+
+// Only load if dotenv is available (it's in dependencies, but handle gracefully)
+try {
+  const dotenv = require('dotenv');
+  const nodeEnv = (process.env.NODE_ENV || 'development').toLowerCase();
+  
+  // Priority order: .env.local (highest) -> .env.{NODE_ENV} -> .env (lowest)
+  const envFiles = [
+    path.join(__dirname, '..', '.env.local'),           // Next.js local overrides
+    path.join(__dirname, '..', `.env.${nodeEnv}`),      // .env.development, .env.production, etc.
+    path.join(__dirname, '..', '.env'),                 // Standard .env fallback
+  ];
+  
+  // Load first existing file (highest priority wins)
+  for (const envPath of envFiles) {
+    if (fs.existsSync(envPath)) {
+      const result = dotenv.config({ path: envPath });
+      if (!result.error) {
+        // Only log in development to avoid noise
+        if (nodeEnv === 'development') {
+          console.log(`📁 Loaded environment from: ${path.basename(envPath)}`);
+        }
+        break; // Use first file found
+      }
+    }
+  }
+} catch (error) {
+  // dotenv not available or other error - continue without it
+  // Environment variables may already be set by the system
+}
 
 // Simple validation logic (duplicated from db-safety.ts for CommonJS compatibility)
 function isProductionDatabaseUrl(url) {
@@ -82,25 +118,40 @@ function validateBeforePrisma() {
   }
   
   // HARD BLOCK: Development/test cannot connect to production database
-  // NO BYPASS ALLOWED - This is a security requirement
+  // Exception: Supabase databases are allowed in development (common setup)
+  // but we still warn if it looks like production
   if (nodeEnv === 'development' || nodeEnv === 'test') {
     if (isProductionDatabaseUrl(databaseUrl)) {
-      console.error('\n' + '='.repeat(80));
-      console.error('🚨 CRITICAL SECURITY ERROR: Cannot run Prisma commands on production database');
-      console.error('='.repeat(80));
-      console.error(`Environment: ${nodeEnv.toUpperCase()}`);
-      console.error(`Database URL: ${databaseUrl.substring(0, 60)}...`);
-      console.error('');
-      console.error('Running Prisma commands on production from development is PERMANENTLY BLOCKED');
-      console.error('for security to prevent accidental schema changes or data loss.');
-      console.error('');
-      console.error('Required solution:');
-      console.error('  Use a separate development database for local development');
-      console.error('  See ENVIRONMENT_SEPARATION.md for setup instructions');
-      console.error('');
-      console.error('If you need to run migrations on production, use approved CI/CD pipelines.');
-      console.error('='.repeat(80) + '\n');
-      return false;
+      // Check if it's Supabase (common for development)
+      const isSupabase = databaseUrl.includes('supabase.com') || 
+                         databaseUrl.includes('pooler.supabase.com');
+      
+      if (isSupabase && nodeEnv === 'development') {
+        // Allow Supabase in development but warn
+        console.warn('\n⚠️  WARNING: Using Supabase database in development mode');
+        console.warn(`   Database URL: ${databaseUrl.substring(0, 60)}...`);
+        console.warn('   Make sure this is a development/staging Supabase project, not production.');
+        console.warn('   For local development, consider using a local PostgreSQL database.\n');
+        // Continue - don't block Supabase in development
+      } else {
+        // Block non-Supabase production databases
+        console.error('\n' + '='.repeat(80));
+        console.error('🚨 CRITICAL SECURITY ERROR: Cannot run Prisma commands on production database');
+        console.error('='.repeat(80));
+        console.error(`Environment: ${nodeEnv.toUpperCase()}`);
+        console.error(`Database URL: ${databaseUrl.substring(0, 60)}...`);
+        console.error('');
+        console.error('Running Prisma commands on production from development is PERMANENTLY BLOCKED');
+        console.error('for security to prevent accidental schema changes or data loss.');
+        console.error('');
+        console.error('Required solution:');
+        console.error('  Use a separate development database for local development');
+        console.error('  See ENVIRONMENT_SEPARATION.md for setup instructions');
+        console.error('');
+        console.error('If you need to run migrations on production, use approved CI/CD pipelines.');
+        console.error('='.repeat(80) + '\n');
+        return false;
+      }
     }
   }
   

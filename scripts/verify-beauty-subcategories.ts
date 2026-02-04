@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { SERVICES } from '../config/services';
+import { SERVICES, BEAUTY_SUBCATEGORIES } from '../config/services';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -25,14 +25,6 @@ const prisma = new PrismaClient({
     }
   }
 });
-
-// Subcategories as defined in ServiceSelection.tsx
-const BEAUTY_SUBCATEGORIES = {
-  'Hair Services': ['Haircut (Men & Women)', 'Braiding', 'Weave Installation'],
-  'Makeup & Lashes': ['Eyelash Extensions', 'Bridal Makeup', 'Makeup Application (Regular)'],
-  'Nails': ['Manicure', 'Pedicure', 'Nail Extensions'],
-  'Skincare & Hair Removal': ['Facial', 'Waxing']
-};
 
 async function verifyBeautySubcategories() {
   console.log('💄 Verifying Beauty Services Subcategories\n');

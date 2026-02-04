@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, CheckCircle, ChevronRight, ArrowLeft } from "lucide-react"
 import { SERVICE_CATEGORIES } from "@/config/service-categories"
+import { BEAUTY_SUBCATEGORIES, CLEANING_SUBCATEGORIES } from "@/config/services"
 
 interface ServiceCategory {
   id: string;
@@ -31,21 +32,6 @@ interface ServiceSelectionProps {
   onNext: () => void;
 }
 
-// Define subcategories for Beauty & Personal Care
-const BEAUTY_SUBCATEGORIES = {
-  'Hair Services': ['Haircut (Men & Women)', 'Braiding', 'Weave Installation'],
-  'Makeup & Lashes': ['Eyelash Extensions', 'Bridal Makeup', 'Makeup Application (Regular)'],
-  'Nails': ['Manicure', 'Pedicure', 'Nail Extensions'],
-  'Skincare & Hair Removal': ['Facial', 'Waxing']
-};
-
-// Define subcategories for Cleaning Services
-// IMPORTANT: Service names MUST match exactly with config/services.ts (source of truth)
-const CLEANING_SUBCATEGORIES = {
-  'Home Cleaning': ['Standard House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
-  'Specialized Cleaning': ['Carpet Cleaning', 'Mobile Car Wash', 'Office Cleaning']
-};
-
 export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionProps) {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
@@ -55,20 +41,35 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
   const [searchTerm, setSearchTerm] = useState("");
   const [retryCount, setRetryCount] = useState(0);
 
-  // Check if selected category is Beauty & Personal Care
-  const isBeautyCategory = selectedCategory?.name === 'Beauty & Personal Care';
+  // Helper function to check if category matches (flexible matching)
+  const isCategoryMatch = (categoryName: string | null | undefined, targetNames: string[]): boolean => {
+    if (!categoryName) return false;
+    const normalized = categoryName.trim().toLowerCase();
+    return targetNames.some(target => normalized === target.trim().toLowerCase() || normalized.includes(target.trim().toLowerCase()));
+  };
+
+  // Check if selected category is Beauty & Personal Care (flexible matching)
+  const isBeautyCategory = isCategoryMatch(selectedCategory?.name, [
+    'Beauty & Personal Care',
+    'Beauty',
+    'Beauty Services'
+  ]);
   
-  // Check if selected category is Cleaning Services
-  const isCleaningCategory = selectedCategory?.name === 'Cleaning Services';
+  // Check if selected category is Cleaning Services (flexible matching)
+  // Handles both "Cleaning" and "Cleaning Services"
+  const isCleaningCategory = isCategoryMatch(selectedCategory?.name, [
+    'Cleaning Services',
+    'Cleaning',
+    'Cleaning Service'
+  ]);
   
   // Get the appropriate subcategories based on category
-  const getSubcategories = () => {
+  // Use useMemo to recalculate when selectedCategory changes
+  const subcategories = useMemo(() => {
     if (isBeautyCategory) return BEAUTY_SUBCATEGORIES;
     if (isCleaningCategory) return CLEANING_SUBCATEGORIES;
     return null;
-  };
-  
-  const subcategories = getSubcategories();
+  }, [isBeautyCategory, isCleaningCategory, selectedCategory?.name]);
 
   // Load categories with retry logic and fallback
   useEffect(() => {
@@ -81,7 +82,16 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
         setLoading(true);
         setError(null);
 
-        const response = await fetch('/api/service-categories');
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch('/api/service-categories', {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (!response.ok) {
           throw new Error(`Failed to fetch service categories: ${response.statusText}`);
         }
@@ -95,9 +105,9 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
             if (data.length > 0) {
               setSelectedCategory(data[0]);
               // Auto-select first subcategory for Beauty or Cleaning category
-              if (data[0].name === 'Beauty & Personal Care') {
+              if (isCategoryMatch(data[0].name, ['Beauty & Personal Care', 'Beauty', 'Beauty Services'])) {
                 setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
-              } else if (data[0].name === 'Cleaning Services') {
+              } else if (isCategoryMatch(data[0].name, ['Cleaning Services', 'Cleaning', 'Cleaning Service'])) {
                 setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
               }
             }
@@ -147,9 +157,9 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                   // Auto-select the first category if available
                   if (categoryArray.length > 0) {
                     setSelectedCategory(categoryArray[0]);
-                    if (categoryArray[0].name === 'Beauty & Personal Care') {
+                    if (isCategoryMatch(categoryArray[0].name, ['Beauty & Personal Care', 'Beauty', 'Beauty Services'])) {
                       setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
-                    } else if (categoryArray[0].name === 'Cleaning Services') {
+                    } else if (isCategoryMatch(categoryArray[0].name, ['Cleaning Services', 'Cleaning', 'Cleaning Service'])) {
                       setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
                     }
                   }
@@ -218,9 +228,9 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                   // Auto-select the first category if available
                   if (categoryArray.length > 0) {
                     setSelectedCategory(categoryArray[0]);
-                    if (categoryArray[0].name === 'Beauty & Personal Care') {
+                    if (isCategoryMatch(categoryArray[0].name, ['Beauty & Personal Care', 'Beauty', 'Beauty Services'])) {
                       setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
-                    } else if (categoryArray[0].name === 'Cleaning Services') {
+                    } else if (isCategoryMatch(categoryArray[0].name, ['Cleaning Services', 'Cleaning', 'Cleaning Service'])) {
                       setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
                     }
                   }
@@ -387,9 +397,9 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
                 setSelectedCategory(category);
                 setSearchTerm("");
                 // Reset subcategory when changing categories
-                if (category.name === 'Beauty & Personal Care') {
+                if (isCategoryMatch(category.name, ['Beauty & Personal Care', 'Beauty', 'Beauty Services'])) {
                   setSelectedSubcategory(Object.keys(BEAUTY_SUBCATEGORIES)[0]);
-                } else if (category.name === 'Cleaning Services') {
+                } else if (isCategoryMatch(category.name, ['Cleaning Services', 'Cleaning', 'Cleaning Service'])) {
                   setSelectedSubcategory(Object.keys(CLEANING_SUBCATEGORIES)[0]);
                 } else {
                   setSelectedSubcategory(null);
@@ -409,7 +419,7 @@ export function ServiceSelection({ value, onChange, onNext }: ServiceSelectionPr
       </div>
 
       {/* Subcategory Tabs (for Beauty & Personal Care and Cleaning Services) */}
-      {subcategories && (
+      {subcategories && Object.keys(subcategories).length > 0 && (
         <div className="space-y-4">
           <div className="flex flex-wrap justify-center gap-4">
             {Object.keys(subcategories).map((subcategory) => (

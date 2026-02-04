@@ -26,17 +26,47 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password } = loginSchema.parse(body)
 
-    // Find user with provider info if applicable
+    // Ensure Prisma connection before querying
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      if (typeof (prisma as any).connect === 'function') {
+        await (prisma as any).connect();
+      } else {
+        await prisma.$connect();
+      }
+    } catch (connectError) {
+      // Connection might already be established, or might fail - proceed anyway
+      const errorMessage = connectError instanceof Error ? connectError.message : String(connectError);
+      if (!errorMessage.includes('already connected') && !errorMessage.includes('already been connected')) {
+        console.warn('⚠️ Prisma connection check failed in login route:', errorMessage);
+      }
+    }
+
+    // Find user - fetch basic fields first to avoid any schema mismatches
     const user = await db.user.findUnique({
       where: { email },
-      include: {
-        provider: {
-          select: {
-            status: true,
-          },
-        },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        password: true,
+        role: true,
+        emailVerified: true,
+        isActive: true,
       },
     })
+
+    // Fetch provider status separately if user exists and is a provider
+    let providerStatus: string | undefined
+    if (user && user.role === 'PROVIDER') {
+      const provider = await db.provider.findUnique({
+        where: { userId: user.id },
+        select: {
+          status: true,
+        },
+      })
+      providerStatus = provider?.status
+    }
 
     if (!user || !user.password) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
@@ -74,10 +104,10 @@ export async function POST(request: NextRequest) {
     // to avoid circular dependencies and authentication issues
 
     // Determine redirect URL
-    const redirectUrl = await getUserDashboardPath(
+    const redirectUrl = getUserDashboardPath(
       user.role, 
       user.emailVerified, 
-      user.provider?.status
+      providerStatus
     )
 
     console.log('Login successful:', {
@@ -85,7 +115,7 @@ export async function POST(request: NextRequest) {
       userEmail: user.email,
       userRole: user.role,
       redirectUrl,
-      providerStatus: user.provider?.status
+      providerStatus
     })
 
     return NextResponse.json({
@@ -102,6 +132,20 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Login error:', error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    // Log detailed error for debugging
+    console.error('Login error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      errorType: error?.constructor?.name
+    })
+    
+    return NextResponse.json({ 
+      error: "Internal server error",
+      message: "Login failed. Please try again.",
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    }, { status: 500 })
   }
 }

@@ -200,20 +200,36 @@ export function RealtimeProviderDashboard() {
         read: false
       }, ...prev])
     }
-  }
-
-  // Handle real-time payment updates
-  function handlePaymentUpdate(event: SocketEvent) {
-    console.log('💳 Provider payment update received:', event)
     
-    if (event.action === 'status_changed') {
-      const statusMessages = {
-        'ESCROW': '💰 Payment received and held in escrow',
-        'RELEASED': '✅ Payment released to you',
-        'FAILED': '❌ Payment failed'
+    if (event.action === 'status_changed' || event.action === 'payment_released') {
+      console.log('📋 Booking status changed:', event.data)
+      
+      // Update the booking in state immediately
+      const newStatus = event.data.status || (event.data.paymentStatus === 'RELEASED' ? 'COMPLETED' : undefined)
+      setBookings(prev => prev.map(booking => 
+        booking.id === event.data.id 
+          ? { 
+              ...booking, 
+              status: newStatus || booking.status,
+              payment: event.data.paymentStatus ? {
+                ...booking.payment!,
+                status: event.data.paymentStatus
+              } : booking.payment,
+              updatedAt: event.data.updatedAt || new Date().toISOString()
+            }
+          : booking
+      ))
+      
+      // Show toast notification
+      const statusMessages: Record<string, string> = {
+        'COMPLETED': '✅ Booking completed!',
+        'IN_PROGRESS': '🔄 Booking in progress',
+        'AWAITING_CONFIRMATION': '⏳ Awaiting client confirmation',
+        'CANCELLED': '❌ Booking cancelled'
       }
       
-      const message = statusMessages[event.data.status as keyof typeof statusMessages]
+      const displayStatus = newStatus || event.data.status
+      const message = displayStatus ? (statusMessages[displayStatus] || `Booking status changed to ${displayStatus}`) : 'Booking updated'
       if (message) {
         toast.success(message, {
           duration: 5000,
@@ -221,15 +237,54 @@ export function RealtimeProviderDashboard() {
         })
       }
       
-      // Update the specific booking's payment in state
+      // Trigger a full refresh to get latest data from server
+      setTimeout(() => {
+        fetchBookings()
+      }, 500) // Small delay to ensure database transaction is committed
+      
+      // Add notification
+      setNotifications(prev => [{
+        id: `booking_${event.data.id}_status_${Date.now()}`,
+        type: 'booking_status_changed',
+        title: 'Booking Status Updated',
+        message: `${event.data.serviceName || 'Booking'} status changed to ${displayStatus || 'updated'}`,
+        timestamp: new Date().toISOString(),
+        read: false
+      }, ...prev])
+    }
+  }
+
+  // Handle real-time payment updates
+  function handlePaymentUpdate(event: SocketEvent) {
+    console.log('💳 Provider payment update received:', event)
+    
+    if (event.action === 'status_changed' || event.action === 'payment_released') {
+      const statusMessages = {
+        'ESCROW': '💰 Payment received and held in escrow',
+        'RELEASED': '✅ Payment released to you',
+        'FAILED': '❌ Payment failed'
+      }
+      
+      const paymentStatus = event.data.status || 'RELEASED'
+      const message = statusMessages[paymentStatus as keyof typeof statusMessages]
+      if (message) {
+        toast.success(message, {
+          duration: 5000,
+          position: 'top-center'
+        })
+      }
+      
+      // Update the specific booking's payment in state and booking status
       setBookings(prev => prev.map(booking => 
-        booking.payment?.id === event.data.id 
+        booking.payment?.id === event.data.id || booking.id === event.data.bookingId
           ? { 
               ...booking, 
               payment: { 
                 ...booking.payment!, 
-                status: event.data.status 
-              } 
+                status: paymentStatus 
+              },
+              // If payment is released, booking should be completed
+              status: paymentStatus === 'RELEASED' ? 'COMPLETED' : booking.status
             }
           : booking
       ))
@@ -239,7 +294,7 @@ export function RealtimeProviderDashboard() {
         id: `payment_${event.data.id}_${Date.now()}`,
         type: 'payment_update',
         title: 'Payment Update',
-        message: `Payment status changed to ${event.data.status}`,
+        message: `Payment status changed to ${paymentStatus}`,
         timestamp: new Date().toISOString(),
         read: false
       }, ...prev])

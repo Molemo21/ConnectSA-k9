@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { SERVICES } from '../config/services';
+import { SERVICES, CLEANING_SUBCATEGORIES } from '../config/services';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -26,11 +26,8 @@ const prisma = new PrismaClient({
   }
 });
 
-// Expected subcategories based on config/services.ts (source of truth)
-const EXPECTED_CLEANING_SUBCATEGORIES = {
-  'Home Cleaning': ['Standard House Cleaning', 'Deep Cleaning', 'Window Cleaning'],
-  'Specialized Cleaning': ['Carpet Cleaning', 'Mobile Car Wash']
-};
+// Use subcategories from config/services.ts (single source of truth)
+const EXPECTED_CLEANING_SUBCATEGORIES = CLEANING_SUBCATEGORIES;
 
 async function verifyServiceNameSync() {
   console.log('🔍 Verifying Service Name Sync Between Config and Database\n');

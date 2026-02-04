@@ -55,15 +55,25 @@ export function BankingStep({
   useEffect(() => {
     let isMounted = true
     
-    const fetchBanks = async () => {
+    const fetchBanks = async (retryCount = 0) => {
       setIsLoadingBanks(true)
       setBanksError(null)
       
       try {
-        const response = await fetch('/api/paystack/banks/payout?country=ZA')
+        // Add retry parameter to force refresh on retry
+        const refreshParam = retryCount > 0 ? '&refresh=true' : ''
+        const response = await fetch(`/api/paystack/banks/payout?country=ZA${refreshParam}`)
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch transfer-enabled banks: ${response.status}`)
+          const errorText = await response.text()
+          let errorMessage = `Failed to fetch banks (${response.status})`
+          try {
+            const errorJson = JSON.parse(errorText)
+            errorMessage = errorJson.error || errorMessage
+          } catch {
+            // Use default error message
+          }
+          throw new Error(errorMessage)
         }
         
         const result = await response.json()
@@ -71,20 +81,33 @@ export function BankingStep({
         if (isMounted) {
           if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
             setBanks(result.data)
-            console.log(`✅ Loaded ${result.data.length} transfer-enabled banks from Paystack API`)
+            console.log(`✅ Loaded ${result.data.length} transfer-enabled banks`)
+            setBanksError(null) // Clear any previous errors
           } else {
             console.warn('⚠️ No transfer-enabled banks returned from API')
-            setBanksError('No transfer-enabled banks available. Please try again later.')
-            setBanks([]) // Don't use fallback - only transfer-enabled banks are valid
+            setBanksError('No transfer-enabled banks available. Please try again or contact support.')
+            setBanks([])
           }
           setIsLoadingBanks(false)
         }
       } catch (error) {
         console.error('❌ Failed to fetch transfer-enabled banks:', error)
         if (isMounted) {
-          setBanksError(error instanceof Error ? error.message : 'Failed to load transfer-enabled banks')
-          setBanks([]) // Don't use fallback - only transfer-enabled banks are valid
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load banks'
+          setBanksError(`${errorMessage}. ${retryCount < 2 ? 'Retrying...' : 'Please try refreshing the page.'}`)
+          setBanks([])
           setIsLoadingBanks(false)
+          
+          // Auto-retry up to 2 times with exponential backoff
+          if (retryCount < 2) {
+            const delay = Math.pow(2, retryCount) * 1000 // 1s, 2s
+            console.log(`🔄 Retrying bank fetch in ${delay}ms (attempt ${retryCount + 1}/2)`)
+            setTimeout(() => {
+              if (isMounted) {
+                fetchBanks(retryCount + 1)
+              }
+            }, delay)
+          }
         }
       }
     }
@@ -195,9 +218,47 @@ export function BankingStep({
                   ))}
               </select>
               {banksError && (
-                <p className="text-xs text-red-600">
-                  ⚠️ {banksError}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-red-600">
+                    ⚠️ {banksError}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setBanksError(null)
+                      setIsLoadingBanks(true)
+                      fetch('/api/paystack/banks/payout?country=ZA&refresh=true')
+                        .then(res => res.json())
+                        .then(result => {
+                          if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+                            setBanks(result.data)
+                            setBanksError(null)
+                          } else {
+                            setBanksError('No banks available. Please contact support.')
+                            setBanks([])
+                          }
+                        })
+                        .catch(err => {
+                          setBanksError(`Failed to load banks: ${err.message}`)
+                          setBanks([])
+                        })
+                        .finally(() => setIsLoadingBanks(false))
+                    }}
+                    className="text-xs h-7"
+                    disabled={isLoadingBanks}
+                  >
+                    {isLoadingBanks ? (
+                      <>
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      'Retry'
+                    )}
+                  </Button>
+                </div>
               )}
               {!isLoadingBanks && banks.length === 0 && !banksError && (
                 <p className="text-xs text-yellow-600">

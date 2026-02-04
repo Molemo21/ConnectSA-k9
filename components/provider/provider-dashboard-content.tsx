@@ -171,6 +171,56 @@ export function ProviderDashboardContent() {
     fetchBookings()
   }, [])
 
+  // Track last refresh time and interaction state
+  const lastRefreshRef = useRef<number>(0)
+  const isInteractingRef = useRef<boolean>(false)
+
+  // Auto-refresh bookings every 60 seconds (reduced frequency to prevent interruption)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Only refresh if:
+      // 1. Page is visible
+      // 2. Not currently loading
+      // 3. User is not interacting
+      // 4. At least 60 seconds have passed
+      const timeSinceLastRefresh = Date.now() - lastRefreshRef.current
+      if (!document.hidden && 
+          !loading && 
+          !isInteractingRef.current &&
+          timeSinceLastRefresh >= 60000) {
+        console.log('🔄 Auto-refreshing provider bookings')
+        lastRefreshRef.current = Date.now()
+        fetchBookings()
+      }
+    }, 60000) // Check every 60 seconds
+
+    return () => clearInterval(interval)
+  }, [loading, fetchBookings])
+
+  // Refresh when page becomes visible - with cooldown
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        const timeSinceLastRefresh = Date.now() - lastRefreshRef.current
+        // Only refresh if it's been more than 30 seconds since last refresh
+        // and user is not interacting
+        if (timeSinceLastRefresh > 30000 && 
+            !loading && 
+            !isInteractingRef.current) {
+          console.log('📱 Page visible, refreshing provider bookings')
+          lastRefreshRef.current = Date.now()
+          fetchBookings()
+        }
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [loading, fetchBookings])
+
   // Refresh bank details status when needed
   const refreshBankDetailsStatus = useCallback(() => {
     if (currentProviderId) {

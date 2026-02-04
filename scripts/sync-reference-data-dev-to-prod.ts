@@ -72,6 +72,11 @@ import { resolve } from 'path';
 import * as readline from 'readline';
 import { execSync } from 'child_process';
 import { validateEnvironmentFingerprint, initializeEnvironmentFingerprint } from '../lib/env-fingerprint';
+import { 
+  createMutationAuditLog, 
+  updateMutationAuditLogStatus
+} from '../lib/mutation-audit';
+import { validateMutationCapability } from '../lib/production-guards';
 
 // Load environment variables
 const envPath = resolve(process.cwd(), '.env');
@@ -554,7 +559,10 @@ async function main() {
   } else if (isApply) {
     console.log(`${'🚨 '.repeat(20)} APPLY MODE (CI-ONLY) ${'🚨 '.repeat(20)}\n`);
     
-    // Double-check CI requirement
+    // Validate mutation capability (centralized guard)
+    validateMutationCapability('SYNC_REFERENCE_DATA');
+    
+    // Double-check CI requirement (existing guard - keep as defense-in-depth)
     if (!isCI) {
       console.error(`${colors.red}❌ ERROR: --apply requires CI=true${colors.reset}`);
       process.exit(1);
@@ -631,10 +639,57 @@ async function main() {
       process.exit(0);
     }
   }
+  
+  // Create audit log entry (only for apply mode, not dry-run)
+  // MOVED HERE: After guards pass (validateMutationCapability, CI check, URL validation, confirmation)
+  // This is the first DB access point - guards are pure
+  if (isApply && !isDryRun) {
+    const auditLogId = await createMutationAuditLog('SYNC_REFERENCE_DATA', prodUrl, {
+      tables: ['service_categories', 'services'],
+      dry_run: false,
+    });
+    
+    // Store audit log ID for later update
+    (global as any).MUTATION_AUDIT_LOG_ID = auditLogId;
+    (global as any).MUTATION_AUDIT_DB_URL = prodUrl;
+  }
 
   // Run promotion
   const promotion = new ReferenceDataPromotion(devUrl, prodUrl, isDryRun || !isApply);
-  await promotion.promote(devUrl, prodUrl);
+  
+  try {
+    await promotion.promote(devUrl, prodUrl);
+    
+    // Update audit log: success (only if applying)
+    if (isApply && !isDryRun) {
+      const auditLogId = (global as any).MUTATION_AUDIT_LOG_ID || null;
+      const prodUrl = (global as any).MUTATION_AUDIT_DB_URL || prodUrlRaw;
+      await updateMutationAuditLogStatus(
+        auditLogId,
+        prodUrl,
+        'success',
+        null,
+        {
+          categories: promotion.stats.categories,
+          services: promotion.stats.services,
+        }
+      );
+    }
+  } catch (error) {
+    // Update audit log: failed (only if applying)
+    if (isApply && !isDryRun) {
+      const auditLogId = (global as any).MUTATION_AUDIT_LOG_ID || null;
+      const prodUrl = (global as any).MUTATION_AUDIT_DB_URL || prodUrlRaw;
+      await updateMutationAuditLogStatus(
+        auditLogId,
+        prodUrl,
+        'failed',
+        error instanceof Error ? error.message : String(error),
+        null
+      );
+    }
+    throw error;
+  }
 }
 
 // Run if called directly

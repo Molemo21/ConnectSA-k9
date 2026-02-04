@@ -202,6 +202,29 @@ export function PaginatedClientDashboard() {
         timestamp: new Date().toISOString(),
         read: false
       }, ...prev])
+    } else if (event.action === 'payment_released' || event.action === 'status_changed') {
+      // Handle payment released or status change
+      const updatedBooking = bookings.find(b => b.id === event.data.id)
+      if (updatedBooking) {
+        const newStatus = event.data.status || (event.data.paymentStatus === 'RELEASED' ? 'COMPLETED' : updatedBooking.status)
+        const newBooking = {
+          ...updatedBooking,
+          status: newStatus,
+          payment: event.data.paymentStatus ? {
+            ...updatedBooking.payment!,
+            status: event.data.paymentStatus
+          } : updatedBooking.payment
+        }
+        updateItem(newBooking)
+        
+        // Show toast if payment was released
+        if (event.data.paymentStatus === 'RELEASED' || newStatus === 'COMPLETED') {
+          toast.success('✅ Payment released and booking completed!', {
+            duration: 5000,
+            position: 'top-center'
+          })
+        }
+      }
     }
   }
 
@@ -209,14 +232,15 @@ export function PaginatedClientDashboard() {
   function handlePaymentUpdate(event: SocketEvent) {
     console.log('💳 Payment update received:', event)
     
-    if (event.action === 'status_changed') {
+    if (event.action === 'status_changed' || event.action === 'payment_released') {
       const statusMessages = {
         'ESCROW': '💰 Payment received and held in escrow',
         'RELEASED': '✅ Payment released to provider',
         'FAILED': '❌ Payment failed'
       }
       
-      const message = statusMessages[event.data.status as keyof typeof statusMessages]
+      const paymentStatus = event.data.status || 'RELEASED'
+      const message = statusMessages[paymentStatus as keyof typeof statusMessages]
       if (message) {
         toast.success(message, {
           duration: 5000,
@@ -225,10 +249,15 @@ export function PaginatedClientDashboard() {
       }
       
       // Find and update the booking with the payment change
-      const updatedBooking = bookings.find(b => b.payment?.id === event.data.id)
+      const updatedBooking = bookings.find(b => b.payment?.id === event.data.id || b.id === event.data.bookingId)
       if (updatedBooking) {
-        const updatedPayment = { ...updatedBooking.payment!, status: event.data.status }
-        const newBooking = { ...updatedBooking, payment: updatedPayment }
+        const updatedPayment = { ...updatedBooking.payment!, status: paymentStatus }
+        const newBooking = { 
+          ...updatedBooking, 
+          payment: updatedPayment,
+          // If payment is released, booking should be completed
+          status: paymentStatus === 'RELEASED' ? 'COMPLETED' : updatedBooking.status
+        }
         updateItem(newBooking)
       }
       
@@ -237,7 +266,7 @@ export function PaginatedClientDashboard() {
         id: `payment_${event.data.id}_${Date.now()}`,
         type: 'payment_update',
         title: 'Payment Update',
-        message: `Payment status changed to ${event.data.status}`,
+        message: `Payment status changed to ${paymentStatus}`,
         timestamp: new Date().toISOString(),
         read: false
       }, ...prev])

@@ -10,7 +10,7 @@
  * - Uses SWR-like patterns for data fetching
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   RefreshCw, 

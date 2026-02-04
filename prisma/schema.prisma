@@ -431,3 +431,36 @@ model DatabaseMetadata {
 
   @@map("database_metadata")
 }
+
+// ============================================================================
+// MUTATION AUDIT LOG - Append-only audit trail for production mutations
+// ============================================================================
+// This table tracks all mutation capabilities (DEPLOY_DB, SYNC_REFERENCE_DATA)
+// for traceability, auditability, and rollback support.
+// Records are append-only (no DELETE, UPDATE only for status transitions).
+// ============================================================================
+
+model MutationAuditLog {
+  id                    String    @id @default(uuid())
+  capability            String    // 'DEPLOY_DB' | 'SYNC_REFERENCE_DATA'
+  capabilityVersion     String?   @map("capability_version")
+  status                String    @default("pending") // 'pending' | 'success' | 'failed'
+  environment           String    // 'prod' | 'staging' | 'dev'
+  environmentFingerprint String   @map("environment_fingerprint") // Immutable fingerprint
+  executorType          String    @map("executor_type") // 'CI' | 'SCRIPT'
+  executorId            String    @map("executor_id") // Stable identifier
+  executorReference     String?   @map("executor_reference") // Human-readable reference
+  startedAt             DateTime  @default(now()) @map("started_at")
+  completedAt           DateTime? @map("completed_at")
+  errorMessage          String?   @map("error_message")
+  metadata              Json?     // Capability-specific data
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  @@index([capability])
+  @@index([status])
+  @@index([startedAt(sort: Desc)])
+  @@index([environment])
+  @@index([environmentFingerprint])
+  @@index([executorId])
+  @@map("mutation_audit_log")
+}

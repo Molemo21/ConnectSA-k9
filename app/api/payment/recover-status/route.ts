@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
           data: { 
             status: 'ESCROW',
             paidAt: new Date(),
-            transactionId: paystackVerification.data.id?.toString() || null,
             updatedAt: new Date()
           }
         });
@@ -135,8 +134,7 @@ export async function POST(request: NextRequest) {
           payment: {
             id: updatedPayment.id,
             status: updatedPayment.status,
-            paidAt: updatedPayment.paidAt,
-            transactionId: updatedPayment.transactionId
+            paidAt: updatedPayment.paidAt
           },
           booking: updatedBooking ? {
             id: updatedBooking.id,

@@ -96,12 +96,22 @@ if (isProdDb && !isCI && nodeEnv !== 'production' && nodeEnv !== 'prod') {
 
 const { execSync } = require('child_process');
 const deploymentState = require('./deployment-state');
+const { validateMutationCapability } = require('../lib/production-guards');
+const { 
+  createMutationAuditLog, 
+  updateMutationAuditLogStatus 
+} = require('../lib/mutation-audit');
 
 // ============================================================================
 // CRITICAL GUARDS - Must pass or script exits
 // ============================================================================
+// Guards are PURE: synchronous, no database access, no side effects beyond validation
+// ============================================================================
 
 function enforceDeploymentGuards() {
+  // Validate mutation capability (centralized guard)
+  validateMutationCapability('DEPLOY_DB');
+  
   // NOTE: CI and environment guards already executed at top of file
   // (before any imports or database connections)
   
@@ -132,6 +142,48 @@ function enforceDeploymentGuards() {
   console.log('   Verification: ✅ Passed');
   console.log('   Backup: ✅ Completed');
   console.log('   Lock: ✅ Acquired');
+  
+  // NO AUDIT LOGGING HERE - guards are pure (no DB access)
+}
+
+// ============================================================================
+// AUDIT LOGGING - Creates audit entry after guards pass, before mutations
+// ============================================================================
+
+async function createAuditLogEntry() {
+  const dbUrl = process.env.DATABASE_URL || '';
+  
+  // Get pending migrations count for metadata (filesystem only, no DB)
+  const fs = require('fs');
+  const path = require('path');
+  const migrationsDir = path.join(__dirname, '..', 'prisma', 'migrations');
+  let pendingMigrations = [];
+  try {
+    const allDirs = fs.readdirSync(migrationsDir, { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name)
+      .filter(name => name !== 'production');
+    
+    for (const dir of allDirs) {
+      const migrationPath = path.join(migrationsDir, dir, 'migration.sql');
+      if (fs.existsSync(migrationPath)) {
+        pendingMigrations.push(dir);
+      }
+    }
+  } catch (error) {
+    // Ignore - metadata is optional
+  }
+  
+  // Create audit log entry (non-blocking, opens DB connection here)
+  const auditLogId = await createMutationAuditLog('DEPLOY_DB', dbUrl, {
+    migration_count: pendingMigrations.length,
+    pending_migrations: pendingMigrations,
+  });
+  
+  // Store audit log ID for later update
+  process.env.MUTATION_AUDIT_LOG_ID = auditLogId || '';
+  
+  return auditLogId;
 }
 
 // ============================================================================
@@ -142,6 +194,9 @@ async function deployMigrations() {
   console.log('\n🚀 Deploying database migrations...');
   console.log('   This is the ONLY operation that mutates the production database.');
   console.log('   Command: npx prisma migrate deploy\n');
+  
+  const dbUrl = process.env.DATABASE_URL || '';
+  let appliedMigrationsCount = 0;
   
   try {
     // Step 0: Validate migration directories (prevent P3015 errors)
@@ -382,7 +437,45 @@ async function deployMigrations() {
     });
     
     console.log('\n✅ Migrations deployed successfully');
+    
+    // Count applied migrations for audit log
+    let appliedCount = 0;
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+      const appliedMigrations = await prisma.$queryRawUnsafe(
+        `SELECT COUNT(*) as count FROM _prisma_migrations WHERE finished_at IS NOT NULL`
+      );
+      if (Array.isArray(appliedMigrations) && appliedMigrations.length > 0) {
+        appliedCount = parseInt(appliedMigrations[0].count) || 0;
+      }
+      await prisma.$disconnect();
+    } catch (error) {
+      // Ignore - count is optional metadata
+    }
+    
+    // Update audit log: success
+    const auditLogId = process.env.MUTATION_AUDIT_LOG_ID || null;
+    const dbUrl = process.env.DATABASE_URL || '';
+    await updateMutationAuditLogStatus(
+      auditLogId,
+      dbUrl,
+      'success',
+      null,
+      { migrations_applied: appliedCount }
+    );
   } catch (error) {
+    // Update audit log: failed
+    const auditLogId = process.env.MUTATION_AUDIT_LOG_ID || null;
+    const dbUrl = process.env.DATABASE_URL || '';
+    await updateMutationAuditLogStatus(
+      auditLogId,
+      dbUrl,
+      'failed',
+      error.message,
+      null
+    );
+    
     console.error('\n❌ Migration deployment failed:', error.message);
     console.error('   Database may be in inconsistent state.');
     console.error('   Review error above and restore from backup if needed.');
@@ -402,11 +495,14 @@ async function main() {
   console.log('   This is the ONLY script allowed to mutate production.');
   console.log('   This script performs EXACTLY ONE action: prisma migrate deploy\n');
   
-  // Step 1: Enforce guards (exits if failed)
+  // Step 1: Enforce guards (exits if failed) - SYNCHRONOUS, NO DB ACCESS
   // NOTE: CI guards already executed at top of file
   enforceDeploymentGuards();
   
-  // Step 2: Deploy migrations (THE ONLY ACTION)
+  // Step 2: Create audit log entry (after guards pass, before mutations)
+  await createAuditLogEntry();
+  
+  // Step 3: Deploy migrations (THE ONLY ACTION)
   await deployMigrations();
   
   // Release deployment lock

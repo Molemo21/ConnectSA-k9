@@ -12,7 +12,6 @@ export const PAYSTACK_CONFIG = {
     webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET || '',
     
     // Test bank codes (Paystack test environment)
-    // NOTE: "470010" (Capitec) kept in test mode for compatibility, but should be removed in production
     // IMPORTANT: These codes must match what Paystack actually accepts
     supportedBanks: [
       { code: '044', name: 'ABSA Bank' },
@@ -60,16 +59,16 @@ export const PAYSTACK_CONFIG = {
     webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET || '',
     
     // Production bank codes (actual Paystack production)
-    // NOTE: "470010" (Capitec) removed - it's invalid according to Paystack API
     // This list is only used as fallback if Paystack API is unavailable
     // IMPORTANT: These codes must match what Paystack actually accepts
+    // NOTE: Capitec (470010) included - Paystack will validate during recipient creation
     supportedBanks: [
       { code: '044', name: 'ABSA Bank' },
       { code: '632005', name: 'Access Bank' },
       { code: '431150', name: 'African Bank' },
       { code: '198765', name: 'Bank of Athens' },
       { code: '462005', name: 'Bidvest Bank' },
-      // { code: '470010', name: 'Capitec Bank' }, // REMOVED - Invalid code according to Paystack
+      { code: '470010', name: 'Capitec Bank' },
       { code: '198766', name: 'Citibank' }, // Fixed: was 198765
       { code: '198767', name: 'FNB Bank' }, // Fixed: was 198765
       { code: '580105', name: 'Grindrod Bank' },

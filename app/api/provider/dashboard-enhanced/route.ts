@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Provider profile not found" }, { status: 404 });
     }
 
+    // Using select instead of include to avoid fetching non-existent payoutStatus field
     const bookings = await prisma.booking.findMany({
       where: {
         providerId: provider.id,
@@ -46,7 +47,25 @@ export async function GET(request: NextRequest) {
           in: ["PENDING", "CONFIRMED", "PENDING_EXECUTION", "IN_PROGRESS", "COMPLETED"]
         }
       },
-      include: {
+      select: {
+        id: true,
+        clientId: true,
+        providerId: true,
+        serviceId: true,
+        scheduledDate: true,
+        duration: true,
+        totalAmount: true,
+        platformFee: true,
+        description: true,
+        address: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        catalogueItemId: true,
+        bookedPrice: true,
+        bookedCurrency: true,
+        bookedDurationMins: true,
+        paymentMethod: true,
         service: {
           select: {
             id: true,

@@ -196,6 +196,32 @@ export function RealtimeClientDashboard() {
         timestamp: new Date().toISOString(),
         read: false
       }, ...prev])
+    } else if (event.action === 'payment_released' || event.action === 'status_changed') {
+      // Handle payment released or status change
+      const updatedBooking = bookings.find(b => b.id === event.data.id)
+      if (updatedBooking) {
+        const newStatus = event.data.status || (event.data.paymentStatus === 'RELEASED' ? 'COMPLETED' : updatedBooking.status)
+        setBookings(prev => prev.map(booking => 
+          booking.id === event.data.id
+            ? {
+                ...booking,
+                status: newStatus,
+                payment: event.data.paymentStatus ? {
+                  ...booking.payment!,
+                  status: event.data.paymentStatus
+                } : booking.payment
+              }
+            : booking
+        ))
+        
+        // Show toast if payment was released
+        if (event.data.paymentStatus === 'RELEASED' || newStatus === 'COMPLETED') {
+          toast.success('✅ Payment released and booking completed!', {
+            duration: 5000,
+            position: 'top-center'
+          })
+        }
+      }
     }
   }
 
@@ -203,14 +229,15 @@ export function RealtimeClientDashboard() {
   function handlePaymentUpdate(event: SocketEvent) {
     console.log('💳 Payment update received:', event)
     
-    if (event.action === 'status_changed') {
+    if (event.action === 'status_changed' || event.action === 'payment_released') {
       const statusMessages = {
         'ESCROW': '💰 Payment received and held in escrow',
         'RELEASED': '✅ Payment released to provider',
         'FAILED': '❌ Payment failed'
       }
       
-      const message = statusMessages[event.data.status as keyof typeof statusMessages]
+      const paymentStatus = event.data.status || 'RELEASED'
+      const message = statusMessages[paymentStatus as keyof typeof statusMessages]
       if (message) {
         toast.success(message, {
           duration: 5000,
@@ -218,15 +245,17 @@ export function RealtimeClientDashboard() {
         })
       }
       
-      // Update the specific booking's payment in state
+      // Update the specific booking's payment in state and booking status
       setBookings(prev => prev.map(booking => 
-        booking.payment?.id === event.data.id 
+        booking.payment?.id === event.data.id || booking.id === event.data.bookingId
           ? { 
               ...booking, 
               payment: { 
                 ...booking.payment!, 
-                status: event.data.status 
-              } 
+                status: paymentStatus 
+              },
+              // If payment is released, booking should be completed
+              status: paymentStatus === 'RELEASED' ? 'COMPLETED' : booking.status
             }
           : booking
       ))
@@ -236,7 +265,7 @@ export function RealtimeClientDashboard() {
         id: `payment_${event.data.id}_${Date.now()}`,
         type: 'payment_update',
         title: 'Payment Update',
-        message: `Payment status changed to ${event.data.status}`,
+        message: `Payment status changed to ${paymentStatus}`,
         timestamp: new Date().toISOString(),
         read: false
       }, ...prev])

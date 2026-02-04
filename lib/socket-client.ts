@@ -65,13 +65,35 @@ export function useSocket(options: UseSocketOptions = {}) {
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingRef = useRef(false);
+  const isInitializingRef = useRef(false);
+  
+  // Store callbacks in refs to avoid recreating initializeSocket
+  const callbacksRef = useRef({
+    onBookingUpdate,
+    onPaymentUpdate,
+    onPayoutUpdate,
+    onNotification,
+    onConnectionChange
+  });
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    callbacksRef.current = {
+      onBookingUpdate,
+      onPaymentUpdate,
+      onPayoutUpdate,
+      onNotification,
+      onConnectionChange
+    };
+  }, [onBookingUpdate, onPaymentUpdate, onPayoutUpdate, onNotification, onConnectionChange]);
 
   // Initialize Socket.IO connection
   const initializeSocket = useCallback(() => {
-    if (socketRef.current?.connected) {
+    if (socketRef.current?.connected || isInitializingRef.current) {
       return;
     }
 
+    isInitializingRef.current = true;
     setSocketState(prev => ({ ...prev, connecting: true, error: null }));
 
     try {
@@ -107,7 +129,7 @@ export function useSocket(options: UseSocketOptions = {}) {
           reconnectAttempts: 0
         }));
 
-        onConnectionChange?.(true);
+        callbacksRef.current.onConnectionChange?.(true);
 
         // Authenticate user if credentials provided
         if (userId && role) {
@@ -120,7 +142,7 @@ export function useSocket(options: UseSocketOptions = {}) {
 
         // Stop polling when WebSocket connects
         if (isPollingRef.current) {
-          stopPolling();
+          stopPollingRef.current?.();
         }
       });
 
@@ -137,11 +159,11 @@ export function useSocket(options: UseSocketOptions = {}) {
           connecting: false
         }));
 
-        onConnectionChange?.(false);
+        callbacksRef.current.onConnectionChange?.(false);
 
         // Start polling if WebSocket disconnects and polling is enabled
         if (enablePolling && !isPollingRef.current) {
-          startPolling();
+          startPollingRef.current?.();
         }
       });
 
@@ -164,11 +186,11 @@ export function useSocket(options: UseSocketOptions = {}) {
           reconnectAttempts: prev.reconnectAttempts + 1
         }));
 
-        onConnectionChange?.(false);
+        callbacksRef.current.onConnectionChange?.(false);
 
         // Start polling on connection error
         if (enablePolling && !isPollingRef.current) {
-          startPolling();
+          startPollingRef.current?.();
         }
       });
 
@@ -203,7 +225,7 @@ export function useSocket(options: UseSocketOptions = {}) {
         });
 
         setSocketState(prev => ({ ...prev, lastEvent: event }));
-        onBookingUpdate?.(event);
+        callbacksRef.current.onBookingUpdate?.(event);
       });
 
       socket.on('payment_update', (event: SocketEvent) => {
@@ -215,7 +237,7 @@ export function useSocket(options: UseSocketOptions = {}) {
         });
 
         setSocketState(prev => ({ ...prev, lastEvent: event }));
-        onPaymentUpdate?.(event);
+        callbacksRef.current.onPaymentUpdate?.(event);
       });
 
       socket.on('payout_update', (event: SocketEvent) => {
@@ -227,7 +249,7 @@ export function useSocket(options: UseSocketOptions = {}) {
         });
 
         setSocketState(prev => ({ ...prev, lastEvent: event }));
-        onPayoutUpdate?.(event);
+        callbacksRef.current.onPayoutUpdate?.(event);
       });
 
       socket.on('notification', (event: SocketEvent) => {
@@ -239,7 +261,7 @@ export function useSocket(options: UseSocketOptions = {}) {
         });
 
         setSocketState(prev => ({ ...prev, lastEvent: event }));
-        onNotification?.(event);
+        callbacksRef.current.onNotification?.(event);
       });
 
     } catch (error) {
@@ -257,13 +279,16 @@ export function useSocket(options: UseSocketOptions = {}) {
 
       // Start polling on initialization error
       if (enablePolling && !isPollingRef.current) {
-        startPolling();
+        startPollingRef.current?.();
       }
+    } finally {
+      isInitializingRef.current = false;
     }
-  }, [userId, role, enablePolling, onBookingUpdate, onPaymentUpdate, onPayoutUpdate, onNotification, onConnectionChange]);
+  }, [userId, role, enablePolling]); // Removed startPolling and stopPolling - using refs instead
 
-  // Polling fallback function
-  const pollForUpdates = useCallback(async () => {
+  // Polling fallback function - store in ref to avoid recreating
+  const pollForUpdatesRef = useRef<() => Promise<void>>();
+  pollForUpdatesRef.current = async () => {
     if (!userId || !role) return;
 
     try {
@@ -297,10 +322,16 @@ export function useSocket(options: UseSocketOptions = {}) {
         error_code: 'POLLING_ERROR'
       });
     }
+  };
+  
+  // Update ref when dependencies change
+  useEffect(() => {
+    // Ref is already updated above, this effect ensures it's current
   }, [userId, role, pollingInterval]);
 
-  // Start polling
-  const startPolling = useCallback(() => {
+  // Start polling - use ref to avoid recreating
+  const startPollingRef = useRef<() => void>();
+  startPollingRef.current = () => {
     if (isPollingRef.current) return;
 
     isPollingRef.current = true;
@@ -310,11 +341,18 @@ export function useSocket(options: UseSocketOptions = {}) {
       pollingInterval
     });
 
-    pollingRef.current = setInterval(pollForUpdates, pollingInterval);
-  }, [pollForUpdates, userId, role, pollingInterval]);
+    pollingRef.current = setInterval(() => {
+      pollForUpdatesRef.current?.();
+    }, pollingInterval);
+  };
+  
+  const startPolling = useCallback(() => {
+    startPollingRef.current?.();
+  }, []);
 
-  // Stop polling
-  const stopPolling = useCallback(() => {
+  // Stop polling - use ref to avoid recreating
+  const stopPollingRef = useRef<() => void>();
+  stopPollingRef.current = () => {
     if (!isPollingRef.current) return;
 
     isPollingRef.current = false;
@@ -327,7 +365,11 @@ export function useSocket(options: UseSocketOptions = {}) {
       userId,
       role
     });
-  }, [userId, role]);
+  };
+  
+  const stopPolling = useCallback(() => {
+    stopPollingRef.current?.();
+  }, []);
 
   // Manual reconnect function
   const reconnect = useCallback(() => {
@@ -340,9 +382,24 @@ export function useSocket(options: UseSocketOptions = {}) {
     initializeSocket();
   }, [initializeSocket, stopPolling]);
 
-  // Initialize socket on mount
+  // Track if socket has been initialized to prevent re-initialization
+  const hasInitializedRef = useRef(false);
+  const lastUserIdRef = useRef<string | undefined>(undefined);
+  
+  // Initialize socket on mount - only run once per userId
   useEffect(() => {
-    initializeSocket();
+    // Only initialize if userId changed and we haven't initialized yet
+    const userIdChanged = userId !== lastUserIdRef.current;
+    
+    if (userId && !socketRef.current && !hasInitializedRef.current && userIdChanged) {
+      lastUserIdRef.current = userId;
+      hasInitializedRef.current = true;
+      initializeSocket();
+    } else if (!userId) {
+      // Reset if userId is cleared
+      lastUserIdRef.current = undefined;
+      hasInitializedRef.current = false;
+    }
 
     return () => {
       if (socketRef.current) {
@@ -353,8 +410,10 @@ export function useSocket(options: UseSocketOptions = {}) {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      isInitializingRef.current = false;
+      // Don't reset hasInitializedRef here - let it persist for the userId
     };
-  }, [initializeSocket, stopPolling]);
+  }, [userId]); // Only depend on userId - initializeSocket is stable due to refs
 
   // Auto-reconnect on connection loss
   useEffect(() => {
