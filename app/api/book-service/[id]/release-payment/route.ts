@@ -560,8 +560,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             paymentId: booking.payment.id,
             providerId: booking.providerId,
             amount: booking.payment.escrowAmount!,
-            status: 'PENDING', // Admin will process manually
-            method: 'MANUAL' as const, // Manual transfer via Paystack dashboard
+            paystackRef: `PAYOUT_${booking.payment.id}`,
+            status: 'PENDING',
+            method: 'MANUAL' as const,
             bankName: booking.provider.bankName || '',
             bankCode: booking.provider.bankCode || '',
             accountNumber: booking.provider.accountNumber || '',
