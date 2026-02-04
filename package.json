@@ -81,7 +81,6 @@
     "investigate:specialized:cleaning": "tsx scripts/investigate-production-specialized-cleaning.ts",
     "ensure:production:services": "tsx scripts/ensure-production-services.ts",
     "ensure:production:services:dry-run": "tsx scripts/ensure-production-services.ts --dry-run",
-    "fix:production:services:direct": "tsx scripts/fix-production-services-direct.ts",
     "analyze:failed:migration": "tsx scripts/analyze-failed-migration.ts",
     "diagnose:migration:mismatch": "node scripts/diagnose-migration-mismatch.js",
     "deploy:production": "./scripts/deploy-production.sh",

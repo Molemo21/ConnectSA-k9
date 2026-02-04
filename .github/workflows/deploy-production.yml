@@ -242,44 +242,17 @@ jobs:
         echo "✅ Database migrations deployed successfully"
         echo "Migration completed at: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # Fix Production Services (Independent Job - Always Runs)
+  # Fix Production Services (DISABLED - Script was quarantined)
   fix-production-services:
     runs-on: ubuntu-latest
     name: Fix Production Services
     needs: [deploy-database]
     timeout-minutes: 10
+    if: false  # Script was quarantined; job intentionally disabled.
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci --legacy-peer-deps
-      
-    - name: Install TypeScript
-      run: npm install -g tsx typescript
-      
-    - name: Generate Prisma Client
-      run: npx prisma generate
-      env:
-        DATABASE_URL: ${{ secrets.PROD_DATABASE_URL || secrets.DATABASE_URL }}
-        DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      continue-on-error: false
-    
-    - name: Fix production services directly
-      run: npm run fix:production:services:direct
-      env:
-        NODE_ENV: production
-        CI: true
-        PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL || secrets.DATABASE_URL }}
-        DATABASE_URL: ${{ secrets.PROD_DATABASE_URL || secrets.DATABASE_URL }}
-      continue-on-error: false
+    - name: Job disabled
+      run: echo "⚠️ This job is disabled - fix-production-services-direct.ts was quarantined. One-off fix scripts must not auto-run in CI/CD."
 
   # Promote Reference Data (if DEV_DATABASE_URL is set)
   promote-reference-data:
@@ -342,7 +315,7 @@ jobs:
   verify-deployment:
     runs-on: ubuntu-latest
     name: Verify Deployment
-    needs: [deploy-database, fix-production-services, promote-reference-data]
+    needs: [deploy-database, promote-reference-data]
     timeout-minutes: 10
     if: always() # Run even if previous jobs failed
     
@@ -427,23 +400,19 @@ jobs:
           echo "❌ Database deployment failed"
           exit 1
         fi
-        if [ "${{ needs.fix-production-services.result }}" != "success" ]; then
-          echo "❌ Production services fix failed"
-          exit 1
-        fi
+        # fix-production-services job is disabled (script quarantined)
         if [ "${{ needs.promote-reference-data.result }}" != "success" ] && [ "${{ needs.promote-reference-data.result }}" != "skipped" ]; then
           echo "⚠️ Reference data promotion had issues (check logs)"
         fi
         echo "✅ Deployment verification complete"
         echo "✅ Backend database state verified"
         echo "✅ Frontend/backend synchronization verified"
-        echo "✅ Production services fixed and verified"
 
   # Notification (on failure or success)
   notify:
     runs-on: ubuntu-latest
     name: Send Notification
-    needs: [predeploy, backup, resolve-applied-migrations, deploy-database, fix-production-services, promote-reference-data, verify-deployment]
+    needs: [predeploy, backup, resolve-applied-migrations, deploy-database, promote-reference-data, verify-deployment]
     if: always() # Always run, regardless of previous job status
     timeout-minutes: 5
     
@@ -471,7 +440,6 @@ jobs:
         echo "- Backup: ${{ needs.backup.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Resolve Applied Migrations: ${{ needs.resolve-applied-migrations.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Database Migration: ${{ needs.deploy-database.result }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Fix Production Services: ${{ needs.fix-production-services.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Reference Data: ${{ needs.promote-reference-data.result }}" >> $GITHUB_STEP_SUMMARY
         echo "- Verification: ${{ needs.verify-deployment.result }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
