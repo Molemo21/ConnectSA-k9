@@ -562,13 +562,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<PaymentRe
             amount: booking.payment.escrowAmount!,
             paystackRef: `PAYOUT_${booking.payment.id}`,
             status: 'PENDING',
-            method: 'MANUAL' as const,
-            bankName: booking.provider.bankName || '',
-            bankCode: booking.provider.bankCode || '',
-            accountNumber: booking.provider.accountNumber || '',
-            accountName: booking.provider.accountName || '',
-            requestedAt: new Date(),
-            retryCount: 0,
           },
         });
 
